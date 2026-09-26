@@ -5,16 +5,17 @@
 //   node scripts/gen-assets.js --kind bg --count 2
 //   node scripts/gen-assets.js --all --accept-first --dry-run
 //
-// Options: --only id[,id]  --kind <kind>  --all  --count N  --accept-first  --force  --dry-run
+// Options: --only id[,id]  --kind <kind>  --all  --count N  --accept-first  --force  --dry-run  --parallel N
+// (--parallel runs up to N items at once; an item starts only after the items it depends on succeeded)
 // Key: env GEMINI_API_KEY or DATA_DIR/secrets.json. Exit code 1 if anything failed.
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DATA_DIR } from '../server/config.js';
-import { KINDS } from '../server/assets/manifest.js';
+import { KINDS, depsOf } from '../server/assets/manifest.js';
 import { createStudio } from '../server/assets/studio.js';
 
 export function parseArgs(argv) {
-  const opts = { only: null, kind: null, all: false, count: null, acceptFirst: false, force: false, dryRun: false };
+  const opts = { only: null, kind: null, all: false, count: null, acceptFirst: false, force: false, dryRun: false, parallel: 1 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const val = () => {
@@ -26,6 +27,7 @@ export function parseArgs(argv) {
     if (name === '--only') opts.only = val().split(',').map((s) => s.trim()).filter(Boolean);
     else if (name === '--kind') opts.kind = val();
     else if (name === '--count') opts.count = Number(val());
+    else if (name === '--parallel') opts.parallel = Number(val());
     else if (a === '--all') opts.all = true;
     else if (a === '--accept-first') opts.acceptFirst = true;
     else if (a === '--force') opts.force = true;
@@ -35,10 +37,11 @@ export function parseArgs(argv) {
   }
   if (opts.kind && !KINDS.includes(opts.kind)) throw new Error(`kind는 ${KINDS.join('|')} 중 하나여야 합니다.`);
   if (opts.count !== null && (!Number.isInteger(opts.count) || opts.count < 1 || opts.count > 8)) throw new Error('--count는 1~8이어야 합니다.');
+  if (!Number.isInteger(opts.parallel) || opts.parallel < 1 || opts.parallel > 8) throw new Error('--parallel은 1~8이어야 합니다.');
   return opts;
 }
 
-const HELP = `사용법: node scripts/gen-assets.js (--only id[,id] | --kind <kind> | --all) [--count N] [--accept-first] [--force] [--dry-run]`;
+const HELP = `사용법: node scripts/gen-assets.js (--only id[,id] | --kind <kind> | --all) [--count N] [--accept-first] [--force] [--dry-run] [--parallel N]`;
 
 export async function run(argv, { studio, out = console.log, err = console.error } = {}) {
   let opts;
@@ -76,8 +79,21 @@ export async function run(argv, { studio, out = console.log, err = console.error
   }
 
   let failed = 0;
-  for (const it of items) {
-    if (it.status === 'accepted' && !opts.force) continue;
+  let stop = false;
+  const todo = items.filter((it) => !(it.status === 'accepted' && !opts.force));
+  const inRun = new Map(todo.map((it) => [it.id, null])); // id → Promise<boolean> once started
+  const one = async (it) => {
+    // Dependencies generated in this same run must succeed first.
+    for (const d of depsOf(it)) {
+      if (!inRun.has(d)) continue;
+      while (!inRun.get(d)) await new Promise((r) => setTimeout(r, 50));
+      if (!(await inRun.get(d))) {
+        failed++;
+        err(`✘ ${it.id}: 의존 항목 ${d} 실패로 건너뜀`);
+        return false;
+      }
+    }
+    if (stop) return false;
     const t0 = Date.now();
     try {
       const r = await st.generateCandidates(it.id, { count, force: opts.force });
@@ -89,12 +105,25 @@ export async function run(argv, { studio, out = console.log, err = console.error
         msg += ` → 채택: public${accepted.url.split('?')[0]}`;
       }
       out(msg);
+      return true;
     } catch (e) {
       failed++;
       err(`✘ ${it.id}: ${e.message}`);
-      if (e.code === 'DAILY_CAP' || e.code === 'NO_KEY') break;
+      if (e.code === 'DAILY_CAP' || e.code === 'NO_KEY') stop = true;
+      return false;
     }
-  }
+  };
+  // Workers pick items in (dependency) order; a worker waiting on a dependency holds its slot.
+  let next = 0;
+  const worker = async () => {
+    while (next < todo.length && !stop) {
+      const it = todo[next++];
+      const p = one(it);
+      inRun.set(it.id, p);
+      await p;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(opts.parallel, Math.max(1, todo.length)) }, worker));
   out(failed ? `실패 ${failed}건` : '완료');
   return failed ? 1 : 0;
 }

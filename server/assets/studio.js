@@ -6,8 +6,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { createGeminiClient } from './gemini.js';
-import { KIND_LABELS, MANIFEST_PATH, getItem, loadManifest, outputsFor, renderPrompt, saveManifest, topoOrder } from './manifest.js';
-import { applySteps } from './postprocess.js';
+import { KIND_LABELS, MANIFEST_PATH, getItem, loadManifest, outputsFor, partFiles, renderPrompt, saveManifest, topoOrder } from './manifest.js';
+import { applySteps, toRaw } from './postprocess.js';
+import { measureFill } from './tintMath.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const GENERATED_DIR = path.join(ROOT, 'public', 'assets', 'generated');
@@ -117,13 +118,45 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     return f;
   }
 
+  /**
+   * Accepted file of an item used as a reference / diff base. Parts prefer their generation files:
+   * a mannequin's keyed original (`base`), else a part's keyed edit (`src`), else the published layer.
+   */
+  function refFileOf(r) {
+    if (r?.status !== 'accepted' || !r.accepted?.file) return null;
+    const f = r.kind === 'part' ? (r.accepted.files?.base ?? r.accepted.files?.src ?? r.accepted.file) : r.accepted.file;
+    return outPath(f);
+  }
+
+  /** Diff/align base of a part item (meta.base) as a PNG buffer; null for other items. */
+  async function resolveBase(m, item) {
+    if (item.kind !== 'part' || !item.meta?.base) return null;
+    const b = getItem(m, item.meta.base);
+    const file = refFileOf(b);
+    if (!file || !(await exists(file))) {
+      throw new StudioError(`기준 파츠 "${b?.label ?? item.meta.base}"(${item.meta.base})이(가) 아직 채택되지 않았습니다. 먼저 생성·채택하세요.`, {
+        status: 409,
+        code: 'REF_MISSING',
+      });
+    }
+    return sharp(await readFile(file)).png().toBuffer();
+  }
+
+  /** Neutral reference colour of a tintable part layer (manifest meta.tintRef). */
+  async function measureTintRef(item, buffer) {
+    const tint = item.meta?.tint;
+    if (item.kind !== 'part' || !tint) return undefined;
+    const { data } = await toRaw(buffer);
+    return (tint === 'skin' ? measureFill(data, { hueNear: 30, hueTol: 25 }) : measureFill(data)) ?? undefined;
+  }
+
   /** Reference images for an item: accepted files of its refs (error if any is missing). */
   async function resolveRefs(m, item) {
     const flatten = item.postprocess.includes('chromaKey') ? '#ff00ff' : '#ffffff';
     const refs = [];
     for (const rid of item.refs) {
       const r = getItem(m, rid);
-      const file = r?.status === 'accepted' && r.accepted?.file ? outPath(r.accepted.file) : null;
+      const file = refFileOf(r);
       if (!file || !(await exists(file))) {
         throw new StudioError(`참조 에셋 "${r?.label ?? rid}"(${rid})이(가) 아직 채택되지 않았습니다. 먼저 생성·채택하세요.`, {
           status: 409,
@@ -180,6 +213,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     busy.add(id);
     try {
       const refs = await resolveRefs(m, item);
+      const base = await resolveBase(m, item);
       const normalizeRef = item.kind === 'pose' ? refs.find((r) => r.kind === 'charLayer')?.raw : undefined;
       const prompts = framePrompts(item, prompt);
       const numbers = await nextNumbers(id, n);
@@ -199,11 +233,14 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
         const pp = await applySteps(
           results.map((r) => r.buffer),
           item.postprocess,
-          { ref: normalizeRef, delays: item.frameDelays, anchor: item.anchor },
+          { ref: normalizeRef, delays: item.frameDelays, anchor: item.anchor, base },
         );
         const dir = candDir(id);
         const image = pp.sheet ? pp.sheet.buffer : pp.frames[0];
         await writeFile(path.join(dir, `${num}.png`), await sharp(image).png().toBuffer());
+        // Paper-doll parts: extra layers (front/back hair, erase mask, hat, keyed base/src) next to the main one.
+        const layers = Object.keys(pp.layers ?? {});
+        for (const k of layers) await writeFile(path.join(dir, `${num}.${k}.png`), await sharp(pp.layers[k]).png().toBuffer());
         await sharp(image)
           .resize(PREVIEW_PX, PREVIEW_PX, { fit: 'inside', withoutEnlargement: true })
           .webp({ quality: 80 })
@@ -221,6 +258,8 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
           notes: Object.keys(pp.notes).length ? pp.notes : undefined,
           sheet: pp.sheet ? { ...pp.sheet.meta, delays: item.frameDelays, frameIds: item.frames.map((f) => f.id) } : undefined,
           anim: Boolean(pp.anim),
+          layers: layers.length ? layers : undefined,
+          tintRef: await measureTintRef(item, image),
         };
         await writeFile(path.join(dir, `${num}.json`), `${JSON.stringify(meta, null, 2)}\n`);
         return meta;
@@ -248,12 +287,32 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
 
   const regenerate = (id, opts = {}) => generateCandidates(id, { ...opts, force: true });
 
-  async function writeOutput(item, pngBuffer) {
-    const dest = outPath(item.output);
+  async function writeOutput(item, pngBuffer, rel = item.output, { lossless = false } = {}) {
+    const dest = outPath(rel);
     await mkdir(path.dirname(dest), { recursive: true });
     const img = sharp(pngBuffer);
-    await (item.output.endsWith('.webp') ? img.webp({ quality: 88 }) : img.png()).toFile(dest);
+    let enc;
+    if (!rel.endsWith('.webp')) enc = img.png();
+    else if (lossless) enc = img.webp({ lossless: true, effort: 5 });
+    else if (item.kind === 'part') enc = img.webp({ quality: 90, alphaQuality: 100, effort: 5 }); // tinted in the browser
+    else enc = img.webp({ quality: 88 });
+    await enc.toFile(dest);
     return dest;
+  }
+
+  /** Publish a part candidate's layers; returns {key: relPath} of the files written (stale ones removed). */
+  async function writePartOutputs(item, n, meta) {
+    const files = partFiles(item);
+    const written = { main: files.main };
+    for (const [k, rel] of Object.entries(files)) {
+      if (k === 'main') continue;
+      const f = path.join(candDir(item.id), `${n}.${k}.png`);
+      if (meta.layers?.includes(k) && (await exists(f))) {
+        await writeOutput(item, await readFile(f), rel, { lossless: k === 'base' || k === 'src' || k === 'erase' });
+        written[k] = rel;
+      } else await rm(outPath(rel), { force: true });
+    }
+    return written;
   }
 
   /** Publish candidate n to public/assets/generated/<output> and mark the item accepted. */
@@ -263,6 +322,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     const meta = (await listCandidates(id)).find((c) => c.n === Number(n));
     if (!meta) throw new StudioError('후보 정보가 없습니다.', { status: 404, code: 'NOT_FOUND' });
     await writeOutput(item, await readFile(file));
+    const files = item.kind === 'part' ? await writePartOutputs(item, n, meta) : null;
     if (item.kind === 'sprite') {
       const [, jsonOut, animOut] = outputsFor(item);
       await writeFile(outPath(jsonOut), `${JSON.stringify({ id, image: path.posix.basename(item.output), ...meta.sheet }, null, 2)}\n`);
@@ -282,7 +342,9 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
         width: meta.width,
         height: meta.height,
         ...(meta.sheet ? { frames: meta.sheet.count } : {}),
+        ...(files ? { files } : {}),
       };
+      if (it.kind === 'part' && it.meta?.tint && meta.tintRef) it.meta.tintRef = meta.tintRef;
       return summarize(m, it);
     });
   }
@@ -291,6 +353,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
   async function upload(id, buffer, { process = false } = {}) {
     const { m, item } = await mustItem(id);
     if (item.kind === 'sprite') throw new StudioError('스프라이트는 업로드를 지원하지 않습니다. 생성 후 채택하세요.');
+    if (item.kind === 'part') throw new StudioError('아바타 파츠는 업로드를 지원하지 않습니다. 생성 후 채택하세요.');
     let meta;
     try {
       meta = await sharp(buffer).metadata();
@@ -374,6 +437,12 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
         if (await exists(outPath(animOut))) entry.anim = publicUrl(item, animOut);
       }
       if (item.anchor) entry.anchor = item.anchor;
+      if (item.kind === 'part' && item.accepted.files) {
+        // Layers the composer draws (front/back hair, hat, erase mask); generation-only files stay out.
+        const files = {};
+        for (const [k, rel] of Object.entries(item.accepted.files)) if (!['main', 'base', 'src'].includes(k)) files[k] = publicUrl(item, rel);
+        if (Object.keys(files).length) entry.files = files;
+      }
       assets[item.id] = entry;
     }
     return { version: m.version ?? 1, assets };

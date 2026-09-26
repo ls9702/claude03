@@ -349,9 +349,12 @@ export const toPng = (buffer) => sharp(buffer).png().toBuffer();
  * - `normalizeFrames` with a single frame and a `ref` aligns it to the ref (key poses vs. the base).
  * - `sheet` / `webp` on multiple frames produce a sprite sheet and an animated WebP.
  * - `webp` on a single frame only marks the result for WebP encoding (the output extension decides).
- * - `diffExtract:<region>` (paper-doll parts) diffs the frame against `base` (the keyed mannequin);
- *   region `hair` additionally returns `layers: {front, back}`.
- * @returns {Promise<{frames: Buffer[], sheet?: {buffer: Buffer, meta: object}, anim?: Buffer, layers?: {front: Buffer, back: Buffer}, notes: object}>}
+ * - `diffExtract:<region>` (paper-doll parts) diffs the frame against `base` (the keyed diff base) →
+ *   `layers.src` (keyed edit) + `layers.erase?`; region `hair` adds `layers.front/back`, region `body`
+ *   moves headwear to `layers.hat`.
+ * - `alignHead` aligns a mannequin variant to `base` by the head box; `mannequin` keeps the keyed original
+ *   as `layers.base` and outputs the display copy (underwear recoloured).
+ * @returns {Promise<{frames: Buffer[], sheet?: {buffer: Buffer, meta: object}, anim?: Buffer, layers?: Record<string, Buffer>, notes: object}>}
  */
 export async function applySteps(frames, steps, { ref, delays, anchor = 'bottom-center', base, diffOptions } = {}) {
   let cur = frames;
@@ -372,16 +375,39 @@ export async function applySteps(frames, steps, { ref, delays, anchor = 'bottom-
     } else if (step === 'seamless') out.notes.seamless = await isSeamless(cur[0]);
     else if (step.startsWith('diffExtract:')) {
       // Paper-doll part: keep only what the edit added to the base mannequin (`base` = keyed base PNG).
-      if (!base) throw new Error('diffExtract needs a base image (the mannequin ref)');
+      if (!base) throw new Error('diffExtract needs a base image (meta.base)');
       const region = step.slice('diffExtract:'.length);
-      const r = await diffExtractDetailed(base, cur[0], { region, ...(diffOptions ?? {}) });
+      const src = cur[0];
+      const r = await diffExtractDetailed(base, src, { region, erase: region === 'hair' || region === 'body', ...(diffOptions ?? {}) });
       out.notes.diff = r.info;
+      out.layers = { ...(out.layers ?? {}), src };
+      if (r.erase) out.layers.erase = r.erase;
+      let layer = r.buffer;
       if (region === 'hair') {
-        const split = await splitFrontBack(r.buffer, base);
-        out.layers = { front: split.front, back: split.back };
+        const split = await splitFrontBack(layer, base);
+        out.layers.front = split.front;
+        out.layers.back = split.back;
         out.notes.split = split.info;
+      } else if (region === 'body') {
+        const hat = await splitHat(layer, base);
+        if (hat) {
+          out.layers.hat = hat.hat;
+          layer = hat.rest;
+          out.notes.hat = hat.pixels;
+        }
       }
-      cur = [r.buffer, ...cur.slice(1)];
+      cur = [layer, ...cur.slice(1)];
+    } else if (step === 'alignHead') {
+      if (!base) throw new Error('alignHead needs a base image (meta.base)');
+      const a = await alignToHead(cur[0], base);
+      out.notes.align = a.info;
+      cur = [a.buffer, ...cur.slice(1)];
+    } else if (step === 'mannequin') {
+      // Keep the keyed original (pale-cyan underwear) as the `base` file for edits/diffs; publish a display copy.
+      const d = await mannequinDisplay(cur[0]);
+      out.layers = { ...(out.layers ?? {}), base: cur[0] };
+      out.notes.underwear = d.recolored;
+      cur = [d.buffer, ...cur.slice(1)];
     } else throw new Error(`unknown postprocess step: ${step}`);
   }
   out.frames = cur;
@@ -496,8 +522,8 @@ export function regionBox(fig, region, w, h) {
 
 /** Per-region tuning. Faint parts (blush, freckles) need a low threshold and tiny components. */
 export const DIFF_DEFAULTS = {
-  hair: { threshold: 38, soft: 14, radius: 2, open: 2, close: 2, minComponent: 400, maxChroma: 40 },
-  body: { threshold: 36, soft: 14, radius: 2, open: 2, close: 2, minComponent: 400, maxChroma: 40 },
+  hair: { threshold: 38, soft: 14, radius: 2, open: 2, close: 4, minComponent: 400, maxChroma: 40 },
+  body: { threshold: 36, soft: 14, radius: 2, open: 2, close: 3, minComponent: 400, maxChroma: 40 },
   face: { threshold: 22, soft: 10, radius: 2, close: 1, minComponent: 120 },
   eyes: { threshold: 30, soft: 12, radius: 2, close: 1, minComponent: 40 },
   mouth: { threshold: 30, soft: 12, radius: 2, close: 1, minComponent: 30 },
@@ -699,9 +725,10 @@ export function diffExtractPixels(base, edited, w, h, opts = {}) {
   // Binary mask → closing (bridges lines the part shares with the base) → fill enclosed holes (eye whites).
   let mask = new Uint8Array(bw * bh);
   for (let p = 0; p < mask.length; p++) mask[p] = ramp[p] >= 0.5 ? 1 : 0;
-  // Opening removes thin re-rendered outlines of the body (hair/outfit edits redraw arms and torso).
-  if (open > 0) mask = morph(morph(mask, bw, bh, open, false), bw, bh, open, true);
+  // Closing first (joins a part drawn right over base lines, e.g. hair over the ear outline), then opening
+  // removes thin re-rendered outlines of the body that hair/outfit edits redraw next to the part.
   if (close > 0) mask = morph(morph(mask, bw, bh, close, true), bw, bh, close, false);
+  if (open > 0) mask = morph(morph(mask, bw, bh, open, false), bw, bh, open, true);
   fillHoles(mask, bw, bh, d.maxHole ?? Math.round(bw * bh * 0.02));
   for (let p = 0; p < mask.length; p++) if (veto[p]) mask[p] = 0;
   // Alpha = mask, softened by a small box feather on its inner edge (the edited image's own alpha keeps
@@ -749,10 +776,77 @@ export function diffExtractPixels(base, edited, w, h, opts = {}) {
   const removed = removeSmallComponents(out, w, h, minComponent);
   for (let i = 0; i < out.length; i += 4) if (!out[i + 3]) out[i] = out[i + 1] = out[i + 2] = 0;
   const bboxOut = alphaBBox(out, w, h, 128);
+  const erase = d.erase ? eraseMask(base, edited, out, w, h, { region, box, fig, dx, dy }) : null;
   return {
     data: out,
-    info: { region, box, head: fig.head, figure: fig.bbox, shift: { dx, dy, cost: shift.cost, baseCost: shift.baseCost }, opaque: opaque - removed, removed, bbox: bboxOut },
+    erase: erase?.data ?? null,
+    info: {
+      region,
+      box,
+      head: fig.head,
+      figure: fig.bbox,
+      shift: { dx, dy, cost: shift.cost, baseCost: shift.baseCost },
+      opaque: opaque - removed,
+      removed,
+      bbox: bboxOut,
+      ...(erase ? { erased: erase.count } : {}),
+    },
   };
+}
+
+/** Pale-cyan underwear of the mannequin (hue 150..215°, clearly chromatic, light). */
+export function underwearMask(data, w, h) {
+  const m = new Uint8Array(w * h);
+  for (let p = 0; p < w * h; p++) {
+    const i = p * 4;
+    if (data[i + 3] < 128) continue;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const [hue, sat] = hueSat(r, g, b);
+    const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+    if (hue >= 150 && hue <= 215 && chroma > 28 && sat > 0.15 && 0.299 * r + 0.587 * g + 0.114 * b > 110) m[p] = 1;
+  }
+  return m;
+}
+
+/**
+ * Pixels the edit REMOVED from the base (base opaque, edited transparent, not part of the layer):
+ * ears hidden behind hair, underwear/legs sticking out beside narrow trousers. The composer cuts them out
+ * of the mannequin (destination-out). Restricted to the ears (hair) / the underwear surroundings (outfits)
+ * so drifting hands or arms are never erased. Returns RGBA (black, alpha = erase) or null when negligible.
+ */
+function eraseMask(base, edited, layer, w, h, { region, fig, dx, dy }) {
+  let allow;
+  const H = fig.head;
+  if (region === 'hair') {
+    allow = (x, y) => y >= H.top && y <= H.bottom && x >= H.left - 4 && x <= H.right + 4;
+  } else if (region === 'body') {
+    const under = morph(underwearMask(base, w, h), w, h, 5, true);
+    allow = (x, y) => under[y * w + x] === 1;
+  } else return null;
+  let m = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      if (base[p * 4 + 3] < 200 || layer[p * 4 + 3] > 0 || !allow(x, y)) continue;
+      const sx = x + dx;
+      const sy = y + dy;
+      const ea = sx >= 0 && sy >= 0 && sx < w && sy < h ? edited[(sy * w + sx) * 4 + 3] : 0;
+      if (ea <= 40) m[p] = 1;
+    }
+  }
+  m = morph(morph(m, w, h, 2, false), w, h, 2, true); // drop 1–4 px slivers (registration jitter)
+  const data = new Uint8Array(w * h * 4);
+  let count = 0;
+  for (let p = 0; p < w * h; p++) {
+    if (m[p] && base[p * 4 + 3] >= 200) {
+      data[p * 4 + 3] = 255;
+      count++;
+    }
+  }
+  if (count) count -= removeSmallComponents(data, w, h, 150);
+  return count >= 200 ? { data, count } : null;
 }
 
 async function sameSizeRaw(buffer, w, h) {
@@ -775,7 +869,114 @@ export async function diffExtractDetailed(baseBuf, editedBuf, opts = {}) {
   const base = await toRaw(b);
   const edited = await sameSizeRaw(e, base.w, base.h);
   const r = diffExtractPixels(base.data, edited.data, base.w, base.h, opts);
-  return { buffer: await fromRaw(r.data, base.w, base.h).png().toBuffer(), info: r.info };
+  return {
+    buffer: await fromRaw(r.data, base.w, base.h).png().toBuffer(),
+    erase: r.erase ? await fromRaw(r.erase, base.w, base.h).png().toBuffer() : null,
+    info: r.info,
+  };
+}
+
+/**
+ * Split an outfit layer: pixels above the chin inside the (padded) head box are headwear (chef hat,
+ * police cap, onesie hood) and go to a `hat` layer drawn above the front hair. Null when negligible.
+ */
+export async function splitHat(layerBuf, baseBuf, { minPixels = 1500 } = {}) {
+  const layer = await toRaw(layerBuf);
+  const base = await sameSizeRaw(baseBuf, layer.w, layer.h);
+  const { w, h } = layer;
+  const fig = detectFigure(base.data, w, h);
+  if (!fig) return null;
+  const H = fig.head;
+  const cut = H.bottom - Math.round(H.height * 0.06);
+  const left = H.left - Math.round(H.width * 0.25);
+  const right = H.right + Math.round(H.width * 0.25);
+  const hat = new Uint8Array(w * h * 4);
+  const rest = new Uint8Array(layer.data);
+  let n = 0;
+  for (let y = 0; y < Math.min(cut, h); y++) {
+    for (let x = Math.max(0, left); x <= Math.min(w - 1, right); x++) {
+      const i = (y * w + x) * 4;
+      if (!layer.data[i + 3]) continue;
+      hat.set(layer.data.subarray(i, i + 4), i);
+      rest.fill(0, i, i + 4);
+      n++;
+    }
+  }
+  if (n < minPixels) return null;
+  return { hat: await fromRaw(hat, w, h).png().toBuffer(), rest: await fromRaw(rest, w, h).png().toBuffer(), pixels: n };
+}
+
+/**
+ * Display version of a keyed mannequin: the pale-cyan underwear (kept in the `base` file because it makes
+ * diffs easy) is recoloured to a dark neutral, so where an outfit leaves a gap it reads as an outline/shadow.
+ */
+export async function mannequinDisplay(buf, { color = '#4a4446' } = {}) {
+  const { data, w, h } = await toRaw(buf);
+  const m = underwearMask(data, w, h);
+  let sum = 0;
+  let n = 0;
+  for (let p = 0; p < w * h; p++) {
+    if (!m[p]) continue;
+    const i = p * 4;
+    sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    n++;
+  }
+  if (!n) return { buffer: await fromRaw(data, w, h).png().toBuffer(), recolored: 0 };
+  const refL = sum / n;
+  const t = hexToRgbLocal(color);
+  const grown = morph(m, w, h, 1, true); // include the anti-aliased rim against the outline
+  let recolored = 0;
+  for (let p = 0; p < w * h; p++) {
+    if (!grown[p]) continue;
+    const i = p * 4;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const [hue] = hueSat(r, g, b);
+    if (!m[p] && !(hue >= 140 && hue <= 225)) continue;
+    const k = Math.min(1.4, (0.299 * r + 0.587 * g + 0.114 * b) / refL);
+    data[i] = Math.round(Math.min(255, t.r * k));
+    data[i + 1] = Math.round(Math.min(255, t.g * k));
+    data[i + 2] = Math.round(Math.min(255, t.b * k));
+    recolored++;
+  }
+  return { buffer: await fromRaw(data, w, h).png().toBuffer(), recolored };
+}
+
+function hexToRgbLocal(hex) {
+  const n = Number.parseInt(hex.replace('#', ''), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+/**
+ * Align a mannequin variant (build / body edit) to the reference mannequin by its head box: uniform scale
+ * so the head widths match (only when they differ by > 1.5 %), then translate so the head tops and
+ * centres coincide. Keeps every layer generated on either mannequin aligned.
+ */
+export async function alignToHead(buf, refBuf) {
+  const a = await toRaw(buf);
+  const r = await sameSizeRaw(refBuf, a.w, a.h);
+  const fa = detectFigure(a.data, a.w, a.h);
+  const fr = detectFigure(r.data, r.w, r.h);
+  if (!fa || !fr) return { buffer: buf, info: { aligned: false } };
+  let s = fr.head.width / fa.head.width;
+  if (Math.abs(1 - s) <= 0.015) s = 1;
+  const cxA = (fa.head.left + fa.head.right) / 2;
+  const cxR = (fr.head.left + fr.head.right) / 2;
+  const W = a.w;
+  const H = a.h;
+  let img = await fromRaw(a.data, W, H).png().toBuffer();
+  let sw = W;
+  let sh = H;
+  if (s !== 1) {
+    sw = Math.max(1, Math.round(W * s));
+    sh = Math.max(1, Math.round(H * s));
+    img = await sharp(img).resize(sw, sh, { fit: 'fill' }).png().toBuffer();
+  }
+  const left = Math.round(cxR - cxA * s);
+  const top = Math.round(fr.head.top - fa.head.top * s);
+  const out = await placeOnCanvas(img, sw, sh, left, top, W, H);
+  return { buffer: out, info: { aligned: true, scale: Math.round(s * 1000) / 1000, dx: left, dy: top } };
 }
 
 /** diffExtract → PNG buffer (same canvas as the base). See diffExtractDetailed. */
@@ -831,8 +1032,9 @@ export async function tintLayer(buf, hex, { mode = 'full', ref } = {}) {
 }
 
 /**
- * Stack layers bottom→top on one canvas (all layers share the mannequin canvas).
- * @param {Array<{buffer: Buffer, tint?: {color: string, ref?: string, mode?: string} | null}>} layers
+ * Stack layers bottom→top on one canvas (all layers share the mannequin canvas). `erase` masks are cut
+ * out of their layer (destination-out) after tinting — the mannequin under hair/outfit erase masks.
+ * @param {Array<{buffer: Buffer, tint?: {color: string, ref?: string, mode?: string} | null, erase?: Buffer[]}>} layers
  * @param {{width?: number, height?: number, background?: string}} [opts]
  */
 export async function composeLayers(layers, { width = 1024, height = 1536, background } = {}) {
@@ -842,6 +1044,10 @@ export async function composeLayers(layers, { width = 1024, height = 1536, backg
     const m = await sharp(buf).metadata();
     if (m.width !== width || m.height !== height) buf = await sharp(buf).resize(width, height, { fit: 'fill' }).png().toBuffer();
     if (l.tint?.color) buf = await tintLayer(buf, l.tint.color, { mode: l.tint.mode, ref: l.tint.ref });
+    if (l.erase?.length) {
+      const masks = await Promise.all(l.erase.map((e) => sharp(e).resize(width, height, { fit: 'fill' }).png().toBuffer()));
+      buf = await sharp(buf).composite(masks.map((input) => ({ input, blend: 'dest-out' }))).png().toBuffer();
+    }
     inputs.push({ input: buf });
   }
   const bg = background ? sharp({ create: { width, height, channels: 4, background } }) : sharp({ create: { width, height, channels: 4, background: CLEAR } });

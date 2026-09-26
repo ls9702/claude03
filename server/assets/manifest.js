@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 export const MANIFEST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'manifest.json');
 
-export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui'];
+export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part'];
 export const KIND_LABELS = {
   anchor: '스타일 앵커',
   bg: '컷인 배경',
@@ -19,12 +19,18 @@ export const KIND_LABELS = {
   frame: '프레임 테마',
   texture: '텍스처',
   ui: 'UI',
+  part: '아바타 파츠',
 };
 export const STATUSES = ['todo', 'candidate', 'accepted'];
 /** Aspect ratios accepted by gemini-2.5-flash-image `imageConfig.aspectRatio`. */
 export const ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
 export const ANCHORS = ['bottom-center'];
-const STEP_RE = /^(chromaKey|whiteToAlpha|trim|resize:\d{1,4}x\d{1,4}|normalizeFrames|sheet|webp|seamless)$/;
+const STEP_RE =
+  /^(chromaKey|whiteToAlpha|trim|resize:\d{1,4}x\d{1,4}|normalizeFrames|sheet|webp|seamless|diffExtract:(hair|face|eyes|mouth|cheek|expression|accessory|body)|alignHead|mannequin)$/;
+/** Paper-doll part slots (meta.slot) and tint channels — see server/assets/partStack.js. */
+export const PART_SLOTS = ['mannequin', 'hair', 'face', 'outfit', 'cheek', 'eyes', 'eyesClosed', 'mouth', 'expression', 'accessory'];
+export const PART_TINTS = ['skin', 'hair', 'outfit'];
+const HEX_RE = /^#[0-9a-f]{6}$/i;
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const OUTPUT_RE = /^[a-z0-9][a-z0-9_\-/]*\.(png|webp)$/;
 
@@ -55,6 +61,17 @@ export const SNIPPETS = {
     'Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, ' +
     'even density everywhere, no vignette, no border, no focal object.',
   noPeople: 'Scene only, NO people, no characters, no animals in the foreground.',
+  keepMannequin:
+    'Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, ' +
+    'same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, ' +
+    'same flat magenta background. Do not move, redraw or recolor anything that is not part of the change.',
+  blankFace: 'The face stays blank: no eyes, no eyebrows, no nose, no mouth.',
+  neutralHair:
+    'drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; ' +
+    'any hair ties in the same gray-brown, no other colors',
+  neutralOutfit:
+    'All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; ' +
+    'no other colors, no patterns in other colors, no logos, no text',
 };
 
 export class ManifestError extends Error {
@@ -110,9 +127,58 @@ export function validateItem(item) {
       errs.push(`${at} frameDelays는 ms 정수 배열이어야 합니다.`);
   } else if (item.frames !== undefined) errs.push(`${at} frames는 sprite에만 쓸 수 있습니다.`);
   if (item.meta !== undefined && !isObj(item.meta)) errs.push(`${at} meta는 객체여야 합니다.`);
+  if (item.kind === 'part') errs.push(...validatePartMeta(item, at));
+  else if (item.postprocess?.some?.((st) => typeof st === 'string' && /^(diffExtract:|alignHead$|mannequin$)/.test(st)))
+    errs.push(`${at} diffExtract/alignHead/mannequin 단계는 part에만 쓸 수 있습니다.`);
   if (item.candidates !== undefined && (!Number.isInteger(item.candidates) || item.candidates < 1 || item.candidates > 8))
     errs.push(`${at} candidates는 1~8이어야 합니다.`);
   return errs;
+}
+
+function validatePartMeta(item, at) {
+  const errs = [];
+  const m = item.meta;
+  if (!isObj(m)) return [`${at} part에는 meta가 필요합니다.`];
+  if (typeof m.category !== 'string' || !m.category) errs.push(`${at} meta.category가 필요합니다.`);
+  if (typeof m.option !== 'string' || !m.option) errs.push(`${at} meta.option이 필요합니다.`);
+  if (!PART_SLOTS.includes(m.slot)) errs.push(`${at} meta.slot이 올바르지 않습니다: ${m.slot}`);
+  if (m.tint !== null && m.tint !== undefined && !PART_TINTS.includes(m.tint)) errs.push(`${at} meta.tint가 올바르지 않습니다: ${m.tint}`);
+  if (m.tintRef !== undefined && !(typeof m.tintRef === 'string' && HEX_RE.test(m.tintRef))) errs.push(`${at} meta.tintRef는 #rrggbb여야 합니다.`);
+  const steps = Array.isArray(item.postprocess) ? item.postprocess : [];
+  const needsBase = steps.some((st) => typeof st === 'string' && (st.startsWith('diffExtract:') || st === 'alignHead'));
+  if (needsBase && (typeof m.base !== 'string' || !m.base)) errs.push(`${at} diffExtract/alignHead에는 meta.base(기준 파츠 id)가 필요합니다.`);
+  if (m.base !== undefined && m.base === item.id) errs.push(`${at} meta.base가 자기 자신입니다.`);
+  if (m.slot === 'mannequin' && !steps.includes('mannequin')) errs.push(`${at} 마네킹에는 mannequin 단계가 필요합니다.`);
+  if (m.slot !== 'mannequin' && steps.includes('mannequin')) errs.push(`${at} mannequin 단계는 마네킹에만 쓸 수 있습니다.`);
+  if (m.slot === 'hair' && !steps.includes('diffExtract:hair')) errs.push(`${at} 머리 파츠에는 diffExtract:hair 단계가 필요합니다.`);
+  return errs;
+}
+
+/**
+ * Every file a part item may publish, keyed by layer: `main` (= output) plus
+ * mannequin → `base` (keyed original, the edit/diff base); hair → `front`, `back`, `erase`;
+ * outfit → `hat`, `erase`; meta.src → `src` (keyed edit, used as ref/base by other parts).
+ * Optional layers (erase, hat) are only written when the candidate produced them (see accepted.files).
+ */
+export function partFiles(item) {
+  const out = item.output;
+  const stem = out.replace(/\.(png|webp)$/, '');
+  const ext = out.slice(stem.length);
+  const f = (k) => `${stem}-${k}${ext}`;
+  const files = { main: out };
+  const slot = item.meta?.slot;
+  if (slot === 'mannequin') files.base = f('base');
+  if (slot === 'hair') Object.assign(files, { front: f('front'), back: f('back'), erase: f('erase') });
+  if (slot === 'outfit') Object.assign(files, { hat: f('hat'), erase: f('erase') });
+  if (item.meta?.src) files.src = f('src');
+  return files;
+}
+
+/** Ids an item depends on: its refs plus a part's diff/align base. */
+export function depsOf(item) {
+  const deps = [...(Array.isArray(item?.refs) ? item.refs : [])];
+  if (item?.kind === 'part' && typeof item.meta?.base === 'string' && !deps.includes(item.meta.base)) deps.push(item.meta.base);
+  return deps;
 }
 
 /** Validate the whole manifest: items, unique ids/outputs, known refs, no ref cycles. */
@@ -137,6 +203,11 @@ export function validateManifest(m) {
     for (const r of Array.isArray(item?.refs) ? item.refs : []) {
       if (!byId.has(r)) errors.push(`[${item.id}] 없는 참조: ${r}`);
     }
+    if (item?.kind === 'part' && typeof item.meta?.base === 'string') {
+      const b = byId.get(item.meta.base);
+      if (!b) errors.push(`[${item.id}] 없는 기준 파츠(meta.base): ${item.meta.base}`);
+      else if (b.kind !== 'part' || !(b.meta?.slot === 'mannequin' || b.meta?.src)) errors.push(`[${item.id}] meta.base는 마네킹이나 src를 남기는 파츠여야 합니다: ${item.meta.base}`);
+    }
   }
   if (!errors.length) {
     try {
@@ -151,6 +222,7 @@ export function validateManifest(m) {
 /** All published files an item writes (sprites also write sheet JSON + animated WebP). */
 export function outputsFor(item) {
   if (!item || typeof item.output !== 'string') return [];
+  if (item.kind === 'part') return Object.values(partFiles(item));
   if (item.kind !== 'sprite') return [item.output];
   const base = item.output.replace(/\.(png|webp)$/, '');
   return [item.output, `${base}.json`, `${base}.anim.webp`];
@@ -165,7 +237,7 @@ export function topoOrder(items) {
     if (state.get(id) === 2) return;
     if (state.get(id) === 1) throw new Error(`참조 순환: ${[...trail, id].join(' → ')}`);
     state.set(id, 1);
-    for (const r of byId.get(id)?.refs ?? []) if (byId.has(r)) visit(r, [...trail, id]);
+    for (const r of depsOf(byId.get(id))) if (byId.has(r)) visit(r, [...trail, id]);
     state.set(id, 2);
     out.push(byId.get(id));
   };

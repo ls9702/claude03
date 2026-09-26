@@ -9,9 +9,11 @@ export const CANVAS = { w: 1024, h: 1536 };
 
 /**
  * Draw order, bottom → top. `eyes` is taken by eyesClosed (blink) or expression; an expression also
- * suppresses `mouth` (it contains eyes + mouth + effects).
+ * suppresses `mouth` (it contains eyes + mouth + effects). `hat` = headwear split off an outfit (chef hat,
+ * police cap, onesie hood) so it sits above the front hair. The mannequin is drawn with the hair's and the
+ * outfit's `erase` masks cut out (destination-out): ears hidden by hair, underwear beside narrow trousers.
  */
-export const Z_ORDER = ['backHair', 'mannequin', 'face', 'outfit', 'cheek', 'eyes', 'mouth', 'frontHair', 'accessory'];
+export const Z_ORDER = ['backHair', 'mannequin', 'face', 'outfit', 'cheek', 'eyes', 'mouth', 'frontHair', 'hat', 'accessory'];
 
 /** Item slots (manifest meta.slot). A `hair` item publishes two layers: backHair + frontHair. */
 export const PART_SLOTS = ['mannequin', 'hair', 'face', 'outfit', 'cheek', 'eyes', 'eyesClosed', 'mouth', 'expression', 'accessory'];
@@ -27,38 +29,43 @@ export const EXPRESSIONS = ['joy', 'cry', 'shock', 'angry', 'love', 'sweat', 'sh
 /** Options that have no layer (the mannequin already is the "slim" face; none = nothing drawn). */
 export const NO_LAYER = { face: ['slim'], cheek: ['none'], accessory: ['none'] };
 
+/** Option id → id/path-safe slug (camelCase → kebab: hanbokTrad → hanbok-trad). */
+export const slug = (id) => String(id).replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+
 export const partId = {
-  mannequin: (body, build) => `part-mannequin-${body}-${build}`,
-  hair: (id) => `part-hair-${id}`,
-  face: (id) => `part-face-${id}`,
-  eyes: (id) => `part-eyes-${id}`,
-  eyesClosed: (id) => `part-eyes-closed-${id}`,
-  mouth: (id) => `part-mouth-${id}`,
-  cheek: (id) => `part-cheek-${id}`,
-  expression: (id) => `part-expr-${id}`,
-  accessory: (id) => `part-acc-${id}`,
-  outfit: (id, body, build) => `part-outfit-${id}-${body}-${build}`,
+  mannequin: (body, build) => `part-mannequin-${slug(body)}-${slug(build)}`,
+  hair: (id) => `part-hair-${slug(id)}`,
+  face: (id) => `part-face-${slug(id)}`,
+  eyes: (id) => `part-eyes-${slug(id)}`,
+  eyesClosed: (id) => `part-eyes-closed-${slug(id)}`,
+  mouth: (id) => `part-mouth-${slug(id)}`,
+  cheek: (id) => `part-cheek-${slug(id)}`,
+  expression: (id) => `part-expr-${slug(id)}`,
+  accessory: (id) => `part-acc-${slug(id)}`,
+  outfit: (id, body, build) => `part-outfit-${slug(id)}-${slug(body)}-${slug(build)}`,
 };
 
 /** Published file (relative to public/assets/generated/) per item; hair adds -front / -back. */
 export const partOutput = {
-  mannequin: (body, build) => `parts/mannequin/${body}-${build}.webp`,
-  hair: (id) => `parts/hair/${id}.webp`,
-  face: (id) => `parts/face/${id}.webp`,
-  eyes: (id) => `parts/eyes/${id}.webp`,
-  eyesClosed: (id) => `parts/eyes-closed/${id}.webp`,
-  mouth: (id) => `parts/mouth/${id}.webp`,
-  cheek: (id) => `parts/cheek/${id}.webp`,
-  expression: (id) => `parts/expression/${id}.webp`,
-  accessory: (id) => `parts/accessory/${id}.webp`,
-  outfit: (id, body, build) => `parts/outfit/${body}-${build}/${id}.webp`,
+  mannequin: (body, build) => `parts/mannequin/${slug(body)}-${slug(build)}.webp`,
+  hair: (id) => `parts/hair/${slug(id)}.webp`,
+  face: (id) => `parts/face/${slug(id)}.webp`,
+  eyes: (id) => `parts/eyes/${slug(id)}.webp`,
+  eyesClosed: (id) => `parts/eyes-closed/${slug(id)}.webp`,
+  mouth: (id) => `parts/mouth/${slug(id)}.webp`,
+  cheek: (id) => `parts/cheek/${slug(id)}.webp`,
+  expression: (id) => `parts/expression/${slug(id)}.webp`,
+  accessory: (id) => `parts/accessory/${slug(id)}.webp`,
+  outfit: (id, body, build) => `parts/outfit/${slug(body)}-${slug(build)}/${slug(id)}.webp`,
 };
 
-/** `parts/hair/long.webp` → {front: 'parts/hair/long-front.webp', back: 'parts/hair/long-back.webp'}. */
-export function hairFiles(output) {
-  const base = output.replace(/\.(png|webp)$/, '');
-  const ext = output.slice(base.length);
-  return { front: `${base}-front${ext}`, back: `${base}-back${ext}` };
+/**
+ * Extra published files next to `output` (same stem + `-<key>`): hair `front`/`back`/`erase`, outfit
+ * `hat`/`erase`, mannequin `base`. Only the ones listed in the asset's `files` exist.
+ */
+export function extraFile(output, key) {
+  const stem = output.replace(/\.(png|webp)$/, '');
+  return `${stem}-${key}${output.slice(stem.length)}`;
 }
 
 function colorOf(avatars, category, optionId) {
@@ -71,16 +78,15 @@ function colorOf(avatars, category, optionId) {
  * @param {object} avatar   avatars.json part ids {body, build, skin, face, eyes, mouth, cheek, hair, hairColor,
  *                          outfit, outfitColor, accessory} (missing keys fall back to avatars.default)
  * @param {object} opts
- * @param {(id: string) => ({src?: string, files?: {front?: string, back?: string}, meta?: object} | null)} opts.lookup
- *        resolves an item id to its accepted layer (null = not available → layer skipped)
+ * @param {(id: string) => ({url: string, files?: {front?, back?, hat?, erase?}, meta?: object} | null)} opts.lookup
+ *        resolves an item id to its accepted asset (e.g. `/api/assets` → assets[id]); null → layer skipped
  * @param {object} opts.avatars   avatars.json (colours + defaults)
  * @param {string|null} [opts.expression]  one of EXPRESSIONS (replaces eyes + mouth)
  * @param {boolean} [opts.blink]  closed eyes (ignored when an expression is shown)
- * @returns {Array<{slot: string, id: string, src: string, tint: {channel, color, ref, mode} | null}>}
+ * @returns {Array<{slot: string, id: string, src: string, tint: {channel, color, ref, mode} | null, erase?: string[]}>}
  */
 export function layerStack(avatar, { lookup, avatars, expression = null, blink = false } = {}) {
   const a = { ...(avatars?.default ?? {}), ...(avatar ?? {}) };
-  const out = [];
   const tintFor = (meta) => {
     const channel = meta?.tint ?? null;
     if (!channel || !TINT_CATEGORY[channel]) return null;
@@ -88,27 +94,33 @@ export function layerStack(avatar, { lookup, avatars, expression = null, blink =
     if (!color || !meta.tintRef) return null;
     return { channel, color, ref: meta.tintRef, mode: meta.tintMode ?? TINT_MODE[channel] };
   };
-  const add = (slot, id, which) => {
-    const item = lookup(id);
-    if (!item) return;
-    const src = which ? item.files?.[which] : item.src;
-    if (!src) return;
-    out.push({ slot, id, src, tint: tintFor(item.meta) });
-  };
   const has = (cat) => a[cat] && !(NO_LAYER[cat] ?? []).includes(a[cat]);
   const expr = expression && EXPRESSIONS.includes(expression) ? expression : null;
+  const hair = lookup(partId.hair(a.hair));
+  const outfit = lookup(partId.outfit(a.outfit, a.body, a.build));
+  const out = [];
+  const push = (slot, id, item, src) => {
+    if (item && src) out.push({ slot, id, src, tint: tintFor(item.meta) });
+  };
+  const one = (slot, id) => push(slot, id, lookup(id), lookup(id)?.url);
   for (const slot of Z_ORDER) {
-    if (slot === 'backHair') add(slot, partId.hair(a.hair), 'back');
-    else if (slot === 'mannequin') add(slot, partId.mannequin(a.body, a.build));
-    else if (slot === 'face' && has('face')) add(slot, partId.face(a.face));
-    else if (slot === 'outfit') add(slot, partId.outfit(a.outfit, a.body, a.build));
-    else if (slot === 'cheek' && has('cheek')) add(slot, partId.cheek(a.cheek));
+    if (slot === 'backHair') push(slot, partId.hair(a.hair), hair, hair?.files?.back);
+    else if (slot === 'mannequin') {
+      const id = partId.mannequin(a.body, a.build);
+      one(slot, id);
+      const erase = [hair?.files?.erase, outfit?.files?.erase].filter(Boolean);
+      if (out.at(-1)?.slot === 'mannequin' && erase.length) out.at(-1).erase = erase;
+    } else if (slot === 'face' && has('face')) one(slot, partId.face(a.face));
+    else if (slot === 'outfit') push(slot, partId.outfit(a.outfit, a.body, a.build), outfit, outfit?.url);
+    else if (slot === 'cheek' && has('cheek')) one(slot, partId.cheek(a.cheek));
     else if (slot === 'eyes') {
-      if (expr) add('expression', partId.expression(expr));
-      else add(blink ? 'eyesClosed' : 'eyes', blink ? partId.eyesClosed(a.eyes) : partId.eyes(a.eyes));
-    } else if (slot === 'mouth' && !expr) add(slot, partId.mouth(a.mouth));
-    else if (slot === 'frontHair') add(slot, partId.hair(a.hair), 'front');
-    else if (slot === 'accessory' && has('accessory')) add(slot, partId.accessory(a.accessory));
+      if (expr) one('expression', partId.expression(expr));
+      else if (blink) one('eyesClosed', partId.eyesClosed(a.eyes));
+      else one('eyes', partId.eyes(a.eyes));
+    } else if (slot === 'mouth' && !expr) one(slot, partId.mouth(a.mouth));
+    else if (slot === 'frontHair') push(slot, partId.hair(a.hair), hair, hair?.files?.front);
+    else if (slot === 'hat') push(slot, partId.outfit(a.outfit, a.body, a.build), outfit, outfit?.files?.hat);
+    else if (slot === 'accessory' && has('accessory')) one(slot, partId.accessory(a.accessory));
   }
   return out;
 }
