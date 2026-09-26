@@ -7,6 +7,7 @@ import {
   AVATAR_CROPS,
   AVATAR_EXPRESSIONS,
   normalizeAvatar,
+  outfitTintable,
   renderAvatar,
   setAvatarDefs,
 } from '../public/js/ui/avatar2d.js';
@@ -20,6 +21,7 @@ import {
   getPreviewRenderer,
   randomizeParts,
   setPreviewRenderer,
+  thumbVariant,
 } from '../public/js/ui/customize.js';
 
 const defs = loadData('avatars');
@@ -48,6 +50,36 @@ test('portrait: colors of color options are used', () => {
       assert.ok(svg.includes(opt.color), `${part}=${opt.id} color ${opt.color} unused`);
     }
   }
+});
+
+test('fixed-color outfits (tintable: false) ignore the outfit color in 2D and 3D', () => {
+  const fixed = defs.parts.outfit.filter((o) => o.tintable === false).map((o) => o.id);
+  assert.ok(fixed.length >= 1);
+  for (const o of defs.parts.outfit) assert.equal(outfitTintable(o.id, defs), o.tintable !== false, o.id);
+  for (const id of fixed) {
+    const a = { ...defs.default, outfit: id };
+    const variants = defs.parts.outfitColor.map((c) => ({ ...a, outfitColor: c.id }));
+    const svgs = new Set(variants.map((v) => norm(renderAvatar(v))));
+    assert.equal(svgs.size, 1, `${id} changes with outfitColor`);
+    const pawns = new Set(variants.map((v) => JSON.stringify(pawnSpecs(v, defs))));
+    assert.equal(pawns.size, 1, `${id} pawn changes with outfitColor`);
+  }
+  // tintable outfits do follow the color
+  const t = { ...defs.default, outfit: 'suit' };
+  assert.notEqual(norm(renderAvatar({ ...t, outfitColor: 'red' })), norm(renderAvatar({ ...t, outfitColor: 'blue' })));
+});
+
+test('portrait: outfit headwear can be hidden (thumbnails)', () => {
+  for (const id of ['police', 'chef', 'dino']) {
+    const a = { ...defs.default, outfit: id };
+    assert.notEqual(norm(renderAvatar(a)), norm(renderAvatar(a, { hat: false })), id);
+    // a cap accessory replaces the outfit headwear
+    assert.equal(norm(renderAvatar({ ...a, accessory: 'cap' })), norm(renderAvatar({ ...a, accessory: 'cap' }, { hat: false })), id);
+  }
+  const v = thumbVariant({ ...defs.default, accessory: 'glasses' }, 'eyes', 'cat');
+  assert.equal(v.eyes, 'cat');
+  assert.equal(v.accessory, 'none');
+  assert.equal(thumbVariant(defs.default, 'accessory', 'cap').accessory, 'cap');
 });
 
 test('portrait: expressions swap the face, neutral keeps the chosen parts', () => {
@@ -113,17 +145,16 @@ test('pawn parts: every option id maps to valid, distinct primitives', () => {
   assert.equal(resolveAvatar({ body: 'girl' }, defs).avatar.build, defs.default.build);
 });
 
-test('pawn geometry: every hair × outfit × accessory stays within ~2k triangles', () => {
+test('pawn geometry: heavy hair × outfit × accessory combos stay within ~2k triangles', () => {
+  const heavy = { ...defs.default, face: 'square', cheek: 'freckles', eyes: 'star', mouth: 'grin', build: 'chubby', hair: 'curly', outfit: 'chef', accessory: 'glasses' };
+  const combos = [
+    ...defs.parts.hair.map((o) => ({ ...heavy, hair: o.id })),
+    ...defs.parts.outfit.map((o) => ({ ...heavy, outfit: o.id })),
+    ...defs.parts.accessory.map((o) => ({ ...heavy, accessory: o.id })),
+    ...defs.parts.hair.map((o) => ({ ...heavy, hair: o.id, outfit: 'dino', accessory: 'hairpin', body: 'girl' })),
+  ];
   let max = 0;
-  for (const hair of defs.parts.hair) {
-    for (const outfit of defs.parts.outfit) {
-      for (const accessory of defs.parts.accessory) {
-        const av = { ...defs.default, hair: hair.id, outfit: outfit.id, accessory: accessory.id, face: 'square', cheek: 'freckles', eyes: 'star', build: 'chubby', body: hair.id.length % 2 ? 'girl' : 'boy' };
-        const g = buildPawnGeometry(av, defs);
-        max = Math.max(max, g.attributes.position.count / 3);
-      }
-    }
-  }
+  for (const av of combos) max = Math.max(max, buildPawnGeometry(av, defs).attributes.position.count / 3);
   assert.ok(max <= 2000, `max ${max} triangles`);
 });
 

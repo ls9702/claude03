@@ -143,6 +143,13 @@ body.cz-open .reaction-bar { display: none; }
   display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity;
   scrollbar-width: thin; -webkit-overflow-scrolling: touch;
 }
+.cz-grid.many {
+  display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: max-content;
+}
+.cz-cat-count { margin-left: auto; color: var(--muted); font-size: 0.72rem; }
+.cz-cat.locked .cz-grid { opacity: 0.35; filter: grayscale(0.6); }
+.cz-cat.locked .cz-opt { cursor: not-allowed; }
+.cz-cat.locked .cz-cat-value { color: var(--danger); }
 .cz-opt {
   appearance: none; flex: none; scroll-snap-align: start; cursor: pointer; font: inherit;
   width: 68px; padding: 4px 2px 3px; border-radius: 12px; border: 2px solid var(--line); background: #fffaf3;
@@ -186,7 +193,7 @@ body.cz-open .reaction-bar { display: none; }
   .cz-expr { justify-content: center; }
   .cz-name { width: 100%; }
   .cz-editor { overflow: auto; }
-  .cz-grid { flex-wrap: wrap; overflow: visible; scroll-snap-type: none; }
+  .cz-grid, .cz-grid.many { display: flex; flex-wrap: wrap; overflow: visible; scroll-snap-type: none; }
   .cz-opt { width: 76px; }
   .cz-actions { position: static; }
 }

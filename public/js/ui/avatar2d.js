@@ -25,12 +25,22 @@ const FALLBACK_DEFS = {
     eyes: ids('round', 'smile', 'sparkle', 'sleepy', 'cat', 'star'),
     mouth: ids('smile', 'neutral', 'grin', 'cat'),
     cheek: ids('none', 'blush', 'freckles'),
-    hair: ids('short', 'bob', 'long', 'ponytail', 'twintail', 'spiky', 'curly', 'bun', 'twoblock', 'parted', 'halfup', 'wavy'),
+    hair: ids(
+      'short', 'bob', 'long', 'ponytail', 'twintail', 'spiky', 'curly', 'bun', 'twoblock', 'parted', 'halfup', 'wavy',
+      'buzz', 'slickback', 'mushroom', 'dandy', 'pixie', 'layered', 'braid', 'afro',
+    ),
     hairColor: colored([
       ['black', '#2b2222'], ['brown', '#6b4226'], ['blonde', '#e8c15a'], ['red', '#a8452f'], ['pink', '#f28bb3'],
       ['blue', '#4d7fd6'], ['silver', '#c9ccd6'], ['green', '#4fa86b'], ['purple', '#8a5cc9'],
     ]),
-    outfit: ids('tshirt', 'hoodie', 'shirt', 'dress', 'overalls', 'hanbok', 'suit', 'uniform', 'tracksuit'),
+    outfit: [
+      ...ids(
+        'tshirt', 'hoodie', 'shirt', 'dress', 'overalls', 'hanbok', 'suit', 'uniform', 'tracksuit', 'cardigan', 'sweater',
+        'blouse', 'jeanjacket', 'leather', 'longpadding', 'trenchcoat', 'sailor', 'soccer', 'stadium', 'pajamas', 'hawaiian',
+        'hiking', 'apron', 'hanbokTrad', 'idol', 'dino',
+      ),
+      ...['doctor', 'police', 'chef', 'taekwondo'].map((id) => ({ id, tintable: false })),
+    ],
     outfitColor: colored([
       ['red', '#e25b5b'], ['orange', '#f39a3d'], ['yellow', '#f2cf4a'], ['green', '#5cb87a'], ['blue', '#4f8ee0'],
       ['purple', '#9a6ad6'], ['black', '#3a3a42'], ['white', '#f4f4f2'], ['pink', '#f29ac0'],
@@ -170,6 +180,18 @@ function hairBack(style, c) {
       );
     case 'bob':
       return `<path d="M24 42 Q22 64 31 68 L69 68 Q78 64 76 42 Z" ${st}/>`;
+    case 'layered':
+      return `<path d="M24 42 Q20.5 60 24 70.5 L28.2 66.4 L30.6 72.4 L36 68.4 L64 68.4 L69.4 72.4 L71.8 66.4 L76 70.5 Q79.5 60 76 42 Z" ${st}/>`;
+    case 'mushroom':
+      return `<path d="M23.5 42 Q22.5 50.5 27 52.5 L73 52.5 Q77.5 50.5 76.5 42 Z" ${st}/>`;
+    case 'afro': {
+      let ring = '';
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2;
+        ring += `<circle cx="${(50 + Math.cos(ang) * 25).toFixed(1)}" cy="${(34 + Math.sin(ang) * 23).toFixed(1)}" r="8.6"/>`;
+      }
+      return `<g fill="${fill}" stroke="${c.hairLine}" stroke-width="1.1">${ring}</g><ellipse cx="50" cy="34" rx="26" ry="24" fill="${fill}"/>`;
+    }
     case 'parted':
       return `<path d="M25 42 Q22.5 57 27.5 61.5 L72.5 61.5 Q77.5 57 75 42 Z" ${st}/>`;
     case 'ponytail':
@@ -206,6 +228,17 @@ const HAIR_FRONT = {
     'M27.5 35 Q25 13 50 12.5 Q76 13 72.5 35 Q70 30.5 65.5 30.5 Q63.5 36.5 58 35 Q55 38.8 50 36.6 Q45 38.8 42 35 Q36.5 36.5 34.5 30.5 Q30 30.5 27.5 35 Z',
   parted:
     'M25 46 Q23 14.5 50 14 Q77 14.5 75 46 L72 46 Q71 33 62 28.5 Q52 36.5 36.5 38.5 Q41.5 32 40 24.5 Q34 30 29.5 36.5 Q27.5 40.5 28 46 Z',
+  buzz: 'M26.4 40 Q25.6 16.6 50 16.2 Q74.4 16.6 73.6 40 Q72.6 31 67 28.8 Q58 26.6 50 26.8 Q42 26.6 33 28.8 Q27.4 31 26.4 40 Z',
+  slickback: 'M26 41 Q25 14.6 50 13.8 Q75 14.6 74 41 Q72.4 27.6 62.6 23.4 Q50 20.6 37.4 23.4 Q27.6 27.6 26 41 Z',
+  mushroom: 'M23.5 45 Q22 13.4 50 13 Q78 13.4 76.5 45 L72.2 45 L72.2 35.4 L27.8 35.4 L27.8 45 Z',
+  dandy:
+    'M25.5 42 Q24 14.4 50 14 Q76 14.4 74.5 42 L71.6 38 Q70.2 31 64 29.4 Q58 35.2 48 37.4 Q40 38.6 33.4 36.8 Q30 36.4 28.4 40 Z',
+  pixie:
+    'M25.6 46 Q23.6 15 50 14.2 Q76.4 15 74.4 44 L71.6 40 Q71 31 65 28 Q62 33.4 55 33.6 Q47 34 42 30.4 Q39 35.8 33.4 36.2 Q30 36.6 29 41.4 L28.4 46 Z',
+  layered:
+    'M24.5 55 Q21.5 14.5 50 14 Q78.5 14.5 75.5 55 L72.6 50.6 L71 44 Q70 33 60 28.6 Q54 33.2 46 31.8 Q38 30.8 32 34.2 Q29 38 29 44 L27.4 50.6 Z',
+  braid: 'M26 45 Q24 15 50 14 Q76 15 74 43 Q72 31 64 29 Q54 35 42 31.2 Q31 33.2 27.6 45 Z',
+  afro: 'M24.6 44 Q21.4 17.4 50 14.6 Q78.6 17.4 75.4 44 Q72.4 30.6 50 29.6 Q27.6 30.6 24.6 44 Z',
   wavy:
     'M24 55 C20.5 47 24 37 25 30 Q27 14.5 50 14 Q73 14.5 75 30 C76 37 79.5 47 76 55 C73 50 74.5 44 71 40 Q70 32 62 28 Q56 34 50 30 Q44 34 38 28 Q30 32 29 40 C25.5 44 27 50 24 55 Z',
 };
@@ -226,7 +259,47 @@ function hairFront(style, c) {
     const fade = mixHex(c.hair, c.skin, 0.55);
     pre = mirror(`<path d="M26.4 47 Q25.4 38.5 27.6 33 L32 32.5 L31.4 47 Z" fill="${fade}"/>`);
   }
-  const hi = `<path d="M35 22.5 Q42 18.2 50 18.4" stroke="#fff" stroke-opacity=".38" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+  const line = (d, w = 0.8, op = 0.6) => `<path d="${d}" stroke="${c.hairLine}" stroke-width="${w}" fill="none" stroke-linecap="round" opacity="${op}"/>`;
+  switch (style) {
+    case 'slickback':
+      extra += `<path d="M36 25 Q42 17 51 15.8 M44 23.4 Q50 17.4 59 16.6 M53 22.8 Q59 18.6 66 20.4 M31 30 Q34 22 42 18" stroke="${c.hairLine}" stroke-width=".8" fill="none" opacity=".55"/>`;
+      break;
+    case 'buzz':
+      extra += `<g fill="${c.hairLine}" opacity=".35">${[[34, 24], [40, 20.6], [46, 19], [54, 19], [60, 20.6], [66, 24], [37, 27.6], [50, 22.4], [63, 27.6], [44, 24.6], [56, 24.6]]
+        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r=".55"/>`)
+        .join('')}</g>`;
+      break;
+    case 'mushroom':
+      extra += line('M34 27 L33.4 35.2 M42 27.4 L41.8 35.2 M50 27.6 L50 35.2 M58 27.4 L58.2 35.2 M66 27 L66.6 35.2', 0.7, 0.45);
+      break;
+    case 'dandy':
+      extra += line('M62 31 Q56 35 47 36.6 M66 30.4 Q64 33.4 58.6 35.4 M56 28.6 Q50 33 42 35.4', 0.8, 0.55);
+      break;
+    case 'pixie':
+      extra += mirror(`<path d="M27.4 46 L26 50.6 L29.6 46.8 Z" fill="${c.hair}" stroke="${c.hairLine}" stroke-width=".7" stroke-linejoin="round"/>`);
+      break;
+    case 'layered':
+      extra += line('M29.4 44 Q28.4 49 27.6 50.4 M70.6 44 Q71.6 49 72.4 50.4 M32 36 Q30.8 41 31 45 M68 36 Q69.2 41 69 45', 0.8, 0.55);
+      break;
+    case 'braid': {
+      const segs = [[29.4, 50.4], [30.4, 56.8], [31.4, 63.2], [32.4, 69.6], [33.4, 76]];
+      extra +=
+        segs
+          .map(([x, y], i) => `<ellipse cx="${x}" cy="${y}" rx="${4 - i * 0.2}" ry="4" transform="rotate(${i % 2 ? 16 : -16} ${x} ${y})" fill="url(#${c.id}-h)" stroke="${c.hairLine}" stroke-width=".9"/>`)
+          .join('') +
+        `<circle cx="33.8" cy="80.6" r="1.8" fill="#f06292" stroke="#c2185b" stroke-width=".5"/>` +
+        `<path d="M33.8 82 L31.8 88 L34 86.4 L35.8 88.4 Z" fill="${c.hair}" stroke="${c.hairLine}" stroke-width=".7" stroke-linejoin="round"/>`;
+      break;
+    }
+    case 'afro':
+      extra += `<g stroke="${c.hairLine}" stroke-width=".7" fill="none" opacity=".5">${[[34, 22], [42, 18.4], [50, 17], [58, 18.4], [66, 22], [30, 30], [70, 30]]
+        .map(([x, y]) => `<path d="M${x - 2} ${y} Q${x} ${y - 2.4} ${x + 2} ${y}"/>`)
+        .join('')}</g>`;
+      break;
+    default:
+      break;
+  }
+  const hi = `<path d="M35 22.5 Q42 18.2 50 18.4" stroke="#fff" stroke-opacity="${style === 'buzz' ? 0.18 : 0.38}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
   const partLine = style === 'parted' ? `<path d="M40 15.5 Q41 20 40 24.5" stroke="${c.hairLine}" stroke-width=".9" fill="none" stroke-linecap="round"/>` : '';
   const strands =
     style === 'wavy'
@@ -234,7 +307,7 @@ function hairFront(style, c) {
       : '';
   return (
     pre +
-    `<path d="${d}" fill="url(#${c.id}-h)" stroke="${c.hairLine}" stroke-width="1.1" stroke-linejoin="round"/>` +
+    `<path d="${d}" fill="${style === 'buzz' ? mixHex(c.hair, c.skin, 0.3) : `url(#${c.id}-h)`}" stroke="${c.hairLine}" stroke-width="1.1" stroke-linejoin="round"/>` +
     extra +
     strands +
     partLine +
@@ -249,108 +322,472 @@ function mixHex(a, b, t) {
   return `#${ch.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 }
 
-// ----- outfits (drawn inside the build scale group) -----
+// ----- outfits (drawn inside the build scale group, clipped details use the torso clip `#<id>-t`) -----
 
-function outfit(style, c) {
-  const T = TORSO[c.body] ?? TORSO.boy;
-  const girl = c.body === 'girl';
-  const line = c.clothLine;
-  const det = c.detail;
-  const grad = `url(#${c.id}-c)`;
-  const base = (fill = grad, stroke = line) => `<path d="${T}" fill="${fill}" stroke="${stroke}" stroke-width="1.1" stroke-linejoin="round"/>`;
-  const neckHole = `<path d="M42.8 67.2 Q50 73.6 57.2 67.2 Z" fill="${shade(c.skin, -0.16)}"/>`;
-  const white = (d) => `<path d="${d}" fill="${WHITE}" stroke="${WHITE_LINE}" stroke-width=".8" stroke-linejoin="round"/>`;
-  const shirtV = (bottom = 81) => white(`M43.5 66.8 L50 ${bottom} L56.5 66.8 Z`);
-  switch (style) {
-    case 'hoodie':
-      return (
-        `<path d="M34 72 Q34 61.5 50 61 Q66 61.5 66 72 Q58 68 50 68 Q42 68 34 72 Z" fill="${shade(c.cloth, -0.18)}" stroke="${line}" stroke-width="1"/>` +
-        base() +
-        `<path d="M40 67 Q50 79.5 60 67 Q55 71.5 50 72 Q45 71.5 40 67 Z" fill="${shade(c.cloth, -0.2)}" stroke="${line}" stroke-width=".8"/>` +
-        `<path d="M46.5 74 L46 84 M53.5 74 L54 84" stroke="${WHITE}" stroke-width="1.2" stroke-linecap="round"/>` +
-        `<circle cx="46" cy="85" r="1" fill="${WHITE}"/><circle cx="54" cy="85" r="1" fill="${WHITE}"/>` +
-        `<path d="M39 101 L40 90 Q41 87 44 87 L56 87 Q59 87 60 90 L61 101 Z" fill="${shade(c.cloth, -0.1)}" stroke="${det}" stroke-width=".8"/>`
-      );
-    case 'shirt':
-      return (
-        base() +
-        mirror(white('M41.5 66.4 L50 75 L45.6 79 L38.6 70 Z')) +
-        `<path d="M50 75 L50 101" stroke="${det}" stroke-width=".9"/>` +
-        [82, 89, 96].map((y) => `<circle cx="51.6" cy="${y}" r="1.1" fill="${det}"/>`).join('') +
-        `<path d="M56 81 L62.5 81 L62.5 87 Q59.2 88.6 56 87 Z" stroke="${det}" stroke-width=".8" fill="none"/>`
-      );
-    case 'dress':
-      return (
-        `<path d="M31 101 L36.5 83 Q34.5 73 40 68.5 Q45 66.8 50 66.8 Q55 66.8 60 68.5 Q65.5 73 63.5 83 L69 101 Z" fill="${grad}" stroke="${line}" stroke-width="1.1" stroke-linejoin="round"/>` +
-        neckHole +
-        `<path d="M36.5 83 Q50 87 63.5 83" stroke="${det}" stroke-width="1.6" fill="none"/>` +
-        `<path d="M43 89 L41 101 M50 89.5 L50 101 M57 89 L59 101" stroke="${det}" stroke-width=".7" opacity=".6"/>` +
-        mirror(white('M50 71 Q44 76 40.4 69.6 Q44.4 66.8 50 67.4 Z'))
-      );
-    case 'overalls':
-      return (
-        base('#f7f4ee', WHITE_LINE) +
-        neckHole +
-        `<path d="M42.8 67.2 Q50 73.6 57.2 67.2" stroke="${WHITE_LINE}" stroke-width="1.2" fill="none"/>` +
-        `<path d="M38 79 L62 79 L63 88 Q${girl ? 69 : 71} 92 ${girl ? 70 : 73} 101 L${girl ? 30 : 27} 101 Q${girl ? 31 : 29} 92 37 88 Z" fill="${grad}" stroke="${line}" stroke-width="1" stroke-linejoin="round"/>` +
-        mirror(`<path d="M38 79.5 L39.2 67.3 L42.6 67.8 L41.8 79.5 Z" fill="${c.cloth}" stroke="${line}" stroke-width=".8"/>`) +
-        mirror(`<circle cx="40.1" cy="79.6" r="1.6" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".5"/>`) +
-        `<path d="M45 83 L55 83 L55 89 Q50 91 45 89 Z" fill="${shade(c.cloth, -0.1)}" stroke="${det}" stroke-width=".8"/>`
-      );
-    case 'hanbok':
-      return (
-        base() +
-        neckHole +
-        white('M58.2 66.8 L60.6 69 L52.6 79.6 L50.4 77.6 Z') +
-        white('M41 67.4 L57.6 88 L54.6 90.2 L38.4 69.6 Z') +
-        `<path d="M56 88 Q62.5 84 64.8 88.6 Q60 90.8 56 88 Z" fill="${c.accent}" stroke="${shade(c.accent, -0.35)}" stroke-width=".6"/>` +
-        `<path d="M56 88 L60.6 99.6 M56 88 L54 100.4" stroke="${c.accent}" stroke-width="2.4" stroke-linecap="round"/>`
-      );
-    case 'suit':
-      return (
-        base() +
-        shirtV(81) +
-        `<path d="M48.7 69.4 L51.3 69.4 L52 72.2 L51.3 72.8 L52.6 86 L50 89.6 L47.4 86 L48.7 72.8 L48 72.2 Z" fill="${c.accent}" stroke="${shade(c.accent, -0.35)}" stroke-width=".7" stroke-linejoin="round"/>` +
-        mirror(`<path d="M43.5 66.8 L50 81 L46.6 83.6 L40.4 72 L43 70.4 L40 68.4 Z" fill="${shade(c.cloth, -0.12)}" stroke="${line}" stroke-width=".9" stroke-linejoin="round"/>`) +
-        [90, 96].map((y) => `<circle cx="50" cy="${y}" r="1.2" fill="${det}"/>`).join('') +
-        `<path d="M58 79 L62.4 78.4 L62 80.2 Z" fill="${WHITE}"/>`
-      );
-    case 'uniform': {
-      const neckwear = girl
-        ? `<path d="M50 71 L43.8 67.6 L44.2 74.2 Z M50 71 L56.2 67.6 L55.8 74.2 Z" fill="${c.accent}" stroke="${shade(c.accent, -0.35)}" stroke-width=".6" stroke-linejoin="round"/>` +
-          `<path d="M49 71.5 L46.8 79 M51 71.5 L53.2 79" stroke="${c.accent}" stroke-width="1.8" stroke-linecap="round"/>` +
-          `<circle cx="50" cy="71" r="1.5" fill="${shade(c.accent, -0.2)}"/>`
+/** Natural colors of outfits that ignore the outfit color (`tintable: false` in avatars.json). */
+export const FIXED_OUTFIT_COLORS = { doctor: '#f6f6f3', police: '#2f3f66', chef: '#fbfbf8', taekwondo: '#fbfbf8' };
+
+const TORSO_PUFFY = {
+  boy: 'M21.5 101 Q22 72 36 66.4 Q43 64.4 50 64.4 Q57 64.4 64 66.4 Q78 72 78.5 101 Z',
+  girl: 'M25.5 101 Q26 73 38 67 Q44 65 50 65 Q56 65 62 67 Q74 73 74.5 101 Z',
+};
+
+/** Torso outline path for an outfit/body. */
+function torsoPath(outfitId, body) {
+  const set = outfitId === 'longpadding' ? TORSO_PUFFY : TORSO;
+  return set[body] ?? set.boy;
+}
+
+function flowers(c, spots, petal, center = '#ffd54f', r = 1.5) {
+  return spots
+    .map(([x, y]) => {
+      const pts = [0, 1, 2, 3, 4]
+        .map((i) => {
+          const ang = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+          return `<circle cx="${(x + Math.cos(ang) * r).toFixed(2)}" cy="${(y + Math.sin(ang) * r).toFixed(2)}" r="${r}"/>`;
+        })
+        .join('');
+      return `<g fill="${petal}">${pts}</g><circle cx="${x}" cy="${y}" r="${(r * 0.7).toFixed(2)}" fill="${center}"/>`;
+    })
+    .join('');
+}
+
+/** Outfit painters: (c, h) → svg. `h` = shared helpers bound to the portrait context. */
+const OUTFIT_PAINTERS = {
+  tshirt: (c, h) =>
+    h.base() +
+    h.neckHole +
+    `<path d="M42.8 67.2 Q50 73.6 57.2 67.2" stroke="${c.detail}" stroke-width="1.6" fill="none"/>` +
+    mirror(`<path d="M34.2 73 Q37 80 35.6 90" stroke="${c.detail}" stroke-width=".9" fill="none" opacity=".6"/>`) +
+    `<path d="M43.5 85 L56.5 85" stroke="${WHITE}" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>`,
+
+  hoodie: (c, h) =>
+    `<path d="M34 72 Q34 61.5 50 61 Q66 61.5 66 72 Q58 68 50 68 Q42 68 34 72 Z" fill="${shade(c.cloth, -0.18)}" stroke="${c.clothLine}" stroke-width="1"/>` +
+    h.base() +
+    `<path d="M40 67 Q50 79.5 60 67 Q55 71.5 50 72 Q45 71.5 40 67 Z" fill="${shade(c.cloth, -0.2)}" stroke="${c.clothLine}" stroke-width=".8"/>` +
+    `<path d="M46.5 74 L46 84 M53.5 74 L54 84" stroke="${WHITE}" stroke-width="1.2" stroke-linecap="round"/>` +
+    `<circle cx="46" cy="85" r="1" fill="${WHITE}"/><circle cx="54" cy="85" r="1" fill="${WHITE}"/>` +
+    `<path d="M39 101 L40 90 Q41 87 44 87 L56 87 Q59 87 60 90 L61 101 Z" fill="${shade(c.cloth, -0.1)}" stroke="${c.detail}" stroke-width=".8"/>`,
+
+  shirt: (c, h) =>
+    h.base() +
+    mirror(h.white('M41.5 66.4 L50 75 L45.6 79 L38.6 70 Z')) +
+    `<path d="M50 75 L50 101" stroke="${c.detail}" stroke-width=".9"/>` +
+    [82, 89, 96].map((y) => `<circle cx="51.6" cy="${y}" r="1.1" fill="${c.detail}"/>`).join('') +
+    `<path d="M56 81 L62.5 81 L62.5 87 Q59.2 88.6 56 87 Z" stroke="${c.detail}" stroke-width=".8" fill="none"/>`,
+
+  dress: (c, h) =>
+    `<path d="M31 101 L36.5 83 Q34.5 73 40 68.5 Q45 66.8 50 66.8 Q55 66.8 60 68.5 Q65.5 73 63.5 83 L69 101 Z" fill="${h.grad}" stroke="${c.clothLine}" stroke-width="1.1" stroke-linejoin="round"/>` +
+    h.neckHole +
+    `<path d="M36.5 83 Q50 87 63.5 83" stroke="${c.detail}" stroke-width="1.6" fill="none"/>` +
+    `<path d="M43 89 L41 101 M50 89.5 L50 101 M57 89 L59 101" stroke="${c.detail}" stroke-width=".7" opacity=".6"/>` +
+    mirror(h.white('M50 71 Q44 76 40.4 69.6 Q44.4 66.8 50 67.4 Z')),
+
+  overalls: (c, h) => {
+    const girl = c.body === 'girl';
+    return (
+      h.base('#f7f4ee', WHITE_LINE) +
+      h.neckHole +
+      `<path d="M42.8 67.2 Q50 73.6 57.2 67.2" stroke="${WHITE_LINE}" stroke-width="1.2" fill="none"/>` +
+      `<path d="M38 79 L62 79 L63 88 Q${girl ? 69 : 71} 92 ${girl ? 70 : 73} 101 L${girl ? 30 : 27} 101 Q${girl ? 31 : 29} 92 37 88 Z" fill="${h.grad}" stroke="${c.clothLine}" stroke-width="1" stroke-linejoin="round"/>` +
+      mirror(`<path d="M38 79.5 L39.2 67.3 L42.6 67.8 L41.8 79.5 Z" fill="${c.cloth}" stroke="${c.clothLine}" stroke-width=".8"/>`) +
+      mirror(`<circle cx="40.1" cy="79.6" r="1.6" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".5"/>`) +
+      `<path d="M45 83 L55 83 L55 89 Q50 91 45 89 Z" fill="${shade(c.cloth, -0.1)}" stroke="${c.detail}" stroke-width=".8"/>`
+    );
+  },
+
+  hanbok: (c, h) =>
+    h.base() +
+    h.neckHole +
+    h.white('M58.2 66.8 L60.6 69 L52.6 79.6 L50.4 77.6 Z') +
+    h.white('M41 67.4 L57.6 88 L54.6 90.2 L38.4 69.6 Z') +
+    `<path d="M56 88 Q62.5 84 64.8 88.6 Q60 90.8 56 88 Z" fill="${c.accent}" stroke="${shade(c.accent, -0.35)}" stroke-width=".6"/>` +
+    `<path d="M56 88 L60.6 99.6 M56 88 L54 100.4" stroke="${c.accent}" stroke-width="2.4" stroke-linecap="round"/>`,
+
+  suit: (c, h) =>
+    h.base() +
+    h.white('M43.5 66.8 L50 81 L56.5 66.8 Z') +
+    h.tie(69.4, 86) +
+    h.lapels(81) +
+    [90, 96].map((y) => `<circle cx="50" cy="${y}" r="1.2" fill="${c.detail}"/>`).join('') +
+    `<path d="M58 79 L62.4 78.4 L62 80.2 Z" fill="${WHITE}"/>`,
+
+  uniform: (c, h) => {
+    const neckwear =
+      c.body === 'girl'
+        ? h.bow(50, 71, c.accent) + `<path d="M49 71.5 L46.8 79 M51 71.5 L53.2 79" stroke="${c.accent}" stroke-width="1.8" stroke-linecap="round"/>`
         : `<path d="M48.8 69 L51.2 69 L51.8 71.6 L52.2 79 L50 81.6 L47.8 79 L48.2 71.6 Z" fill="${c.accent}" stroke="${shade(c.accent, -0.35)}" stroke-width=".6"/>` +
           `<path d="M48.2 73.6 L51.8 71.8 M48 77.2 L52 75.2" stroke="${WHITE}" stroke-width=".7" opacity=".85"/>`;
-      return (
-        base() +
-        shirtV(78) +
-        neckwear +
-        mirror(`<path d="M44 66.8 L50 78 L47.6 80.6 L41.4 71 Z" fill="${shade(c.cloth, -0.12)}" stroke="${line}" stroke-width=".9" stroke-linejoin="round"/>`) +
-        `<path d="M57.6 81 L63 81 L63 84.2 Q60.3 87 57.6 84.2 Z" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".6"/>` +
-        [86, 93].map((y) => `<circle cx="50" cy="${y}" r="1.2" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".4"/>`).join('')
-      );
-    }
-    case 'tracksuit': {
-      const stripe = lum(c.cloth) > 0.8 ? c.accent : WHITE;
-      return (
-        base() +
-        mirror(`<path d="M35.4 71.2 Q31 82 30.2 101 M37.8 70.2 Q33.6 82 33 101" stroke="${stripe}" stroke-width="1.5" fill="none"/>`) +
-        `<path d="M41.4 65 L41.8 70.6 Q50 73.6 58.2 70.6 L58.6 65 Q50 68 41.4 65 Z" fill="${shade(c.cloth, -0.08)}" stroke="${line}" stroke-width=".9" stroke-linejoin="round"/>` +
-        `<path d="M50 70.6 L50 101" stroke="${det}" stroke-width="1.1"/>` +
-        `<rect x="49" y="73.6" width="2" height="3.4" rx=".6" fill="#dadada" stroke="#8a8a8a" stroke-width=".4"/>`
-      );
-    }
-    case 'tshirt':
-    default:
-      return (
-        base() +
-        neckHole +
-        `<path d="M42.8 67.2 Q50 73.6 57.2 67.2" stroke="${det}" stroke-width="1.6" fill="none"/>` +
-        mirror(`<path d="M34.2 73 Q37 80 35.6 90" stroke="${det}" stroke-width=".9" fill="none" opacity=".6"/>`) +
-        `<path d="M43.5 85 L56.5 85" stroke="${WHITE}" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>`
-      );
-  }
+    return (
+      h.base() +
+      h.white('M43.5 66.8 L50 78 L56.5 66.8 Z') +
+      neckwear +
+      mirror(`<path d="M44 66.8 L50 78 L47.6 80.6 L41.4 71 Z" fill="${shade(c.cloth, -0.12)}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>`) +
+      `<path d="M57.6 81 L63 81 L63 84.2 Q60.3 87 57.6 84.2 Z" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".6"/>` +
+      [86, 93].map((y) => `<circle cx="50" cy="${y}" r="1.2" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".4"/>`).join('')
+    );
+  },
+
+  tracksuit: (c, h) => {
+    const stripe = lum(c.cloth) > 0.8 ? c.accent : WHITE;
+    return (
+      h.base() +
+      h.clip(mirror(`<path d="M35.4 71.2 Q31 82 30.2 101 M37.8 70.2 Q33.6 82 33 101" stroke="${stripe}" stroke-width="1.5" fill="none"/>`)) +
+      h.highCollar(shade(c.cloth, -0.08)) +
+      `<path d="M50 70.6 L50 101" stroke="${c.detail}" stroke-width="1.1"/>` +
+      `<rect x="49" y="73.6" width="2" height="3.4" rx=".6" fill="#dadada" stroke="#8a8a8a" stroke-width=".4"/>`
+    );
+  },
+
+  cardigan: (c, h) =>
+    h.base() +
+    h.white('M43.2 66.9 Q50 72 56.8 66.9 L53.4 101 L46.6 101 Z') +
+    `<path d="M45.4 67.8 Q50 71.4 54.6 67.8 Z" fill="${shade(c.skin, -0.16)}"/>` +
+    mirror(`<path d="M43.2 66.9 L46.6 101" stroke="${c.clothLine}" stroke-width=".9" fill="none"/>`) +
+    [79, 86, 93].map((y, i) => `<circle cx="${45.4 + i * 0.35}" cy="${y}" r="1.05" fill="${c.detail}"/>`).join('') +
+    h.clip(`<path d="M18 96.5 L82 96.5" stroke="${c.detail}" stroke-width=".8" opacity=".7"/>`) +
+    mirror(`<path d="M33.4 88 L40.6 88 L40.8 94 L33.2 94 Z" fill="none" stroke="${c.detail}" stroke-width=".8"/>`),
+
+  sweater: (c, h) => {
+    const knit = [38, 50, 62]
+      .map((x) => {
+        let d = `M${x - 1.8} 76`;
+        for (let y = 76, i = 0; y < 102; y += 3.4, i++) d += ` L${i % 2 ? x - 1.8 : x + 1.8} ${y + 3.4}`;
+        return `<path d="${d}" stroke="${c.detail}" stroke-width=".8" fill="none" opacity=".6"/><path d="M${x - 4.4} 74 L${x - 4.4} 102 M${x + 4.4} 74 L${x + 4.4} 102" stroke="${c.detail}" stroke-width=".5" opacity=".45"/>`;
+      })
+      .join('');
+    return (
+      h.base() +
+      h.neckHole +
+      h.clip(knit) +
+      `<path d="M42.2 66.8 Q50 74.4 57.8 66.8" stroke="${shade(c.cloth, -0.08)}" stroke-width="3.4" fill="none" stroke-linecap="round"/>` +
+      `<path d="M42.2 66.8 Q50 74.4 57.8 66.8" stroke="${c.detail}" stroke-width=".6" stroke-dasharray=".8 .8" fill="none"/>`
+    );
+  },
+
+  blouse: (c, h) => {
+    const top = shade(c.cloth, 0.72);
+    return (
+      mirror(`<ellipse cx="31.6" cy="75.6" rx="6" ry="5.4" fill="${top}" stroke="${outlineOf(top)}" stroke-width=".9"/>`) +
+      h.base(top, outlineOf(top)) +
+      h.clip(
+        `<path d="M18 91.5 L82 91.5 L82 102 L18 102 Z" fill="${h.grad}"/>` +
+          `<path d="M18 91.5 L82 91.5" stroke="${c.clothLine}" stroke-width="1"/>` +
+          `<path d="M34 91.5 L32 101 M42 91.5 L41 101 M50 91.5 L50 101 M58 91.5 L59 101 M66 91.5 L68 101" stroke="${c.detail}" stroke-width=".8"/>`,
+      ) +
+      `<path d="M50 73.6 Q51.2 75.8 50 78 Q48.8 80.2 50 82.4 Q51.2 84.6 50 86.8 Q48.8 89 50 91" stroke="${WHITE_LINE}" stroke-width=".8" fill="none"/>` +
+      h.white('M41.5 66.8 Q41.6 70.8 44.6 70 Q45.4 73.4 48.2 72.4 Q50 75 51.8 72.4 Q54.6 73.4 55.4 70 Q58.4 70.8 58.5 66.8 Q50 71.5 41.5 66.8 Z') +
+      h.bow(50, 72.6, c.cloth, 0.7)
+    );
+  },
+
+  jeanjacket: (c, h) =>
+    h.base() +
+    h.white('M43.5 67 L47 101 L53 101 L56.5 67 Q50 71 43.5 67 Z') +
+    `<path d="M45.4 67.8 Q50 71 54.6 67.8 Z" fill="${shade(c.skin, -0.16)}"/>` +
+    mirror(
+      `<path d="M43.5 67 L47 101" stroke="${c.clothLine}" stroke-width=".9" fill="none"/>` +
+        `<path d="M44 66.4 L38.6 65.8 L36.6 72.6 L44.8 71 Z" fill="${shade(c.cloth, -0.08)}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>` +
+        `<path d="M35.2 78 L43.2 78 L42.8 81.6 L39.2 83 L35.6 81.6 Z" fill="${shade(c.cloth, -0.08)}" stroke="${c.clothLine}" stroke-width=".8" stroke-linejoin="round"/>` +
+        `<circle cx="39.2" cy="81.2" r=".9" fill="#c9a24a"/>` +
+        `<path d="M35.6 85 L42.8 85 M45 72 L48.4 101" stroke="#e0b25a" stroke-width=".6" stroke-dasharray="1.2 1" fill="none"/>`,
+    ),
+
+  leather: (c, h) => {
+    const inner = lum(c.cloth) < 0.3 ? '#8a8a92' : '#34343a';
+    return (
+      h.base() +
+      `<path d="M43.5 67 L47 101 L53 101 L56.5 67 Q50 71 43.5 67 Z" fill="${inner}"/>` +
+      `<path d="M43.5 67 L36 70.4 L41 80.6 L47.6 84.6 Z" fill="${shade(c.cloth, -0.12)}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>` +
+      `<path d="M56.5 67 L64 70.4 L58.6 78.4 L52.2 76.4 Z" fill="${shade(c.cloth, -0.12)}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>` +
+      `<path d="M58 76.6 L46.4 101" stroke="#c9ccd4" stroke-width="1.2"/><rect x="56.4" y="77.2" width="1.8" height="3.4" rx=".5" fill="#e3e5ea" stroke="#8a8d96" stroke-width=".4"/>` +
+      mirror(`<path d="M30.6 82 Q32.4 75.6 36.4 72" stroke="#fff" stroke-opacity=".32" stroke-width="1.4" fill="none" stroke-linecap="round"/>`) +
+      h.clip(`<path d="M18 96.6 L82 96.6" stroke="${c.clothLine}" stroke-width="1.2"/>`)
+    );
+  },
+
+  longpadding: (c, h) =>
+    h.base() +
+    h.clip(
+      [74.5, 82.5, 90.5, 98.5]
+        .map((y) => `<path d="M16 ${y} Q50 ${y + 3.4} 84 ${y}" stroke="${c.detail}" stroke-width="1.1" fill="none"/><path d="M16 ${y - 2.6} Q50 ${y + 0.8} 84 ${y - 2.6}" stroke="#fff" stroke-opacity=".22" stroke-width="1.6" fill="none"/>`)
+        .join(''),
+    ) +
+    `<path d="M38.4 63.6 L39 71.2 Q50 75.4 61 71.2 L61.6 63.6 Q50 67.6 38.4 63.6 Z" fill="${shade(c.cloth, -0.06)}" stroke="${c.clothLine}" stroke-width="1" stroke-linejoin="round"/>` +
+    `<path d="M50 72.8 L50 101" stroke="${c.detail}" stroke-width="1.2"/>`,
+
+  trenchcoat: (c, h) =>
+    h.base() +
+    h.white('M43.5 66.8 L50 84 L56.5 66.8 Z') +
+    h.lapels(84, true) +
+    mirror(`<path d="M31 70.6 L39 67.8 L39.6 70.4 L31.8 73.2 Z" fill="${shade(c.cloth, -0.1)}" stroke="${c.clothLine}" stroke-width=".7"/><circle cx="37.8" cy="69.6" r=".7" fill="${c.detail}"/>`) +
+    h.clip(`<path d="M16 90.6 L84 90.6 L84 95 L16 95 Z" fill="${shade(c.cloth, -0.16)}" stroke="${c.clothLine}" stroke-width=".8"/>`) +
+    `<rect x="46.4" y="90" width="7.2" height="5.6" rx=".8" fill="none" stroke="#8a6a3a" stroke-width="1"/>` +
+    [[45.2, 86.6], [54.8, 86.6], [45.2, 98.4], [54.8, 98.4]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.1" fill="${c.detail}"/>`).join(''),
+
+  sailor: (c, h) =>
+    h.base(WHITE, WHITE_LINE) +
+    `<path d="M42.6 66.6 L50 82 L57.4 66.6 Q50 71 42.6 66.6 Z" fill="${WHITE}" stroke="${WHITE_LINE}" stroke-width=".6"/>` +
+    mirror(
+      `<path d="M34 69.4 L42.6 66.4 L50 82.5 L50 88 L36 80.4 Q32.2 75.6 34 69.4 Z" fill="${h.grad}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>` +
+        `<path d="M35.8 70.8 Q34.6 75.6 37.6 79 L49.2 85.6" stroke="${WHITE}" stroke-width=".9" fill="none"/>`,
+    ) +
+    `<path d="M45.6 81.4 L54.4 81.4 L50 86 Z" fill="${c.accent}" stroke="${shade(c.accent, -0.35)}" stroke-width=".5"/>` +
+    `<path d="M48.6 85.2 L46.2 93 L49.4 91.8 Z M51.4 85.2 L53.8 93 L50.6 91.8 Z" fill="${c.accent}" stroke="${shade(c.accent, -0.35)}" stroke-width=".5"/>`,
+
+  soccer: (c, h) => {
+    const ink = lum(c.cloth) > 0.8 ? c.accent : WHITE;
+    return (
+      h.base() +
+      h.neckHole +
+      h.clip(mirror(`<path d="M33.6 70 Q29.8 84 29.4 101" stroke="${ink}" stroke-width="2.4" fill="none"/>`)) +
+      `<path d="M43.2 66.8 L50 75 L56.8 66.8" stroke="${ink}" stroke-width="2.2" fill="none" stroke-linejoin="round"/>` +
+      `<text x="50" y="95.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="12" fill="${ink}" stroke="${c.clothLine}" stroke-width=".4">10</text>` +
+      `<path d="M57.4 76.4 L61 76.4 L61 79 Q59.2 81 57.4 79 Z" fill="${ink}" opacity=".9"/>`
+    );
+  },
+
+  stadium: (c, h) => {
+    const cream = '#f4ecd8';
+    return (
+      h.base(cream, '#bfb49a') +
+      h.clip(
+        `<path d="M37.2 60 L62.8 60 L65 101 L35 101 Z" fill="${h.grad}" stroke="${c.clothLine}" stroke-width=".9"/>` +
+          `<path d="M16 97.4 L84 97.4" stroke="${c.cloth}" stroke-width="2"/><path d="M16 97.4 L84 97.4" stroke="${WHITE}" stroke-width=".7"/>`,
+      ) +
+      `<path d="M41.4 66.4 Q50 72.8 58.6 66.4" stroke="${c.cloth}" stroke-width="3.4" fill="none" stroke-linecap="round"/>` +
+      `<path d="M41.4 66.4 Q50 72.8 58.6 66.4" stroke="${WHITE}" stroke-width=".8" fill="none"/>` +
+      [78, 85, 92].map((y) => `<circle cx="50" cy="${y}" r="1" fill="${WHITE}" stroke="${c.clothLine}" stroke-width=".3"/>`).join('') +
+      `<text x="42.6" y="86" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="9" fill="${WHITE}" stroke="${c.clothLine}" stroke-width=".4">J</text>`
+    );
+  },
+
+  pajamas: (c, h) => {
+    const pastel = shade(c.cloth, 0.62);
+    let stripes = '';
+    for (let x = 22; x <= 78; x += 5) stripes += `M${x} 60 L${x} 102 `;
+    return (
+      h.base(pastel, outlineOf(pastel)) +
+      h.clip(`<path d="${stripes}" stroke="${c.cloth}" stroke-width="1.5" opacity=".75"/>`) +
+      mirror(`<path d="M43.2 66.6 L50 76 L46 79 L38.6 70.2 Z" fill="${pastel}" stroke="${c.cloth}" stroke-width="1.2" stroke-linejoin="round"/>`) +
+      `<path d="M43.2 66.6 L50 76 L56.8 66.6 Q50 70 43.2 66.6 Z" fill="${shade(c.skin, -0.16)}"/>` +
+      [82, 89, 96].map((y) => `<circle cx="50" cy="${y}" r="1.2" fill="${WHITE}" stroke="${c.cloth}" stroke-width=".6"/>`).join('') +
+      `<path d="M55.6 80 L62 80 L62 86 L55.6 86 Z" fill="none" stroke="${c.cloth}" stroke-width="1"/>`
+    );
+  },
+
+  hawaiian: (c, h) => {
+    const petal = lum(c.cloth) > 0.7 ? '#e2504c' : WHITE;
+    const leaf = `<g fill="#3f9a55" opacity=".85">${[[36, 82], [60, 90], [44, 97], [66, 76], [30, 92]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2.6" ry="1.1" transform="rotate(-30 ${x} ${y})"/>`).join('')}</g>`;
+    return (
+      h.base() +
+      h.clip(leaf + flowers(c, [[33, 78], [44, 88], [58, 80], [68, 92], [38, 98], [62, 99], [52, 94], [27, 88], [72, 84]], petal)) +
+      `<path d="M43 66.6 L50 78 L57 66.6 Q50 70 43 66.6 Z" fill="${shade(c.skin, -0.12)}"/>` +
+      mirror(`<path d="M43 66.4 L50 78 L45.6 80.2 L38.2 69.4 Z" fill="${shade(c.cloth, -0.06)}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>`) +
+      `<path d="M50 78 L50 101" stroke="${c.clothLine}" stroke-width=".7"/>` +
+      [85, 93].map((y) => `<circle cx="51.4" cy="${y}" r=".9" fill="${WHITE}"/>`).join('')
+    );
+  },
+
+  hiking: (c, h) => {
+    const yoke = lum(c.cloth) < 0.3 ? shade(c.cloth, 0.4) : shade(c.cloth, -0.35);
+    return (
+      h.base() +
+      h.clip(
+        `<path d="M16 60 L84 60 L84 77 Q67 73.4 50 79 Q33 73.4 16 77 Z" fill="${yoke}"/>` +
+          `<path d="M16 77 Q33 73.4 50 79 Q67 73.4 84 77" stroke="${c.detail}" stroke-width=".6" stroke-dasharray="1 .8" fill="none"/>`,
+      ) +
+      h.highCollar(yoke) +
+      `<path d="M50 70.6 L50 101" stroke="${c.detail}" stroke-width="1.1"/>` +
+      `<rect x="48.8" y="73.8" width="2.4" height="4.4" rx=".7" fill="#f2cf4a" stroke="#8a6d1a" stroke-width=".4"/>` +
+      `<path d="M54 86 L62.4 81.4" stroke="${c.detail}" stroke-width="1.1"/><circle cx="62.4" cy="81.4" r=".8" fill="#f2cf4a"/>` +
+      `<path d="M36.4 88.6 L39.2 84.4 L40.8 86.6 L42 85 L44 88.6 Z" fill="${WHITE}" opacity=".9"/>`
+    );
+  },
+
+  apron: (c, h) => {
+    const shirt = lum(c.cloth) > 0.8 ? '#a9bfdc' : '#f3f1ec';
+    return (
+      h.base(shirt, outlineOf(shirt)) +
+      h.neckHole +
+      mirror(`<path d="M41.8 66.4 L50 73.6 L46 77 L38.8 69.6 Z" fill="${shade(shirt, 0.3)}" stroke="${outlineOf(shirt)}" stroke-width=".8" stroke-linejoin="round"/>`) +
+      mirror(`<path d="M40.4 77 L44.4 68.6" stroke="${c.cloth}" stroke-width="1.8" stroke-linecap="round"/>`) +
+      `<path d="M38.6 76.4 L61.4 76.4 L62.6 101 L37.4 101 Z" fill="${h.grad}" stroke="${c.clothLine}" stroke-width="1" stroke-linejoin="round"/>` +
+      `<path d="M43 87.6 L57 87.6 L57 94.4 Q50 96.8 43 94.4 Z" fill="${shade(c.cloth, -0.08)}" stroke="${c.detail}" stroke-width=".8"/>` +
+      `<path d="M53.6 85 L53.6 89.6" stroke="#3a3a4a" stroke-width="1.2" stroke-linecap="round"/>` +
+      `<path d="M47.4 80.4 Q50 83.4 52.6 80.4 L52.2 79.4 L47.8 79.4 Z" fill="${c.detail}" opacity=".8"/>`
+    );
+  },
+
+  hanbokTrad: (c, h) => {
+    const girl = c.body === 'girl';
+    const git = shade(c.cloth, -0.35);
+    const saek = ['#e25b5b', '#f2cf4a', '#5cb87a', '#4f8ee0', '#f29ac0'];
+    const sleeves = girl
+      ? h.clip(mirror(saek.map((col, i) => `<path d="M${30.6 - i * 1.6} 70 L${26.6 - i * 1.6} 101" stroke="${col}" stroke-width="1.6"/>`).join('')))
+      : '';
+    const vest = girl
+      ? ''
+      : `<path d="M35.6 70.2 L43.4 66.8 L50 86 L56.6 66.8 L64.4 70.2 L66.4 101 L33.6 101 Z" fill="${shade(c.cloth, -0.4)}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>` +
+        `<circle cx="50" cy="93" r="1.2" fill="${GOLD}"/>`;
+    const chima = girl
+      ? h.clip(`<path d="M16 86 L84 86 L84 102 L16 102 Z" fill="${c.accent}"/><path d="M36 86 L34 101 M44 86 L43 101 M56 86 L57 101 M64 86 L66 101" stroke="${shade(c.accent, -0.3)}" stroke-width=".7"/>`)
+      : '';
+    return (
+      h.base() +
+      sleeves +
+      chima +
+      h.neckHole +
+      vest +
+      `<path d="M40.4 67.4 L44 66.4 L58.6 85.4 L55 87.4 Z" fill="${git}" stroke="${c.clothLine}" stroke-width=".7" stroke-linejoin="round"/>` +
+      h.white('M41.4 67 L43.6 66.4 L50.6 75.4 L48.6 76.6 Z') +
+      `<path d="M59.6 66.6 L61.6 68.8 L52.4 80.4 L50.6 78.4 Z" fill="${git}" stroke="${c.clothLine}" stroke-width=".7"/>` +
+      `<path d="M55.6 85.6 Q62.6 81.6 65.4 86.4 Q60.4 88.8 55.6 85.6 Z" fill="${c.accent === '#d8434a' && !girl ? '#8c2f39' : shade(c.accent, -0.1)}" stroke="${shade(c.accent, -0.4)}" stroke-width=".6"/>` +
+      `<path d="M55.6 85.6 L58.4 101 M55.6 85.6 L53.2 101" stroke="${shade(c.accent, -0.1)}" stroke-width="2.8" stroke-linecap="round"/>`
+    );
+  },
+
+  idol: (c, h) => {
+    const inner = lum(c.cloth) < 0.3 ? '#f4f4f2' : '#26262c';
+    const sparkles = [[34, 82], [40, 92], [61, 86], [66, 96], [36, 74], [63, 74], [31, 94], [69, 82]]
+      .map(([x, y], i) => `<path d="${star(x, y, i % 2 ? 1.3 : 1.7)}" fill="${i % 3 ? WHITE : GOLD}" opacity=".95"/>`)
+      .join('');
+    return (
+      h.base() +
+      `<path d="M43.5 67 L46 101 L54 101 L56.5 67 Q50 71 43.5 67 Z" fill="${inner}"/>` +
+      h.clip(sparkles) +
+      `<path d="M45.6 77 Q50 82 54.4 77" stroke="#d8dbe3" stroke-width="1" stroke-dasharray="1 .7" fill="none"/>` +
+      mirror(
+        `<path d="M43.5 67 L46 101" stroke="${c.clothLine}" stroke-width=".9" fill="none"/>` +
+          `<path d="M30.4 71.6 L39 68 L39.6 71 L31.6 74.8 Z" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".5"/>` +
+          `<path d="M31.6 74.8 L31 78 M33.4 74 L32.8 77.2 M35.2 73.2 L34.6 76.4 M37 72.4 L36.4 75.6" stroke="${GOLD}" stroke-width=".7" stroke-linecap="round"/>`,
+      )
+    );
+  },
+
+  dino: (c, h) => {
+    const belly = lum(c.cloth) > 0.8 ? '#f2cf4a' : shade(c.cloth, 0.55);
+    return (
+      h.base() +
+      h.neckHole +
+      h.clip(
+        `<ellipse cx="50" cy="94" rx="12" ry="15" fill="${belly}" stroke="${c.clothLine}" stroke-width=".7"/>` +
+          [84, 89, 94, 99].map((y) => `<path d="M40 ${y} Q50 ${y + 1.6} 60 ${y}" stroke="${shade(belly, -0.2)}" stroke-width=".7" fill="none"/>`).join(''),
+      ) +
+      `<path d="M42.8 67.2 Q50 73.6 57.2 67.2" stroke="${c.detail}" stroke-width="1.4" fill="none"/>`
+    );
+  },
+
+  doctor: (c, h) =>
+    h.base() +
+    `<path d="M43.5 66.8 L50 84 L56.5 66.8 Z" fill="#9dbbe6" stroke="#6d8fc0" stroke-width=".6"/>` +
+    h.tie(69, 84, '#34467a') +
+    h.lapels(84) +
+    `<path d="M40.4 68.6 Q36.4 78 40.4 85 Q43.4 89.4 47 88.8" stroke="#5a6272" stroke-width="1.3" fill="none" stroke-linecap="round"/>` +
+    `<path d="M59.6 68.6 Q63.6 78 60.6 83.6" stroke="#5a6272" stroke-width="1.3" fill="none" stroke-linecap="round"/>` +
+    `<circle cx="48.4" cy="89" r="2.1" fill="#c9ccd4" stroke="#5a6272" stroke-width=".8"/>` +
+    `<path d="M56.8 88 L63.4 88 L63.4 94 L56.8 94 Z" fill="none" stroke="#b9b4ac" stroke-width=".8"/>` +
+    `<path d="M58.4 88.4 L58.4 85.4 M60.4 88.4 L60.4 84.8" stroke="#4f8ee0" stroke-width="1" stroke-linecap="round"/><path d="M61.8 88.4 L61.8 85.8" stroke="#e25b5b" stroke-width="1" stroke-linecap="round"/>`,
+
+  police: (c, h) =>
+    h.base() +
+    `<path d="M43.5 66.8 L50 81 L56.5 66.8 Z" fill="#aac4e8" stroke="#7f9cc4" stroke-width=".6"/>` +
+    h.tie(69.4, 84, '#1c2640') +
+    h.lapels(81) +
+    mirror(`<path d="M30.6 71 L39.2 67.8 L39.8 70.2 L31.4 73.6 Z" fill="#26345a" stroke="#1c2640" stroke-width=".6"/><path d="M33.4 71.4 L37.6 69.8" stroke="${GOLD}" stroke-width=".7"/>`) +
+    `<path d="M58 78.4 L61.4 77.4 L64.4 78.4 L64 82.4 Q61.2 85 58.4 82.4 Z" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".5"/>` +
+    `<rect x="36" y="79" width="7" height="2.4" rx=".4" fill="${WHITE}"/>` +
+    [88, 95].map((y) => `<circle cx="50" cy="${y}" r="1.2" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".4"/>`).join(''),
+
+  chef: (c, h) =>
+    h.base() +
+    `<path d="M41.8 65.6 L42.2 69.8 Q50 72.8 57.8 69.8 L58.2 65.6 Q50 68.6 41.8 65.6 Z" fill="${WHITE}" stroke="${WHITE_LINE}" stroke-width=".8"/>` +
+    `<path d="M43.4 69.8 Q50 73.8 56.6 69.8 L55 73 Q50 75.2 45 73 Z" fill="#d8434a" stroke="#9e2d34" stroke-width=".5"/>` +
+    `<path d="M57.8 72 Q56.4 84 45 101" stroke="${WHITE_LINE}" stroke-width=".9" fill="none"/>` +
+    [[44.6, 80], [55.4, 80], [44.6, 87], [55.4, 87], [44.6, 94], [55.4, 94]]
+      .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.2" fill="#ece8df" stroke="#9f988c" stroke-width=".5"/>`)
+      .join(''),
+
+  taekwondo: (c, h) => {
+    const blk = '#26262c';
+    return (
+      h.base() +
+      h.neckHole +
+      `<path d="M57.6 66.6 L55 66.4 L50.4 74 L52 76.4 Z" fill="${blk}"/>` +
+      `<path d="M42.4 66.6 L45 66.4 L56.4 84.4 L53.6 86.2 Z" fill="${blk}"/>` +
+      mirror(`<path d="M34.2 73 Q37 80 35.6 90" stroke="${c.detail}" stroke-width=".7" fill="none" opacity=".5"/>`) +
+      `<circle cx="39.4" cy="81" r="1.9" fill="#d8434a"/><path d="M37.5 81 A1.9 1.9 0 0 0 41.3 81 Z" fill="#3c62b8"/>` +
+      h.clip(`<path d="M16 92.8 L84 92.8 L84 98 L16 98 Z" fill="${blk}"/>`) +
+      `<path d="M46 93.6 L54 93.6 L55.4 97.4 L44.6 97.4 Z" fill="#3a3a42" stroke="#111" stroke-width=".4"/>` +
+      `<path d="M47.6 97.2 L45.6 101.6 M52.4 97.2 L54.4 101.6" stroke="${blk}" stroke-width="2.4" stroke-linecap="round"/>`
+    );
+  },
+};
+
+/** Headwear/overlays some outfits add on top of the hair (skipped with `hat: false` or a cap accessory). */
+const OUTFIT_HATS = {
+  police: () =>
+    `<path d="M26.6 30.6 Q25.6 13 50 12.4 Q74.4 13 73.4 30.6 Z" fill="#2f3f66" stroke="#1a2440" stroke-width="1" stroke-linejoin="round"/>` +
+    `<path d="M26.6 26.6 L73.4 26.6 L73.4 31 L26.6 31 Z" fill="#1c2640"/>` +
+    `<path d="M26.6 28.8 L73.4 28.8" stroke="${GOLD}" stroke-width=".7"/>` +
+    `<path d="M30.4 30.6 Q50 37 69.6 30.6 L68.6 33.6 Q50 39.4 31.4 33.6 Z" fill="#141820" stroke="#000" stroke-width=".5"/>` +
+    `<path d="M50 17.4 L52.6 20 L51.8 23.6 L48.2 23.6 L47.4 20 Z" fill="${GOLD}" stroke="${GOLD_LINE}" stroke-width=".5"/>`,
+  chef: () =>
+    `<path d="M29.6 29 L30.6 20 Q23.6 16 27.6 8.6 Q31 2.6 38 5 Q42 -1.6 50 1 Q58 -1.6 62 5 Q69 2.6 72.4 8.6 Q76.4 16 69.4 20 L70.4 29 Z" fill="${WHITE}" stroke="${WHITE_LINE}" stroke-width="1" stroke-linejoin="round"/>` +
+    `<path d="M29.8 23.6 L70.2 23.6 L70.4 29.4 Q50 31.4 29.6 29.4 Z" fill="#f1efe9" stroke="${WHITE_LINE}" stroke-width=".7"/>` +
+    `<path d="M40 9 Q41 15 40 20 M50 6 L50 20 M60 9 Q59 15 60 20" stroke="${WHITE_LINE}" stroke-width=".7" fill="none"/>`,
+  dino: (c) => {
+    const spike = lum(c.cloth) > 0.6 ? shade(c.cloth, -0.3) : shade(c.cloth, 0.35);
+    const teeth = [33, 38.5, 44, 50, 56, 61.5, 67]
+      .map((x) => `<path d="M${x - 2} ${17.4 + Math.abs(x - 50) * 0.08} L${x + 2} ${17.4 + Math.abs(x - 50) * 0.08} L${x} ${21 + Math.abs(x - 50) * 0.08} Z"/>`)
+      .join('');
+    return (
+      [[31, 13, -40], [40.5, 7, -18], [50, 4.6, 0], [59.5, 7, 18], [69, 13, 40]]
+        .map(([x, y, r]) => `<path d="M-3.6 1 L0 -5.4 L3.6 1 Z" transform="translate(${x} ${y}) rotate(${r})" fill="${spike}" stroke="${outlineOf(spike)}" stroke-width=".7" stroke-linejoin="round"/>`)
+        .join('') +
+      `<path d="M22.6 42 Q21.6 10.6 50 10 Q78.4 10.6 77.4 42 L73.8 42 Q73 17.6 50 17 Q27 17.6 26.2 42 Z" fill="url(#${c.id}-c)" stroke="${c.clothLine}" stroke-width="1" stroke-linejoin="round"/>` +
+      `<g fill="${WHITE}" stroke="${WHITE_LINE}" stroke-width=".4">${teeth}</g>` +
+      [41, 59].map((x) => `<circle cx="${x}" cy="12.6" r="2.3" fill="${WHITE}" stroke="${c.clothLine}" stroke-width=".6"/><circle cx="${x}" cy="12.9" r="1.1" fill="${INK}"/>`).join('')
+    );
+  },
+  idol: () =>
+    `<path d="M27.4 50.4 Q30 58.6 41.6 57.8" stroke="#3a3a4a" stroke-width="1" fill="none" stroke-linecap="round"/>` +
+    `<ellipse cx="42.6" cy="57.7" rx="1.5" ry="1.2" fill="#3a3a4a"/>`,
+};
+
+/** Pieces behind the head (dino hood). */
+const OUTFIT_BACKS = {
+  dino: (c) =>
+    `<path d="M20.6 44 Q19 9 50 8.4 Q81 9 79.4 44 Q79.4 60 70 66 L30 66 Q20.6 60 20.6 44 Z" fill="${shade(c.cloth, -0.15)}" stroke="${c.clothLine}" stroke-width="1" stroke-linejoin="round"/>`,
+};
+
+function outfitHelpers(c) {
+  const T = c.torso;
+  const grad = `url(#${c.id}-c)`;
+  const white = (d) => `<path d="${d}" fill="${WHITE}" stroke="${WHITE_LINE}" stroke-width=".8" stroke-linejoin="round"/>`;
+  return {
+    grad,
+    white,
+    base: (fill = grad, stroke = c.clothLine) => `<path d="${T}" fill="${fill}" stroke="${stroke}" stroke-width="1.1" stroke-linejoin="round"/>`,
+    clip: (inner) => `<g clip-path="url(#${c.id}-t)">${inner}</g>`,
+    neckHole: `<path d="M42.8 67.2 Q50 73.6 57.2 67.2 Z" fill="${shade(c.skin, -0.16)}"/>`,
+    tie: (top, bottom, color = c.accent) =>
+      `<path d="M48.7 ${top} L51.3 ${top} L52 ${top + 2.8} L51.3 ${top + 3.4} L52.6 ${bottom} L50 ${bottom + 3.6} L47.4 ${bottom} L48.7 ${top + 3.4} L48 ${top + 2.8} Z" fill="${color}" stroke="${shade(color, -0.35)}" stroke-width=".7" stroke-linejoin="round"/>`,
+    lapels: (bottom, wide = false) =>
+      mirror(
+        `<path d="M43.5 66.8 L50 ${bottom} L46.6 ${bottom + 2.6} L${wide ? 38.4 : 40.4} ${wide ? 73.6 : 72} L${wide ? 41 : 43} ${wide ? 72 : 70.4} L${wide ? 37.8 : 40} ${wide ? 69.4 : 68.4} Z" fill="${shade(c.cloth, -0.12)}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>`,
+      ),
+    bow: (x, y, color, k = 1) =>
+      `<path d="M${x} ${y} L${x - 6.2 * k} ${y - 3.4 * k} L${x - 5.8 * k} ${y + 3.2 * k} Z M${x} ${y} L${x + 6.2 * k} ${y - 3.4 * k} L${x + 5.8 * k} ${y + 3.2 * k} Z" fill="${color}" stroke="${shade(color, -0.35)}" stroke-width=".6" stroke-linejoin="round"/>` +
+      `<circle cx="${x}" cy="${y}" r="${1.5 * k}" fill="${shade(color, -0.2)}"/>`,
+    highCollar: (fill) =>
+      `<path d="M41.4 65 L41.8 70.6 Q50 73.6 58.2 70.6 L58.6 65 Q50 68 41.4 65 Z" fill="${fill}" stroke="${c.clothLine}" stroke-width=".9" stroke-linejoin="round"/>`,
+  };
+}
+
+function outfit(style, c) {
+  const paint = OUTFIT_PAINTERS[style] ?? OUTFIT_PAINTERS.tshirt;
+  return paint(c, outfitHelpers(c));
 }
 
 // ----- face -----
@@ -570,20 +1007,27 @@ function accessory(style, c) {
 
 let portraitSeq = 0;
 
+/** False for outfits with fixed natural colors (`tintable: false`): the outfit color is ignored. */
+export function outfitTintable(outfitId, defs = DEFS) {
+  const opt = defs.parts.outfit?.find((o) => o.id === outfitId);
+  return opt ? opt.tintable !== false : !(outfitId in FIXED_OUTFIT_COLORS);
+}
+
 /**
  * Compose a chibi head-and-shoulders portrait.
  * @param {object} parts avatar part ids (see avatars.json; missing/unknown ids → defaults)
  * @param {{size?: number, bg?: string|null, title?: string, expression?: string|null, crop?: string}} opts
  *   `expression`: one of AVATAR_EXPRESSIONS (swaps eyes/mouth/brows, adds tears/sweat/…);
- *   `crop`: a key of AVATAR_CROPS or an explicit "x y w h" viewBox (thumbnails).
+ *   `crop`: a key of AVATAR_CROPS or an explicit "x y w h" viewBox (thumbnails);
+ *   `hat: false` hides outfit headwear (police cap, chef toque, dino hood) e.g. for hair/face thumbnails.
  * @returns {string} SVG markup
  */
-export function renderAvatar(parts, { size = 96, bg = null, title = '', expression = null, crop = null } = {}) {
+export function renderAvatar(parts, { size = 96, bg = null, title = '', expression = null, crop = null, hat = true } = {}) {
   const defs = DEFS;
   const a = normalizeAvatar(parts, defs);
   const skin = colorOf('skin', a.skin, defs);
   const hair = colorOf('hairColor', a.hairColor, defs);
-  const cloth = colorOf('outfitColor', a.outfitColor, defs);
+  const cloth = outfitTintable(a.outfit, defs) ? colorOf('outfitColor', a.outfitColor, defs) : FIXED_OUTFIT_COLORS[a.outfit] ?? '#f4f4f2';
   const sx = Number(defs.parts.build?.find((o) => o.id === a.build)?.scaleX) || 1;
   const id = `av${(++portraitSeq).toString(36)}`;
   const c = {
@@ -598,7 +1042,9 @@ export function renderAvatar(parts, { size = 96, bg = null, title = '', expressi
     clothLine: outlineOf(cloth),
     detail: detailOn(cloth),
     accent: ['red', 'pink', 'orange'].includes(a.outfitColor) ? '#34467a' : '#d8434a',
+    torso: torsoPath(a.outfit, a.body),
   };
+  const hatSvg = hat && a.accessory !== 'cap' && OUTFIT_HATS[a.outfit] ? OUTFIT_HATS[a.outfit](c) : '';
   const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
   const viewBox = AVATAR_CROPS[crop] ?? (typeof crop === 'string' && /^[\d.\s-]+$/.test(crop) ? crop : AVATAR_CROPS.full);
   const f = faceFeatures(a, c, AVATAR_EXPRESSIONS.includes(expression) ? expression : 'neutral');
@@ -608,10 +1054,12 @@ export function renderAvatar(parts, { size = 96, bg = null, title = '', expressi
     '<defs>',
     `<radialGradient id="${id}-s" cx=".42" cy=".36" r=".75"><stop offset="0" stop-color="${shade(skin, 0.16)}"/><stop offset=".65" stop-color="${skin}"/><stop offset="1" stop-color="${shade(skin, -0.08)}"/></radialGradient>`,
     `<linearGradient id="${id}-h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(hair, 0.22)}"/><stop offset=".55" stop-color="${hair}"/><stop offset="1" stop-color="${shade(hair, -0.16)}"/></linearGradient>`,
-    `<linearGradient id="${id}-c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(cloth, 0.12)}"/><stop offset="1" stop-color="${shade(cloth, -0.1)}"/></linearGradient>`,
+    `<linearGradient id="${id}-c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(cloth, 0.12)}"/><stop offset=".5" stop-color="${cloth}"/><stop offset="1" stop-color="${shade(cloth, -0.1)}"/></linearGradient>`,
+    `<clipPath id="${id}-t"><path d="${c.torso}"/></clipPath>`,
     bg ? `<clipPath id="${id}-k"><circle cx="50" cy="50" r="50"/></clipPath>` : '',
     '</defs>',
     bg ? `<g clip-path="url(#${id}-k)"><circle cx="50" cy="50" r="50" fill="${esc(bg)}"/>` : '',
+    OUTFIT_BACKS[a.outfit] && hatSvg ? OUTFIT_BACKS[a.outfit](c) : '',
     hairBack(a.hair, c),
     `<g class="av-torso"${build}>`,
     `<path d="M45 57 L45 69 Q50 71.2 55 69 L55 57 Z" fill="${shade(skin, -0.12)}"/>`,
@@ -628,6 +1076,7 @@ export function renderAvatar(parts, { size = 96, bg = null, title = '', expressi
     f.eyes,
     f.mouth,
     hairFront(a.hair, c),
+    hatSvg,
     accessory(a.accessory, c),
     f.fx,
     bg ? '</g>' : '',

@@ -5,7 +5,7 @@
 //   fn(avatar, { expression, size, defs }) → string (markup) | HTMLElement | Promise<string|HTMLElement|null>
 //   A Promise keeps the current preview until it resolves; stale results are dropped; null / a throw / a rejection
 //   falls back to the SVG portrait. `setPreviewRenderer(null)` restores the default. Open customizers re-render.
-import { getAvatarDefs, normalizeAvatar, randomAvatar, renderAvatar } from './avatar2d.js';
+import { getAvatarDefs, normalizeAvatar, outfitTintable, randomAvatar, renderAvatar } from './avatar2d.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -23,6 +23,9 @@ export const THUMB_CROPS = {
   body: 'full', build: 'full', face: 'face', eyes: 'eyes', mouth: 'eyes', cheek: 'eyes',
   hair: 'head', outfit: 'torso', accessory: 'head',
 };
+
+/** Categories with more options than this get a 2-row horizontally scrolling grid on mobile. */
+export const MANY_OPTIONS = 10;
 
 /** Expression chips of the 2D preview. */
 export const PREVIEW_EXPRESSIONS = [
@@ -42,8 +45,12 @@ export function buildTabs(defs) {
   const seen = new Set();
   const tabs = [];
   for (const t of defs.tabs ?? []) {
-    const parts = (t.parts ?? []).filter((p) => known.has(p) && !seen.has(p));
-    for (const p of parts) seen.add(p);
+    const parts = [];
+    for (const p of t.parts ?? []) {
+      if (!known.has(p) || seen.has(p)) continue;
+      seen.add(p);
+      parts.push(p);
+    }
     if (parts.length) tabs.push({ id: String(t.id), name: String(t.name ?? t.id), parts });
   }
   const rest = defs.order.filter((p) => !seen.has(p));
@@ -59,7 +66,9 @@ export function randomizeParts(avatar, parts, defs, rnd = Math.random) {
       const opts = defs.parts[key];
       if (opts?.length) next[key] = opts[Math.floor(rnd() * opts.length)].id;
     }
-    if (parts.some((k) => next[k] !== avatar[k])) return next;
+    // a new outfit color under a fixed-color outfit is invisible → does not count as a change
+    const visible = (k) => next[k] !== avatar[k] && !(k === 'outfitColor' && !outfitTintable(next.outfit, defs));
+    if (parts.some(visible)) return next;
   }
   return { ...avatar };
 }
@@ -102,15 +111,52 @@ function want3dPreview() {
 const THUMB_CACHE_MAX = 400;
 const thumbCache = new Map(); // `${part}|${avatar json}` → svg string
 
+/** Avatar used for a thumbnail of `part = id`: glasses/caps and outfit headwear would hide eyes/hair. */
+export function thumbVariant(avatar, part, id) {
+  const v = { ...avatar, [part]: id };
+  if (part !== 'accessory') v.accessory = 'none';
+  return v;
+}
+
 function thumbSvg(part, avatar) {
   const key = `${part}|${JSON.stringify(avatar)}`;
   let svg = thumbCache.get(key);
   if (!svg) {
-    svg = renderAvatar(avatar, { size: 56, crop: THUMB_CROPS[part] ?? 'full' });
+    svg = renderAvatar(avatar, { size: 56, crop: THUMB_CROPS[part] ?? 'full', hat: ['outfit', 'body', 'build'].includes(part) });
     if (thumbCache.size >= THUMB_CACHE_MAX) thumbCache.delete(thumbCache.keys().next().value);
     thumbCache.set(key, svg);
   }
   return svg;
+}
+
+/**
+ * Arrow-key target in a grid of buttons laid out in any flow (wrapping rows, or 2-row column flow on mobile):
+ * the nearest item in that direction on the same row/column, else the previous/next item (wrapping).
+ */
+function nextInGrid(items, i, key) {
+  const rect = (el) => el.getBoundingClientRect();
+  const r0 = rect(items[i]);
+  const cx = r0.left + r0.width / 2;
+  const cy = r0.top + r0.height / 2;
+  const horizontal = key === 'ArrowLeft' || key === 'ArrowRight';
+  const sign = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : -1;
+  let best = -1;
+  let bestD = Infinity;
+  items.forEach((el, k) => {
+    if (k === i) return;
+    const r = rect(el);
+    const dx = r.left + r.width / 2 - cx;
+    const dy = r.top + r.height / 2 - cy;
+    const along = horizontal ? dx : dy;
+    const across = horizontal ? dy : dx;
+    if (along * sign <= 1 || Math.abs(across) > (horizontal ? r0.height : r0.width) / 2) return;
+    if (Math.abs(along) < bestD) {
+      bestD = Math.abs(along);
+      best = k;
+    }
+  });
+  if (best >= 0) return best;
+  return (i + sign + items.length) % items.length;
 }
 
 /**
@@ -182,8 +228,8 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
                     .map(
                       (part) => `
                     <div class="cz-cat" data-part="${esc(part)}">
-                      <div class="cz-cat-head"><span class="cz-cat-label" id="cz-lbl-${esc(part)}">${esc(labels[part] ?? part)}</span><span class="cz-cat-value"></span></div>
-                      <div class="cz-grid${COLOR_PARTS.includes(part) ? ' colors' : ''}" role="radiogroup" aria-labelledby="cz-lbl-${esc(part)}">
+                      <div class="cz-cat-head"><span class="cz-cat-label" id="cz-lbl-${esc(part)}">${esc(labels[part] ?? part)}</span><span class="cz-cat-value"></span>${defs.parts[part].length > MANY_OPTIONS ? `<span class="cz-cat-count">${defs.parts[part].length}가지</span>` : ''}</div>
+                      <div class="cz-grid${COLOR_PARTS.includes(part) ? ' colors' : ''}${defs.parts[part].length > MANY_OPTIONS ? ' many' : ''}" role="radiogroup" aria-labelledby="cz-lbl-${esc(part)}">
                         ${defs.parts[part].map((o) => optionButton(part, o)).join('')}
                       </div>
                     </div>`,
@@ -261,9 +307,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
       const slot = btn.querySelector('.cz-thumb');
       if (!slot) continue;
       const part = btn.dataset.part;
-      const variant = { ...avatar, [part]: btn.dataset.id };
-      if (part !== 'accessory') variant.accessory = 'none'; // glasses/caps would hide eyes/hair
-      const svg = thumbSvg(part, variant);
+      const svg = thumbSvg(part, thumbVariant(avatar, part, btn.dataset.id));
       if (slot.dataset.svg !== svg) {
         slot.innerHTML = svg;
         slot.dataset.svg = svg;
@@ -272,10 +316,14 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   }
 
   function syncSelection() {
+    const tintable = outfitTintable(avatar.outfit, defs);
     for (const cat of form.querySelectorAll('.cz-cat')) {
       const part = cat.dataset.part;
       const opt = defs.parts[part].find((o) => o.id === avatar[part]);
-      cat.querySelector('.cz-cat-value').textContent = opt?.name ?? opt?.id ?? '';
+      const locked = part === 'outfitColor' && !tintable;
+      cat.classList.toggle('locked', locked);
+      cat.querySelector('.cz-grid').setAttribute('aria-disabled', String(locked));
+      cat.querySelector('.cz-cat-value').textContent = locked ? '이 의상은 색을 바꿀 수 없어요' : (opt?.name ?? opt?.id ?? '');
       const focused = cat.contains(document.activeElement) ? document.activeElement : null;
       for (const btn of cat.querySelectorAll('.cz-opt')) {
         const on = btn.dataset.id === avatar[part];
@@ -348,6 +396,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   form.addEventListener('click', (ev) => {
     const opt = ev.target.closest('.cz-opt');
     if (opt) {
+      if (opt.closest('.cz-cat.locked')) return;
       setPart(opt.dataset.part, opt.dataset.id);
       for (const b of opt.parentElement.children) b.tabIndex = b === opt ? 0 : -1;
       return;
@@ -388,16 +437,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
       ev.preventDefault();
       const items = [...opt.parentElement.querySelectorAll('.cz-opt')];
       const i = items.indexOf(opt);
-      // columns of the (wrapping) grid: count items on the first row
-      const top0 = items[0].offsetTop;
-      const cols = Math.max(1, items.filter((b) => b.offsetTop === top0).length);
-      let j = i;
-      if (ev.key === 'ArrowRight') j = (i + 1) % items.length;
-      else if (ev.key === 'ArrowLeft') j = (i - 1 + items.length) % items.length;
-      else if (ev.key === 'ArrowDown') j = cols < items.length ? Math.min(items.length - 1, i + cols) : (i + 1) % items.length;
-      else if (ev.key === 'ArrowUp') j = cols < items.length ? Math.max(0, i - cols) : (i - 1 + items.length) % items.length;
-      else if (ev.key === 'Home') j = 0;
-      else if (ev.key === 'End') j = items.length - 1;
+      const j = ev.key === 'Home' ? 0 : ev.key === 'End' ? items.length - 1 : nextInGrid(items, i, ev.key);
       for (const b of items) b.tabIndex = b === items[j] ? 0 : -1;
       items[j].focus();
       items[j].scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
