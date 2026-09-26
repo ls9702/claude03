@@ -88,13 +88,13 @@ export const setSavedName = (n) => lsSet(NAME_KEY, n);
 
 /**
  * Open the room SSE stream.
- * handlers: { state, reaction, log, deleted, open, error }
+ * handlers: { state, events, reaction, log, deleted, open, error }
  * @returns {() => void} close function
  */
 export function connectEvents(roomId, handlers) {
   const url = `/api/rooms/${encodeURIComponent(roomId)}/events?token=${encodeURIComponent(token)}`;
   const es = new EventSource(url);
-  for (const name of ['state', 'reaction', 'log', 'deleted']) {
+  for (const name of ['state', 'events', 'reaction', 'log', 'deleted']) {
     es.addEventListener(name, (ev) => {
       let data = null;
       try {

@@ -322,7 +322,9 @@ function doChoose(tx, action) {
   if (Object.hasOwn(p.answers, c.id)) fail(409, '이미 선택했어요.');
   if (!p.options.some((o) => o.id === action.optionId)) fail(400, '없는 선택지예요.');
   p.answers[c.id] = action.optionId;
-  emit(tx, 'chose', { charId: c.id, promptId: p.promptId, optionId: action.optionId });
+  // Simultaneous prompts stay secret until resolved (events are broadcast to everyone).
+  const secret = !!p.simultaneous || p.forCharacterIds.length > 1;
+  emit(tx, 'chose', { charId: c.id, promptId: p.promptId, ...(secret ? {} : { optionId: action.optionId }) });
   continueTurn(tx);
 }
 
@@ -335,7 +337,7 @@ function doTimeout(tx, action) {
   const missing = p.forCharacterIds.filter((id) => !Object.hasOwn(p.answers, id));
   for (const id of missing) {
     p.answers[id] = p.defaultOptionId;
-    emit(tx, 'chose', { charId: id, promptId: p.promptId, optionId: p.defaultOptionId, timedOut: true });
+    emit(tx, 'chose', { charId: id, promptId: p.promptId, optionId: p.defaultOptionId, timedOut: true }); // default = public
   }
   if (missing.length) addLog(tx, `⏰ 시간 초과! ${missing.length}명은 기본 선택으로 처리했어요.`, { tone: 'info' });
   continueTurn(tx);

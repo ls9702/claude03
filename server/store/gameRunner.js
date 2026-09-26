@@ -55,11 +55,13 @@ export class GameRunner {
     if (cur && p && cur.promptId === p.promptId && cur.deadlineAt === p.deadlineAt) return;
     this.#clear(room.id);
     if (!p?.deadlineAt) return;
-    const delay = Math.max(0, p.deadlineAt - this.clock());
+    const delay = Math.max(0, p.deadlineAt - this.clock()) + 2;
     const timer = setTimeout(() => {
       this.timers.delete(room.id);
       const live = this.store.getRoom(room.id);
-      if (live?.turn?.pending?.promptId !== p.promptId) return;
+      if (live?.status !== 'playing' || live.turn?.pending?.promptId !== p.promptId) return;
+      // Node timers may fire a millisecond before the wall clock reaches deadlineAt → re-arm.
+      if (this.clock() < p.deadlineAt) return this.schedule(live);
       const r = this.dispatch(room.id, { type: 'timeout', promptId: p.promptId, actor: { system: true } });
       if (!r.ok) this.log(`타임아웃 처리 실패 (${room.id}): ${r.error}`);
     }, delay);

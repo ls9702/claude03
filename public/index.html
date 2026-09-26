@@ -7,6 +7,7 @@
   <title>인생게임</title>
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/lobby.css">
+  <link rel="stylesheet" href="/css/game.css">
 </head>
 <body>
   <header class="topbar">
@@ -81,25 +82,17 @@
       </div>
     </section>
 
-    <!-- 3. 게임 (2단계에서 엔진 연결) -->
+    <!-- 3. 게임 (2D 간이 보드 — public/js/game2d.js) -->
     <section id="screen-game" class="screen" hidden>
-      <div class="card placeholder">
-        <h2>게임 시작됨 — 2단계에서 엔진 연결</h2>
-        <p class="muted">턴 순서</p>
-        <ol id="turn-order" class="turn-order"></ol>
-        <details>
-          <summary>방 상태 JSON</summary>
-          <pre id="game-json" class="json"></pre>
-        </details>
-      </div>
+      <div id="game-root" class="game"></div>
     </section>
 
-    <!-- 4. 결과 (자리표시자) -->
+    <!-- 4. 결과 -->
     <section id="screen-result" class="screen" hidden>
-      <div class="card placeholder">
-        <h2>게임 종료</h2>
-        <p class="muted">결과 발표는 이후 단계에서 연결됩니다.</p>
-        <div id="result-chars" class="char-grid"></div>
+      <div class="card result-card">
+        <h2>🏆 결과 발표</h2>
+        <p class="muted small">총자산(현금 − 빚) 순위예요. 보물 감정·특별상은 이후 단계에서 추가돼요.</p>
+        <div id="result-root"></div>
         <button id="result-leave" class="btn primary" type="button">다른 방 입장하기</button>
       </div>
     </section>

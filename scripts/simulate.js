@@ -81,6 +81,7 @@ const stats = {
   timeouts: 0,
   bonusSpins: 0,
   winnerWasFirstFinisher: 0,
+  placeByOrder: {}, // turn-order position → [sum of goal places, count]
 };
 
 function playGame(g) {
@@ -147,7 +148,13 @@ function playGame(g) {
     stats.finalMoney.push(r.total);
     if (r.debt > 0) stats.debtors++;
   }
-  for (const c of room.characters) stats.routeCompleted += c.routeHistory.filter((h) => h.completed).length;
+  for (const c of room.characters) {
+    stats.routeCompleted += c.routeHistory.filter((h) => h.completed).length;
+    const idx = room.turn.order.indexOf(c.id);
+    const slot = (stats.placeByOrder[idx] ??= [0, 0]);
+    slot[0] += c.place;
+    slot[1]++;
+  }
   if (ranking[0].place === 1) stats.winnerWasFirstFinisher++;
   if (VERBOSE) console.log(`#${g} ${mode} chars=${room.characters.length} turns=${room.turn.turnNo} winner=${ranking[0].name} ${ranking[0].total}`);
 }
@@ -181,6 +188,11 @@ console.log(
   `루트 선택: 연애 ${pct(stats.routes.love, routeTotal)} / 커리어 ${pct(stats.routes.career, routeTotal)} / 금전 ${pct(stats.routes.money, routeTotal)} (총 ${routeTotal}, 완주 ${stats.routeCompleted})`,
 );
 console.log(`1등 골인자의 턴 순서 위치: ${JSON.stringify(stats.firstFinisherOrderIndex)} · 1등 골인자가 최종 1위 ${pct(stats.winnerWasFirstFinisher, stats.games)}`);
+console.log(
+  `골인 순서(턴 순서 위치별 평균 골인 등수): ${Object.entries(stats.placeByOrder)
+    .map(([i, [sum, n]]) => `${Number(i) + 1}번째 ${(sum / n).toFixed(2)}`)
+    .join(' · ')}`,
+);
 console.log(`훈수 베팅 ${stats.bets.placed}건, 적중 ${pct(stats.bets.won, stats.bets.placed)} · 기초연금 ${stats.pensions}회 · 보너스 룰렛 ${stats.bonusSpins}회`);
 console.log(`프롬프트 ${JSON.stringify(stats.prompts)} · 타임아웃 ${stats.timeouts}회`);
 if (errors) process.exit(1);

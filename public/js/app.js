@@ -1,4 +1,4 @@
-// Game page controller: join → lobby → game(placeholder) → result(placeholder).
+// Game page controller: join → lobby → game (2D board, game2d.js) → result.
 import {
   api,
   connectEvents,
@@ -9,6 +9,7 @@ import {
   setSavedName,
   setSavedRoomId,
 } from './api.js';
+import { createGameUI } from './game2d.js';
 import { renderAvatar, setAvatarDefs } from './ui/avatar2d.js';
 import { openCustomizer } from './ui/customize.js';
 
@@ -24,7 +25,16 @@ const state = {
   screen: null,
   sheetAutoOpened: false,
   seenChars: new Set(), // ids already rendered → no pop-in replay on re-render
+  game: null, // 2D board UI (createGameUI)
 };
+
+/** Accept a room view unless it is older than the one we already show (SSE vs. POST response races). */
+function acceptRoom(r) {
+  const cur = state.room;
+  if (cur && r && cur.id === r.id && (r.version ?? 0) < (cur.version ?? 0)) return false;
+  state.room = r;
+  return true;
+}
 
 // ---------- toast / screens ----------
 let toastTimer;
@@ -73,9 +83,9 @@ function enterRoom(room) {
   state.closeEvents = connectEvents(room.id, {
     open: () => setConn('ok'),
     state: (r) => {
-      state.room = r;
-      render();
+      if (acceptRoom(r)) render();
     },
+    events: (payload) => state.game?.onEvents(payload),
     log: () => {},
     reaction: (r) => floatReaction(r),
     deleted: () => leaveRoom('방이 삭제되었습니다.'),
@@ -255,22 +265,19 @@ async function onMyCharsClick(ev) {
   }
 }
 
-// ---------- game / result placeholders ----------
+// ---------- game / result ----------
+async function act(body) {
+  const room = state.room;
+  const res = await api('POST', `/api/rooms/${room.id}/actions`, body);
+  if (acceptRoom(res.room)) render();
+}
+
 function renderGame(room) {
-  const byId = new Map(room.characters.map((c) => [c.id, c]));
-  $('#turn-order').innerHTML = (room.turn?.order ?? [])
-    .map((id, i) => {
-      const c = byId.get(id);
-      if (!c) return '';
-      const cur = i === room.turn.currentIndex ? ' current' : '';
-      return `<li class="turn-item${cur}">${renderAvatar(c.avatar, { size: 36 })}<span>${esc(c.name)}</span><small>${esc(c.ownerName)}</small></li>`;
-    })
-    .join('');
-  $('#game-json').textContent = JSON.stringify(room, null, 2);
+  state.game.render(room);
 }
 
 function renderResult(room) {
-  $('#result-chars').innerHTML = room.characters.map((c) => charCard(c)).join('');
+  state.game.renderResult(room, $('#result-root'));
 }
 
 // ---------- reactions ----------
@@ -349,6 +356,7 @@ async function boot() {
     state.meta = await getMeta();
     setAvatarDefs(state.meta.avatars);
     buildReactionBar();
+    state.game = createGameUI($('#game-root'), { getMeta: () => state.meta, act, toast });
     await ensureSession();
   } catch (err) {
     showScreen('join');

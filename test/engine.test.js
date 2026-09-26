@@ -196,7 +196,11 @@ test('simultaneous prompt (생일 파티) collects answers; timeout fills defaul
   room = r.room;
 
   const choose = (rm, id, opt, sess) => act(rm, { type: 'choose', characterId: id, promptId: p.promptId, optionId: opt, actor: { sessionId: sess } }, [], { data });
-  room = choose(room, b1, 'gift', 'A').room; // b1 = A2 (owned by A)
+  const firstAnswer = choose(room, b1, 'gift', 'A');
+  const choseEv = firstAnswer.events.find((e) => e.type === 'chose');
+  assert.equal(choseEv.charId, b1);
+  assert.equal(Object.hasOwn(choseEv, 'optionId'), false, 'simultaneous answers are not broadcast');
+  room = firstAnswer.room; // b1 = A2 (owned by A)
   assert.throws(() => choose(room, b1, 'skip', 'A'), { status: 409 }); // already answered
   assert.throws(() => choose(room, a1, 'gift', 'A'), { status: 403 }); // birthday kid can't answer
   assert.equal(room.turn.phase, 'awaitDecision');

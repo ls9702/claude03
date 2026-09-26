@@ -114,6 +114,7 @@ export function openPrompt(tx, kind, c, extra = {}) {
     forCharacterIds: spec.forCharacterIds,
     options: spec.options,
     defaultOptionId: spec.defaultOptionId,
+    simultaneous: multi,
     answers: {},
     deadlineAt: timeout ? tx.now + timeout : null,
     context: spec.context ?? {},
