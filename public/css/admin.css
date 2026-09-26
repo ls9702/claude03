@@ -1,0 +1,34 @@
+.login-card { max-width: 380px; margin: 10vh auto 0; }
+.admin-grid { display: grid; gap: 16px; }
+@media (min-width: 900px) { .admin-grid { grid-template-columns: 380px minmax(0, 1fr); align-items: start; } }
+.era-set { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px 12px; margin: 0 0 12px; }
+.era-set legend { font-weight: 700; font-size: 0.9rem; padding: 0 4px; }
+.era-rows { display: grid; gap: 6px; margin-bottom: 8px; }
+.era-row { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 8px; }
+.era-row.off { opacity: 0.4; }
+.era-row input { min-height: 38px; padding: 6px 10px; }
+.era-row .def { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.check { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-weight: 600; font-size: 0.9rem; }
+.check input { min-height: auto; width: 18px; height: 18px; }
+.list-head { display: flex; justify-content: space-between; align-items: center; }
+.table-wrap { overflow-x: auto; }
+table.rooms { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.rooms th, .rooms td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.rooms tbody tr { cursor: pointer; }
+.rooms tbody tr:hover, .rooms tbody tr.sel { background: #fff6ea; }
+.code { font-weight: 800; letter-spacing: 0.12em; }
+.status { padding: 2px 8px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+.status.lobby { background: #e4efff; color: #2e62b0; }
+.status.playing { background: #d8f3e3; color: #1f7a45; }
+.status.finished { background: #eee8e1; color: var(--muted); }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.detail-chars { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.detail-char { text-align: center; font-size: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 4px; }
+.detail-char svg { background: #fff0dc; border-radius: 50%; }
+.detail-players { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 4px; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.dot.on { background: var(--ok); } .dot.off { background: #c9c1b8; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 0.88rem; margin-bottom: 12px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; }

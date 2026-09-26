@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>인생게임 관리자</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1 class="logo">🛠 인생게임 관리자</h1>
+    <div class="topbar-right">
+      <a class="btn small ghost" href="/" target="_blank" rel="noopener">게임 페이지</a>
+      <button id="logout-btn" class="btn small ghost" hidden>로그아웃</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="login-view" hidden>
+      <form id="login-form" class="card login-card">
+        <h2>관리자 로그인</h2>
+        <label class="field"><span>비밀번호</span><input type="password" name="password" autocomplete="current-password" required></label>
+        <p class="form-error" role="alert"></p>
+        <button class="btn primary block" type="submit">로그인</button>
+      </form>
+    </section>
+
+    <section id="admin-view" class="admin-grid" hidden>
+      <form id="create-form" class="card" novalidate>
+        <h2>방 만들기</h2>
+        <label class="field"><span>모드</span><select name="mode" id="mode-select"></select></label>
+        <fieldset class="era-set">
+          <legend>시대별 턴 수 <small class="muted">(1~40, 기본값 표시)</small></legend>
+          <div id="era-rows" class="era-rows"></div>
+          <button type="button" id="era-reset" class="btn tiny ghost">기본값으로</button>
+        </fieldset>
+        <div class="row2">
+          <label class="field"><span>최대 캐릭터 (2~8)</span><input type="number" name="maxCharacters" min="2" max="8" value="8"></label>
+          <label class="field"><span>초기 자금 (만원)</span><input type="number" name="startingMoney" min="0" max="100000" step="100" value="1000"></label>
+        </div>
+        <label class="field"><span>턴 순서</span>
+          <select name="turnOrder">
+            <option value="family">가문 순 (같은 사람 캐릭터끼리 연속)</option>
+            <option value="index">캐릭터 번호 순</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" name="allowCpu"> CPU 캐릭터 허용 <small class="muted">(이후 단계에서 동작)</small></label>
+        <p class="form-error" role="alert"></p>
+        <button class="btn primary block" type="submit">방 만들기</button>
+      </form>
+
+      <div>
+        <div class="card">
+          <div class="list-head">
+            <h2>방 목록</h2>
+            <button id="refresh-btn" class="btn tiny ghost" type="button">새로고침</button>
+          </div>
+          <div class="table-wrap">
+            <table class="rooms">
+              <thead><tr><th>코드</th><th>모드</th><th>상태</th><th>접속/참가</th><th>캐릭터</th><th>생성</th><th></th></tr></thead>
+              <tbody id="room-rows"></tbody>
+            </table>
+          </div>
+          <p id="no-rooms" class="muted" hidden>아직 만든 방이 없습니다.</p>
+        </div>
+        <div id="detail" class="card" hidden></div>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>
