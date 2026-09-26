@@ -126,3 +126,15 @@ input:focus, select:focus, .btn:focus-visible { outline: 3px solid rgba(255, 122
 /* Stage 5.5-C portraits (renderPortrait / portraitHtml): SVG first, then the composed canvas of the same size */
 .av-pt { display: inline-block; line-height: 0; vertical-align: middle; }
 canvas.av-pt-img { display: block; border-radius: 50%; background: #fff0dc; }
+/* narrow phones: the top bar keeps one line (room badge, 👀 관전, connection dot, 나가기) */
+.logo, .topbar-right > * { white-space: nowrap; }
+@media (max-width: 430px) {
+  .topbar { padding: 0 10px; gap: 6px; }
+  .logo { font-size: 1rem; }
+  .topbar-right { gap: 4px; min-width: 0; }
+  .badge, .spec-badge { padding: 3px 8px; font-size: 0.75rem; }
+  .conn { display: inline-block; width: 1.1em; overflow: hidden; } /* just the ● dot */
+  #leave-btn { padding: 4px 10px; min-height: 32px; }
+}
+.topbar .logo { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.topbar-right { flex: none; }

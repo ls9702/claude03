@@ -307,6 +307,10 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         : ''
     }`;
     hydratePortraits($.tabs);
+    // one scrollable row: keep the current character's tab in view
+    const row = $.tabs.querySelector('.ci-tabs-l');
+    const on = row?.querySelector('.ci-tab.on');
+    if (row && on && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, on.offsetLeft - row.offsetLeft - (row.clientWidth - on.offsetWidth) / 2);
   }
 
   function typeText(lines, done) {

@@ -212,7 +212,7 @@ async function refresh() {
         <td class="code">${esc(r.code)}</td>
         <td>${esc(modes[r.mode]?.name ?? r.mode)}</td>
         <td><span class="status ${esc(r.status)}">${STATUS[r.status] ?? esc(r.status)}</span></td>
-        <td>${r.connected}/${r.players}</td>
+        <td>${r.connected}/${r.players + (r.spectators ?? 0)}${r.spectators ? ` <small class="muted">👀${r.spectators}</small>` : ''}</td>
         <td>${r.characters}/${r.maxCharacters}</td>
         <td>${new Date(r.createdAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
         <td><button class="btn tiny" data-open="${esc(r.id)}">상세</button></td>

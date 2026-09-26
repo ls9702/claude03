@@ -335,3 +335,7 @@ body.cutin-open .ev-banner { display: none; }
 .ranking, .g-chars { grid-template-columns: minmax(0, 1fr); }
 .rank-row { min-width: 0; }
 .result-card { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 899px) {
+  body.spin-docked[data-screen='game'] .mc-corner { bottom: calc(176px + env(safe-area-inset-bottom)); }
+}
+body:not([data-screen='game']) .ev-banner { display: none; }

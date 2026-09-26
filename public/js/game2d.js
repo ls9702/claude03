@@ -82,6 +82,7 @@ function webglAvailable() {
 
 const EMOTION = { joy: '😆', cry: '😭', angry: '😡', sweat: '😅', love: '😍', shock: '😱' };
 const MAX_TILE_PAWNS = 4;
+const FINISH_BOARD_MS = 4000; // 3D at game over: the board may animate this long before the result screen
 const TURN_GRACE_MS = 700; // new turn → spin/bet controls wait for the previous turn's events (cut-ins) // 2D tile: more pawns overlap + "+N"
 const MEDAL = ['🥇', '🥈', '🥉'];
 
@@ -445,6 +446,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     el.spin.hidden = !canSpin;
     el.spin.disabled = !canSpin; // in-flight requests are blocked via the .busy class
     el.dock.classList.toggle('can-spin', canSpin);
+    document.body.classList.toggle('spin-docked', canSpin); // the MC corner moves above the sticky dock
     if (!hold) el.spin.textContent = cur ? `🎡 ${cur.name} 룰렛 돌리기` : '🎡 룰렛 돌리기';
     const last = turn.lastSpin;
     if (!el.dial.classList.contains('rolling') && !hold) el.dial.textContent = last ? String(last.value) : '?';
@@ -1108,9 +1110,21 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     mcCorner.clear();
     el.spin.hidden = true;
     el.spin.disabled = true;
+    el.dock.classList.remove('can-spin');
+    document.body.classList.remove('spin-docked');
     el.bet.hidden = true;
     el.modal.hidden = true;
     ui.modalKey = null;
+    // 3D: the last turn's hops may still play, but the result screen follows within ~FINISH_BOARD_MS
+    if (ui.b3) {
+      const anim = ui.b3.animator;
+      anim.resume();
+      clearTimeout(ui.finishTimer);
+      ui.finishTimer = setTimeout(() => {
+        anim.clear();
+        anim.resume();
+      }, FINISH_BOARD_MS);
+    }
   }
 
   /** Per-event feedback (toasts / side-panel floats); in 3D it is called by the animator in sync. */
@@ -1123,6 +1137,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       switch (e.type) {
         case 'spun':
           if (!in3d) showRoulette(e.value, c?.name ?? '');
+          if (e.auto) toast(`⏰ 시간 초과! ${c?.name ?? ''}의 룰렛을 자동으로 돌렸어요.`);
           break;
         case 'moneyChanged':
           floatOn(e.charId, `${EMOTION[e.emotion] ?? ''}${e.delta > 0 ? '+' : ''}${won(e.delta)}`, e.delta > 0 ? 'plus' : 'minus');
@@ -1279,6 +1294,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       cutin.destroy();
       mcCorner.destroy();
       clearTimeout(ui.graceTimer);
+      clearTimeout(ui.finishTimer);
+      clearTimeout(ui.turnTimer);
+      banner.destroy();
       disposeBoard3D();
     },
   };

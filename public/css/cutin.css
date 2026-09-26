@@ -297,11 +297,29 @@ body.cutin-open { overflow: hidden; }
 /* reactions: one row of chips (newest right), never a pile over the dialogue box */
 .ci-reacts { flex-wrap: nowrap; overflow: hidden; max-height: 30px; }
 .ci-react { flex: none; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* character tabs: one scrollable row (8 characters used to wrap into 2–3 rows under the reaction bar) */
+.ci-tabs { flex-wrap: nowrap; align-items: center; }
+.ci-tabs-l { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; padding: 2px 2px 6px; }
+.ci-tabs-l::-webkit-scrollbar { display: none; }
+.ci-tabs-l .ci-tab { flex: none; }
+.ci-tabs-r { flex: none; }
 @media (max-width: 700px), (max-aspect-ratio: 4/5) {
-  /* character tabs: one scrollable row instead of 3 wrapped rows */
   .ci-tabs { flex-wrap: nowrap; align-items: center; }
   .ci-tabs-l { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; padding: 2px 0 6px; }
   .ci-tabs-l::-webkit-scrollbar { display: none; }
   .ci-tabs-l .ci-tab { flex: none; }
   .ci-tabs-r { flex: none; }
+}
+/* reaction chips float over the bottom edge of the window: no layout shift under a finger aiming at an option */
+.ci-reacts { height: 0; min-height: 0; margin: -7px 10px 7px; overflow: visible; align-items: flex-end; position: relative; z-index: 5; pointer-events: none; }
+/* wide screens: while a cut-in is open the reaction bar stands vertically at the right edge (free space beside the
+   16:9 window), so it never covers the dialogue box / tab row at 1280×720 */
+@media (min-width: 1000px) and (min-aspect-ratio: 5/4) {
+  body.cutin-open .reaction-bar {
+    left: auto; right: 12px; bottom: 50%; transform: translateY(50%); flex-direction: column; border-radius: 24px;
+    max-height: calc(100vh - 80px); overflow-y: auto; overflow-x: hidden;
+  }
+  .cutin { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 330px) * 16 / 9)); }
+  .cutin.prompt .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 390px) * 16 / 9)); }
 }

@@ -450,3 +450,52 @@
   rate limits, host tools + spectators over HTTP, SSE cap, session TTL, ordered writes, runner auto spin with mocked
   timers), `test/fixes-assets.test.js` (candidate traversal, index cache, Gemini body timeout, AI art request limits).
 - sharp ≥ 0.35.4 (npm audit clean).
+
+## Verification fixes — client (post-5.6)
+- Pure policy `public/js/ui/cutinPolicy.js` (node-tested, `test/client-cutinPolicy.test.js`): `classifyGroup(g, {mine, mode,
+  promptForMe, gameOver, queued, globalOff})` → `full|banner|skip` (my events full; 「관전 컷인」 `full|compact|off`, default
+  `compact` = other players' minor events as banners, big ones full: studio / finished / eraChanged / heart·job tiles /
+  marriage·job mcKey·lineTag; a pending prompt of mine turns every event cut-in into a banner; others' full cut-ins beyond
+  `SPECTATOR_BACKLOG` = 2 queued become banners), `mergeGroups` (one batch's consecutive groups of the same OTHER character
+  → one cut-in, biggest anchor wins, `anchors[]`; 3D attaches it to the last anchor), `myPendingChars`, `ROUTE_INFO` /
+  `routeOptionInfo` (server `option.desc` wins), `betPicks(balance.bets)` (odd/even + server `ranges`, `payouts[pick]`).
+  Constants: `PREEMPT_KEEP_MS` 1500, `PROMPT_BOARD_WAIT_MS` 1200, `BANNER_MS` 2200, `CAST_PRELOAD_MS` 600.
+- game2d: every group goes through `presentGroup` (3D animator handlers classify at play time; `full` pauses the animator,
+  banners never do). My prompt (single or group): `cutin.preempt()` (drops queued event cut-ins, current one closes ≤1.5 s
+  after it appeared) + `showPrompt(p, {urgent})` (front of the queue); 3D waits ≤1.2 s for the board, then opens over it.
+  Others' prompts: 「전체」 = old waiting cut-in, else one banner (the spin dock shows who's choosing + countdown). After I
+  answered a group prompt in compact/off the cut-in closes. `finish()` on gameOver/finished state: hides cut-ins, banners,
+  MC corner, locks controls → result screen right away (2D ≈ 0.2–0.7 s after gameOver). Toolbar select
+  `data-el="cutinmode"` (localStorage `jinsei.spectatorCutins`, `?spectatorCutins=`; legacy `jinsei.cutins=off` → off;
+  `?cutins=off` still = board only incl. prompts → modal).
+- `public/js/ui/banner.js` `createBanner(root, {getMeta})` → `show(spec, {ms})` (spec = `cutin.specFromGroup`), `clear`,
+  `busy`; fixed strip under the top bar (z 21, no pointer events, hidden while a cut-in is open), backlog 2.
+- cutin2d: `preempt({keepMs})`, `clearQueue()`, `showPrompt(..., {urgent})`, `createCutin(..., {now})` (server clock for
+  countdowns); the cast is preloaded before a window opens (`preloadAvatarLayers`, cap 600 ms / 300 ms for prompts);
+  `renderAvatarLayers` places a cached composition synchronously, else the SVG until it's composed (no empty slot).
+  Prompt options keep their buttons while only `answered` changes (no swallowed clicks); route options show a description
+  line; prompt tag = its title (`🔀 인생 갈림길`, `📝 수능 날`), route tags drop the repeated tone label.
+- Spin dock (`data-el="dock"`, `.spin-dock.can-spin` = sticky above the reaction bar); bets are their own card
+  (`data-el="bet"`). Spin/bet are held (hidden) while the 3D HUD is held, while event cut-ins play and for
+  `TURN_GRACE_MS` 700 after a turn change (no "지영의 차례" + "민수 룰렛" mismatch, no clicks under an arriving cut-in).
+  Countdowns: `turn.spinDeadlineAt` (⏱) and `pending.deadlineAt` via `format.secondsLeft` + `api.clockOffset()` (HTTP
+  `Date` header bounds, `format.clockBounds`). `run()`: a 409 after the state moved on → silent resync (app `resync`),
+  no toast. `spun.auto` → toast.
+- Spectators (`me.role === 'spectator'`): join button 「👀 관전으로 입장」 (`POST /api/rooms/join {spectator:true}`, empty
+  name → 관전자), `body.spectator` hides the lobby panel, `.game.spectator` hides spin/bet; top-bar 👀 관전 badge; lobby
+  lists spectators separately. Names: `format.graphemes/nameLength/clampName/nameFits` + `ui/nameInput.js`
+  `bindNameInput(input, counter)` (n/12 counter, IME-safe cut; `maxlength` 40 in markup).
+- `api.js`: `onCharArt(fn)` / `sseConnected()`; `charArt` SSE events drive the customizer AI slot (reload until the
+  committed state shows ready/failed; 1 s polling only while SSE is down).
+- Admin: host box (turn/phase/deadline + 「프롬프트 시간 초과 처리」「대신 룰렛 돌리기」「이번 턴 건너뛰기」 → `POST
+  /admin/api/rooms/:id/actions`), 「턴 제한 시간」 select (`meta.turnTimeouts` when present), era minimum hints
+  (`meta.minTurns[mode][era]`, else client mirror), CPU checkbox removed, 390 px layout.
+- CSS: long-name truncation (lobby cards 2-line clamp, HUD/side list/ranking ellipsis, `minmax(0,1fr)` grids — grid items
+  need `min-width: 0` or a nowrap child widens the page), crowded 2D tiles (3 overlapping pawns + "+N"), 3D name tags on
+  < 700 px canvases = current / moving (+ mine off crowded tiles), roulette pop z 21 (under cut-ins), single-row cut-in
+  tabs, reaction bar compact row + client pacing (4 per 2 s, no toast on 429), no floating emoji while a cut-in is open,
+  inputs ≥ 16 px on touch devices, narrow top bar.
+- E2E (session scratchpad `fixb/*.cjs`, screenshots `fixb-*.png`): `widths.cjs` (max-length names 390/1280, lobby/game/
+  cut-in/result), `game.cjs` (natural-pace 4-client game, `BOARDS=`, `SPECTATE=1`), `prompts.cjs` (API spin spam +
+  reactions; prompt visibility per owner), `misc.cjs` (routes, admin host tools, TV spectator, CTA), `probe2.cjs`, `art.cjs`.
+  Note: in SwiftShader the 3D board build blocks the main thread ≈ 8 s at game start (prompts in that window show late).

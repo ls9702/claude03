@@ -147,3 +147,11 @@ test('tagLabel: prompt tags are the title only (no "일·커리어 · 📝 수�
   assert.equal(tagLabel({ type: 'prompt', tone: 'career', title: '인생 갈림길', kind: 'routeChoice' }, { tones }), '🔀 인생 갈림길');
   assert.equal(tagLabel({ type: 'prompt', tone: 'career', title: '선택' }, { tones }), '💼 선택');
 });
+
+test('tagLabel: route tags do not repeat the route name (연애·육아 · 연애·육아 루트)', () => {
+  const tones = { love: { icon: '💕', label: '연애·육아' }, treasure: { icon: '💰', label: '보물·금전' }, good: { icon: '✨', label: '좋은 일' } };
+  const routes = { love: { name: '연애·육아' }, money: { name: '보물·부동산·금전' } };
+  assert.equal(tagLabel({ type: 'routeChosen', tone: 'love', route: 'love' }, { tones, routes }), '💕 연애·육아 루트');
+  assert.equal(tagLabel({ type: 'routeChosen', tone: 'treasure', route: 'money' }, { tones, routes }), '💰 보물·금전 · 보물·부동산·금전 루트');
+  assert.equal(tagLabel({ type: 'landed', tone: 'good', tileType: 'money' }, { tones, tileTypes: { money: { name: '돈' } } }), '✨ 좋은 일 · 돈 칸');
+});
