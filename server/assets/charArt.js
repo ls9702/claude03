@@ -11,7 +11,7 @@
 // shared with the asset studio; this module never sees or logs the key.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -249,8 +249,9 @@ export async function composeReference(avatar, { lookup, avatars, scale = 0.5 })
 
 // ---------- service ----------
 
+let tmpSeq = 0;
 async function writeJsonAtomic(file, obj) {
-  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  const tmp = `${file}.${process.pid}.${Date.now()}.${++tmpSeq}.tmp`;
   await writeFile(tmp, `${JSON.stringify(obj, null, 2)}\n`);
   await rename(tmp, file);
 }
@@ -270,6 +271,7 @@ export class ArtCancelled extends Error {
  * @param {string} [opts.styleAnchorPath]  style anchor image (skipped when missing)
  * @param {Function} [opts.composeRef]     (avatar) → PNG | null; default = paper-doll composition
  * @param {number} [opts.stepRetries]      extra attempts per step (default 2)
+ * @param {number} [opts.editConcurrency]  pose/expression edits in parallel (default 2)
  */
 export function createCharArtService({
   dataDir,
@@ -280,6 +282,7 @@ export function createCharArtService({
   generatedDir = GENERATED_DIR,
   composeRef,
   stepRetries = 2,
+  editConcurrency = 2,
   now = () => new Date(),
   log = () => {},
 } = {}) {
@@ -341,7 +344,7 @@ export function createCharArtService({
     }
   }
 
-  async function runStep(step, { avatar, baseKeyed, job }) {
+  async function runStep(step, { avatar, baseKeyed, editRef, job }) {
     let prompt;
     let refs;
     if (step.kind === 'base') {
@@ -350,7 +353,7 @@ export function createCharArtService({
       refs = [anchor, ref].filter(Boolean).map((buffer) => ({ buffer, mimeType: 'image/png' }));
     } else {
       prompt = buildEditPrompt(step);
-      refs = [{ buffer: await onMagenta(baseKeyed), mimeType: 'image/png' }];
+      refs = [{ buffer: editRef, mimeType: 'image/png' }];
     }
     let lastErr;
     for (let attempt = 0; attempt <= stepRetries; attempt++) {
@@ -378,30 +381,60 @@ export function createCharArtService({
     let idx = readIndexSync(key);
     const rev = force && idx ? (idx.rev ?? 0) + 1 : (idx?.rev ?? 0);
     if (force || !idx || idx.version !== ART_VERSION) {
-      if (idx) for (const s of ART_STEPS) await rm(path.join(dir, `${s.name}.webp`), { force: true });
       idx = { key, version: ART_VERSION, avatar, rev, complete: false, steps: {}, createdAt: now().toISOString() };
     }
     idx.rev = rev;
-    const saveIndex = () => writeJsonAtomic(path.join(dir, 'index.json'), { ...idx, updatedAt: now().toISOString() });
+    let indexChain = Promise.resolve();
+    const saveIndex = () => {
+      indexChain = indexChain.then(() => writeJsonAtomic(path.join(dir, 'index.json'), { ...idx, updatedAt: now().toISOString() }));
+      return indexChain;
+    };
     await saveIndex();
     let done = 0;
-    let baseKeyed = null;
-    for (const step of ART_STEPS) {
-      const file = path.join(dir, `${step.name}.webp`);
-      if (idx.steps[step.name] && existsSync(file)) {
-        // Resume: a previous (failed / cancelled) job already made this one.
-        if (step.kind === 'base') baseKeyed = await sharp(await readFile(file)).png().toBuffer();
-      } else {
-        if (job.cancelled) throw new ArtCancelled();
-        const { placed, prompt } = await runStep(step, { avatar, baseKeyed, job });
-        if (step.kind === 'base') baseKeyed = placed;
-        await writeFile(file, await sharp(placed).webp({ quality: 88, alphaQuality: 100 }).toBuffer());
-        idx.steps[step.name] = { file: `${step.name}.webp`, prompt, model: job.model ?? null, at: now().toISOString() };
-        await saveIndex();
-      }
+    const progress = (step) => {
       done++;
       job.emit({ key, done, total: ART_TOTAL, step: step.name, progress: done / ART_TOTAL });
+    };
+    const isDone = (step) => Boolean(idx.steps[step.name]) && existsSync(path.join(dir, `${step.name}.webp`));
+    const make = async (step, ctx) => {
+      if (job.cancelled) throw new ArtCancelled();
+      const { placed, prompt } = await runStep(step, { avatar, job, ...ctx });
+      await writeFile(path.join(dir, `${step.name}.webp`), await sharp(placed).webp({ quality: 88, alphaQuality: 100 }).toBuffer());
+      idx.steps[step.name] = { file: `${step.name}.webp`, prompt, model: job.model ?? null, at: now().toISOString() };
+      await saveIndex();
+      progress(step);
+      return placed;
+    };
+
+    // 1) base (resumed from disk when a previous job already made it)
+    const [baseStep, ...edits] = ART_STEPS;
+    let baseKeyed;
+    if (isDone(baseStep)) {
+      baseKeyed = await sharp(await readFile(path.join(dir, 'base.webp'))).png().toBuffer();
+      progress(baseStep);
+    } else baseKeyed = await make(baseStep, {});
+
+    // 2) poses + expressions: edits of the base, `editConcurrency` at a time (the shared Gemini limiter
+    //    still caps the global number of calls in flight). A fatal error stops scheduling new steps.
+    const editRef = await onMagenta(baseKeyed);
+    const queue = [];
+    for (const step of edits) {
+      if (isDone(step)) progress(step);
+      else queue.push(step);
     }
+    let firstErr = null;
+    const worker = async () => {
+      while (queue.length && !firstErr) {
+        const step = queue.shift();
+        try {
+          await make(step, { baseKeyed, editRef });
+        } catch (e) {
+          firstErr ??= e;
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.max(1, editConcurrency) }, worker));
+    if (firstErr) throw firstErr;
     idx.complete = true;
     await saveIndex();
     return { key, rev, files: artFiles(key, rev) };
