@@ -253,7 +253,7 @@ function continueTurn(tx) {
       continue;
     }
     const c = charById(tx.room, currentCharId(tx.room));
-    if (c && !c.finished && lifeStep(tx, c)) continue;
+    if (c && lifeStep(tx, c)) continue;
     return endTurn(tx);
   }
   throw new Error('continueTurn: too many chained prompts');

@@ -113,6 +113,7 @@ export function mergeGroups(groups = [], { mine = [] } = {}) {
       money: [...prev.money, ...g.money],
       stats: [...(prev.stats ?? []), ...(g.stats ?? [])],
       salary: [...(prev.salary ?? []), ...(g.salary ?? [])],
+      discharged: [...(prev.discharged ?? []), ...(g.discharged ?? [])],
       delta: prev.delta + g.delta,
       involved,
       mc: prev.mc ?? g.mc ?? null,

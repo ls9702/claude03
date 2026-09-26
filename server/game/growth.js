@@ -144,13 +144,15 @@ function atRouteStop(tx, c) {
  * @returns true when a prompt was opened (the turn waits for it)
  */
 export function lifeStep(tx, c) {
-  if (!c || c.finished) return false;
+  if (!c) return false;
   const data = tx.data;
   ensureLife(c, data);
   const mil = c.military;
   const mcfg = data.balance.military;
+  // discharge / graduation also for a character that just reached the goal on its last service / school spin
   if (mil.status === 'serving' && mil.turnsLeft <= 0) endMilitary(tx, c);
   if (c.school && c.school.turnsLeft <= 0 && c.military.status !== 'serving') graduate(tx, c);
+  if (c.finished) return false;
   if (!inJobEra(data, c)) return false;
   if (!c.careerDone) {
     if (c.examResult == null) c.careerDone = true;

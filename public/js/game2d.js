@@ -583,7 +583,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const spoiler = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 400);
     if (last && !spoiler) {
       const who = byId(last.charId);
-      hint = `<span class="last-spin">최근 룰렛: ${esc(who?.name ?? '')} ${last.value}</span><br>${hint}`;
+      // Stage 6: while serving, the pawn moves `steps` (half), not the roulette value
+      const steps = Number.isFinite(last.steps) && last.steps !== last.value ? ` <small>(🪖 복무 중 ${last.steps}칸 이동)</small>` : '';
+      hint = `<span class="last-spin">최근 룰렛: ${esc(who?.name ?? '')} ${last.value}${steps}</span><br>${hint}`;
     }
     el.hint.innerHTML = hint;
   }
@@ -1359,6 +1361,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       switch (e.type) {
         case 'spun':
           if (!in3d) showRoulette(e.value, c?.name ?? '');
+          if (e.halved && Number.isFinite(e.steps) && e.steps !== e.value) floatOn(e.charId, `🪖 ${e.steps}칸만 이동`, 'minus');
           if (e.auto) toast(`⏰ 시간 초과! ${c?.name ?? ''}의 룰렛을 자동으로 돌렸어요.`);
           break;
         case 'moneyChanged':

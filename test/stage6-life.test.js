@@ -440,3 +440,20 @@ test('restore from a JSON snapshot mid-career continues identically (jobs, schoo
   assert.deepEqual(endA.news, endB.news);
   assert.equal(endA.rngState, endB.rngState);
 });
+
+test('군 복무: the last served spin reaching the goal still discharges (no finished character left serving)', () => {
+  const room = started().room;
+  const id = cur(room);
+  const last = room.board.eras.length - 1;
+  const tiles = room.board.eras[last].tiles;
+  Object.assign(ch(room, id), {
+    position: { eraIndex: last, route: 'main', index: tiles.length - 2 },
+    era: room.board.eras[last].id,
+    military: { status: 'serving', turnsLeft: 1 },
+  });
+  const r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
+  const c = ch(r.room, id);
+  assert.equal(c.finished, true);
+  assert.equal(c.military.status, 'done');
+  assert.ok(r.events.some((e) => e.type === 'militaryEnd'));
+});

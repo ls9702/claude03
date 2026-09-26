@@ -149,6 +149,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       const who = st.charId && st.charId !== g.charId ? `${nameOf(characters, st.charId)} ` : '';
       chips.push({ ...c, text: who ? `${who}${c.text}` : c.text });
     }
+    for (const id of g.discharged ?? []) chips.push({ text: `🎖️ ${id !== g.charId ? `${nameOf(characters, id)} ` : ''}전역!`, kind: 'plus' });
     if (a.type === 'finished') chips.unshift({ text: `🏁 ${a.place}등 골인`, kind: 'plus' });
     const badge = jobBadgeFor(a);
     if (a.type === 'educationChanged' && educationLabel(a.education)) chips.unshift({ text: `🎓 ${educationLabel(a.education)}`, kind: 'plus' });

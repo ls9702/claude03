@@ -212,6 +212,18 @@ test('planCutins: statChanged / salary become follow-up chips; Stage 6 anchors a
   assert.equal(tagLabel({ type: 'jobChanged' }), '💼 취업');
   assert.equal(tagLabel({ type: 'jobChanged', fromJobId: 'teacher' }), '💼 전직');
   assert.equal(tagLabel({ type: 'jobChanged', fromJobId: 'parttime' }), '💼 취업');
+  assert.equal(tagLabel({ type: 'jobChanged', reason: 'parttime' }), '🧾 알바 시작');
+  assert.equal(tagLabel({ type: 'jobChanged', reason: 'change' }), '💼 전직');
+  assert.equal(tagLabel({ type: 'jobChanged', reason: 'hire' }), '💼 취업');
+  // 전역: a chip of the anchor in front of it, else its own (banner) group
+  const withEnd = planCutins([{ type: 'landed', charId: 'c1', tileType: 'event', cutin: true }, { type: 'militaryEnd', charId: 'c1' }, { type: 'statChanged', charId: 'c1', stat: 'str', delta: 2 }]);
+  assert.equal(withEnd.length, 1);
+  assert.deepEqual(withEnd[0].discharged, ['c1']);
+  assert.equal(withEnd[0].stats[0].stat, 'str');
+  const orphan = planCutins([{ type: 'moved', charId: 'c1' }, { type: 'militaryEnd', charId: 'c1' }, { type: 'statChanged', charId: 'c1', stat: 'str', delta: 2 }]);
+  assert.equal(orphan.length, 1);
+  assert.equal(orphan[0].anchor.type, 'militaryEnd');
+  assert.equal(orphan[0].stats.length, 1);
   // zero deltas are not chips
   assert.deepEqual(planCutins([{ type: 'injured', charId: 'c1', cutin: true }, { type: 'statChanged', charId: 'c1', stat: 'str', delta: 0 }])[0].stats, []);
 });
@@ -224,6 +236,22 @@ test('planCutins: the news flash rides on the era studio cut-in, else it is its 
   ]);
   assert.equal(withStudio.length, 1);
   assert.deepEqual(withStudio[0].news, { eraId: 'young', newsId: 'coin', title: '코인 열풍', text: '이벤트 금액 ×1.5', tone: 'treasure' });
+  // the flash's own studio lines (봄이 reads the headline) join the era studio
+  const withLines = planCutins([
+    { type: 'eraChanged', charId: 'c1', era: 'young', cutin: true, mcStudio: true, mc: studio },
+    { type: 'newsFlash', eraId: 'young', newsId: 'coin', title: '코인 열풍', cutin: true, mcStudio: true, mc: [{ speaker: 'bomi', line: '뉴스' }] },
+  ]);
+  assert.equal(withLines.length, 1);
+  assert.equal(withLines[0].studio.length, 2);
+  assert.equal(withLines[0].mcEvents.length, 2);
+  // game start studio isn't an anchor → the flash keeps its own studio cut-in with the headline
+  const adult = planCutins([
+    { type: 'gameStarted', mcStudio: true, mc: studio },
+    { type: 'newsFlash', eraId: 'young', newsId: 'coin', title: '코인 열풍', cutin: true, mcStudio: true, mc: [{ speaker: 'bomi', line: '뉴스' }] },
+  ]);
+  assert.equal(adult.length, 1);
+  assert.equal(adult[0].news.title, '코인 열풍');
+  assert.equal(adult[0].studio.length, 1);
   const alone = planCutins([{ type: 'newsFlash', eraId: 'young', newsId: 'coin', title: '코인 열풍', cutin: true }]);
   assert.equal(alone.length, 1);
   assert.equal(alone[0].anchor.type, 'newsFlash');

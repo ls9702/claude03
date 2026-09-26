@@ -594,17 +594,21 @@
   time (`ui.openChar`). Result rows: final job badge + 학력 (`.rk-career`). Everything hides when the fields are absent.
 - News: top-bar `data-el="news"` badge (📰 title of the shown character's era: `room.news[eraId]` → `/api/meta.news.news`,
   else the last `newsFlash` payload; tap → `data-el="newspop"`). `newsFlash` → 2D strip `data-el="newsflash"` / 3D
-  `b3.showBanner('📰 …')`. `planCutins` attaches the batch's newsFlash to the era's studio group (`g.news`, no separate
-  cut-in); studio spec `news` → `.ci-news` 「📰 속보」 strip; a newsFlash alone (or MCs off) → `kind: 'news'` cut-in.
-- Cut-ins: `cutinMap.STAGE6_ANCHORS` (jobChanged rankUp hiddenJobUnlocked injured newsFlash militaryStart militaryEnd
-  educationChanged) are anchors even without `cutin: true` and are follow-up boundaries; `statChanged`/`salary` follow-ups →
-  `g.stats[]`/`g.salary[]` → chips (`ci-chip stat stat-<key>`, `salary`; a salary chip replaces its moneyChanged chip).
-  `tagLabel`: 💼 취업/전직, 🎉 승진, 🌟 숨은 직업 해금, 🤕 부상, 🪖 입대/전역, 🎓 졸업, 📰 뉴스 속보. `cutin2d` `STAGE6_LOOK`
+  `b3.showBanner('📰 …')`. `planCutins` folds the batch's newsFlash into the era's studio group (`g.news`, its own MC
+  lines appended to `g.studio`, no separate cut-in); without a studio group (adult mode: after gameStarted) it keeps its
+  own studio lines + `news`; studio spec `news` → `.ci-news` 「📰 속보」 strip; MCs off / no lines → `kind: 'news'` cut-in.
+- Cut-ins: `cutinMap.STAGE6_ANCHORS` (jobChanged rankUp hiddenJobUnlocked injured newsFlash militaryStart
+  educationChanged) are anchors even without `cutin: true` and are follow-up boundaries; `statChanged`/`salary`/`militaryEnd`
+  follow-ups → `g.stats[]`/`g.salary[]`/`g.discharged[]` → chips (`ci-chip stat stat-<key>`, `salary`, 🎖️ 전역; a salary
+  chip replaces its moneyChanged chip); a militaryEnd with no anchor before it = its own group → banner.
+  `spun.halved`/`steps` (serving): 2D float / 3D pop 「🪖 n칸」, spin hint 「(🪖 복무 중 n칸 이동)」.
+  `tagLabel`: 💼 취업/전직 (reason hire/change), 🧾 알바 시작 (parttime), 🌟 숨은 직업 전직 (hidden), 🎉 승진, 🌟 숨은 직업 해금, 🤕 부상, 🪖 입대/전역, 🎓 졸업, 📰 뉴스 속보. `cutin2d` `STAGE6_LOOK`
   (tone/scene/pose/emotion/sfx defaults; server values win), `spec.badge` → `.ci-badge` (job icon, name, ★, rank name),
   `spec.fx: 'gold'` (hidden job: gold frame + sparkles), cast `glyph` (🤕 🪖 🎖️ 🎓), `spec.sfx` ('fanfare' for hire /
   rank-up / graduation). Prompt options get `badges` (💵 첫 월급, requirement badges) in the cut-in and the 2D modal.
 - Policy: `isBigGroup` adds jobChanged/rankUp/hiddenJobUnlocked/newsFlash (full even in compact); `MINOR_TILE_TYPES`
-  habit/salary never count as big; `BANNER_TYPES` militaryEnd = banner (also mine). Merge ranks: hidden 9, job/rankUp 8.
+  habit/salary never count as big; `BANNER_TYPES` militaryEnd = banner (also mine). Option labels drop a leading copy of the
+  option icon (`optionLabel`); no 💵 badge when the server desc already names the pay. Merge ranks: hidden 9, job/rankUp 8.
 - 3D: animator `ANIMATED_EVENTS` + statChanged, salary and the Stage 6 anchors; board3d handlers float stat changes
   (stat colour), 💵 over the pawn, pop 💼⭐🌟🤕🪖🎖️🎓 (+ confetti for rank-up / hidden / graduation), newsFlash banner.
   Tile colours / glyphs for habit (📚, asset icon `tile: 'school'`) / salary (💵, money icon asset + green ring and 「월급」

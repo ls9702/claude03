@@ -763,6 +763,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       setRouletteMode('active');
       await roulette.spin(e.value, { duration: preset.name === 'high' ? 2.4 : 2.0 });
       showNumber(e.value);
+      // Stage 6: while serving the pawn moves only `steps` (half the roulette)
+      if (e.halved && Number.isFinite(e.steps) && e.steps !== e.value) emotion.pop(e.charId, `🪖${e.steps}칸`, { dur: 1.6 });
       await ctx.sleep(750);
       setRouletteMode('hidden');
     },
