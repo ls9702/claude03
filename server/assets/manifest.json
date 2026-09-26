@@ -9,14 +9,25 @@
     {
       "refs": [],
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "id": "style-anchor",
       "kind": "anchor",
       "label": "스타일 앵커 (산길의 교복 커플)",
       "aspect": "16:9",
       "prompt": "{{style}} Scene: a bright forest mountain trail in Korea, tall trees on both sides, wildflowers and small rocks, distant blue mountains and sky. Two chibi Korean high school students stand on the path waving happily: on the left a girl with a blonde side ponytail and a blue scrunchie, navy blazer, red ribbon, blue plaid skirt; on the right a boy with short black hair, navy blazer, red tie, blue plaid trousers. Both have closed happy eyes (> <) and open smiling mouths. Wide 16:9 game event illustration.",
       "output": "anchor/style-anchor.png",
-      "candidates": 4
+      "candidates": 4,
+      "accepted": {
+        "file": "anchor/style-anchor.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Scene: a bright forest mountain trail in Korea, tall trees on both sides, wildflowers and small rocks, distant blue mountains and sky. Two chibi Korean high school students stand on the path waving happily: on the left a girl with a blonde side ponytail and a blue scrunchie, navy blazer, red ribbon, blue plaid skirt; on the right a boy with short black hair, navy blazer, red tie, blue plaid trousers. Both have closed happy eyes (> <) and open smiling mouths. Wide 16:9 game event illustration.",
+        "generatedAt": "2026-09-26T04:30:39.574Z",
+        "acceptedAt": "2026-09-26T04:30:39.686Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1344,
+        "height": 768
+      }
     },
     {
       "refs": [
@@ -26,7 +37,7 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "bg-school",
       "kind": "bg",
       "label": "컷인 배경 · 학교",
@@ -39,6 +50,17 @@
       "output": "bg/school.webp",
       "meta": {
         "scene": "school"
+      },
+      "accepted": {
+        "file": "bg/school.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. Scene only, NO people, no characters, no animals in the foreground. Scene: a sunny Korean high school classroom seen from the back row: green blackboard, rows of wooden desks and chairs, big windows with cherry blossom trees outside, bulletin board with colorful papers. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+        "generatedAt": "2026-09-26T04:30:55.218Z",
+        "acceptedAt": "2026-09-26T04:30:55.487Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -49,7 +71,7 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "bg-mountain-trail",
       "kind": "bg",
       "label": "컷인 배경 · 산길",
@@ -62,6 +84,17 @@
       "output": "bg/mountain-trail.webp",
       "meta": {
         "scene": "mountain-trail"
+      },
+      "accepted": {
+        "file": "bg/mountain-trail.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. Scene only, NO people, no characters, no animals in the foreground. Scene: a bright forest mountain trail in Korea, tall trees on both sides, wildflowers and small rocks along the path, distant blue mountains and sky. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+        "generatedAt": "2026-09-26T04:31:02.801Z",
+        "acceptedAt": "2026-09-26T04:31:03.080Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -72,7 +105,7 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "bg-wedding-hall",
       "kind": "bg",
       "label": "컷인 배경 · 웨딩홀",
@@ -85,6 +118,17 @@
       "output": "bg/wedding-hall.webp",
       "meta": {
         "scene": "wedding-hall"
+      },
+      "accepted": {
+        "file": "bg/wedding-hall.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. Scene only, NO people, no characters, no animals in the foreground. Scene: interior of a bright modern Korean wedding hall, white flower arch in the center, pink and white roses, red carpet aisle, soft warm lights, pastel pink walls, confetti in the air. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+        "generatedAt": "2026-09-26T04:31:09.541Z",
+        "acceptedAt": "2026-09-26T04:31:09.765Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -95,7 +139,7 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "bg-office",
       "kind": "bg",
       "label": "컷인 배경 · 회사",
@@ -108,6 +152,17 @@
       "output": "bg/office.webp",
       "meta": {
         "scene": "office"
+      },
+      "accepted": {
+        "file": "bg/office.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. Scene only, NO people, no characters, no animals in the foreground. Scene: a cheerful modern Korean open-plan office: desks with monitors, potted plants, big windows with a city skyline, whiteboard, coffee mugs, warm afternoon light. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+        "generatedAt": "2026-09-26T04:31:17.643Z",
+        "acceptedAt": "2026-09-26T04:31:17.880Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -118,7 +173,7 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "bg-hospital",
       "kind": "bg",
       "label": "컷인 배경 · 병원",
@@ -131,6 +186,17 @@
       "output": "bg/hospital.webp",
       "meta": {
         "scene": "hospital"
+      },
+      "accepted": {
+        "file": "bg/hospital.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. Scene only, NO people, no characters, no animals in the foreground. Scene: a clean bright Korean hospital corridor and ward: white beds with light blue curtains, reception counter, green cross sign without text, potted plants, soft daylight. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+        "generatedAt": "2026-09-26T04:31:24.441Z",
+        "acceptedAt": "2026-09-26T04:31:24.662Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -141,7 +207,7 @@
         "chromaKey",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "char-schoolgirl-base",
       "kind": "charLayer",
       "label": "캐릭터 베이스 · 교복 여학생",
@@ -160,6 +226,17 @@
         "layer": "base",
         "expression": "neutral",
         "outfit": "school"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/base.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. Full body chibi character, front view, feet fully visible, centered with some margin on every side. Standing straight in a relaxed neutral pose, arms down at the sides, a cheerful Korean high school girl with a blonde side ponytail and a blue scrunchie, navy blazer, red ribbon, blue plaid skirt, white socks and white shoes, gentle smile with open eyes. Flat solid pure magenta background color #FF00FF filling the whole canvas, no gradient, no shadow on the ground, no floor, no other objects. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:30:48.085Z",
+        "acceptedAt": "2026-09-26T04:30:48.123Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -170,7 +247,7 @@
         "chromaKey",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "char-schoolgirl-expr-joy",
       "kind": "charLayer",
       "label": "표정 · 기쁨",
@@ -189,6 +266,17 @@
         "layer": "expression",
         "expression": "joy",
         "outfit": "school"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/expr-joy.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change ONLY the facial expression to a big happy open-mouth smile with closed happy eyes (> <) and rosy cheeks. Keep the pose and outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:31:32.054Z",
+        "acceptedAt": "2026-09-26T04:31:32.091Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -199,7 +287,7 @@
         "chromaKey",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "char-schoolgirl-expr-cry",
       "kind": "charLayer",
       "label": "표정 · 눈물",
@@ -218,6 +306,17 @@
         "layer": "expression",
         "expression": "cry",
         "outfit": "school"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/expr-cry.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change ONLY the facial expression to crying: big tears streaming down, wobbly open mouth, eyebrows raised in the middle. Keep the pose and outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:31:39.543Z",
+        "acceptedAt": "2026-09-26T04:31:39.585Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -228,7 +327,7 @@
         "chromaKey",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "char-schoolgirl-expr-shock",
       "kind": "charLayer",
       "label": "표정 · 놀람",
@@ -247,6 +346,17 @@
         "layer": "expression",
         "expression": "shock",
         "outfit": "school"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/expr-shock.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change ONLY the facial expression to shocked: wide round eyes with small pupils, open O-shaped mouth, a sweat drop on the forehead. Keep the pose and outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:31:47.319Z",
+        "acceptedAt": "2026-09-26T04:31:47.355Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -257,7 +367,7 @@
         "chromaKey",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "char-schoolgirl-expr-angry",
       "kind": "charLayer",
       "label": "표정 · 분노",
@@ -276,6 +386,17 @@
         "layer": "expression",
         "expression": "angry",
         "outfit": "school"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/expr-angry.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change ONLY the facial expression to angry: furrowed eyebrows, puffed red cheeks, clenched teeth, a small anger mark on the head. Keep the pose and outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:31:54.309Z",
+        "acceptedAt": "2026-09-26T04:31:54.345Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -286,7 +407,7 @@
         "chromaKey",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "char-schoolgirl-outfit-doctor",
       "kind": "charLayer",
       "label": "의상 · 의사 가운",
@@ -305,6 +426,17 @@
         "layer": "outfit",
         "expression": "neutral",
         "outfit": "doctor"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/outfit-doctor.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change ONLY the outfit to a white doctor's coat over a light blue shirt and dark trousers, a stethoscope around the neck. Keep the face, hairstyle, expression and pose unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:32:03.621Z",
+        "acceptedAt": "2026-09-26T04:32:03.659Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -315,7 +447,7 @@
         "chromaKey",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "char-schoolgirl-outfit-suit",
       "kind": "charLayer",
       "label": "의상 · 회사원 정장",
@@ -334,6 +466,17 @@
         "layer": "outfit",
         "expression": "neutral",
         "outfit": "suit"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/outfit-suit.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change ONLY the outfit to a neat navy office suit with a white blouse, an employee ID badge on a lanyard, black low heels. Keep the face, hairstyle, expression and pose unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:32:10.725Z",
+        "acceptedAt": "2026-09-26T04:32:10.758Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -344,7 +487,7 @@
         "chromaKey",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "char-schoolgirl-outfit-wedding",
       "kind": "charLayer",
       "label": "의상 · 웨딩드레스",
@@ -363,6 +506,17 @@
         "layer": "outfit",
         "expression": "neutral",
         "outfit": "wedding"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/outfit-wedding.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change ONLY the outfit to a white wedding dress with a short veil and a small bouquet of pink roses held in both hands. Keep the face, hairstyle, expression and pose unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:32:19.310Z",
+        "acceptedAt": "2026-09-26T04:32:19.351Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -374,7 +528,7 @@
         "normalizeFrames",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "pose-schoolgirl-idle",
       "kind": "pose",
       "label": "키포즈 · 대기",
@@ -392,6 +546,17 @@
         "hair": "ponytail",
         "hairColor": "blonde",
         "pose": "idle"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/pose-idle.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: standing relaxed, arms down at the sides, weight on one leg, gentle smile, open eyes. Keep the outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:32:27.704Z",
+        "acceptedAt": "2026-09-26T04:32:27.748Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -403,7 +568,7 @@
         "normalizeFrames",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "pose-schoolgirl-wave",
       "kind": "pose",
       "label": "키포즈 · 손 흔들기",
@@ -421,6 +586,17 @@
         "hair": "ponytail",
         "hairColor": "blonde",
         "pose": "wave"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/pose-wave.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: waving happily with the right hand raised high, left hand on the hip, closed happy eyes (> <), big smile. Keep the outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:32:35.805Z",
+        "acceptedAt": "2026-09-26T04:32:35.842Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -432,7 +608,7 @@
         "normalizeFrames",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "pose-schoolgirl-jump",
       "kind": "pose",
       "label": "키포즈 · 점프",
@@ -450,6 +626,17 @@
         "hair": "ponytail",
         "hairColor": "blonde",
         "pose": "jump"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/pose-jump.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: jumping for joy, both feet off the ground with knees bent, both arms raised high, big open smile, ponytail and skirt lifting. Keep the outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:32:44.159Z",
+        "acceptedAt": "2026-09-26T04:32:44.206Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -461,7 +648,7 @@
         "normalizeFrames",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "pose-schoolgirl-cheer",
       "kind": "pose",
       "label": "키포즈 · 환호",
@@ -479,6 +666,17 @@
         "hair": "ponytail",
         "hairColor": "blonde",
         "pose": "cheer"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/pose-cheer.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: cheering with both fists pumped in the air, mouth wide open shouting with joy, sparkling eyes. Keep the outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:32:51.406Z",
+        "acceptedAt": "2026-09-26T04:32:51.452Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -490,7 +688,7 @@
         "normalizeFrames",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "pose-schoolgirl-cry",
       "kind": "pose",
       "label": "키포즈 · 울기",
@@ -508,6 +706,17 @@
         "hair": "ponytail",
         "hairColor": "blonde",
         "pose": "cry"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/pose-cry.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: crying loudly, rubbing the eyes with both fists, tears flying, shoulders slumped. Keep the outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:32:59.301Z",
+        "acceptedAt": "2026-09-26T04:32:59.332Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -519,7 +728,7 @@
         "normalizeFrames",
         "resize:1024x1536"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "pose-schoolgirl-shock",
       "kind": "pose",
       "label": "키포즈 · 놀람",
@@ -537,6 +746,17 @@
         "hair": "ponytail",
         "hairColor": "blonde",
         "pose": "shock"
+      },
+      "accepted": {
+        "file": "char/schoolgirl/pose-shock.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: shocked: leaning back, both hands raised beside the face with open palms, wide round eyes, open mouth. Keep the outfit unchanged. Portrait 2:3.",
+        "generatedAt": "2026-09-26T04:33:07.038Z",
+        "acceptedAt": "2026-09-26T04:33:07.073Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536
       }
     },
     {
@@ -550,7 +770,7 @@
         "sheet",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "sprite-schoolgirl-jump",
       "kind": "sprite",
       "label": "스프라이트 · 점프 (4프레임)",
@@ -593,6 +813,23 @@
         "hair": "ponytail",
         "hairColor": "blonde",
         "action": "jump"
+      },
+      "accepted": {
+        "file": "sprites/schoolgirl-jump.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": [
+          "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: she crouches slightly with knees bent, both arms down and slightly back, getting ready to jump, eyes open and determined. Keep the outfit unchanged. Portrait 2:3.",
+          "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: she is jumping upward, feet off the ground, both arms raised high, closed happy eyes (> <), big open smile, hair and skirt lifting. Keep the outfit unchanged. Portrait 2:3.",
+          "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: she is at the top of a joyful jump, body slightly leaning back, both arms spread wide in a V, closed happy eyes, big smile, skirt and ponytail flying. Keep the outfit unchanged. Portrait 2:3.",
+          "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference character: keep EXACTLY the same character (face, hair, proportions, body size, position on the canvas, camera distance and scale), same art style and line weight, same flat solid magenta background #FF00FF, no ground shadow, no other objects. Change only the pose: she has just landed, knees slightly bent, arms out to the sides for balance, open eyes, cheerful smile. Keep the outfit unchanged. Portrait 2:3."
+        ],
+        "generatedAt": "2026-09-26T04:33:23.418Z",
+        "acceptedAt": "2026-09-26T04:33:23.440Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 384,
+        "frames": 4
       }
     },
     {
@@ -604,7 +841,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-money",
       "kind": "icon",
       "label": "칸 아이콘 · 돈",
@@ -617,6 +854,17 @@
       "output": "icons/money.png",
       "meta": {
         "tile": "money"
+      },
+      "accepted": {
+        "file": "icons/money.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a green money bag tied with a string, with a white Korean won sign (₩) on it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:33:31.820Z",
+        "acceptedAt": "2026-09-26T04:33:31.833Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -628,7 +876,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-love",
       "kind": "icon",
       "label": "칸 아이콘 · 연애",
@@ -641,6 +889,17 @@
       "output": "icons/love.png",
       "meta": {
         "tile": "love"
+      },
+      "accepted": {
+        "file": "icons/love.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a glossy red heart. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:33:40.532Z",
+        "acceptedAt": "2026-09-26T04:33:40.549Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -652,7 +911,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-job",
       "kind": "icon",
       "label": "칸 아이콘 · 직업",
@@ -665,6 +924,17 @@
       "output": "icons/job.png",
       "meta": {
         "tile": "job"
+      },
+      "accepted": {
+        "file": "icons/job.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a navy blue leather briefcase. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:33:48.624Z",
+        "acceptedAt": "2026-09-26T04:33:48.634Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -676,7 +946,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-house",
       "kind": "icon",
       "label": "칸 아이콘 · 집",
@@ -689,6 +959,17 @@
       "output": "icons/house.png",
       "meta": {
         "tile": "house"
+      },
+      "accepted": {
+        "file": "icons/house.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a small cozy house with a red roof, chimney and a patch of grass. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:33:56.755Z",
+        "acceptedAt": "2026-09-26T04:33:56.768Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -700,7 +981,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-treasure",
       "kind": "icon",
       "label": "칸 아이콘 · 보물",
@@ -713,6 +994,17 @@
       "output": "icons/treasure.png",
       "meta": {
         "tile": "treasure"
+      },
+      "accepted": {
+        "file": "icons/treasure.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: an open wooden treasure chest overflowing with gold coins and a blue gem. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:34:05.009Z",
+        "acceptedAt": "2026-09-26T04:34:05.022Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -724,7 +1016,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-card",
       "kind": "icon",
       "label": "칸 아이콘 · 카드",
@@ -737,6 +1029,17 @@
       "output": "icons/card.png",
       "meta": {
         "tile": "card"
+      },
+      "accepted": {
+        "file": "icons/card.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a single playing card with a red heart symbol, tilted slightly. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:34:12.837Z",
+        "acceptedAt": "2026-09-26T04:34:12.850Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -748,7 +1051,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-shop",
       "kind": "icon",
       "label": "칸 아이콘 · 쇼핑",
@@ -761,6 +1064,17 @@
       "output": "icons/shop.png",
       "meta": {
         "tile": "shop"
+      },
+      "accepted": {
+        "file": "icons/shop.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a yellow shopping bag with blue handles and a small flower sticking out. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:34:20.885Z",
+        "acceptedAt": "2026-09-26T04:34:20.904Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -772,7 +1086,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-stop",
       "kind": "icon",
       "label": "칸 아이콘 · 정지",
@@ -785,6 +1099,17 @@
       "output": "icons/stop.png",
       "meta": {
         "tile": "stop"
+      },
+      "accepted": {
+        "file": "icons/stop.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a red octagonal stop sign shape without any letters. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:34:28.425Z",
+        "acceptedAt": "2026-09-26T04:34:28.437Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -796,7 +1121,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-bad",
       "kind": "icon",
       "label": "칸 아이콘 · 나쁜 일",
@@ -809,6 +1134,17 @@
       "output": "icons/bad.png",
       "meta": {
         "tile": "bad"
+      },
+      "accepted": {
+        "file": "icons/bad.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a yellow triangular warning sign with a black exclamation mark. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:34:36.915Z",
+        "acceptedAt": "2026-09-26T04:34:36.927Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -820,7 +1156,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-goal",
       "kind": "icon",
       "label": "칸 아이콘 · 골",
@@ -833,6 +1169,17 @@
       "output": "icons/goal.png",
       "meta": {
         "tile": "goal"
+      },
+      "accepted": {
+        "file": "icons/goal.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a shiny golden trophy cup. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:34:45.116Z",
+        "acceptedAt": "2026-09-26T04:34:45.134Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -844,7 +1191,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-school",
       "kind": "icon",
       "label": "칸 아이콘 · 학교",
@@ -857,6 +1204,17 @@
       "output": "icons/school.png",
       "meta": {
         "tile": "school"
+      },
+      "accepted": {
+        "file": "icons/school.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a black graduation cap with a golden tassel. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:34:54.888Z",
+        "acceptedAt": "2026-09-26T04:34:54.897Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -868,7 +1226,7 @@
         "trim",
         "resize:256x256"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "icon-lottery",
       "kind": "icon",
       "label": "칸 아이콘 · 로또",
@@ -881,6 +1239,17 @@
       "output": "icons/lottery.png",
       "meta": {
         "tile": "lottery"
+      },
+      "accepted": {
+        "file": "icons/lottery.png",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. A single glossy game board tile icon: a colorful lottery ticket with small circles, no readable text. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. Plain pure white background #FFFFFF, no shadow, no border, no frame, no other objects. No text, no labels. Square 1:1.",
+        "generatedAt": "2026-09-26T04:35:00.414Z",
+        "acceptedAt": "2026-09-26T04:35:00.427Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 256,
+        "height": 256
       }
     },
     {
@@ -890,7 +1259,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "tex-grass",
       "kind": "texture",
       "label": "텍스처 · 잔디",
@@ -903,6 +1272,17 @@
       "output": "textures/grass.webp",
       "meta": {
         "surface": "grass"
+      },
+      "accepted": {
+        "file": "textures/grass.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. Top-down texture of bright stylized cartoon grass for a low-poly 3D board game town, soft cel shading, flat lighting, no shadows, no objects, repeats perfectly at the edges.",
+        "generatedAt": "2026-09-26T04:35:04.858Z",
+        "acceptedAt": "2026-09-26T04:35:04.902Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     },
     {
@@ -912,7 +1292,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "tex-road",
       "kind": "texture",
       "label": "텍스처 · 도로",
@@ -925,6 +1305,17 @@
       "output": "textures/road.webp",
       "meta": {
         "surface": "road"
+      },
+      "accepted": {
+        "file": "textures/road.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. Top-down texture of a stylized cartoon asphalt road surface for a low-poly 3D board game, warm gray with subtle speckles and tiny cracks, soft cel shading, flat lighting, no lane markings, no objects, repeats perfectly at the edges.",
+        "generatedAt": "2026-09-26T04:35:50.575Z",
+        "acceptedAt": "2026-09-26T04:35:50.815Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     },
     {
@@ -934,7 +1325,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "frame-love",
       "kind": "frame",
       "label": "프레임 테마 · 연애·육아 (분홍)",
@@ -947,6 +1338,17 @@
       "output": "frames/love.webp",
       "meta": {
         "tone": "love"
+      },
+      "accepted": {
+        "file": "frames/love.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. A cute flat decorative repeating pattern for a game dialog frame, colors pastel pink and white, small hearts and ribbons, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+        "generatedAt": "2026-09-26T04:35:14.411Z",
+        "acceptedAt": "2026-09-26T04:35:14.441Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     },
     {
@@ -956,7 +1358,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "frame-career",
       "kind": "frame",
       "label": "프레임 테마 · 일·커리어 (파랑)",
@@ -969,6 +1371,17 @@
       "output": "frames/career.webp",
       "meta": {
         "tone": "career"
+      },
+      "accepted": {
+        "file": "frames/career.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. A cute flat decorative repeating pattern for a game dialog frame, colors sky blue and white, small briefcases, stars and paper planes, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+        "generatedAt": "2026-09-26T04:35:19.398Z",
+        "acceptedAt": "2026-09-26T04:35:19.437Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     },
     {
@@ -978,7 +1391,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "frame-treasure",
       "kind": "frame",
       "label": "프레임 테마 · 보물·부동산 (금색)",
@@ -991,6 +1404,17 @@
       "output": "frames/treasure.webp",
       "meta": {
         "tone": "treasure"
+      },
+      "accepted": {
+        "file": "frames/treasure.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. A cute flat decorative repeating pattern for a game dialog frame, colors warm gold and cream, small coins, gems and tiny houses, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+        "generatedAt": "2026-09-26T04:35:24.053Z",
+        "acceptedAt": "2026-09-26T04:35:24.098Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     },
     {
@@ -1000,7 +1424,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "frame-good",
       "kind": "frame",
       "label": "프레임 테마 · 좋은 일 (초록)",
@@ -1013,6 +1437,17 @@
       "output": "frames/good.webp",
       "meta": {
         "tone": "good"
+      },
+      "accepted": {
+        "file": "frames/good.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. A cute flat decorative repeating pattern for a game dialog frame, colors fresh green and white, four-leaf clovers and small sparkles, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+        "generatedAt": "2026-09-26T04:35:28.757Z",
+        "acceptedAt": "2026-09-26T04:35:28.793Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     },
     {
@@ -1022,7 +1457,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "frame-bad",
       "kind": "frame",
       "label": "프레임 테마 · 나쁜 일 (남색)",
@@ -1035,6 +1470,17 @@
       "output": "frames/bad.webp",
       "meta": {
         "tone": "bad"
+      },
+      "accepted": {
+        "file": "frames/bad.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. A cute flat decorative repeating pattern for a game dialog frame, colors deep navy and slate blue, small rain clouds and raindrops, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+        "generatedAt": "2026-09-26T04:35:55.673Z",
+        "acceptedAt": "2026-09-26T04:35:55.731Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     },
     {
@@ -1044,7 +1490,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "frame-holiday",
       "kind": "frame",
       "label": "프레임 테마 · 명절 (빨강)",
@@ -1057,6 +1503,17 @@
       "output": "frames/holiday.webp",
       "meta": {
         "tone": "holiday"
+      },
+      "accepted": {
+        "file": "frames/holiday.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. A cute flat decorative repeating pattern for a game dialog frame, colors festive red and gold, traditional Korean cloud patterns and small lucky pouches (bokjumeoni), evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+        "generatedAt": "2026-09-26T04:35:34.170Z",
+        "acceptedAt": "2026-09-26T04:35:34.216Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     },
     {
@@ -1066,7 +1523,7 @@
         "seamless",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "id": "frame-result",
       "kind": "frame",
       "label": "프레임 테마 · 결과발표 (보라)",
@@ -1079,6 +1536,17 @@
       "output": "frames/result.webp",
       "meta": {
         "tone": "result"
+      },
+      "accepted": {
+        "file": "frames/result.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Seamless tileable texture: the left edge continues the right edge and the top edge continues the bottom edge, even density everywhere, no vignette, no border, no focal object. A cute flat decorative repeating pattern for a game dialog frame, colors royal purple and gold, small crowns, trophies and confetti, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+        "generatedAt": "2026-09-26T04:35:39.401Z",
+        "acceptedAt": "2026-09-26T04:35:39.460Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 512,
+        "height": 512
       }
     }
   ]

@@ -1,0 +1,47 @@
+{
+  "id": "sprite-schoolgirl-jump",
+  "image": "schoolgirl-jump.png",
+  "frameWidth": 256,
+  "frameHeight": 384,
+  "cols": 4,
+  "rows": 1,
+  "count": 4,
+  "frames": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 256,
+      "h": 384
+    },
+    {
+      "x": 256,
+      "y": 0,
+      "w": 256,
+      "h": 384
+    },
+    {
+      "x": 512,
+      "y": 0,
+      "w": 256,
+      "h": 384
+    },
+    {
+      "x": 768,
+      "y": 0,
+      "w": 256,
+      "h": 384
+    }
+  ],
+  "delays": [
+    140,
+    110,
+    160,
+    140
+  ],
+  "frameIds": [
+    "crouch",
+    "up",
+    "peak",
+    "land"
+  ]
+}
