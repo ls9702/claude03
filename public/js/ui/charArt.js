@@ -5,8 +5,9 @@
 //             saved room by name + avatar of `initial`, among my characters). New characters get nothing.
 // Visible only when `/api/meta` → features.charArt (a server key is configured). States (character.art):
 //   none → button · pending → progress "AI가 그리는 중… 3/11" · ready → thumbnail + "완성!" · failed → reason
-//   (+ retry while the character's one generation is unused). While pending the room is polled once a second.
-import { api, getMeta, savedRoomId } from '../api.js';
+//   (+ retry while the character's one generation is unused). While pending, progress comes from the room SSE
+//   `charArt {charId, status, progress, reason?}` event; the room is polled once a second only while SSE is down.
+import { api, getMeta, onCharArt, savedRoomId, sseConnected } from '../api.js';
 
 const TOTAL = 11;
 const POLL_MS = 1000;
@@ -69,7 +70,9 @@ export function mountArtSlot(slot, { initial = {}, target = null, getAvatar = ()
   function schedulePoll() {
     clearTimeout(pollTimer);
     if (destroyed || char?.art?.status !== 'pending') return;
+    // SSE up → progress arrives as `charArt` events (a reconnect reloads once); poll only while it's down
     pollTimer = setTimeout(async () => {
+      if (sseConnected()) return schedulePoll();
       try {
         await reload();
       } catch {
@@ -79,6 +82,36 @@ export function mountArtSlot(slot, { initial = {}, target = null, getAvatar = ()
       schedulePoll();
     }, POLL_MS);
   }
+
+  /** SSE `charArt` event → progress in place; ready/failed → reload once for files / reason. */
+  async function onArtEvent(ev) {
+    if (destroyed || !ids) return;
+    if (ev?.reconnected) {
+      if (char?.art?.status === 'pending') {
+        await reload().catch(() => {});
+        render();
+        schedulePoll();
+      }
+      return;
+    }
+    if (ev?.charId !== ids.charId || !char) return;
+    const status = ev.status ?? char.art?.status;
+    char = { ...char, art: { ...(char.art ?? {}), status, progress: ev.progress ?? char.art?.progress ?? 0, ...(ev.reason ? { reason: ev.reason } : {}) } };
+    if (status !== 'pending') {
+      clearTimeout(pollTimer);
+      // the room state (files / reason) is committed a moment after the event (throttled) → reload until it shows
+      for (let i = 0; i < 12 && !destroyed; i++) {
+        await reload().catch(() => {});
+        if (char?.art?.status === status) break;
+        char = char ? { ...char, art: { ...(char.art ?? {}), status: 'pending', progress: 1 } } : char;
+        render();
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+    render();
+    schedulePoll();
+  }
+  const offArt = onCharArt(onArtEvent);
 
   async function request() {
     if (busy || !ids) return;
@@ -162,6 +195,7 @@ export function mountArtSlot(slot, { initial = {}, target = null, getAvatar = ()
     update: () => render(),
     destroy() {
       destroyed = true;
+      offArt();
       clearTimeout(pollTimer);
       slot.removeEventListener('click', onClick);
       slot.replaceChildren();

@@ -6,18 +6,32 @@
 // animation (3D: animator paused meanwhile), prompts use the cut-in dialogue box, sounds via audio.js.
 import { renderAvatar, preloadAvatarLayers, portraitHtml, hydratePortraits } from './ui/avatar2d.js';
 import { createCutin } from './ui/cutin2d.js';
+import { createBanner } from './ui/banner.js';
 import { planCutins, tagLabel } from './ui/cutinMap.js';
+import {
+  CUTIN_MODES,
+  CUTIN_MODE_LABEL,
+  PROMPT_BOARD_WAIT_MS,
+  betPicks,
+  classifyGroup,
+  mergeGroups,
+  myPendingChars,
+  normalizeCutinMode,
+  routeOptionInfo,
+} from './ui/cutinPolicy.js';
+import { clockOffset } from './api.js';
 import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
 import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
-import { won, esc } from './format.js';
+import { won, esc, secondsLeft } from './format.js';
 import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
 
 export { won };
 
 const MODE_KEY = 'jinsei.boardMode'; // '2d' | '3d' (explicit choice); absent = auto
 const QUALITY_KEY = 'jinsei.quality';
-const CUTIN_KEY = 'jinsei.cutins'; // 'off' = board-only (toasts + decision modal)
+const CUTIN_KEY = 'jinsei.cutins'; // legacy 'off' (→ spectator mode off); `?cutins=off` = every cut-in off
+const SPECTATOR_KEY = 'jinsei.spectatorCutins'; // 「관전 컷인」 full | compact | off (default compact)
 const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved'];
 /** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
 const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver'];
@@ -67,14 +81,8 @@ function webglAvailable() {
 }
 
 const EMOTION = { joy: '😆', cry: '😭', angry: '😡', sweat: '😅', love: '😍', shock: '😱' };
-const PICKS = [
-  { kind: 'oddEven', pick: 'odd', label: '홀' },
-  { kind: 'oddEven', pick: 'even', label: '짝' },
-  { kind: 'range', pick: '1-3', label: '1~3' },
-  { kind: 'range', pick: '4-7', label: '4~7' },
-  { kind: 'range', pick: '8-10', label: '8~10' },
-];
-const PICK_LABEL = Object.fromEntries(PICKS.map((p) => [p.pick, p.label]));
+const MAX_TILE_PAWNS = 4;
+const TURN_GRACE_MS = 700; // new turn → spin/bet controls wait for the previous turn's events (cut-ins) // 2D tile: more pawns overlap + "+N"
 const MEDAL = ['🥇', '🥈', '🥉'];
 
 function tileIdAt(board, pos) {
@@ -86,9 +94,10 @@ function tileIdAt(board, pos) {
 
 /**
  * @param {HTMLElement} root  container inside #screen-game
- * @param {{ getMeta: () => object, act: (body) => Promise<void>, toast: (msg, kind?) => void }} deps
+ * @param {{ getMeta: () => object, act: (body) => Promise<void>, toast: (msg, kind?) => void,
+ *           resync?: () => Promise<object|null> }} deps  `resync` = fetch + apply the latest room (stale actions)
  */
-export function createGameUI(root, { getMeta, act, toast }) {
+export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   root.innerHTML = `
     <div class="g-top card">
       <div class="g-era-line"><span class="era-chip" data-el="era"></span><span class="muted small" data-el="turninfo"></span></div>
@@ -105,7 +114,9 @@ export function createGameUI(root, { getMeta, act, toast }) {
                 .map((q) => `<option value="${q.name}">${q.label}</option>`)
                 .join('')}</select>
               <button type="button" class="btn tiny" data-el="modebtn" aria-pressed="false">2D 보기</button>
-              <button type="button" class="btn tiny ghost tool-toggle" data-el="cutinbtn" aria-pressed="true" title="이벤트 컷인 연출 켜기/끄기">🎬 컷인</button>
+              <select class="quality-select cutin-select" data-el="cutinmode" aria-label="관전 컷인" title="다른 사람 이벤트의 컷인 연출 (내 이벤트는 항상 전체)">${CUTIN_MODES.map(
+                (m) => `<option value="${m}">🎬 관전 컷인: ${CUTIN_MODE_LABEL[m]}</option>`,
+              ).join('')}</select>
               <button type="button" class="btn tiny ghost tool-toggle" data-el="bgmbtn" aria-pressed="true" title="배경음악 켜기/끄기">🎵 BGM</button>
               <button type="button" class="btn tiny ghost tool-toggle" data-el="soundbtn" aria-pressed="false" aria-label="소리 켜기/끄기">🔊</button>
             </div>
@@ -113,7 +124,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
           <div class="board3d" data-el="wrap3d" hidden><canvas class="board3d-canvas" data-el="canvas3d" aria-label="3D 말판"></canvas></div>
           <div class="track-scroll" data-el="scroll"><div class="track" data-el="track"></div></div>
         </div>
-        <div class="card g-action">
+        <div class="card g-action spin-dock" data-el="dock">
           <div class="spin-box">
             <div class="spin-dial" data-el="dial" aria-live="polite">?</div>
             <div class="spin-ctl">
@@ -121,8 +132,8 @@ export function createGameUI(root, { getMeta, act, toast }) {
               <p class="spin-hint" data-el="hint"></p>
             </div>
           </div>
-          <div class="bet-panel" data-el="bet" hidden></div>
         </div>
+        <div class="card g-bet bet-panel" data-el="bet" hidden></div>
       </div>
       <div class="g-side">
         <div class="card"><h3>캐릭터</h3><ul class="g-chars" data-el="chars"></ul></div>
@@ -160,7 +171,11 @@ export function createGameUI(root, { getMeta, act, toast }) {
     modalKey: null,
     bet: { bettor: null, pick: 'odd', amount: null },
     lastScrollKey: null,
-    cutinPref: modeParamCutin(params) ?? sGet(CUTIN_KEY), // 'off' | null
+    globalOff: modeParamCutin(params) === 'off', // ?cutins=off: board only (toasts + decision modal)
+    // 「관전 컷인」: other players' events → full / compact banners / off (my own events are always full)
+    cutinMode: normalizeCutinMode(params.get('spectatorCutins') ?? sGet(SPECTATOR_KEY) ?? (sGet(CUTIN_KEY) === 'off' ? 'off' : null)),
+    gameOver: false,
+    promptSeen: { id: null, at: 0, bannered: null },
     cutinGroups: new WeakMap(), // engine event (animator step) → cut-in group
     mcCornerEvents: new WeakSet(), // 3D: events whose MC lines go to the corner when the animator plays them
     promptTimer: null,
@@ -171,7 +186,8 @@ export function createGameUI(root, { getMeta, act, toast }) {
   };
 
   // ---------- Stage 5: cut-ins + sound ----------
-  const cutin = createCutin(document.body, { getMeta, assets: { findAsset, assetUrl }, audio });
+  const cutin = createCutin(document.body, { getMeta, assets: { findAsset, assetUrl }, audio, now: () => Date.now() + clockOffset() });
+  const banner = createBanner(document.body, { getMeta });
   audio.install();
   audio.setSfxMap(getMeta()?.presentation?.sfx);
   loadAssetIndex().then(() => {
@@ -188,8 +204,14 @@ export function createGameUI(root, { getMeta, act, toast }) {
   const mcOn = () => (ui.room?.config?.mcFrequency ?? 'normal') !== 'off';
   if (params.has('debug')) window.__mcCorner = mcCorner;
   if (params.has('debug')) window.__cutin = cutin;
+  if (params.has('debug')) window.__banner = banner;
   audio.onChange(() => applySoundUi());
-  const cutinsOn = () => ui.cutinPref !== 'off';
+  /** Cut-ins at all (`?cutins=off` = board only). Other players' events also follow `ui.cutinMode`. */
+  const cutinsOn = () => !ui.globalOff;
+  const myIds = () => new Set(chars().filter((c) => c.isMe).map((c) => c.id));
+  const isSpectator = () => ui.room?.me?.role === 'spectator';
+  /** A prompt waits for one of my characters → it pre-empts every event cut-in. */
+  const promptForMe = () => ui.room?.status === 'playing' && myPendingChars(ui.room?.turn?.pending, chars()).length > 0;
   const hasCutinArt = () => !!(findAsset({ kind: 'frame' }) || findAsset({ kind: 'bg' }));
   /** Prompts use the cut-in dialogue box in 3D, or in 2D once generated art exists; else the modal. */
   const promptCutins = () => cutinsOn() && (!!ui.b3 || hasCutinArt());
@@ -203,8 +225,8 @@ export function createGameUI(root, { getMeta, act, toast }) {
     el.soundbtn.title = st.muted ? '소리 켜기' : '소리 끄기';
     el.bgmbtn.setAttribute('aria-pressed', String(st.bgm));
     el.bgmbtn.classList.toggle('off', !st.bgm);
-    el.cutinbtn.setAttribute('aria-pressed', String(cutinsOn()));
-    el.cutinbtn.classList.toggle('off', !cutinsOn());
+    el.cutinmode.value = ui.cutinMode;
+    el.cutinmode.disabled = !cutinsOn();
   }
   queueMicrotask(applySoundUi);
 
@@ -225,6 +247,32 @@ export function createGameUI(root, { getMeta, act, toast }) {
       preloadAvatarLayers(job[0], { expressions: job[1] }).finally(() => setTimeout(next, 60));
     };
     setTimeout(next, 200);
+  }
+
+  /**
+   * Present one cut-in group by policy (cutinPolicy.classifyGroup): full cut-in (my events, big events, 「전체」),
+   * compact banner (other players' minor events, anything while my prompt waits) or nothing.
+   * @returns {Promise} resolves when a full cut-in closes (right away for banners / skips)
+   */
+  function presentGroup(g) {
+    const kind = classifyGroup(g, {
+      mine: myIds(),
+      mode: ui.cutinMode,
+      promptForMe: promptForMe(),
+      gameOver: ui.gameOver,
+      queued: cutin.size(),
+      globalOff: !cutinsOn(),
+    });
+    if (kind === 'full') return showGroup(g);
+    if (kind === 'banner') {
+      try {
+        banner.show(cutin.specFromGroup(g, cutinOpts()));
+      } catch (err) {
+        console.warn('[banner]', err);
+      }
+      if (g.mc?.length) mcFeedback({ mc: g.mc });
+    }
+    return Promise.resolve(false);
   }
 
   /** A cut-in group, preceded by the MC studio cut-in when it opens an era (Stage 5.6). */
@@ -258,16 +306,24 @@ export function createGameUI(root, { getMeta, act, toast }) {
   const byId = (id) => chars().find((c) => c.id === id);
   const currentChar = () => byId(ui.room?.turn?.order?.[ui.room.turn.currentIndex]);
   const routes = () => getMeta()?.board?.routes ?? {};
-  const betCfg = () => getMeta()?.balance?.bets ?? { minAmount: 5, maxAmount: 20, payout: { oddEven: 2, range: 3 } };
+  const betCfg = () => getMeta()?.balance?.bets ?? { minAmount: 5, maxAmount: 20 }; // ranges / payouts[pick] from /api/meta
 
   async function run(body) {
     if (ui.busy) return false;
+    if (ui.room?.status !== 'playing') return false;
     ui.busy = true;
     root.classList.add('busy');
+    const v0 = ui.room?.version;
     try {
       await act(body);
       return true;
     } catch (err) {
+      // 409 on a spin/bet/choice the game already moved past (turn changed, prompt resolved, game over):
+      // quietly catch up with the latest state instead of a confusing toast
+      if (err.status === 409 && resync) {
+        const fresh = await resync().catch(() => null);
+        if (!fresh || fresh.version !== v0 || fresh.status !== 'playing') return false;
+      }
       toast(err.message, 'error');
       return false;
     } finally {
@@ -308,12 +364,17 @@ export function createGameUI(root, { getMeta, act, toast }) {
 
   function pawnsHtml(list, curId) {
     if (!list?.length) return '';
-    return `<div class="pawns">${list
+    // crowded tile (e.g. 7–8 on the start tile): overlapping row, current + mine first, the rest as "+N"
+    const many = list.length > MAX_TILE_PAWNS;
+    const sorted = many ? [...list].sort((a, b) => (b.id === curId) - (a.id === curId) || !!b.isMe - !!a.isMe) : list;
+    const shown = many ? sorted.slice(0, MAX_TILE_PAWNS - 1) : sorted;
+    const rest = list.length - shown.length;
+    return `<div class="pawns${many ? ' many' : ''}">${shown
       .map(
         (c) =>
           `<span class="pawn${c.id === curId ? ' cur' : ''}${c.isMe ? ' me' : ''}" title="${esc(c.name)}" data-char="${esc(c.id)}">${renderAvatar(c.avatar, { size: 26, title: c.name })}</span>`,
       )
-      .join('')}</div>`;
+      .join('')}${rest > 0 ? `<span class="pawn-more" title="${esc(sorted.slice(MAX_TILE_PAWNS - 1).map((c) => c.name).join(', '))}">+${rest}</span>` : ''}</div>`;
   }
 
   function tileHtml(t, pawns, curId, style = '') {
@@ -373,23 +434,34 @@ export function createGameUI(root, { getMeta, act, toast }) {
   }
 
   // ---------- spin + bets ----------
-  function renderSpin(room) {
+  /**
+   * Spin dock. `hold` (3D board still animating the previous state): the HUD shows the old turn, so the button
+   * is hidden (never "지영의 차례" above a "민수 룰렛 돌리기" button) until the board is idle again.
+   */
+  function renderSpin(room, { hold = false } = {}) {
     const cur = currentChar();
     const turn = room.turn;
-    const canSpin = !!cur?.isMe && turn.phase === 'awaitSpin' && !turn.pending;
+    const canSpin = room.status === 'playing' && !!cur?.isMe && turn.phase === 'awaitSpin' && !turn.pending && !hold;
     el.spin.hidden = !canSpin;
     el.spin.disabled = !canSpin; // in-flight requests are blocked via the .busy class
-    el.spin.textContent = cur ? `🎡 ${cur.name} 룰렛 돌리기` : '🎡 룰렛 돌리기';
+    el.dock.classList.toggle('can-spin', canSpin);
+    if (!hold) el.spin.textContent = cur ? `🎡 ${cur.name} 룰렛 돌리기` : '🎡 룰렛 돌리기';
     const last = turn.lastSpin;
-    if (!el.dial.classList.contains('rolling')) el.dial.textContent = last ? String(last.value) : '?';
+    if (!el.dial.classList.contains('rolling') && !hold) el.dial.textContent = last ? String(last.value) : '?';
+    if (hold) {
+      el.hint.innerHTML = ui.b3 ? '🎲 말이 움직이는 중…' : '⏳ 이벤트 진행 중…';
+      return;
+    }
     let hint = '';
-    if (turn.pending) {
+    if (room.status !== 'playing') {
+      hint = '🏁 게임 종료! 결과를 준비하는 중…';
+    } else if (turn.pending) {
       const waiting = turn.pending.forCharacterIds.filter((id) => !turn.pending.answered?.includes(id)).map((id) => byId(id)?.name ?? id);
-      hint = `⏳ ${esc(turn.pending.title ?? '선택')} — ${esc(waiting.join(', '))} 선택 기다리는 중${deadlineHtml(turn.pending)}`;
+      hint = `⏳ ${esc(turn.pending.title ?? '선택')} — ${esc(waiting.join(', '))} 선택 기다리는 중${deadlineHtml(turn.pending.deadlineAt)}`;
     } else if (canSpin) {
-      hint = '내 차례예요! 룰렛을 돌리세요.';
+      hint = `내 차례예요! 룰렛을 돌리세요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
     } else if (cur) {
-      hint = `${esc(cur.ownerName)}님이 「${esc(cur.name)}」의 룰렛을 돌리기를 기다리는 중…`;
+      hint = `${esc(cur.ownerName)}님이 「${esc(cur.name)}」의 룰렛을 돌리기를 기다리는 중…${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
     }
     // 3D: don't spoil the roulette result before the wheel stops (render again on idle)
     const spoiler = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 400);
@@ -400,18 +472,28 @@ export function createGameUI(root, { getMeta, act, toast }) {
     el.hint.innerHTML = hint;
   }
 
-  function deadlineHtml(p) {
-    return p?.deadlineAt ? ` <span class="deadline" data-deadline="${p.deadlineAt}"></span>` : '';
+  /** Countdown to a server deadline (ms epoch; `turn.spinDeadlineAt` / `pending.deadlineAt`). */
+  function deadlineHtml(at, icon = '') {
+    return at ? ` <span class="deadline" data-deadline="${Number(at)}" data-icon="${esc(icon)}"></span>` : '';
   }
 
-  function renderBets(room) {
+  function renderBets(room, { hold = false } = {}) {
     const cur = currentChar();
     const turn = room.turn;
-    const mine = chars().filter((c) => c.isMe);
-    const open = cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0;
+    // betting on another family's roulette only (the server refuses my own family's turn)
+    const mine = chars().filter((c) => c.isMe && c.ownerId !== cur?.ownerId);
+    const open = room.status === 'playing' && !hold && cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0;
     el.bet.hidden = !open;
-    if (!open) return;
+    if (!open) {
+      el.bet.innerHTML = '';
+      ui.bet.turnKey = null;
+      return;
+    }
     const cfg = betCfg();
+    const PICKS = betPicks(cfg);
+    const PICK_LABEL = Object.fromEntries(PICKS.map((p) => [p.pick, p.label]));
+    if (!PICKS.some((p) => p.pick === ui.bet.pick)) ui.bet.pick = PICKS[0].pick;
+    ui.bet.turnKey = `${turn.turnNo}:${cur.id}`;
     const slot = room.bets?.[turn.turnNo] ?? {};
     if (!mine.some((c) => c.id === ui.bet.bettor)) ui.bet.bettor = mine[0].id;
     const bettor = byId(ui.bet.bettor);
@@ -432,9 +514,11 @@ export function createGameUI(root, { getMeta, act, toast }) {
                 .join('')}</select></label>`
           : `<p class="small muted">베팅: ${esc(bettor.name)} (보유 ${won(bettor.money)})</p>`
       }
-      <div class="bet-picks" role="group" aria-label="베팅 선택">${PICKS.map(
+      <div class="bet-picks" role="group" aria-label="베팅 선택" style="--n:${PICKS.length}">${PICKS.map(
         (p) =>
-          `<button type="button" class="bet-pick${p.pick === ui.bet.pick ? ' on' : ''}" data-pick="${p.pick}">${p.label}<small>×${cfg.payout[p.kind]}</small></button>`,
+          `<button type="button" class="bet-pick${p.pick === ui.bet.pick ? ' on' : ''}" data-pick="${esc(p.pick)}" data-kind="${esc(p.kind)}">${esc(p.label)}${
+            p.payout != null ? `<small>×${esc(p.payout)}</small>` : ''
+          }</button>`,
       ).join('')}</div>
       <label class="bet-row">금액 <b data-bet="amt-label">${won(ui.bet.amount)}</b>
         <input type="range" data-bet="amount" min="${cfg.minAmount}" max="${Math.max(cfg.minAmount, maxAmt)}" step="1" value="${ui.bet.amount}" ${canAfford ? '' : 'disabled'}>
@@ -478,24 +562,67 @@ export function createGameUI(root, { getMeta, act, toast }) {
   // ---------- decision modal ----------
   /** Prompt as a cut-in: options for my characters, a waiting screen for everyone else. */
   function renderPromptCutin(room) {
-    const p = room.turn.pending;
+    const p = room.status === 'playing' ? room.turn.pending : null;
     clearTimeout(ui.promptTimer);
     if (!p) return cutin.closePrompt();
     if (cutin.promptId && cutin.promptId !== p.promptId) cutin.closePrompt();
-    const answered = new Set(p.answered ?? []);
-    const forMe = p.forCharacterIds.map(byId).filter((c) => c?.isMe && !answered.has(c.id));
+    const forMe = myPendingChars(p, chars());
+    const seenAt = promptSeenAt(p.promptId);
+    let urgent = false;
     if (cutin.promptId !== p.promptId) {
-      // open only after the board animation (spin → hops → landing) and earlier cut-ins have played
-      const boardBusy = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 380);
-      if (boardBusy || cutin.busyEvents()) {
-        ui.promptTimer = setTimeout(() => ui.room && renderModal(ui.room), 250);
-        return;
+      if (forMe.length) {
+        // mine: pre-empt queued spectator cut-ins at once (the current one closes within 1.5 s); in 3D give the
+        // board a moment for the roulette / hops, then open over it while it keeps animating
+        const boardBusy = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 380);
+        cutin.preempt();
+        banner.clear();
+        if (boardBusy && performance.now() - seenAt < PROMPT_BOARD_WAIT_MS) {
+          ui.promptTimer = setTimeout(() => ui.room && renderModal(ui.room), 150);
+          return;
+        }
+        urgent = true;
+      } else {
+        // someone else's decision: 「간단히」/「끄기」 → a small banner (the spin dock shows who is choosing)
+        if (ui.cutinMode !== 'full') {
+          if (ui.promptSeen.bannered !== p.promptId && ui.cutinMode === 'compact') {
+            ui.promptSeen.bannered = p.promptId;
+            const who = byId(p.charId);
+            const names = p.forCharacterIds.map((id) => byId(id)?.name).filter(Boolean);
+            banner.show({
+              key: `prompt:${p.promptId}`,
+              tone: p.tone ?? 'neutral',
+              tag: `⏳ ${p.title ?? '선택'}`,
+              text: [`${names.length > 2 ? `${names.length}명` : names.join(', ')}의 선택을 기다리는 중…`],
+              chips: [],
+              cast: who ? [{ char: who }] : [],
+              speaker: who?.id ?? null,
+            });
+          }
+          return;
+        }
+        // 「전체」: the waiting screen after the board animation and earlier cut-ins have played
+        const boardBusy = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 380);
+        if (boardBusy || cutin.busyEvents()) {
+          ui.promptTimer = setTimeout(() => ui.room && renderModal(ui.room), 250);
+          return;
+        }
       }
+    }
+    if (!forMe.length && ui.cutinMode !== 'full' && cutin.promptId === p.promptId) {
+      // I've answered (group prompt): 「간단히」/「끄기」 go back to the board; the dock shows who's still choosing
+      if (!ui.promptCloseTimer) {
+        ui.promptCloseTimer = setTimeout(() => {
+          ui.promptCloseTimer = null;
+          if (ui.room?.turn?.pending?.promptId === p.promptId && !myPendingChars(ui.room.turn.pending, chars()).length) cutin.closePrompt(p.promptId);
+        }, 700);
+      }
+      return;
     }
     cutin.showPrompt(p, {
       characters: orderedChars(),
       forMe,
       room,
+      urgent,
       onChoose: (b) => run({ type: 'choose', ...b }),
     });
   }
@@ -507,9 +634,9 @@ export function createGameUI(root, { getMeta, act, toast }) {
       return renderPromptCutin(room);
     }
     cutin.closePrompt();
-    const p = room.turn.pending;
-    const answered = new Set(p?.answered ?? []);
-    const forMe = p ? p.forCharacterIds.map(byId).filter((c) => c?.isMe && !answered.has(c.id)) : [];
+    const p = room.status === 'playing' ? room.turn.pending : null;
+    const forMe = myPendingChars(p, chars());
+    if (forMe.length) cutin.preempt(); // queued spectator cut-ins must not keep playing under my decision
     if (!forMe.length) {
       el.modal.hidden = true;
       ui.modalKey = null;
@@ -522,7 +649,9 @@ export function createGameUI(root, { getMeta, act, toast }) {
     // (Switching to my next character within an already open prompt happens right away.)
     const samePrompt = !el.modal.hidden && ui.modalKey?.startsWith(`${p.promptId}:`);
     if (ui.b3 && !samePrompt) {
-      const wait = ui.b3.isBusy() ? 250 : 380 - (performance.now() - ui.lastStateAt);
+      // …but never longer than PROMPT_BOARD_WAIT_MS: my prompt opens over a still-animating board
+      const age = performance.now() - promptSeenAt(p.promptId);
+      const wait = age >= PROMPT_BOARD_WAIT_MS ? 0 : ui.b3.isBusy() ? 150 : 380 - (performance.now() - ui.lastStateAt);
       if (wait > 0) {
         el.modal.hidden = true; // never leave a stale prompt clickable meanwhile
         ui.modalKey = null;
@@ -545,10 +674,12 @@ export function createGameUI(root, { getMeta, act, toast }) {
           .map(
             (o) =>
               `<button type="button" class="btn choice" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}">
-                <span class="c-icon">${esc(o.icon ?? '')}</span>${esc(o.label ?? o.id)}</button>`,
+                <span class="c-icon">${esc(o.icon ?? '')}</span><span class="c-label">${esc(o.label ?? o.id)}${
+                  routeOptionInfo(p, o) ? `<small class="c-desc">${esc(routeOptionInfo(p, o))}</small>` : ''
+                }</span></button>`,
           )
           .join('')}</div>
-        ${p.deadlineAt ? `<p class="small muted">남은 시간 <span class="deadline" data-deadline="${p.deadlineAt}"></span> — 시간이 지나면 기본 선택으로 처리돼요.</p>` : ''}
+        ${p.deadlineAt ? `<p class="small muted">남은 시간${deadlineHtml(p.deadlineAt)} — 시간이 지나면 기본 선택으로 처리돼요.</p>` : ''}
       </div>`;
     hydratePortraits(el.modal);
     el.modal.hidden = false;
@@ -556,10 +687,17 @@ export function createGameUI(root, { getMeta, act, toast }) {
   }
 
   function tickDeadlines() {
+    const off = clockOffset();
     for (const d of root.querySelectorAll('[data-deadline]')) {
-      const left = Math.max(0, Math.ceil((Number(d.dataset.deadline) - Date.now()) / 1000));
-      d.textContent = `${left}초`;
+      const left = secondsLeft(d.dataset.deadline, Date.now(), off);
+      d.textContent = `${d.dataset.icon ? `${d.dataset.icon} ` : ''}${left}초`;
+      d.classList.toggle('urgent', left <= 5);
     }
+  }
+  /** When this client first saw a prompt (3D: my prompt waits ≤ PROMPT_BOARD_WAIT_MS for the board). */
+  function promptSeenAt(promptId) {
+    if (ui.promptSeen.id !== promptId) ui.promptSeen = { id: promptId, at: performance.now(), bannered: null };
+    return ui.promptSeen.at;
   }
   const ticker = setInterval(tickDeadlines, 250);
   queueMicrotask(() => applyModeUi());
@@ -591,14 +729,6 @@ export function createGameUI(root, { getMeta, act, toast }) {
       audio.setBgm(!audio.state.bgm);
       return;
     }
-    if (t.closest('[data-el="cutinbtn"]')) {
-      ui.cutinPref = cutinsOn() ? 'off' : 'on';
-      sSet(CUTIN_KEY, ui.cutinPref === 'off' ? 'off' : null);
-      if (!cutinsOn()) cutin.hide();
-      applySoundUi();
-      toast(cutinsOn() ? '🎬 이벤트 컷인을 켰어요.' : '이벤트 컷인을 껐어요. (말판 연출만)');
-      return render(ui.room);
-    }
     if (t.closest('[data-el="camreset"]')) {
       ui.viewEra = null;
       ui.b3?.resetCamera();
@@ -620,7 +750,8 @@ export function createGameUI(root, { getMeta, act, toast }) {
       return renderBets(ui.room);
     }
     if (t.closest('[data-bet="go"]')) {
-      const p = PICKS.find((x) => x.pick === ui.bet.pick);
+      const p = betPicks(betCfg()).find((x) => x.pick === ui.bet.pick);
+      if (!p || !ui.bet.turnKey) return;
       run({ type: 'bet', characterId: ui.bet.bettor, kind: p.kind, pick: p.pick, amount: ui.bet.amount }).then((ok) => ok && toast('훈수 베팅 완료!'));
     }
   });
@@ -630,11 +761,15 @@ export function createGameUI(root, { getMeta, act, toast }) {
       const lbl = el.bet.querySelector('[data-bet="amt-label"]');
       if (lbl) lbl.textContent = won(ui.bet.amount);
       const go = el.bet.querySelector('[data-bet="go"]');
-      const p = PICKS.find((x) => x.pick === ui.bet.pick);
+      const p = betPicks(betCfg()).find((x) => x.pick === ui.bet.pick) ?? { label: '' };
       if (go) go.textContent = `${go.textContent.startsWith('베팅 바꾸기') ? '베팅 바꾸기' : '베팅하기'} (${p.label} · ${won(ui.bet.amount)})`;
     }
   });
   root.addEventListener('change', (ev) => {
+    if (ev.target.dataset.el === 'cutinmode') {
+      setCutinMode(ev.target.value);
+      return;
+    }
     if (ev.target.dataset.el === 'quality') {
       ui.quality = ev.target.value;
       sSet(QUALITY_KEY, ui.quality);
@@ -646,6 +781,18 @@ export function createGameUI(root, { getMeta, act, toast }) {
       renderBets(ui.room);
     }
   });
+
+  /** 「관전 컷인」 전체 / 간단히 / 끄기 (remembered per device). */
+  function setCutinMode(mode) {
+    ui.cutinMode = normalizeCutinMode(mode);
+    sSet(SPECTATOR_KEY, ui.cutinMode);
+    sSet(CUTIN_KEY, null); // the legacy on/off switch is replaced by this setting
+    if (ui.cutinMode !== 'full') cutin.clearQueue();
+    if (ui.cutinMode === 'off') banner.clear();
+    applySoundUi();
+    toast(`🎬 관전 컷인: ${CUTIN_MODE_LABEL[ui.cutinMode]}${ui.cutinMode === 'compact' ? ' (큰 이벤트만 컷인, 나머지는 작은 알림)' : ''}`);
+    if (ui.room) render(ui.room);
+  }
 
   // ---------- main render ----------
   function render(room) {
@@ -660,13 +807,24 @@ export function createGameUI(root, { getMeta, act, toast }) {
     if (room.id !== ui.roomId) {
       ui.roomId = room.id;
       ui.hudShown = false;
+      ui.gameOver = false;
     }
+    if (room.status !== 'playing') finish();
     if (room.version !== ui.lastVersion) {
       ui.lastVersion = room.version;
       ui.lastStateAt = performance.now();
       // 3D: re-render once the grace window for the matching SSE `events` has passed
       clearTimeout(ui.graceTimer);
       ui.graceTimer = setTimeout(() => ui.room && ui.b3 && !ui.b3.isBusy() && render(ui.room), 420);
+    }
+    // a new turn: the previous turn's events / cut-ins are still on their way → the spin button waits for
+    // them (2D: TURN_GRACE_MS or until the event cut-ins close) instead of popping up under a cut-in
+    const turnKey = `${room.turn.turnNo}:${room.turn.currentIndex}`;
+    if (turnKey !== ui.turnKey) {
+      ui.turnKey = turnKey;
+      ui.turnAt = performance.now();
+      clearTimeout(ui.turnTimer);
+      ui.turnTimer = setTimeout(() => ui.room?.status === 'playing' && render(ui.room), TURN_GRACE_MS + 20);
     }
     const shown = Math.min(ui.viewEra ?? cur?.position?.eraIndex ?? 0, room.board.eras.length - 1);
     if (!ui.b3 && !ui.b3Loading && !ui.b3Failed && wants3D()) ensureBoard3D();
@@ -676,14 +834,16 @@ export function createGameUI(root, { getMeta, act, toast }) {
     const bgmEra = room.board.eras[cur?.position?.eraIndex ?? 0]?.id;
     if (bgmEra) audio.setEra(bgmEra);
     preloadLayers();
+    root.classList.toggle('spectator', isSpectator());
     if (!holdHud) {
       renderTop(room);
       renderTabs(room, shown);
     }
     if (ui.b3) sync3D(room);
     else renderTrack(room, shown);
-    renderSpin(room);
-    renderBets(room);
+    const holdSpin = !!holdHud || cutin.busyEvents() || performance.now() - (ui.turnAt ?? 0) < TURN_GRACE_MS;
+    renderSpin(room, { hold: holdSpin });
+    renderBets(room, { hold: holdSpin });
     if (!holdHud) {
       renderChars(room);
       renderLog(room);
@@ -797,7 +957,13 @@ export function createGameUI(root, { getMeta, act, toast }) {
         const g = ui.cutinGroups.get(e);
         if (!g) return;
         ui.cutinGroups.delete(e);
-        if (ctx.instant || !cutinsOn() || ui.b3 !== b3) return;
+        if (ctx.instant || !cutinsOn() || ui.b3 !== b3 || ui.gameOver) return;
+        // policy decides at play time (my prompt may have arrived meanwhile → banner, no pause)
+        const kind = classifyGroup(g, { mine: myIds(), mode: ui.cutinMode, promptForMe: promptForMe(), gameOver: ui.gameOver, queued: cutin.size(), globalOff: !cutinsOn() });
+        if (kind !== 'full') {
+          presentGroup(g);
+          return;
+        }
         anim.pause();
         showGroup(g).finally(() => anim.resume());
       });
@@ -902,9 +1068,13 @@ export function createGameUI(root, { getMeta, act, toast }) {
   function onEvents(payload) {
     const events = payload?.events ?? [];
     const go = events.find((e) => e.type === 'gameOver');
-    if (go) ui.gameOverLine = go.line ?? null;
-    // gameOver is shown as the result screen's intro instead of a board cut-in
-    const groups = cutinsOn() ? planCutins(events).filter((g) => g.anchor.type !== 'gameOver') : [];
+    if (go) {
+      ui.gameOverLine = go.line ?? null;
+      finish(); // straight to the MC result intro: no more spectator cut-ins / banners
+    }
+    // gameOver is shown as the result screen's intro instead of a board cut-in; one turn's events of another
+    // character merge into a single cut-in (e.g. landing + era change)
+    const groups = cutinsOn() && !ui.gameOver ? mergeGroups(planCutins(events).filter((g) => g.anchor.type !== 'gameOver'), { mine: myIds() }) : [];
     // Stage 5.6 MCs: game start → studio cut-in; lines not shown inside a cut-in → board corner booth
     const covered = new Set(groups.flatMap((g) => g.mcEvents ?? []));
     const start = events.find((e) => e.type === 'gameStarted' && e.mc?.length);
@@ -916,18 +1086,31 @@ export function createGameUI(root, { getMeta, act, toast }) {
       ui.b3?.mascotReact?.('spin');
     }
     if (ui.b3) {
-      for (const g of groups) ui.cutinGroups.set(g.anchor, g);
+      // the merged cut-in plays after the last merged anchor's board animation
+      for (const g of groups) ui.cutinGroups.set(g.anchors?.at(-1) ?? g.anchor, g);
       for (const e of corner) ui.mcCornerEvents.add(e);
       ui.b3.playEvents(events);
       return;
     }
     for (const e of events) feedback(e, false);
-    if (hidden) return;
-    for (const g of groups) {
-      if (cutin.size() > 5) break; // backlog → skip (toasts / log still tell the story)
-      showGroup(g);
-    }
+    if (hidden || ui.gameOver) return;
+    for (const g of groups) presentGroup(g); // full / banner / skip (spectator backlog capped by policy)
     for (const e of corner) mcFeedback(e);
+  }
+
+  /** Game over / finished room: drop every pending cut-in, banner and MC line; controls are locked. */
+  function finish() {
+    if (ui.gameOver) return;
+    ui.gameOver = true;
+    clearTimeout(ui.promptTimer);
+    cutin.hide();
+    banner.clear();
+    mcCorner.clear();
+    el.spin.hidden = true;
+    el.spin.disabled = true;
+    el.bet.hidden = true;
+    el.modal.hidden = true;
+    ui.modalKey = null;
   }
 
   /** Per-event feedback (toasts / side-panel floats); in 3D it is called by the animator in sync. */
@@ -945,15 +1128,15 @@ export function createGameUI(root, { getMeta, act, toast }) {
           floatOn(e.charId, `${EMOTION[e.emotion] ?? ''}${e.delta > 0 ? '+' : ''}${won(e.delta)}`, e.delta > 0 ? 'plus' : 'minus');
           break;
         case 'eraChanged':
-          if (c?.isMe && !in3d) toast(`🌱 ${c.name}: ${e.eraName} 시대 시작!`);
+          if (c?.isMe && !in3d && !cutinsOn()) toast(`🌱 ${c.name}: ${e.eraName} 시대 시작!`);
           break;
         case 'routeChosen': {
           const r = routes()[e.route];
-          toast(`${r?.icon ?? ''} ${c?.name ?? ''} → ${r?.name ?? e.route} 루트`);
+          if (!cutinsOn() || ui.cutinMode === 'off') toast(`${r?.icon ?? ''} ${c?.name ?? ''} → ${r?.name ?? e.route} 루트`);
           break;
         }
         case 'finished':
-          if (!in3d) toast(`🏁 ${c?.name ?? ''} ${e.place}등 골인!`);
+          if (!in3d && !cutinsOn()) toast(`🏁 ${c?.name ?? ''} ${e.place}등 골인!`);
           break;
         case 'betResolved':
           for (const r of e.results) {

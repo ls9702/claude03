@@ -8,6 +8,8 @@
 //   falls back to the SVG portrait. `setPreviewRenderer(null)` restores the default. Open customizers re-render.
 import { getAvatarDefs, normalizeAvatar, outfitTintable, randomAvatar, renderAvatar } from './avatar2d.js';
 import { mountArtSlot } from './charArt.js';
+import { bindNameInput } from './nameInput.js';
+import { NAME_MAX, nameFits } from '../format.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -218,8 +220,8 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
               </div>
             </div>
             <label class="field cz-name">
-              <span>이름</span>
-              <input name="name" maxlength="12" required placeholder="캐릭터 이름" value="${esc(initial.name ?? '')}" autocomplete="off">
+              <span>이름 <span class="name-count" data-name-count aria-live="polite"></span></span>
+              <input name="name" maxlength="40" required placeholder="캐릭터 이름 (12자까지)" value="${esc(initial.name ?? '')}" autocomplete="off">
             </label>
           </section>
           <section class="cz-editor">
@@ -262,6 +264,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
     </div>`;
 
   const form = host.querySelector('form');
+  bindNameInput(form.elements.name, form.querySelector('[data-name-count]'));
   const errEl = form.querySelector('.form-error');
   const preview2d = form.querySelector('.cz-2d');
   const canvas3d = form.querySelector('.cz-3d');
@@ -468,9 +471,14 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     if (busy) return;
-    const name = form.elements.name.value.trim();
+    const name = form.elements.name.value.replace(/\s+/g, ' ').trim();
     if (!name) {
       errEl.textContent = '이름을 입력하세요.';
+      form.elements.name.focus();
+      return;
+    }
+    if (!nameFits(name)) {
+      errEl.textContent = `이름은 ${NAME_MAX}자까지 쓸 수 있어요.`;
       form.elements.name.focus();
       return;
     }

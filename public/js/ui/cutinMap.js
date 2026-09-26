@@ -145,9 +145,18 @@ export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {
   else if (anchor?.type === 'routeChosen') place = `${routes[anchor.route]?.name ?? anchor.route} 루트`;
   else if (anchor?.type === 'finished') place = '골인';
   else if ((anchor?.type === 'gameOver' || anchor?.type === 'result') && anchor?.tone !== 'result') place = '결과 발표';
-  else if (anchor?.type === 'prompt') place = anchor.title ?? '선택';
+  else if (anchor?.type === 'prompt') return promptTag(anchor, tone);
   else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티' }[anchor.kind] ?? '결과';
+  // the tone label repeats the route name for routes ("💕 연애·육아 · 연애·육아 루트") → keep just the place
+  if (place && tone.label && place.startsWith(tone.label)) return `${tone.icon ?? ''} ${place}`.trim();
   return `${tone.icon ?? ''} ${tone.label ?? ''}${place ? ` · ${place}` : ''}`.trim();
+}
+
+/** Prompt tag = its title only (the tone label would repeat / contradict it: "💼 일·커리어 · 📝 수능 날"). */
+function promptTag(anchor, tone) {
+  const title = String(anchor?.title ?? '선택').trim();
+  if (anchor?.kind === 'routeChoice' && !/^\p{Extended_Pictographic}/u.test(title)) return `🔀 ${title}`;
+  return /^\p{Extended_Pictographic}/u.test(title) ? title : `${tone?.icon ?? '❓'} ${title}`.trim();
 }
 
 /** Spectators' cut-ins auto-advance; the owner gets longer; prompts never (deadline handles them). */

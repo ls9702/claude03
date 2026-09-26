@@ -272,3 +272,36 @@ body.cutin-open { overflow: hidden; }
   .av2-layer { opacity: 1; }
   .av2-p.tear, .av2-p.sweat, .av2-p.heart, .av2-p.spark { opacity: 1; }
 }
+
+/* ---------- verification fixes (post-5.6): long names, prompt descriptions, reaction bar room ---------- */
+.ci-tab { max-width: min(190px, 44vw); min-width: 0; }
+.ci-tab-n { flex: none; }
+.ci-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-tab-cur { flex: none; }
+.ci-tabs-l { min-width: 0; }
+.ci-who { max-width: calc(100% - 44px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-bubble, .ci-chip, .ci-opt-who, .ci-wait { overflow-wrap: anywhere; }
+.ci-chip { max-width: 100%; }
+.ci-opt-l { display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-width: 0; }
+.ci-opt.has-desc { justify-content: flex-start; }
+.ci-opt-desc { font-size: 0.78rem; font-weight: 700; color: #57534e; line-height: 1.25; margin-top: 2px; }
+.ci-deadline.urgent { color: #fecaca; opacity: 1; font-weight: 900; }
+/* the reaction bar (fixed, bottom) never covers the tab row: keep the stage above it */
+.cutin { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
+.ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 350px) * 16 / 9)); }
+@media (max-width: 700px), (max-aspect-ratio: 4/5) {
+  .cutin { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .ci-stage { width: calc(100vw - 16px); }
+  .ci-tab { max-width: 42vw; }
+}
+/* reactions: one row of chips (newest right), never a pile over the dialogue box */
+.ci-reacts { flex-wrap: nowrap; overflow: hidden; max-height: 30px; }
+.ci-react { flex: none; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px), (max-aspect-ratio: 4/5) {
+  /* character tabs: one scrollable row instead of 3 wrapped rows */
+  .ci-tabs { flex-wrap: nowrap; align-items: center; }
+  .ci-tabs-l { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; padding: 2px 0 6px; }
+  .ci-tabs-l::-webkit-scrollbar { display: none; }
+  .ci-tabs-l .ci-tab { flex: none; }
+  .ci-tabs-r { flex: none; }
+}

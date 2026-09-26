@@ -34,6 +34,7 @@
         <fieldset class="era-set">
           <legend>시대별 턴 수 <small class="muted">(1~40, 기본값 표시)</small></legend>
           <div id="era-rows" class="era-rows"></div>
+          <p id="era-hint" class="era-hint small" role="status" aria-live="polite"></p>
           <button type="button" id="era-reset" class="btn tiny ghost">기본값으로</button>
         </fieldset>
         <div class="row2">
@@ -46,6 +47,15 @@
             <option value="index">캐릭터 번호 순</option>
           </select>
         </label>
+        <label class="field"><span>턴 제한 시간 <small class="muted">(룰렛·혼자 하는 선택, 시간이 지나면 자동 진행)</small></span>
+          <select name="turnTimeoutSec">
+            <option value="0" selected>끄기</option>
+            <option value="30">30초</option>
+            <option value="60">60초</option>
+            <option value="90">90초</option>
+            <option value="120">120초</option>
+          </select>
+        </label>
         <label class="field"><span>MC 등장 빈도 <small class="muted">(🐶 호야 &amp; 봄이)</small></span>
           <select name="mcFrequency">
             <option value="many">많이</option>
@@ -54,7 +64,6 @@
             <option value="off">끄기</option>
           </select>
         </label>
-        <label class="check"><input type="checkbox" name="allowCpu"> CPU 캐릭터 허용 <small class="muted">(이후 단계에서 동작)</small></label>
         <p class="form-error" role="alert"></p>
         <button class="btn primary block" type="submit">방 만들기</button>
       </form>

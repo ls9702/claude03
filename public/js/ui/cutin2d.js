@@ -10,8 +10,9 @@
 // Pure HTML/CSS (no WebGL) → identical on low-end / TV mode. Every asset is optional: the frame falls back to
 // a CSS pattern, the background to an SVG scene, characters to the SVG portrait.
 import { won, esc } from '../format.js';
-import { renderAvatarLayers, portraitHtml, hydratePortraits } from './avatar2d.js';
-import { autoAdvanceMs, fallbackText, isBigWin, planCutins, poseFor, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
+import { renderAvatarLayers, portraitHtml, hydratePortraits, preloadAvatarLayers } from './avatar2d.js';
+import { autoAdvanceMs, expressionFor, fallbackText, isBigWin, planCutins, poseFor, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
+import { CAST_PRELOAD_MS, PREEMPT_KEEP_MS, routeOptionInfo } from './cutinPolicy.js';
 import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from './mc.js';
 
 const REASON_ICON = { tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲' };
@@ -66,9 +67,10 @@ function sceneSvg(scene, tone) {
 
 /**
  * @param {HTMLElement} root  where the overlay is mounted (document.body)
- * @param {{ getMeta: () => object, assets?: {findAsset, assetUrl}, audio?: object, reducedMotion?: () => boolean }} deps
+ * @param {{ getMeta: () => object, assets?: {findAsset, assetUrl}, audio?: object, reducedMotion?: () => boolean,
+ *           now?: () => number }} deps  `now` = server clock estimate for `deadlineAt` countdowns
  */
-export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = null, reducedMotion } = {}) {
+export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = null, reducedMotion, now = () => Date.now() } = {}) {
   const findAsset = assets.findAsset ?? (() => null);
   const isReduced = reducedMotion ?? (() => !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const q = [];
@@ -297,7 +299,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     $.tabs.innerHTML = `<div class="ci-tabs-l">${chars
       .map(
         (c, i) =>
-          `<span class="ci-tab${c.id === spec.currentId ? ' on' : ''}${c.isMe ? ' me' : ''}"><span class="ci-tab-av">${portraitHtml(c, { size: 22 })}</span>${i + 1} ${esc(c.name)}${c.id === spec.currentId ? ' ▶' : ''}</span>`,
+          `<span class="ci-tab${c.id === spec.currentId ? ' on' : ''}${c.isMe ? ' me' : ''}"><span class="ci-tab-av">${portraitHtml(c, { size: 22 })}</span><span class="ci-tab-n">${i + 1}</span><span class="ci-tab-name">${esc(c.name)}</span>${c.id === spec.currentId ? '<span class="ci-tab-cur">▶</span>' : ''}</span>`,
       )
       .join('')}</div>${
       audio
@@ -395,17 +397,25 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
 
   function renderOptions(spec) {
     const p = spec.prompt;
-    $.options.innerHTML = '';
     $.wait.innerHTML = '';
+    // keep the option buttons when only the answered list changed (others answering a group prompt):
+    // rebuilding them would swallow a click that's in flight
+    const optKey = p?.forMe?.length ? `${p.promptId}|${p.forMe[0].id}|${p.forMe.length}` : '';
+    if (!optKey || $.options.dataset.key !== optKey) {
+      $.options.innerHTML = '';
+      $.options.dataset.key = optKey;
+    }
     if (!p) return;
-    if (p.forMe?.length) {
+    if (p.forMe?.length && !$.options.childElementCount) {
       const who = p.forMe[0];
       $.options.innerHTML = `${
         p.forMe.length > 1 || who.id !== p.charId ? `<p class="ci-opt-who">${esc(who.name)}의 선택${p.forMe.length > 1 ? ` <small>(내 캐릭터 ${p.forMe.length}명 남음)</small>` : ''}</p>` : ''
       }<div class="ci-opt-list">${p.options
         .map(
           (o) =>
-            `<button type="button" class="ci-opt" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"><span class="c-icon">${esc(o.icon ?? '')}</span>${esc(o.label ?? o.id)}</button>`,
+            `<button type="button" class="ci-opt${o.desc ? ' has-desc' : ''}" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"><span class="c-icon">${esc(o.icon ?? '')}</span><span class="ci-opt-l">${esc(o.label ?? o.id)}${
+              o.desc ? `<small class="ci-opt-desc">${esc(o.desc)}</small>` : ''
+            }</span></button>`,
         )
         .join('')}</div>`;
     }
@@ -417,13 +427,26 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
 
   function tickDeadline() {
     for (const d of overlay.querySelectorAll('[data-deadline]')) {
-      const left = Math.max(0, Math.ceil((Number(d.dataset.deadline) - Date.now()) / 1000));
+      const left = Math.max(0, Math.ceil((Number(d.dataset.deadline) - now()) / 1000));
       d.textContent = `남은 시간 ${left}초`;
+      d.classList.toggle('urgent', left <= 5);
     }
   }
   const ticker = setInterval(tickDeadline, 250);
 
   // ---------- queue ----------
+  /** Warm the cast's composed art so the window opens with the characters in place (capped wait). */
+  function preloadCast(spec) {
+    const cast = (spec.cast ?? []).slice(0, 3);
+    if (!cast.length) return Promise.resolve();
+    const jobs = cast.map((m) => {
+      const part = expressionFor(m.emotion).part;
+      return preloadAvatarLayers(m.char, { expressions: part ? [part] : [] }).catch(() => {});
+    });
+    const cap = spec.prompt ? Math.min(300, CAST_PRELOAD_MS) : CAST_PRELOAD_MS;
+    return Promise.race([Promise.all(jobs), new Promise((r) => setTimeout(r, cap))]);
+  }
+
   function pump() {
     if (cur || !q.length) {
       if (!cur && !q.length) {
@@ -433,18 +456,33 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       }
       return;
     }
-    cur = q.shift();
+    const it = q.shift();
+    cur = it;
     cur.timers = [];
-    document.body?.classList.add('cutin-open');
+    cur.loading = true;
+    const start = () => {
+      if (cur !== it) return; // closed / pre-empted while the cast was loading
+      it.loading = false;
+      it.shownAt = Date.now();
+      document.body?.classList.add('cutin-open');
+      try {
+        render(it);
+        if (it.closeBy != null) it.timers.push(setTimeout(() => cur === it && close(), Math.max(0, it.closeBy - Date.now())));
+      } catch (err) {
+        console.warn('[cutin]', err);
+        cur = null;
+        it.resolve(false);
+        pump();
+      }
+    };
+    let pre = null;
     try {
-      render(cur);
-    } catch (err) {
-      console.warn('[cutin]', err);
-      const it = cur;
-      cur = null;
-      it.resolve(false);
-      pump();
+      pre = isReduced() ? null : preloadCast(it.spec);
+    } catch {
+      pre = null;
     }
+    if (pre) pre.then(start, start);
+    else start();
   }
 
   function close(result = true) {
@@ -452,7 +490,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (!it) return;
     for (const t of it.timers) clearTimeout(t);
     cur = null;
-    overlay.classList.add('leaving');
+    if (!it.loading) overlay.classList.add('leaving');
     try {
       it.opts?.onClose?.(result);
     } catch (err) {
@@ -543,7 +581,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       .map((id) => characters.find((c) => c.id === id))
       .filter(Boolean)
       .map((c) => ({ char: c, pose: c.id === p.charId ? (p.kind === 'routeChoice' ? 'wave' : 'idle') : 'idle', emotion: c.id === p.charId && p.emotion !== 'neutral' ? p.emotion : null }));
-    const anchor = { type: 'prompt', tone: p.tone ?? 'neutral', title: p.title };
+    const anchor = { type: 'prompt', tone: p.tone ?? 'neutral', title: p.title, kind: p.kind };
     return {
       key: `prompt:${p.promptId}`,
       kind: 'prompt',
@@ -551,7 +589,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       scene: p.scene ?? 'none',
       tag: tagLabel(anchor, { tones: pres().tones }),
       who: `${subject?.name ?? ''}${sceneLabel(p.scene) ? ` · ${sceneLabel(p.scene)}` : ''}`,
-      text: [p.title, p.text].filter(Boolean),
+      text: [p.text || p.title].filter(Boolean), // the title is the tag above the window (no repeat)
       line: p.line ?? null,
       speaker: p.charId,
       chips: [],
@@ -564,7 +602,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       prompt: {
         promptId: p.promptId,
         charId: p.charId,
-        options: p.options,
+        kind: p.kind,
+        options: (p.options ?? []).map((o) => ({ ...o, desc: routeOptionInfo(p, o) })),
         forMe,
         deadlineAt: p.deadlineAt,
         waitingNames: waitingIds.map((id) => characters.find((c) => c.id === id)?.name ?? id),
@@ -613,7 +652,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       promptItem = { promptId: p.promptId, key, item };
       new Promise((resolve) => {
         item.resolve = resolve;
-        q.push(item);
+        if (opts.urgent) q.unshift(item); // my prompt jumps the queue (see preempt)
+        else q.push(item);
         if (!cur) pump();
       }).then((r) => {
         if (r === false && promptItem?.item === item && !forMe.length) dismissedPrompts.add(p.promptId);
@@ -635,6 +675,43 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     get promptId() {
       return promptItem?.promptId ?? null;
     },
+    /**
+     * A prompt of mine is waiting: drop every queued event cut-in (their promises resolve false) and close the
+     * one on screen after at most `keepMs` in total. The prompt cut-in itself is kept. → number dropped
+     */
+    preempt({ keepMs = PREEMPT_KEEP_MS } = {}) {
+      let dropped = 0;
+      for (let i = q.length - 1; i >= 0; i--) {
+        const it = q[i];
+        if (it === promptItem?.item) continue;
+        q.splice(i, 1);
+        it.resolve(false);
+        dropped++;
+      }
+      if (cur && cur !== promptItem?.item) {
+        const it = cur;
+        if (it.loading) {
+          close(false);
+          dropped++;
+        } else {
+          const by = (it.shownAt ?? Date.now()) + keepMs;
+          if (it.closeBy == null || by < it.closeBy) {
+            it.closeBy = by;
+            it.timers.push(setTimeout(() => cur === it && close(false), Math.max(0, by - Date.now())));
+          }
+        }
+      }
+      return dropped;
+    },
+    /** Drop queued (not yet shown) event cut-ins, e.g. at game over. */
+    clearQueue() {
+      for (let i = q.length - 1; i >= 0; i--) {
+        const it = q[i];
+        if (it === promptItem?.item) continue;
+        q.splice(i, 1);
+        it.resolve(false);
+      }
+    },
     /** Close everything. */
     hide() {
       for (const it of q.splice(0)) it.resolve(false);
@@ -648,7 +725,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       chip.className = 'ci-react';
       chip.textContent = `${emoji} ${name ?? ''}`.trim();
       $.reacts.appendChild(chip);
-      while ($.reacts.childElementCount > 6) $.reacts.firstElementChild.remove();
+      while ($.reacts.childElementCount > 3) $.reacts.firstElementChild.remove();
       setTimeout(() => chip.remove(), 4000);
       return true;
     },

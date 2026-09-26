@@ -46,6 +46,7 @@ pre.json {
 }
 
 /* top bar */
+.spec-badge { background: #e0f2fe; color: #075985; font-weight: 800; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; white-space: nowrap; }
 .topbar {
   position: sticky; top: 0; z-index: 20;
   height: var(--topbar-h);
@@ -102,6 +103,9 @@ input, select {
   font: inherit; padding: 10px 12px; min-height: 44px;
   border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fffdfa; color: var(--ink);
 }
+/* ≥ 16px on touch devices: iOS zooms into smaller focused fields */
+@media (pointer: coarse) { input, select, textarea { font-size: max(16px, 1em) !important; } }
+.field input, .field select { font-size: 1rem; }
 input:focus, select:focus, .btn:focus-visible { outline: 3px solid rgba(255, 122, 47, 0.35); outline-offset: 1px; }
 .form-error { color: var(--danger); min-height: 1.2em; font-size: 0.9rem; }
 

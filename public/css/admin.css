@@ -32,3 +32,32 @@ table.rooms { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 0.88rem; margin-bottom: 12px; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; }
+
+/* ---------- verification fixes (post-5.6): host tools, era hints, 390 px ---------- */
+.era-row input:invalid, .era-row.bad input { border-color: var(--danger); background: #fff3f2; }
+.era-row .min { color: var(--danger); font-size: 0.75rem; font-weight: 700; }
+.era-hint { color: var(--danger); margin: 0 0 6px; min-height: 0; }
+.era-hint:empty { display: none; }
+.host-box { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; margin: 0 0 12px; background: #fffaf3; }
+.host-box h3 { margin: 0 0 6px; font-size: 0.95rem; }
+.host-now { font-size: 0.88rem; margin: 0 0 8px; overflow-wrap: anywhere; }
+.host-now b { color: #b8511a; }
+.host-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.host-hint { margin: 6px 0 0; }
+.phase { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #e4efff; color: #2e62b0; font-size: 0.78rem; font-weight: 700; }
+.admin-grid > * { min-width: 0; }
+.detail-char b { overflow-wrap: anywhere; }
+.kv dd { min-width: 0; overflow-wrap: anywhere; }
+pre.json { max-width: 100%; }
+@media (max-width: 480px) {
+  main { padding: 10px; }
+  .topbar { padding: 0 10px; }
+  .topbar .logo { font-size: 1rem; }
+  .topbar-right { gap: 4px; }
+  .topbar-right .btn { padding: 4px 8px; font-size: 0.75rem; }
+  .row2 { grid-template-columns: 1fr; }
+  .rooms th:nth-child(6), .rooms td:nth-child(6) { display: none; }
+  .rooms th, .rooms td { padding: 8px 4px; }
+  .kv { grid-template-columns: 1fr; gap: 0 8px; }
+  .kv dt { margin-top: 4px; }
+}

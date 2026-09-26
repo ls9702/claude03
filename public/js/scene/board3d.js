@@ -28,6 +28,7 @@ import { won } from '../format.js';
 
 const TILE_SIZE = 1.64;
 const TILE_TOP = 0.27;
+const NARROW_TAGS_PX = 700; // canvas CSS width below which only current / mine / moving pawns show name tags
 /** Asset-studio icon ids (manifest meta.tile) per tile type. */
 const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal' };
 const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '정지', merge: '합류', goal: '골' };
@@ -879,9 +880,14 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       }
       grp.rotation.y = lerp(grp.rotation.y, P.yaw ?? 0, 1 - Math.exp(-dt * 12));
     }
+    // narrow screens (phones): only the current / moving characters (+ mine off crowded tiles) keep their name
+    // tag (they overlap otherwise); wider screens: every tag except others' on crowded tiles
+    const narrowTags = cssW > 0 && cssW < NARROW_TAGS_PX;
     for (const [id, P] of S.pawns) {
-      // crowded tile: only the current / my characters keep their name tag
-      if (P.pawn.tag) P.pawn.tag.visible = P.moving || !P.crowded || id === S.shownCurrent || P.isMe;
+      if (!P.pawn.tag) continue;
+      P.pawn.tag.visible = narrowTags
+        ? P.moving || id === S.shownCurrent || (P.isMe && !P.crowded)
+        : P.moving || !P.crowded || id === S.shownCurrent || P.isMe;
     }
     const cur = S.pawns.get(S.shownCurrent);
     ring.visible = !!cur;

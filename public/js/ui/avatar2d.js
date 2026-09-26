@@ -1240,7 +1240,10 @@ export function renderAvatarLayers(parts, { expression = null, emotion = null, p
         },
       );
     }
-    return composeAvatar(a, { expression: plan.expression, size: CUTIN_SIZE, crop: 'full' }).then((cv) => {
+    const cOpts = { expression: plan.expression, size: CUTIN_SIZE, crop: 'full' };
+    // composed already (cut-ins preload their cast) → in place synchronously; else the SVG until it's ready
+    const cached = peekAvatar(a, cOpts);
+    const applyCanvas = (cv) => {
       if (my !== token) return;
       if (!cv) {
         showSvg();
@@ -1255,7 +1258,13 @@ export function renderAvatarLayers(parts, { expression = null, emotion = null, p
       Object.assign(cv.style, cmpFit());
       place(cv, key);
       if (!plan.expression) scheduleBlink(my, composeAvatar(a, { blink: true, size: CUTIN_SIZE, crop: 'full' }));
-    });
+    };
+    if (cached) {
+      applyCanvas(cached);
+      return Promise.resolve();
+    }
+    if (!stack.children.length) showSvg();
+    return composeAvatar(a, cOpts).then(applyCanvas);
   }
 
   el.ready = show();

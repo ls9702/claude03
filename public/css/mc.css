@@ -196,3 +196,4 @@
 .mc-corner .mc-bubble::after { left: auto; right: calc(var(--mc-size, 72px) * 0.4); }
 .ci-mc .mc-booth.duo .mc-bubble:not(.right)::after,
 .mc-corner .mc-booth.duo .mc-bubble:not(.right)::after { right: calc(var(--mc-size, 72px) * 1.3); }
+.mc-bubble { overflow-wrap: anywhere; }

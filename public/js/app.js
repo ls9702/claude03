@@ -9,6 +9,8 @@ import {
   setSavedName,
   setSavedRoomId,
 } from './api.js';
+import { NAME_MAX, nameFits } from './format.js';
+import { bindNameInput } from './ui/nameInput.js';
 import { createGameUI } from './game2d.js';
 import { hydratePortraits, portraitHtml, setAvatarDefs } from './ui/avatar2d.js';
 import { openCustomizer, setPreviewRenderer } from './ui/customize.js';
@@ -49,8 +51,18 @@ function toast(msg, kind = 'info') {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
+/** 👀 관전 (spectator seat, Stage fix): no characters / spin / bet / choose — board, cut-ins, log, reactions. */
+const isSpectator = (room = state.room) => room?.me?.role === 'spectator';
+const playersOnly = (room) => (room?.players ?? []).filter((p) => p.role !== 'spectator');
+
+function applyRole() {
+  const spec = !!state.room && isSpectator();
+  document.body.classList.toggle('spectator', spec);
+  $('#spec-badge').hidden = !spec || state.screen === 'join';
+}
+
 function showScreen(name) {
-  if (state.screen === name) return;
+  if (state.screen === name) return applyRole();
   state.screen = name;
   for (const s of document.querySelectorAll('.screen')) s.hidden = s.id !== `screen-${name}`;
   const inRoom = name !== 'join';
@@ -59,6 +71,7 @@ function showScreen(name) {
   $('#leave-btn').hidden = !inRoom;
   $('#reaction-bar').hidden = !(name === 'lobby' || name === 'game');
   document.body.dataset.screen = name;
+  applyRole();
 }
 
 function setConn(kind) {
@@ -119,7 +132,8 @@ function render() {
       showScreen('game');
       renderGame(room);
     } else if (state.screen === 'game' && state.game?.isBusy?.()) {
-      // let the 3D board finish the last hops / goal confetti before the result screen
+      // let the 3D board finish the last hops / goal confetti before the result screen; controls lock at once
+      renderGame(room);
       if (!state.waitingResult) {
         state.waitingResult = true;
         state.game.whenIdle().then(() => {
@@ -217,8 +231,10 @@ function renderLobby(room) {
   $('#lobby-code').textContent = room.code;
   $('#lobby-mode').textContent = modeLabel(room);
 
-  $('#player-count').textContent = `${room.players.length}/4`;
-  $('#player-list').innerHTML = room.players
+  const players = playersOnly(room);
+  const spectators = room.players.filter((p) => p.role === 'spectator');
+  $('#player-count').textContent = `${players.length}/4${spectators.length ? ` · 👀 ${spectators.length}` : ''}`;
+  $('#player-list').innerHTML = players
     .map(
       (p) => `
       <li class="player${p.isMe ? ' me' : ''}">
@@ -229,7 +245,10 @@ function renderLobby(room) {
         ${p.ready ? '<span class="tag ready">준비</span>' : '<span class="tag wait">대기</span>'}
       </li>`,
     )
-    .join('');
+    .join('') +
+    (spectators.length
+      ? `<li class="spec-list">👀 관전: ${spectators.map((p) => `${esc(p.name)}${p.isMe ? ' (나)' : ''}`).join(', ')}</li>`
+      : '');
 
   const max = room.config.maxCharacters;
   $('#char-count').textContent = `${room.characters.length}/${max}`;
@@ -245,8 +264,8 @@ function renderLobby(room) {
   hydratePortraits($('#my-chars'));
   for (const c of room.characters) state.seenChars.add(c.id);
   $('#sheet-title').textContent = `내 캐릭터 (${mine.length})`;
-  // Mobile: open the bottom sheet once when I have no characters yet.
-  if (!state.sheetAutoOpened && mine.length === 0) {
+  // Mobile: open the bottom sheet once when I have no characters yet (players only).
+  if (!state.sheetAutoOpened && mine.length === 0 && !isSpectator(room)) {
     state.sheetAutoOpened = true;
     setSheet(true);
   }
@@ -336,6 +355,14 @@ async function act(body) {
   if (acceptRoom(res.room)) render();
 }
 
+/** Fetch the latest room view (stale actions: the game moved on) and show it. */
+async function resync() {
+  if (!state.room) return null;
+  const r = await api('GET', `/api/rooms/${state.room.id}`);
+  if (acceptRoom(r)) render();
+  return state.room;
+}
+
 function renderGame(room) {
   state.game.render(room);
 }
@@ -345,22 +372,37 @@ function renderResult(room) {
 }
 
 // ---------- reactions ----------
+const REACTION_WINDOW_MS = 2000;
+const REACTION_MAX = 4;
 function buildReactionBar() {
   const bar = $('#reaction-bar');
   bar.innerHTML = (state.meta?.reactions ?? []).map((e) => `<button type="button" class="react" data-emoji="${esc(e)}">${esc(e)}</button>`).join('');
+  // client-side pacing below the server limit (5 per 2 s per session): extra taps just wiggle the button
+  const sent = [];
   bar.addEventListener('click', async (ev) => {
     const b = ev.target.closest('.react');
     if (!b || !state.room) return;
+    const now = Date.now();
+    while (sent.length && now - sent[0] > REACTION_WINDOW_MS) sent.shift();
+    if (sent.length >= REACTION_MAX) {
+      b.classList.remove('wiggle');
+      void b.offsetWidth;
+      b.classList.add('wiggle');
+      return;
+    }
+    sent.push(now);
     try {
       await api('POST', `/api/rooms/${state.room.id}/reactions`, { emoji: b.dataset.emoji });
     } catch (err) {
-      toast(err.message, 'error');
+      if (err.status !== 429) toast(err.message, 'error');
     }
   });
 }
 
 function floatReaction(r) {
   state.game?.onReaction?.(r); // 3D: emoji above that player's pawns
+  // a cut-in is open → its reaction chip row shows it; no floating emoji over the dialogue / options
+  if (document.body.classList.contains('cutin-open')) return;
   const { emoji, name } = r;
   const layer = $('#float-layer');
   const el = document.createElement('div');
@@ -377,29 +419,35 @@ async function onJoin(ev) {
   ev.preventDefault();
   const form = ev.currentTarget;
   const errEl = form.querySelector('.form-error');
+  const spectator = ev.submitter?.value === 'spectator';
   const code = form.code.value.trim().toUpperCase();
-  const name = form.name.value.trim();
+  let name = form.name.value.replace(/\s+/g, ' ').trim();
   errEl.textContent = '';
   if (code.length !== 6) return (errEl.textContent = '방 코드는 6자리예요.');
+  if (!name && spectator) name = '관전자';
   if (!name) return (errEl.textContent = '이름을 입력하세요.');
-  const btn = form.querySelector('button[type=submit]');
-  btn.disabled = true;
+  if (!nameFits(name)) return (errEl.textContent = `이름은 ${NAME_MAX}자까지 쓸 수 있어요.`);
+  const btns = [...form.querySelectorAll('button[type=submit]')];
+  for (const b of btns) b.disabled = true;
   try {
-    const res = await api('POST', '/api/rooms/join', { code, name });
-    setSavedName(name);
+    const res = await api('POST', '/api/rooms/join', spectator ? { code, name, spectator: true } : { code, name });
+    if (!spectator || name !== '관전자') setSavedName(name);
+    if (spectator && res.room?.me && res.room.me.role !== 'spectator') toast('이 서버는 관전 입장을 지원하지 않아 참가자로 들어왔어요.', 'error');
     enterRoom(res.room);
   } catch (err) {
     errEl.textContent = err.message;
   } finally {
-    btn.disabled = false;
+    for (const b of btns) b.disabled = false;
   }
 }
+
 
 // ---------- boot ----------
 async function boot() {
   $('#join-form').addEventListener('submit', onJoin);
   $('#join-form').code.addEventListener('input', (e) => (e.target.value = e.target.value.toUpperCase()));
   $('#join-form').name.value = savedName();
+  bindNameInput($('#join-form').name, $('#join-form [data-name-count]'));
   const params = new URLSearchParams(location.search);
   if (params.get('code')) $('#join-form').code.value = params.get('code').toUpperCase().slice(0, 6);
 
@@ -423,7 +471,7 @@ async function boot() {
     setAvatarDefs(state.meta.avatars);
     setPreviewRenderer(layeredPreviewRenderer); // paper-doll layers in the customizer (SVG until they load)
     buildReactionBar();
-    state.game = createGameUI($('#game-root'), { getMeta: () => state.meta, act, toast });
+    state.game = createGameUI($('#game-root'), { getMeta: () => state.meta, act, toast, resync });
     await ensureSession();
   } catch (err) {
     showScreen('join');

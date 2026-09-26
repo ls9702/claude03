@@ -1,4 +1,6 @@
 // fetch + SSE wrapper for the game page.
+import { clockBounds } from './format.js';
+
 const TOKEN_KEY = 'jinsei.token';
 const ROOM_KEY = 'jinsei.roomId';
 const NAME_KEY = 'jinsei.name';
@@ -20,6 +22,10 @@ function lsSet(key, value) {
 }
 
 let token = lsGet(TOKEN_KEY);
+/** Server − local clock offset (from HTTP Date headers); deadlines (`deadlineAt`) are server ms. */
+let clock = null;
+export const clockOffset = () => clock?.offset ?? 0;
+export const serverNow = () => Date.now() + clockOffset();
 
 export class ApiError extends Error {
   constructor(message, status, body) {
@@ -34,11 +40,14 @@ async function raw(method, path, body, withToken = true) {
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (withToken && token) headers['X-Session-Token'] = token;
   let res;
+  const sentAt = Date.now();
   try {
     res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch {
     throw new ApiError('서버에 연결할 수 없습니다.', 0);
   }
+  const date = res.headers?.get?.('Date');
+  if (date) clock = clockBounds(clock, { date, sentAt, receivedAt: Date.now() });
   let data = null;
   try {
     data = await res.json();
@@ -86,15 +95,26 @@ export const setSavedRoomId = (id) => lsSet(ROOM_KEY, id);
 export const savedName = () => lsGet(NAME_KEY) || '';
 export const setSavedName = (n) => lsSet(NAME_KEY, n);
 
+// ---------- SSE `charArt` fan-out (the customizer's AI slot listens while the room stream is open) ----------
+const artListeners = new Set();
+let sseOpen = false;
+/** Listen to `charArt {charId, status, progress, reason?}` events of the open room stream. → unsubscribe */
+export function onCharArt(fn) {
+  artListeners.add(fn);
+  return () => artListeners.delete(fn);
+}
+/** True while the room SSE stream is connected (the AI slot polls only when it isn't). */
+export const sseConnected = () => sseOpen;
+
 /**
  * Open the room SSE stream.
- * handlers: { state, events, reaction, log, deleted, open, error }
+ * handlers: { state, events, reaction, log, deleted, charArt, open, error }
  * @returns {() => void} close function
  */
 export function connectEvents(roomId, handlers) {
   const url = `/api/rooms/${encodeURIComponent(roomId)}/events?token=${encodeURIComponent(token)}`;
   const es = new EventSource(url);
-  for (const name of ['state', 'events', 'reaction', 'log', 'deleted']) {
+  for (const name of ['state', 'events', 'reaction', 'log', 'deleted', 'charArt']) {
     es.addEventListener(name, (ev) => {
       let data = null;
       try {
@@ -103,9 +123,20 @@ export function connectEvents(roomId, handlers) {
         return;
       }
       handlers[name]?.(data);
+      if (name === 'charArt') for (const fn of [...artListeners]) fn(data);
     });
   }
-  es.onopen = () => handlers.open?.();
-  es.onerror = () => handlers.error?.(es.readyState === EventSource.CLOSED);
-  return () => es.close();
+  es.onopen = () => {
+    sseOpen = true;
+    handlers.open?.();
+    for (const fn of [...artListeners]) fn({ reconnected: true });
+  };
+  es.onerror = () => {
+    sseOpen = false;
+    handlers.error?.(es.readyState === EventSource.CLOSED);
+  };
+  return () => {
+    sseOpen = false;
+    es.close();
+  };
 }

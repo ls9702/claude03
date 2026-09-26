@@ -20,6 +20,7 @@
     <h1 class="logo">🎲 인생게임</h1>
     <div class="topbar-right">
       <span id="room-badge" class="badge" hidden></span>
+      <span id="spec-badge" class="spec-badge" hidden>👀 관전</span>
       <span id="conn" class="conn" hidden></span>
       <button id="leave-btn" class="btn small ghost" hidden>나가기</button>
     </div>
@@ -36,11 +37,15 @@
           <input name="code" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="예: AB3DEF" required>
         </label>
         <label class="field">
-          <span>내 이름</span>
-          <input name="name" maxlength="12" autocomplete="nickname" placeholder="이름" required>
+          <span>내 이름 <span class="name-count" data-name-count aria-live="polite"></span></span>
+          <input name="name" maxlength="40" autocomplete="nickname" placeholder="이름 (12자까지)" required>
         </label>
         <p class="form-error" role="alert"></p>
-        <button class="btn primary block" type="submit">입장하기</button>
+        <div class="join-actions">
+          <button class="btn primary block" type="submit" value="player">입장하기</button>
+          <button class="btn block" type="submit" value="spectator" data-spectate>👀 관전으로 입장</button>
+        </div>
+        <p class="muted small join-hint">관전은 캐릭터 없이 말판·컷인·소식만 봐요. 이미 시작한 게임도 들어갈 수 있어요 (TV 화면용).</p>
       </form>
     </section>
 
@@ -97,7 +102,7 @@
     <section id="screen-result" class="screen" hidden>
       <div class="card result-card">
         <h2>🏆 결과 발표</h2>
-        <p class="muted small">총자산(현금 − 빚) 순위예요. 보물 감정·특별상은 이후 단계에서 추가돼요.</p>
+        <p class="muted small">총자산(현금 − 빚) 순위예요.</p>
         <div id="result-root"></div>
         <button id="result-leave" class="btn primary" type="button">다른 방 입장하기</button>
       </div>
