@@ -249,6 +249,6 @@ body:has(.game[data-quality='tv']) main { max-width: 1800px; }
   .spin-dial { width: 60px; height: 60px; font-size: 1.6rem; }
   .rank-row { gap: 6px; padding: 8px; }
   .rk { width: 30px; font-size: 1.2rem; }
-  .rk-portrait svg { width: 40px; height: 40px; }
+  .rk-portrait svg, .rk-portrait canvas { width: 40px !important; height: 40px !important; }
   .rk-total { font-size: 0.95rem; }
 }

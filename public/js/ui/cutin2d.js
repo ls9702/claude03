@@ -10,7 +10,7 @@
 // Pure HTML/CSS (no WebGL) → identical on low-end / TV mode. Every asset is optional: the frame falls back to
 // a CSS pattern, the background to an SVG scene, characters to the SVG portrait.
 import { won, esc } from '../format.js';
-import { renderAvatarLayers, renderAvatar } from './avatar2d.js';
+import { renderAvatarLayers, portraitHtml, hydratePortraits } from './avatar2d.js';
 import { autoAdvanceMs, fallbackText, isBigWin, planCutins, poseFor, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
 
 const REASON_ICON = { tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲' };
@@ -174,7 +174,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       slot.classList.toggle('right', xs[i] > 50);
       slot.dataset.char = m.char.id;
       // first pose is a neutral stand; the target pose cross-fades in (keypose + procedural motion)
-      const av = renderAvatarLayers(m.char.avatar, { pose: 'idle', emotion: null, name: m.char.name, flip: n > 1 && xs[i] > 50 });
+      const av = renderAvatarLayers(m.char.avatar, { pose: 'idle', emotion: null, name: m.char.name, flip: n > 1 && xs[i] > 50, art: m.char.art ?? null });
       slot.appendChild(av);
       if (m.emotion && EMOTION_GLYPH[m.emotion]) {
         const g = document.createElement('span');
@@ -208,13 +208,14 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     $.tabs.innerHTML = `<div class="ci-tabs-l">${chars
       .map(
         (c, i) =>
-          `<span class="ci-tab${c.id === spec.currentId ? ' on' : ''}${c.isMe ? ' me' : ''}"><span class="ci-tab-av">${renderAvatar(c.avatar, { size: 22 })}</span>${i + 1} ${esc(c.name)}${c.id === spec.currentId ? ' ▶' : ''}</span>`,
+          `<span class="ci-tab${c.id === spec.currentId ? ' on' : ''}${c.isMe ? ' me' : ''}"><span class="ci-tab-av">${portraitHtml(c, { size: 22 })}</span>${i + 1} ${esc(c.name)}${c.id === spec.currentId ? ' ▶' : ''}</span>`,
       )
       .join('')}</div>${
       audio
         ? `<div class="ci-tabs-r"><button type="button" class="ci-tab btn-sound" data-ci-act="mute" aria-pressed="${state?.muted ? 'true' : 'false'}">${state?.muted ? '🔇 소리 꺼짐' : '🔊 소리'}</button></div>`
         : ''
     }`;
+    hydratePortraits($.tabs);
   }
 
   function typeText(lines, done) {

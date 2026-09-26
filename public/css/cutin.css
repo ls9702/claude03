@@ -149,7 +149,7 @@ body.cutin-open { overflow: hidden; }
 }
 .ci-tab.on { background: #22c55e; color: #fff; }
 .ci-tab.me { outline: 2px solid #fde047; }
-.ci-tab-av svg { display: block; border-radius: 50%; background: #fff0dc; }
+.ci-tab-av svg, .ci-tab-av canvas { display: block; border-radius: 50%; background: #fff0dc; }
 .ci-tab.btn-sound { padding: 5px 12px; cursor: pointer; }
 
 /* entry / exit */
@@ -202,6 +202,27 @@ body.cutin-open { overflow: hidden; }
   85% { transform: translateY(0) scale(1.05, 0.94); }
   100% { transform: scale(1.06, 0.92); }
 }
+/* Stage 5.5-C: composed paper-doll canvas (inline height/bottom = full crop vs FIGURE_SPAN), blink, AI art */
+.av2-layer.cmp { image-rendering: auto; }
+.av2-layer.blink { opacity: 0 !important; transition: none; }
+.av2.blinking .av2-layer.blink { opacity: 1 !important; }
+.av2.blinking .av2-layer.main { visibility: hidden; }
+.av2.cmp[data-pose='wave'] .av2-body { animation: av2-sway 1.5s ease-in-out infinite; }
+.av2.bigjump .av2-body { animation: av2-bigjump 0.6s cubic-bezier(0.3, 0, 0.4, 1) 2 !important; }
+@keyframes av2-sway { 0%, 100% { transform: rotate(-1.8deg); } 50% { transform: rotate(1.8deg) translateY(-0.6%); } }
+@keyframes av2-bigjump {
+  0% { transform: scale(1.08, 0.9); }
+  35% { transform: translateY(-22%) scale(0.94, 1.08); }
+  60% { transform: translateY(-24%) rotate(3deg); }
+  88% { transform: translateY(0) scale(1.06, 0.93); }
+  100% { transform: none; }
+}
+.av2-p.spark { font-size: 9cqh; opacity: 0; animation: av2-spark 1.3s ease-out infinite; }
+.av2-p.spark.s1 { left: 6%; top: 12%; }
+.av2-p.spark.s2 { left: 80%; top: 6%; animation-delay: 0.35s; }
+.av2-p.spark.s3 { left: 14%; top: 46%; animation-delay: 0.7s; font-size: 7cqh; }
+.av2-p.spark.s4 { left: 78%; top: 40%; animation-delay: 1s; font-size: 7cqh; }
+@keyframes av2-spark { 0% { transform: scale(0.2) rotate(-40deg); opacity: 0; } 30% { opacity: 1; transform: scale(1.1); } 100% { transform: scale(0.6) rotate(40deg) translateY(-40%); opacity: 0; } }
 @keyframes av2-sob { 50% { transform: translateY(1%) rotate(-1.2deg) scale(1.01, 0.985); } }
 @keyframes av2-shake { 25% { transform: translateX(-2.5%); } 75% { transform: translateX(2.5%); } }
 
@@ -249,5 +270,5 @@ body.cutin-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .cutin *, .cutin *::before, .cutin *::after, .av2, .av2 * { animation: none !important; transition: none !important; }
   .av2-layer { opacity: 1; }
-  .av2-p.tear, .av2-p.sweat, .av2-p.heart { opacity: 1; }
+  .av2-p.tear, .av2-p.sweat, .av2-p.heart, .av2-p.spark { opacity: 1; }
 }

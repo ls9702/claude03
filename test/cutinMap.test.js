@@ -2,18 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadData } from '../server/data/index.js';
 import {
-  BASE_PALETTE,
+  AI_EXPRESSIONS,
+  PART_EXPRESSIONS,
   POSES,
   autoAdvanceMs,
-  avatarPalette,
   expressionFor,
-  hueFilterFor,
   isBigWin,
   layerPlan,
   planCutins,
   poseFor,
-  recolorPixels,
-  rgbToHsl,
+  resolveCharacterArt,
   sfxForEvent,
   tagLabel,
 } from '../public/js/ui/cutinMap.js';
@@ -22,15 +20,30 @@ import { createAnimator, planSteps } from '../public/js/scene/animator.js';
 const defs = loadData('avatars');
 const tones = loadData('tones');
 
-test('expressionFor: emotion → expression layer + procedural overlay', () => {
-  assert.deepEqual(expressionFor('joy'), { layer: 'joy', overlay: null });
-  assert.deepEqual(expressionFor('cry'), { layer: 'cry', overlay: 'tears' });
-  assert.deepEqual(expressionFor('shock'), { layer: 'shock', overlay: null });
-  assert.deepEqual(expressionFor('angry'), { layer: 'angry', overlay: null });
-  assert.deepEqual(expressionFor('love'), { layer: null, overlay: 'heart' });
-  assert.deepEqual(expressionFor('sweat'), { layer: null, overlay: 'sweat' });
-  assert.deepEqual(expressionFor('neutral'), { layer: null, overlay: null });
-  assert.deepEqual(expressionFor(undefined), { layer: null, overlay: null });
+test('expressionFor: emotion → AI expression image + paper-doll part expression + procedural overlay', () => {
+  assert.deepEqual(expressionFor('joy'), { layer: 'joy', part: 'joy', overlay: null });
+  assert.deepEqual(expressionFor('cry'), { layer: 'cry', part: 'cry', overlay: 'tears' });
+  assert.deepEqual(expressionFor('shock'), { layer: 'shock', part: 'shock', overlay: null });
+  assert.deepEqual(expressionFor('angry'), { layer: 'angry', part: 'angry', overlay: null });
+  assert.deepEqual(expressionFor('love'), { layer: null, part: 'love', overlay: 'heart' });
+  assert.deepEqual(expressionFor('sweat'), { layer: null, part: 'sweat', overlay: 'sweat' });
+  assert.deepEqual(expressionFor('shy'), { layer: null, part: 'shy', overlay: null });
+  assert.deepEqual(expressionFor('neutral'), { layer: null, part: null, overlay: null });
+  assert.deepEqual(expressionFor(undefined), { layer: null, part: null, overlay: null });
+});
+
+test('expressionFor covers every engine emotion with a paper-doll layer that exists', async () => {
+  const { EXPRESSIONS } = await import('../public/js/shared/partStack.js');
+  assert.deepEqual(PART_EXPRESSIONS, EXPRESSIONS, 'cutinMap mirrors partStack EXPRESSIONS');
+  const { EMOTIONS } = await import('../server/game/presentation.js').catch(() => ({}));
+  const emotions = EMOTIONS ?? ['joy', 'cry', 'angry', 'sweat', 'love', 'shock', 'neutral'];
+  for (const e of emotions) {
+    const x = expressionFor(e);
+    if (e === 'neutral') assert.equal(x.part, null);
+    else assert.ok(EXPRESSIONS.includes(x.part), `${e} → part expression`);
+    if (x.layer) assert.ok(AI_EXPRESSIONS.includes(x.layer), `${e} → AI expression file`);
+  }
+  for (const p of EXPRESSIONS) assert.equal(expressionFor(p).part, p, `part ${p} reachable`);
 });
 
 test('poseFor: event type / tone / emotion → keypose', () => {
@@ -119,40 +132,6 @@ test('tagLabel / autoAdvanceMs / sfxForEvent', () => {
   assert.equal(sfxForEvent({ type: 'log' }, sfx), null);
 });
 
-test('avatarPalette + recolorPixels: blonde hair / navy uniform / skin recolored, rest untouched', () => {
-  const pal = avatarPalette({ hairColor: 'black', outfitColor: 'red', skin: 'deep' }, defs);
-  assert.equal(pal.hair, '#2b2222');
-  assert.equal(pal.outfit, '#e25b5b');
-  assert.equal(pal.skin, '#a86f4c');
-  assert.equal(avatarPalette({ skin: 'light' }, defs).skin, null);
-  const keys = new Set();
-  for (const h of defs.parts.hairColor) for (const o of defs.parts.outfitColor) keys.add(avatarPalette({ hairColor: h.id, outfitColor: o.id }, defs).key);
-  assert.equal(keys.size, defs.parts.hairColor.length * defs.parts.outfitColor.length);
-
-  const px = (r, g, b, a = 255) => [r, g, b, a];
-  const data = new Uint8ClampedArray([
-    ...px(232, 193, 90), // blonde hair
-    ...px(31, 42, 82), // navy uniform
-    ...px(246, 207, 174), // skin
-    ...px(220, 38, 38), // red bow (kept)
-    ...px(232, 193, 90, 0), // transparent (kept)
-  ]);
-  const before = [...data];
-  recolorPixels(data, pal);
-  const hue = (i) => rgbToHsl(data[i], data[i + 1], data[i + 2]);
-  assert.ok(hue(0)[2] < 0.3, 'hair darkened toward black');
-  const [oh] = hue(4);
-  assert.ok(oh < 20 || oh > 340, `uniform hue → red (${oh})`);
-  assert.ok(hue(8)[2] < rgbToHsl(246, 207, 174)[2], 'skin darkened for deep');
-  assert.deepEqual([...data.slice(12, 20)], before.slice(12, 20));
-  // light skin palette leaves skin alone
-  const d2 = new Uint8ClampedArray(px(246, 207, 174));
-  recolorPixels(d2, avatarPalette({ hairColor: 'pink', outfitColor: 'green', skin: 'light' }, defs));
-  assert.deepEqual([...d2], px(246, 207, 174));
-  assert.equal(BASE_PALETTE.hair, '#e8c15a');
-  assert.match(hueFilterFor({ outfitColor: 'red' }, defs), /^hue-rotate\(\d+deg\)/);
-});
-
 test('animator: neutral emotions get no popup step; getHandler exposes handlers for wrapping', async () => {
   const steps = planSteps([
     { type: 'spun', charId: 'c1', emotion: 'neutral' },
@@ -170,4 +149,39 @@ test('animator: neutral emotions get no popup step; getHandler exposes handlers 
   assert.equal(anim.getHandler('nope'), null);
   await anim.push([{ type: 'landed', charId: 'c1', tileType: 'event' }]);
   assert.deepEqual(seen, ['orig:event', 'cutin']);
+});
+
+test('resolveCharacterArt: AI art (ready) > paper-doll layers; pose file > expression file > idle > base', () => {
+  const files = {
+    base: '/api/char-art/k/base.webp',
+    poses: { idle: '/i.webp', wave: '/w.webp', jump: '/j.webp', cheer: '/c.webp', cry: '/cr.webp', shock: '/s.webp' },
+    expressions: { joy: '/ej.webp', cry: '/ec.webp', shock: '/es.webp', angry: '/ea.webp' },
+  };
+  const ready = { avatar: {}, art: { key: 'k', status: 'ready', progress: 1, files } };
+  const r = (c, want) => resolveCharacterArt(c, want);
+  // AI pose images carry their face: a non-idle pose wins over any expression
+  assert.deepEqual(r(ready, { pose: 'jump', expression: 'joy' }), { source: 'ai', url: '/j.webp', kind: 'pose', pose: 'jump', expression: null, motion: 'jump' });
+  assert.equal(r(ready, { pose: 'cry', expression: 'cry' }).url, '/cr.webp');
+  // idle + expression → expression file
+  assert.deepEqual(r(ready, { pose: 'idle', expression: 'angry' }), { source: 'ai', url: '/ea.webp', kind: 'expression', pose: 'idle', expression: 'angry', motion: 'idle' });
+  // expression without an AI file (love) → idle pose
+  assert.equal(r(ready, { pose: 'idle', expression: 'love' }).url, '/i.webp');
+  assert.equal(r(ready, {}).url, '/i.webp');
+  // missing pose file → expression file (keeps the motion), then idle, then base
+  const partial = { art: { status: 'ready', files: { base: '/b.webp', poses: {}, expressions: { joy: '/ej.webp' } } } };
+  assert.deepEqual(r(partial, { pose: 'cheer', expression: 'joy' }), { source: 'ai', url: '/ej.webp', kind: 'expression', pose: 'idle', expression: 'joy', motion: 'cheer' });
+  assert.deepEqual(r(partial, { pose: 'wave' }), { source: 'ai', url: '/b.webp', kind: 'base', pose: 'idle', expression: null, motion: 'wave' });
+  // portraits use the base (bust crop), else the idle pose
+  assert.equal(r(ready, { portrait: true, pose: 'jump', expression: 'joy' }).url, '/api/char-art/k/base.webp');
+  assert.equal(r({ art: { status: 'ready', files: { poses: { idle: '/i.webp' } } } }, { portrait: true }).url, '/i.webp');
+  // not ready / no usable files → paper-doll layers (the caller falls back to SVG when those are missing)
+  const layers = (motion, expression) => ({ source: 'layers', url: null, kind: 'layers', pose: 'idle', expression, motion });
+  for (const art of [undefined, null, { status: 'pending', progress: 0.4 }, { status: 'failed' }, { status: 'pending', files }, { status: 'ready' }, { status: 'ready', files: {} }, { status: 'ready', files: { poses: { idle: 42 } } }]) {
+    assert.deepEqual(r({ avatar: {}, art }, { pose: 'jump', expression: 'joy' }), layers('jump', 'joy'), JSON.stringify(art));
+  }
+  // layered art: all 7 part expressions pass through, unknown ones are dropped, unknown poses → idle motion
+  for (const e of PART_EXPRESSIONS) assert.equal(r({}, { expression: e }).expression, e);
+  assert.deepEqual(r({}, { pose: 'dance', expression: 'bored' }), layers('idle', null));
+  assert.deepEqual(r(null, { portrait: true, expression: 'joy' }), { ...layers('idle', null) });
+  for (const p of POSES) assert.equal(r({}, { pose: p }).motion, p);
 });

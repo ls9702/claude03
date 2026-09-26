@@ -10,6 +10,7 @@ import {
   updateCharacter,
 } from '../game/lobby.js';
 import { viewFor } from '../game/view.js';
+import { validFile, validKey } from '../assets/charArt.js';
 import { sendFail, sessionMiddleware } from './common.js';
 
 export const REACTIONS = ['ㅋㅋㅋ', '헐', '오~', '화이팅', '🐔', '👏', '😂', '😱', '❤️', '🎉'];
@@ -18,7 +19,9 @@ const RATE_WINDOW_MS = 2000;
 const PLAYER_ACTIONS = ['spin', 'choose', 'bet', 'timeout'];
 const RATE_MAX = 5;
 
-export function createApiRouter({ store, runner }) {
+const ART_CACHE_CONTROL = 'public, max-age=604800'; // a key's files only change on an admin force (then ?v=rev)
+
+export function createApiRouter({ store, runner, charArt = null }) {
   const router = express.Router();
   const requireSession = sessionMiddleware(store);
   const reactionTimes = new Map(); // sessionId -> timestamps
@@ -31,9 +34,10 @@ export function createApiRouter({ store, runner }) {
     res.json({ ok: true });
   });
 
-  router.get('/meta', (req, res) => {
+  router.get('/meta', async (req, res) => {
     const board = getBoardData();
     const { bets, spin, bonusSpinUnit } = getBalance();
+    const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
       avatars: getAvatars(),
@@ -41,6 +45,7 @@ export function createApiRouter({ store, runner }) {
       board: { tileTypes: board.tileTypes, routes: board.routes },
       balance: { bets, spin, bonusSpinUnit },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
+      features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
     });
   });
 
@@ -75,15 +80,48 @@ export function createApiRouter({ store, runner }) {
 
   router.post('/rooms/:id/characters', requireSession, withRoom, (req, res) => {
     const r = addCharacter(req.room, req.sessionId, req.body ?? {});
+    if (r.ok) charArt?.syncCharacter(r.room, r.character.id); // a cached AI art set of this look → ready
     respond(req, res, r, r.ok ? { characterId: r.character.id } : {});
   });
 
   router.patch('/rooms/:id/characters/:charId', requireSession, withRoom, (req, res) => {
-    respond(req, res, updateCharacter(req.room, req.sessionId, req.params.charId, req.body ?? {}));
+    const r = updateCharacter(req.room, req.sessionId, req.params.charId, req.body ?? {});
+    if (r.ok) charArt?.syncCharacter(r.room, req.params.charId); // edited look → art reset / cached set
+    respond(req, res, r);
   });
 
   router.delete('/rooms/:id/characters/:charId', requireSession, withRoom, (req, res) => {
-    respond(req, res, removeCharacter(req.room, req.sessionId, req.params.charId));
+    const r = removeCharacter(req.room, req.sessionId, req.params.charId);
+    if (r.ok) charArt?.cancel(req.room.id, req.params.charId);
+    respond(req, res, r);
+  });
+
+  // Stage 5.5-D: optional AI illustration set of a character (owner, lobby only, needs a server key).
+  router.post('/rooms/:id/characters/:charId/art', requireSession, withRoom, async (req, res, next) => {
+    try {
+      const c = req.room.characters.find((x) => x.id === req.params.charId);
+      if (!c) return res.status(404).json({ error: '캐릭터를 찾을 수 없습니다.' });
+      if (c.ownerSessionId !== req.sessionId) return res.status(403).json({ error: '내 캐릭터만 AI 일러스트를 만들 수 있어요.' });
+      if (req.room.status !== 'lobby') return res.status(409).json({ error: '로비에서만 AI 일러스트를 만들 수 있어요.' });
+      if (!charArt) return res.status(409).json({ error: 'AI 일러스트 기능이 꺼져 있어요' });
+      const r = await charArt.request(req.room.id, c.id, {});
+      if (!r.ok) return sendFail(res, r);
+      res.status(r.art.status === 'pending' ? 202 : 200).json({ ok: true, art: r.art, room: viewFor(r.room, req.sessionId) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Generated art files: strict key/file validation + containment in DATA_DIR/char-art.
+  router.get('/char-art/:key/:file', (req, res) => {
+    const { key, file } = req.params;
+    if (!validKey(key) || !validFile(file)) return res.status(400).json({ error: '잘못된 경로입니다.' });
+    const p = charArt?.service.filePath(key, file);
+    if (!p) return res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
+    res.setHeader('Cache-Control', ART_CACHE_CONTROL);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.type('image/webp');
+    res.sendFile(p, { dotfiles: 'deny' });
   });
 
   router.post('/rooms/:id/ready', requireSession, withRoom, (req, res) => {

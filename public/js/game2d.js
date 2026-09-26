@@ -4,7 +4,7 @@
 // the 3D animator (which calls back into `feedback` at the right moment) or straight to 2D feedback.
 // Stage 5: cut-in-worthy events (`cutin: true`) open the 2D cut-in (ui/cutin2d.js) after the board's own
 // animation (3D: animator paused meanwhile), prompts use the cut-in dialogue box, sounds via audio.js.
-import { renderAvatar, preloadAvatarLayers } from './ui/avatar2d.js';
+import { renderAvatar, preloadAvatarLayers, portraitHtml, hydratePortraits } from './ui/avatar2d.js';
 import { createCutin } from './ui/cutin2d.js';
 import { planCutins, tagLabel } from './ui/cutinMap.js';
 import { audio } from './audio.js';
@@ -196,21 +196,21 @@ export function createGameUI(root, { getMeta, act, toast }) {
   }
   queueMicrotask(applySoundUi);
 
-  /** Warm the per-avatar recolor cache in the background: common poses first, the rest after. */
+  /** Warm the compositor caches in the background: neutral + blink for everyone, common expressions after. */
   function preloadLayers() {
     if (!ui.assetsReady || !cutinsOn()) return;
-    const todo = chars().filter((c) => !ui.preloaded.has(c.id));
+    const todo = chars().filter((c) => !ui.preloaded.has(`${c.id}|${c.art?.status ?? ''}`));
     if (!todo.length) return;
-    for (const c of todo) ui.preloaded.add(c.id);
+    for (const c of todo) ui.preloaded.add(`${c.id}|${c.art?.status ?? ''}`);
     const jobs = [
-      ...todo.map((c) => [c, ['idle', 'wave']]),
-      ...todo.slice(0, 4).map((c) => [c, ['jump', 'cry']]), // the rest recolor on demand (LRU-capped cache)
+      ...todo.map((c) => [c, []]),
+      ...todo.slice(0, 4).map((c) => [c, ['joy', 'cry']]), // the rest compose on demand (LRU-capped cache)
     ];
     let i = 0;
     const next = () => {
       const job = jobs[i++];
       if (!job) return;
-      preloadAvatarLayers(job[0].avatar, job[1]).finally(() => setTimeout(next, 60));
+      preloadAvatarLayers(job[0], { expressions: job[1] }).finally(() => setTimeout(next, 60));
     };
     setTimeout(next, 200);
   }
@@ -250,8 +250,9 @@ export function createGameUI(root, { getMeta, act, toast }) {
     }
     const phase = room.turn.pending ? '선택 중' : '룰렛 대기';
     el.now.innerHTML = `
-      <span class="now-portrait">${renderAvatar(cur.avatar, { size: 40 })}</span>
+      <span class="now-portrait">${portraitHtml(cur, { size: 40 })}</span>
       <span class="now-text"><b>${esc(cur.name)}</b>의 차례 <span class="muted small">(${esc(cur.ownerName)}${cur.isMe ? ' · 나' : ''} · ${phase})</span></span>`;
+    hydratePortraits(el.now);
     el.now.classList.toggle('mine', !!cur.isMe);
   }
 
@@ -416,7 +417,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
         const r = c.route ? routes()[c.route] : null;
         const status = c.finished ? `🏁 ${c.place}등 골인` : `${esc(eraName(c))}${r ? ` · ${esc(r.icon)} ${esc(r.name)}` : ''}`;
         return `<li class="g-char${c.id === cur?.id ? ' cur' : ''}${c.isMe ? ' me' : ''}${c.finished ? ' done' : ''}" data-id="${esc(c.id)}">
-          <span class="gc-portrait">${renderAvatar(c.avatar, { size: 40 })}</span>
+          <span class="gc-portrait">${portraitHtml(c, { size: 40 })}</span>
           <span class="gc-body">
             <span class="gc-name">${esc(c.name)} <small class="muted">${esc(c.ownerName)}${c.isMe ? ' · 나' : ''}</small></span>
             <span class="gc-status small">${status}</span>
@@ -425,6 +426,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
         </li>`;
       })
       .join('');
+    hydratePortraits(el.chars);
   }
 
   function renderLog(room) {
@@ -495,7 +497,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
     const subject = byId(p.charId);
     el.modal.innerHTML = `
       <div class="g-sheet">
-        <div class="sheet-who">${renderAvatar(who.avatar, { size: 56 })}<div><b>${esc(who.name)}</b>의 선택${
+        <div class="sheet-who">${portraitHtml(who, { size: 56 })}<div><b>${esc(who.name)}</b>의 선택${
           forMe.length > 1 ? ` <span class="muted small">(내 캐릭터 ${forMe.length}명 남음)</span>` : ''
         }</div></div>
         <h2>${esc(p.title ?? '선택')}</h2>
@@ -510,6 +512,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
           .join('')}</div>
         ${p.deadlineAt ? `<p class="small muted">남은 시간 <span class="deadline" data-deadline="${p.deadlineAt}"></span> — 시간이 지나면 기본 선택으로 처리돼요.</p>` : ''}
       </div>`;
+    hydratePortraits(el.modal);
     el.modal.hidden = false;
     el.modal.querySelector('.choice')?.focus();
   }
@@ -936,7 +939,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
           const routesTxt = (c?.routeHistory ?? []).map((h) => routes()[h.route]?.icon ?? '').join(' ');
           return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}">
             <span class="rk">${MEDAL[r.rank - 1] ?? `${r.rank}위`}</span>
-            <span class="rk-portrait">${c ? renderAvatar(c.avatar, { size: 52 }) : ''}</span>
+            <span class="rk-portrait">${c ? portraitHtml(c, { size: 52 }) : ''}</span>
             <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${esc(c?.ownerName ?? '')}</small>
               <span class="small muted">현금 ${won(r.money)}${r.debt ? ` · 빚 ${won(r.debt)}` : ''} · 골인 보너스 ${won(r.goalBonus)}${
                 r.place ? ` · ${r.place}번째 골인` : ''
@@ -945,6 +948,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
           </li>`;
         })
         .join('')}</ol>`;
+    hydratePortraits(host);
     if (intro) showResultIntro(room, ranking, cmap);
   }
 

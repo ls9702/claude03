@@ -10,6 +10,11 @@ import { createApiRouter } from './routes/api.js';
 import { createSseRouter } from './routes/sse.js';
 import { createAdminRouter } from './routes/admin.js';
 import { UPLOAD_PATH, assetUploadJsonParser, mountAssetRoutes } from './routes/adminAssets.js';
+import { createStudio } from './assets/studio.js';
+import { createCharArtService } from './assets/charArt.js';
+import { FAKE_KEY, createFakeGeminiFetch } from './assets/fakeGemini.js';
+import { CharArtRunner } from './store/charArtRunner.js';
+import { getAvatars } from './data/index.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -20,11 +25,18 @@ export function createApp({ store, runner = new GameRunner(store), adminPassword
   app.use(UPLOAD_PATH, assetUploadJsonParser()); // large asset uploads are parsed after admin auth
   app.use(express.json({ limit: '64kb' }));
 
+  // One Gemini client (limiter + daily cap) shared by the asset studio and the AI character art.
+  const { studio: givenStudio, studioOptions = {}, charArtOptions = {}, charArtThrottleMs = 1000, log = () => {}, ...assetRest } = assets;
+  const studio = givenStudio ?? createStudio({ dataDir: store.dataDir, log, ...studioOptions });
+  const artService = createCharArtService({ dataDir: store.dataDir, client: studio.client, avatars: getAvatars(), log, ...charArtOptions });
+  const charArt = new CharArtRunner(store, artService, { log, throttleMs: charArtThrottleMs });
+  app.locals.charArt = charArt;
+
   app.use('/api', createSseRouter({ store, heartbeatMs }));
-  app.use('/api', createApiRouter({ store, runner }));
-  const adminRouter = createAdminRouter({ store, runner, adminPassword });
+  app.use('/api', createApiRouter({ store, runner, charArt }));
+  const adminRouter = createAdminRouter({ store, runner, adminPassword, charArt });
   app.use('/admin/api', adminRouter);
-  mountAssetRoutes(app, { requireAdmin: adminRouter.requireAdmin, dataDir: store.dataDir, ...assets });
+  mountAssetRoutes(app, { requireAdmin: adminRouter.requireAdmin, dataDir: store.dataDir, studio, log, ...assetRest });
   // Optional 3D model drop-ins (public/assets/models/*.glb) — lets the client skip 404 probes.
   app.get('/api/models', (req, res) => {
     let models = [];
@@ -70,12 +82,27 @@ export async function startServer({
   debounceMs = 300,
   log = () => {},
   assets,
+  charArtFake = config.CHAR_ART_FAKE,
 } = {}) {
   const store = new RoomStore({ dataDir, debounceMs, log });
   await store.load();
   const runner = new GameRunner(store, { log });
   runner.restore(); // re-arm prompt deadline timers of restored rooms
-  const app = createApp({ store, runner, adminPassword, heartbeatMs, assets: { log, ...assets } });
+  let assetOpts = { log, ...assets };
+  if (charArtFake && !assetOpts.studio && !assetOpts.studioOptions?.fetchImpl) {
+    // TEST-ONLY (manual smoke): fake Gemini endpoint + fake key; the real API is never called.
+    log(`[경고] CHAR_ART_FAKE=${charArtFake}: 가짜 Gemini로 동작합니다 (테스트 전용).`);
+    assetOpts = {
+      ...assetOpts,
+      studioOptions: {
+        ...(assetOpts.studioOptions ?? {}),
+        fetchImpl: createFakeGeminiFetch({ mode: charArtFake, delayMs: config.CHAR_ART_FAKE_DELAY_MS }),
+        env: { ...process.env, GEMINI_API_KEY: FAKE_KEY },
+      },
+    };
+  }
+  const app = createApp({ store, runner, adminPassword, heartbeatMs, assets: assetOpts });
+  app.locals.charArt.restore(); // AI art jobs do not survive a restart → pending becomes failed
   const server = await new Promise((resolve, reject) => {
     const s = app.listen(port, host, () => resolve(s));
     s.on('error', reject);
@@ -83,6 +110,7 @@ export async function startServer({
   const actualPort = server.address().port;
   const close = async () => {
     runner.stop();
+    app.locals.charArt.stop();
     await store.close();
     await new Promise((resolve) => {
       server.close(() => resolve());

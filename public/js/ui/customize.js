@@ -2,7 +2,8 @@
 // portrait thumbnails), a big live preview (2D portrait with expression chips | 3D pawn), random buttons.
 //
 // Part C hook: `setPreviewRenderer(fn)` swaps the renderer of the big 2D preview (default = SVG renderAvatar).
-//   fn(avatar, { expression, size, defs }) → string (markup) | HTMLElement | Promise<string|HTMLElement|null>
+//   fn(avatar, { expression, size, defs, crop }) → string (markup) | HTMLElement | Promise<string|HTMLElement|null>
+//   (`crop` = 'bust' | 'full' from the 「전신 보기」 chip; the SVG default ignores it)
 //   A Promise keeps the current preview until it resolves; stale results are dropped; null / a throw / a rejection
 //   falls back to the SVG portrait. `setPreviewRenderer(null)` restores the default. Open customizers re-render.
 import { getAvatarDefs, normalizeAvatar, outfitTintable, randomAvatar, renderAvatar } from './avatar2d.js';
@@ -173,6 +174,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   let avatar = initial.avatar ? normalizeAvatar(initial.avatar, defs) : randomAvatar(defs);
   let activeTab = tabs[0]?.id;
   let expression = 'neutral';
+  let previewCrop = 'bust'; // 'bust' (round preview) | 'full' (「전신 보기」, layered renderer only)
   let view = '2d';
   let busy = false;
   let destroyed = false;
@@ -208,6 +210,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
               </div>
               <div class="cz-expr" role="group" aria-label="표정 미리보기">
                 ${PREVIEW_EXPRESSIONS.map((e) => `<button type="button" class="cz-chip" data-expr="${e.id}" aria-pressed="${e.id === 'neutral'}">${esc(e.name)}</button>`).join('')}
+                <button type="button" class="cz-chip cz-full" data-crop-toggle aria-pressed="false">전신 보기</button>
               </div>
             </div>
             <label class="field cz-name">
@@ -275,7 +278,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   function refreshPreview() {
     if (destroyed) return;
     const my = ++previewSeq;
-    const opts = { expression, size: PREVIEW_SIZE, defs };
+    const opts = { expression, size: PREVIEW_SIZE, defs, crop: previewCrop };
     const fallback = () => my === previewSeq && !destroyed && placePreview(defaultPreviewRenderer(avatar, opts));
     let out;
     try {
@@ -386,6 +389,13 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
     }
   }
 
+  function setPreviewCrop(next) {
+    previewCrop = next === 'full' ? 'full' : 'bust';
+    form.querySelector('[data-crop-toggle]')?.setAttribute('aria-pressed', String(previewCrop === 'full'));
+    form.querySelector('.cz-preview').classList.toggle('full', previewCrop === 'full');
+    refreshPreview();
+  }
+
   function setExpression(next) {
     expression = next;
     for (const b of exprBar.querySelectorAll('[data-expr]')) b.setAttribute('aria-pressed', String(b.dataset.expr === expression));
@@ -407,6 +417,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
     if (v) return setView(v.dataset.view);
     const e = ev.target.closest('[data-expr]');
     if (e) return setExpression(e.dataset.expr);
+    if (ev.target.closest('[data-crop-toggle]')) return setPreviewCrop(previewCrop === 'full' ? 'bust' : 'full');
     const act = ev.target.closest('[data-act]')?.dataset.act;
     if (act === 'random') {
       avatar = randomizeParts(avatar, defs.order, defs);

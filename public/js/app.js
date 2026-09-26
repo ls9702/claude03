@@ -10,8 +10,9 @@ import {
   setSavedRoomId,
 } from './api.js';
 import { createGameUI } from './game2d.js';
-import { renderAvatar, setAvatarDefs } from './ui/avatar2d.js';
-import { openCustomizer } from './ui/customize.js';
+import { hydratePortraits, portraitHtml, setAvatarDefs } from './ui/avatar2d.js';
+import { openCustomizer, setPreviewRenderer } from './ui/customize.js';
+import { layeredPreviewRenderer } from './ui/avatarCompose.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) =>
@@ -147,7 +148,7 @@ function modeLabel(room) {
 function charCard(c, { mine = false } = {}) {
   return `
     <div class="char-card${c.isMe ? ' mine' : ''}${state.seenChars.has(c.id) ? '' : ' pop'}" data-id="${esc(c.id)}">
-      <div class="portrait">${renderAvatar(c.avatar, { size: 72, title: c.name })}</div>
+      <div class="portrait">${portraitHtml(c, { size: 72, crop: 'bust' })}</div>
       <div class="char-name">${esc(c.name)}</div>
       ${mine ? '' : `<div class="char-owner">${esc(c.ownerName)}${c.isMe ? ' (나)' : ''}</div>`}
       ${
@@ -189,6 +190,8 @@ function renderLobby(room) {
   $('#my-chars').innerHTML = mine.length
     ? mine.map((c) => charCard(c, { mine: true })).join('')
     : '<p class="muted">내 캐릭터를 만들어 보세요. 여러 명을 조종할 수 있어요!</p>';
+  hydratePortraits($('#char-grid'));
+  hydratePortraits($('#my-chars'));
   for (const c of room.characters) state.seenChars.add(c.id);
   $('#sheet-title').textContent = `내 캐릭터 (${mine.length})`;
   // Mobile: open the bottom sheet once when I have no characters yet.
@@ -366,6 +369,7 @@ async function boot() {
   try {
     state.meta = await getMeta();
     setAvatarDefs(state.meta.avatars);
+    setPreviewRenderer(layeredPreviewRenderer); // paper-doll layers in the customizer (SVG until they load)
     buildReactionBar();
     state.game = createGameUI($('#game-root'), { getMeta: () => state.meta, act, toast });
     await ensureSession();

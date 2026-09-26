@@ -104,7 +104,13 @@ export function updateCharacter(room, sessionId, charId, { name, avatar } = {}, 
   const next = structuredClone(room);
   const c = next.characters.find((x) => x.id === charId);
   if (clean) c.name = clean;
-  if (avatar !== undefined) c.avatar = sanitizeAvatar(avatar);
+  if (avatar !== undefined) {
+    const nextAvatar = sanitizeAvatar(avatar);
+    // AI art (Stage 5.5-D) belongs to a look: a changed avatar drops it (the route layer re-attaches a
+    // cached set of the new look, see CharArtRunner.syncCharacter).
+    if (JSON.stringify(nextAvatar) !== JSON.stringify(c.avatar)) delete c.art;
+    c.avatar = nextAvatar;
+  }
   return { ok: true, room: next, logs: [], character: c, at: now };
 }
 

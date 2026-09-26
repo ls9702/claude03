@@ -204,7 +204,7 @@ function prepareLayer(layer, level) {
 // composed results: key → Promise<HTMLCanvasElement|null> (master copies; callers get copies)
 const composed = new Map();
 const settled = new Map(); // key → canvas (resolved masters, for the synchronous peek)
-const stats = { composes: 0, lastMs: 0, hits: 0 };
+const stats = { composes: 0, drawMs: 0, hits: 0 };
 
 function copyOf(src) {
   const cv = makeCanvas(src.width, src.height);
@@ -237,7 +237,7 @@ async function composeMaster(avatar, opts, geo) {
   }
   out.dataset.crop = typeof opts.crop === 'string' ? opts.crop : 'custom';
   stats.composes++;
-  stats.lastMs = performance.now() - t0;
+  stats.drawMs = performance.now() - t0;
   return out;
 }
 
@@ -288,7 +288,71 @@ export function preloadAvatar(avatar, { size = 480, crop = 'full', expressions =
   );
 }
 
-/** Debug / E2E: cache sizes and the last compose's draw time (ms, excluding image loading). */
+/**
+ * Customizer preview renderer (customize.js `setPreviewRenderer`): the composed avatar in the round preview
+ * (bust) or the whole figure (`crop: 'full'`, 「전신 보기」). null → the customizer keeps the SVG portrait.
+ */
+export function layeredPreviewRenderer(avatar, { expression = 'neutral', size = 220, crop = 'bust' } = {}) {
+  return composeAvatar(avatar, { expression: partExpression(expression), size: Math.max(size, 260), crop: crop === 'full' ? 'full' : 'bust' }).then((cv) => {
+    if (!cv) return null;
+    cv.classList.add('cz-cmp');
+    cv.setAttribute('role', 'img');
+    cv.setAttribute('aria-label', '미리보기');
+    return cv;
+  });
+}
+
+// ---------- AI art (Stage 5.5-D files: 1024×1536, same canvas as the old generated poses) ----------
+
+/** Crops of AI art images (canvas units; the figure spans y 371..1303 like the schoolgirl poses). */
+export const AI_CROPS = {
+  full: { x: 160, y: 300, w: 704, h: 1056 },
+  bust: { x: 195, y: 350, w: 560, h: 560 },
+  face: { x: 225, y: 360, w: 500, h: 500 },
+};
+
+const artCache = new Map(); // `${url}|${crop}|${size}|${dpr}` → Promise<canvas|null>
+const artSettled = new Map();
+const artKey = (url, { size = 96, crop = 'bust', dpr = devicePR() } = {}) => `${url}|${crop}|${Math.round(size)}|${dpr}`;
+
+/** An AI art image cropped (AI_CROPS) and scaled to `size` CSS px (longer side) → fresh canvas | null. */
+export async function composeArt(url, opts = {}) {
+  if (!hasDom() || !url) return null;
+  const o = { size: 96, crop: 'bust', dpr: devicePR(), ...opts };
+  const key = artKey(url, o);
+  let p = lruGet(artCache, key);
+  if (!p) {
+    p = loadLayer(url).then((im) => {
+      if (!im) return null;
+      const box = AI_CROPS[o.crop] ?? AI_CROPS.bust;
+      const s = (o.size * o.dpr) / Math.max(box.w, box.h);
+      const cv = makeCanvas(box.w * s, box.h * s);
+      const g = cv.getContext('2d');
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(im.img, box.x * im.k, box.y * im.k, box.w * im.k, box.h * im.k, 0, 0, cv.width, cv.height);
+      cv.dataset.crop = `ai-${o.crop}`;
+      return cv;
+    });
+    lruSet(artCache, key, p, COMPOSE_CACHE_MAX);
+    p.then((cv) => {
+      if (cv && artCache.get(key) === p) artSettled.set(key, cv);
+      else artCache.delete(key);
+      for (const k of artSettled.keys()) if (!artCache.has(k)) artSettled.delete(k);
+    });
+  }
+  const cv = await p;
+  return cv ? copyOf(cv) : null;
+}
+
+/** Synchronous copy of a cached composeArt() result, else null. */
+export function peekArt(url, opts = {}) {
+  if (!hasDom() || !url) return null;
+  const key = artKey(url, { size: 96, crop: 'bust', dpr: devicePR(), ...opts });
+  const cv = artCache.has(key) ? artSettled.get(key) : null;
+  return cv ? copyOf(cv) : null;
+}
+
+/** Debug / E2E: cache sizes and the last compose's final draw time (ms, excluding image loading and tinting). */
 export function composeStats() {
   return { ...stats, composed: composed.size, prepared: prepared.size, images: images.size };
 }
@@ -297,6 +361,8 @@ export function composeStats() {
 export function clearComposeCache() {
   composed.clear();
   settled.clear();
+  artCache.clear();
+  artSettled.clear();
   prepared.clear();
   images.clear();
 }

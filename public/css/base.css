@@ -118,3 +118,7 @@ input:focus, select:focus, .btn:focus-visible { outline: 3px solid rgba(255, 122
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Stage 5.5-C portraits (renderPortrait / portraitHtml): SVG first, then the composed canvas of the same size */
+.av-pt { display: inline-block; line-height: 0; vertical-align: middle; }
+canvas.av-pt-img { display: block; border-radius: 50%; background: #fff0dc; }

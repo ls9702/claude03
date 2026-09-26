@@ -105,6 +105,11 @@ body.cz-open .reaction-bar { display: none; }
 .cz-2d > * { width: 100%; height: 100%; border-radius: 50%; }
 .cz-2d svg { animation: cz-pop 0.18s ease-out; }
 @keyframes cz-pop { from { transform: scale(0.96); } to { transform: none; } }
+/* Stage 5.5-C: composed paper-doll preview (bust in the circle; 「전신 보기」 = tall rounded card) */
+.cz-2d canvas { display: block; animation: cz-pop 0.18s ease-out; }
+.cz-chip.cz-full { border-style: dashed; }
+.cz-preview.full { height: auto; aspect-ratio: 848 / 1376; width: 120px; border-radius: 18px; }
+.cz-preview.full .cz-2d > * { border-radius: 18px; object-fit: contain; }
 .cz-3d { width: 100%; height: 100%; border-radius: 50%; background: #fff4e0; }
 .cz-stage-tools { grid-area: tools; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .cz-name { grid-area: name; margin: 0; min-width: 0; }
@@ -189,6 +194,7 @@ body.cz-open .reaction-bar { display: none; }
     gap: 12px; padding: 20px; border-right: 1px solid var(--line); overflow: auto;
   }
   .cz-preview { width: 260px; height: 260px; }
+  .cz-preview.full { width: 200px; height: auto; }
   .cz-stage-tools { align-items: center; }
   .cz-expr { justify-content: center; }
   .cz-name { width: 100%; }
@@ -198,7 +204,7 @@ body.cz-open .reaction-bar { display: none; }
   .cz-actions { position: static; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cz-overlay, .cz-2d svg { animation: none; }
+  .cz-overlay, .cz-2d svg, .cz-2d canvas { animation: none; }
 }
 
 /* game placeholder */

@@ -16,13 +16,24 @@ function publicPlayers(room, sessionId) {
   }));
 }
 
+/** AI character art (Stage 5.5-D) is public: everyone's cut-ins show it. Only the contract fields go out. */
+function publicArt(art) {
+  if (!art || typeof art !== 'object') return undefined;
+  const out = { key: art.key, status: art.status, progress: art.progress ?? 0 };
+  if (art.reason) out.reason = art.reason;
+  if (art.files) out.files = structuredClone(art.files);
+  return out;
+}
+
 function publicCharacters(room, sessionId) {
   return room.characters.map((c) => {
-    const { ownerSessionId, ...rest } = structuredClone(c);
+    const { ownerSessionId, art, ...rest } = structuredClone(c);
     const ownerId = ownerSessionId === 'cpu' ? 'cpu' : playerIdOf(room, ownerSessionId);
     const ownerName =
       ownerSessionId === 'cpu' ? 'CPU' : room.players.find((p) => p.sessionId === ownerSessionId)?.name ?? '?';
-    return { ...rest, ownerId, ownerName, isMe: sessionId != null && ownerSessionId === sessionId };
+    const pub = { ...rest, ownerId, ownerName, isMe: sessionId != null && ownerSessionId === sessionId };
+    if (art) pub.art = publicArt(art);
+    return pub;
   });
 }
 

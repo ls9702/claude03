@@ -31,7 +31,7 @@ function safeEqual(a, b) {
   return timingSafeEqual(ha, hb);
 }
 
-export function createAdminRouter({ store, runner, adminPassword }) {
+export function createAdminRouter({ store, runner, adminPassword, charArt = null }) {
   const router = express.Router();
   const tokens = new Map(); // token -> expiresAt
 
@@ -119,6 +119,20 @@ export function createAdminRouter({ store, runner, adminPassword }) {
     const r = runner.dispatch(req.room.id, { type: 'timeout', promptId: body.promptId, force: true, actor: { admin: true } });
     if (!r.ok) return sendFail(res, r);
     res.json({ room: adminView(r.room), events: r.events });
+  });
+
+  // Stage 5.5-D: (re)generate a character's AI art; ?force=1 ignores the cache and the 1-per-character rule.
+  router.post('/rooms/:id/characters/:charId/art', requireAdmin, withRoom, async (req, res, next) => {
+    try {
+      if (!req.room.characters.some((c) => c.id === req.params.charId)) return res.status(404).json({ error: '캐릭터를 찾을 수 없습니다.' });
+      if (!charArt) return res.status(409).json({ error: 'AI 일러스트 기능이 꺼져 있어요' });
+      const force = ['1', 'true'].includes(String(req.query.force ?? req.body?.force ?? ''));
+      const r = await charArt.request(req.room.id, req.params.charId, { admin: true, force });
+      if (!r.ok) return sendFail(res, r);
+      res.status(r.art.status === 'pending' ? 202 : 200).json({ ok: true, art: r.art, room: adminView(r.room) });
+    } catch (err) {
+      next(err);
+    }
   });
 
   router.delete('/rooms/:id', requireAdmin, withRoom, async (req, res) => {
