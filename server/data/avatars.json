@@ -295,6 +295,46 @@
         "id": "wavy",
         "name": "웨이브",
         "promptDesc": "long wavy hair"
+      },
+      {
+        "id": "buzz",
+        "name": "스포츠머리",
+        "promptDesc": "very short buzz cut"
+      },
+      {
+        "id": "slickback",
+        "name": "올백",
+        "promptDesc": "slicked-back hair"
+      },
+      {
+        "id": "mushroom",
+        "name": "바가지머리",
+        "promptDesc": "round mushroom bowl cut with straight bangs"
+      },
+      {
+        "id": "dandy",
+        "name": "댄디컷",
+        "promptDesc": "Korean dandy cut with soft side-swept bangs"
+      },
+      {
+        "id": "pixie",
+        "name": "숏컷",
+        "promptDesc": "short pixie cut"
+      },
+      {
+        "id": "layered",
+        "name": "레이어드컷",
+        "promptDesc": "shoulder-length layered cut with face-framing layers"
+      },
+      {
+        "id": "braid",
+        "name": "땋은 머리",
+        "promptDesc": "single long braid over the shoulder"
+      },
+      {
+        "id": "afro",
+        "name": "아프로",
+        "promptDesc": "big round afro"
       }
     ],
     "hairColor": [
