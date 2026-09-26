@@ -1,4 +1,4 @@
-// Game page controller: join → lobby → game (2D board, game2d.js) → result.
+// Game page controller: join → lobby → game (game2d.js: 3D board with 2D fallback) → result.
 import {
   api,
   connectEvents,
@@ -116,6 +116,15 @@ function render() {
     if (room.status === 'playing') {
       showScreen('game');
       renderGame(room);
+    } else if (state.screen === 'game' && state.game?.isBusy?.()) {
+      // let the 3D board finish the last hops / goal confetti before the result screen
+      if (!state.waitingResult) {
+        state.waitingResult = true;
+        state.game.whenIdle().then(() => {
+          state.waitingResult = false;
+          render();
+        });
+      }
     } else {
       showScreen('result');
       renderResult(room);
@@ -295,7 +304,9 @@ function buildReactionBar() {
   });
 }
 
-function floatReaction({ emoji, name }) {
+function floatReaction(r) {
+  state.game?.onReaction?.(r); // 3D: emoji above that player's pawns
+  const { emoji, name } = r;
   const layer = $('#float-layer');
   const el = document.createElement('div');
   el.className = 'floating';

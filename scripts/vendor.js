@@ -30,7 +30,7 @@ function packageDir(name) {
   }
 }
 
-export function vendor({ log = console.log } = {}) {
+export function vendor({ out = OUT, log = console.log } = {}) {
   const dir = packageDir('three');
   if (!dir) {
     log('[vendor] three 패키지를 찾을 수 없어 건너뜁니다 (npm install 필요).');
@@ -44,12 +44,13 @@ export function vendor({ log = console.log } = {}) {
       if (src !== 'LICENSE') log(`[vendor] 없음: three/${src}`);
       continue;
     }
-    const to = path.join(OUT, dest);
+    const to = path.join(out, dest);
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.copyFileSync(from, to);
     n++;
   }
-  fs.writeFileSync(path.join(OUT, 'three', 'VERSION'), `${version}\n`);
+  fs.mkdirSync(path.join(out, 'three'), { recursive: true });
+  fs.writeFileSync(path.join(out, 'three', 'VERSION'), `${version}\n`);
   log(`[vendor] three ${version} → public/vendor/three (${n}개 파일)`);
   return n;
 }

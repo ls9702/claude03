@@ -1,21 +1,52 @@
-// 2D simple board UI (Stage 2). Renders the masked room view from the server and
-// turns engine events (SSE `events`) into light feedback: roulette pop, money floats, toasts.
-// The 3D board (Stage 4) will replace the track, but keeps this module's action/modal/bet logic.
+// Game screen UI. Renders the masked room view from the server: HUD, character panel, log, side bets,
+// decision modals, and the board — the Three.js 3D board (Stage 4, scene/board3d.js) when WebGL works
+// and the user hasn't chosen 2D, else the 2D simple track (Stage 2). Engine events (SSE `events`) go to
+// the 3D animator (which calls back into `feedback` at the right moment) or straight to 2D feedback.
 import { renderAvatar } from './ui/avatar2d.js';
+import { won, esc } from './format.js';
+import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
 
-const esc = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+export { won };
 
-/** Money in 만원 units → '1억 2,000만원' / '350만원' (same as server effects.won). */
-export function won(n) {
-  const sign = n < 0 ? '-' : '';
-  const v = Math.abs(Math.round(n ?? 0));
-  if (v >= 10000) {
-    const eok = Math.floor(v / 10000);
-    const man = v % 10000;
-    return `${sign}${eok}억${man ? ` ${man.toLocaleString('ko-KR')}만` : ''}원`;
+const MODE_KEY = 'jinsei.boardMode'; // '2d' | '3d' (explicit choice); absent = auto
+const QUALITY_KEY = 'jinsei.quality';
+const FALLBACK_KEY = 'jinsei.board3dFallback'; // sessionStorage: auto-fallback happened this session
+const FPS_MIN = 15;
+const FPS_PROBE_MS = 3000;
+
+function store(kind) {
+  try {
+    return kind === 'session' ? window.sessionStorage : window.localStorage;
+  } catch {
+    return null;
   }
-  return `${sign}${v.toLocaleString('ko-KR')}만원`;
+}
+function sGet(key, kind = 'local') {
+  try {
+    return store(kind)?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+function sSet(key, value, kind = 'local') {
+  try {
+    if (value == null) store(kind)?.removeItem(key);
+    else store(kind)?.setItem(key, value);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** Cheap WebGL capability probe (the real renderer may still fail → fallback). */
+function webglAvailable() {
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return !!gl;
+  } catch {
+    return false;
+  }
 }
 
 const EMOTION = { joy: '😆', cry: '😭', angry: '😡', sweat: '😅', love: '😍', shock: '😱' };
@@ -49,7 +80,17 @@ export function createGameUI(root, { getMeta, act, toast }) {
     <div class="g-layout">
       <div class="g-main">
         <div class="card g-board">
-          <div class="era-tabs" data-el="tabs" role="tablist" aria-label="시대"></div>
+          <div class="board-head">
+            <div class="era-tabs" data-el="tabs" role="tablist" aria-label="시대"></div>
+            <div class="board-tools">
+              <button type="button" class="btn tiny ghost" data-el="camreset" hidden title="카메라를 현재 캐릭터로 되돌려요">🎥 카메라 리셋</button>
+              <select class="quality-select" data-el="quality" hidden aria-label="그래픽 품질">${Object.values(QUALITY_PRESETS)
+                .map((q) => `<option value="${q.name}">${q.label}</option>`)
+                .join('')}</select>
+              <button type="button" class="btn tiny" data-el="modebtn" aria-pressed="false">2D 보기</button>
+            </div>
+          </div>
+          <div class="board3d" data-el="wrap3d" hidden><canvas class="board3d-canvas" data-el="canvas3d" aria-label="3D 말판"></canvas></div>
           <div class="track-scroll" data-el="scroll"><div class="track" data-el="track"></div></div>
         </div>
         <div class="card g-action">
@@ -72,8 +113,27 @@ export function createGameUI(root, { getMeta, act, toast }) {
     <div class="roulette-pop" data-el="pop" hidden></div>`;
 
   const el = Object.fromEntries([...root.querySelectorAll('[data-el]')].map((n) => [n.dataset.el, n]));
+  const params = new URLSearchParams(location.search);
+  const modeParam = params.get('board');
+  // debug-only knob for testing the automatic 2D fallback (e.g. ?debug=1&fpsMin=1000)
+  const fpsMin = params.has('debug') && Number(params.get('fpsMin')) > 0 ? Number(params.get('fpsMin')) : FPS_MIN;
   const ui = {
     room: null,
+    pref: modeParam === '2d' || modeParam === '3d' ? modeParam : sGet(MODE_KEY), // explicit 2d/3d or null (auto)
+    quality: pickQuality({
+      param: params.get('quality'),
+      stored: sGet(QUALITY_KEY),
+      isMobile: window.matchMedia?.('(pointer: coarse)').matches,
+      cores: navigator.hardwareConcurrency,
+      memory: navigator.deviceMemory,
+    }),
+    b3: null, // 3D board instance
+    b3Loading: null,
+    b3Failed: false,
+    lastVersion: null,
+    lastStateAt: 0,
+    modalTimer: null,
+    lastFocusEra: null,
     viewEra: null, // era index being shown; null = follow the current character
     followKey: null,
     busy: false,
@@ -219,7 +279,9 @@ export function createGameUI(root, { getMeta, act, toast }) {
     } else if (cur) {
       hint = `${esc(cur.ownerName)}님이 「${esc(cur.name)}」의 룰렛을 돌리기를 기다리는 중…`;
     }
-    if (last) {
+    // 3D: don't spoil the roulette result before the wheel stops (render again on idle)
+    const spoiler = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 400);
+    if (last && !spoiler) {
       const who = byId(last.charId);
       hint = `<span class="last-spin">최근 룰렛: ${esc(who?.name ?? '')} ${last.value}</span><br>${hint}`;
     }
@@ -313,6 +375,19 @@ export function createGameUI(root, { getMeta, act, toast }) {
     const who = forMe[0];
     const key = `${p.promptId}:${who.id}`;
     if (key === ui.modalKey && !el.modal.hidden) return;
+    // 3D: open a new decision only after the board animation (spin → hops → landing) has played.
+    // (Switching to my next character within an already open prompt happens right away.)
+    const samePrompt = !el.modal.hidden && ui.modalKey?.startsWith(`${p.promptId}:`);
+    if (ui.b3 && !samePrompt) {
+      const wait = ui.b3.isBusy() ? 250 : 380 - (performance.now() - ui.lastStateAt);
+      if (wait > 0) {
+        el.modal.hidden = true; // never leave a stale prompt clickable meanwhile
+        ui.modalKey = null;
+        clearTimeout(ui.modalTimer);
+        ui.modalTimer = setTimeout(() => ui.room && renderModal(ui.room), wait);
+        return;
+      }
+    }
     ui.modalKey = key;
     const subject = byId(p.charId);
     el.modal.innerHTML = `
@@ -343,6 +418,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
     }
   }
   const ticker = setInterval(tickDeadlines, 250);
+  queueMicrotask(() => applyModeUi());
 
   // ---------- interactions ----------
   root.addEventListener('click', (ev) => {
@@ -353,6 +429,19 @@ export function createGameUI(root, { getMeta, act, toast }) {
       const cur = currentChar();
       ui.viewEra = i === (cur?.position?.eraIndex ?? 0) ? null : i;
       ui.lastScrollKey = null;
+      if (ui.b3) {
+        if (ui.viewEra == null) ui.b3.resetCamera();
+        else ui.b3.focusEra(i);
+      }
+      return render(ui.room);
+    }
+    if (t.closest('[data-el="modebtn"]')) {
+      setBoardMode(ui.b3 || ui.b3Loading ? '2d' : '3d', { explicit: true });
+      return;
+    }
+    if (t.closest('[data-el="camreset"]')) {
+      ui.viewEra = null;
+      ui.b3?.resetCamera();
       return render(ui.room);
     }
     if (t.closest('[data-el="spin"]')) {
@@ -386,6 +475,12 @@ export function createGameUI(root, { getMeta, act, toast }) {
     }
   });
   root.addEventListener('change', (ev) => {
+    if (ev.target.dataset.el === 'quality') {
+      ui.quality = ev.target.value;
+      sSet(QUALITY_KEY, ui.quality);
+      ui.b3?.setQuality(ui.quality);
+      return;
+    }
     if (ev.target.dataset.bet === 'bettor') {
       ui.bet.bettor = ev.target.value;
       renderBets(ui.room);
@@ -402,17 +497,170 @@ export function createGameUI(root, { getMeta, act, toast }) {
       ui.followKey = followKey;
       ui.viewEra = null; // new turn → follow the current character again
     }
+    if (room.id !== ui.roomId) {
+      ui.roomId = room.id;
+      ui.hudShown = false;
+    }
+    if (room.version !== ui.lastVersion) {
+      ui.lastVersion = room.version;
+      ui.lastStateAt = performance.now();
+      // 3D: re-render once the grace window for the matching SSE `events` has passed
+      clearTimeout(ui.graceTimer);
+      ui.graceTimer = setTimeout(() => ui.room && ui.b3 && !ui.b3.isBusy() && render(ui.room), 420);
+    }
     const shown = Math.min(ui.viewEra ?? cur?.position?.eraIndex ?? 0, room.board.eras.length - 1);
-    renderTop(room);
-    renderTabs(room, shown);
-    renderTrack(room, shown);
+    if (!ui.b3 && !ui.b3Loading && !ui.b3Failed && wants3D()) ensureBoard3D();
+    // 3D: keep the header / character panel / log on the previous state until the board has played the
+    // events (no spoilers while the roulette spins); onIdle and the grace timer render again.
+    const holdHud = ui.b3 && ui.hudShown && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 400);
+    if (!holdHud) {
+      renderTop(room);
+      renderTabs(room, shown);
+    }
+    if (ui.b3) sync3D(room);
+    else renderTrack(room, shown);
     renderSpin(room);
     renderBets(room);
-    renderChars(room);
-    renderLog(room);
+    if (!holdHud) {
+      renderChars(room);
+      renderLog(room);
+      ui.hudShown = true;
+    }
     renderModal(room);
     tickDeadlines();
-    requestAnimationFrame(() => scrollToCurrent(room));
+    if (!ui.b3) requestAnimationFrame(() => scrollToCurrent(room));
+  }
+
+  // ---------- 3D board ----------
+  function wants3D() {
+    if (ui.pref === '2d') return false;
+    if (ui.pref === '3d') return true;
+    return !sGet(FALLBACK_KEY, 'session') && webglAvailable();
+  }
+
+  function applyModeUi() {
+    const on = !!(ui.b3 || ui.b3Loading);
+    root.classList.toggle('is3d', on);
+    root.dataset.quality = ui.quality;
+    el.wrap3d.hidden = !on;
+    el.scroll.hidden = on;
+    el.camreset.hidden = !on || !QUALITY_PRESETS[ui.quality]?.controls;
+    el.quality.hidden = !on;
+    el.quality.value = ui.quality;
+    el.modebtn.textContent = on ? '2D 보기' : '3D 보기';
+    el.modebtn.setAttribute('aria-pressed', String(!on));
+  }
+
+  function fallback2D(message) {
+    disposeBoard3D();
+    ui.b3Failed = true;
+    applyModeUi();
+    if (ui.room) render(ui.room);
+    if (message) toast(message, 'error');
+  }
+
+  function disposeBoard3D() {
+    try {
+      ui.b3?.dispose();
+    } catch {
+      /* ignore */
+    }
+    if (ui.b3 && window.__board3d === ui.b3) window.__board3d = null;
+    ui.b3 = null;
+    ui.b3Loading = null;
+    ui.lastFocusEra = null;
+    if (!el.canvas3d.isConnected) return;
+    // a disposed WebGL canvas cannot get a fresh context reliably → swap in a new element
+    const fresh = el.canvas3d.cloneNode(false);
+    el.canvas3d.replaceWith(fresh);
+    el.canvas3d = fresh;
+  }
+
+  function ensureBoard3D() {
+    if (ui.b3 || ui.b3Loading) return ui.b3Loading;
+    const auto = ui.pref !== '3d';
+    ui.b3Loading = (async () => {
+      applyModeUi();
+      try {
+        const { createBoard3D } = await import('./scene/board3d.js');
+        if (!ui.b3Loading) return; // switched back to 2D meanwhile
+        const b3 = createBoard3D(el.canvas3d, {
+          quality: ui.quality,
+          meta: getMeta(),
+          hooks: {
+            onStep: (e) => feedback(e, true),
+            onRouletteTap: () => {
+              const cur = currentChar();
+              if (cur?.isMe && ui.room?.turn?.phase === 'awaitSpin' && !ui.room.turn.pending) run({ type: 'spin', characterId: cur.id });
+            },
+            onError: (err) => console.warn('[board3d]', err),
+          },
+        });
+        ui.b3 = b3;
+        b3.onIdle(() => ui.room && ui.room.status === 'playing' && render(ui.room));
+        if (typeof window !== 'undefined' && params.has('debug')) window.__board3d = b3;
+        applyModeUi();
+        if (ui.room) render(ui.room);
+        if (auto) {
+          const fps = await b3.measureFps(FPS_PROBE_MS);
+          if (ui.b3 === b3 && shouldFallback(fps, 1000, fpsMin)) {
+            sSet(FALLBACK_KEY, '1', 'session');
+            fallback2D(`3D 화면이 느려서(${fps.toFixed(0)}fps) 2D 보드로 바꿨어요. 「3D 보기」로 다시 켤 수 있어요.`);
+          }
+        }
+      } catch (err) {
+        console.warn('[board3d] init failed', err);
+        fallback2D('이 기기에서는 3D 보드를 켤 수 없어 2D 보드로 보여 드려요.');
+      } finally {
+        if (ui.b3Loading && !ui.b3) ui.b3Loading = null;
+      }
+    })();
+    return ui.b3Loading;
+  }
+
+  function setBoardMode(mode, { explicit = false } = {}) {
+    if (explicit) {
+      ui.pref = mode;
+      sSet(MODE_KEY, mode);
+      if (mode === '3d') sSet(FALLBACK_KEY, null, 'session');
+    }
+    if (mode === '2d') {
+      disposeBoard3D();
+      applyModeUi();
+      ui.lastScrollKey = null;
+      if (ui.room) render(ui.room);
+    } else {
+      ui.b3Failed = false;
+      ensureBoard3D();
+    }
+  }
+
+  function subtitleFor(room, cur) {
+    if (!cur) return '';
+    const p = room.turn.pending;
+    if (cur.finished) return `🏁 ${cur.name} 골인 · 보너스 룰렛`;
+    if (p) {
+      const waiting = p.forCharacterIds.filter((id) => !p.answered?.includes(id)).map((id) => byId(id)?.name ?? id);
+      return `${cur.isMe ? '내 차례' : `${cur.name}의 차례`} · ${p.title ?? '선택'} (${waiting.join(', ')} 선택 중)`;
+    }
+    if (cur.isMe) return `⭐ 내 차례! ${cur.name}의 룰렛을 돌리세요`;
+    return `${cur.name}의 차례 · 룰렛 대기 중`;
+  }
+
+  function sync3D(room) {
+    const b3 = ui.b3;
+    const cur = currentChar();
+    b3.setBoard(room.board);
+    b3.setCharacters(chars());
+    const canSpin = !!cur?.isMe && room.turn.phase === 'awaitSpin' && !room.turn.pending;
+    b3.setCurrent(cur?.id ?? null, {
+      mine: !!cur?.isMe,
+      subtitle: subtitleFor(room, cur),
+      rouletteIdle: room.turn.phase === 'awaitSpin' && !room.turn.pending && !cur?.finished,
+      rouletteTappable: canSpin,
+    });
+    if (ui.viewEra == null && ui.lastFocusEra != null) b3.resetCamera();
+    ui.lastFocusEra = ui.viewEra;
   }
 
   // ---------- engine events → feedback ----------
@@ -449,17 +697,26 @@ export function createGameUI(root, { getMeta, act, toast }) {
 
   function onEvents(payload) {
     const events = payload?.events ?? [];
-    for (const e of events) {
-      const c = e.charId ? byId(e.charId) : null;
+    if (ui.b3) {
+      ui.b3.playEvents(events);
+      return;
+    }
+    for (const e of events) feedback(e, false);
+  }
+
+  /** Per-event feedback (toasts / side-panel floats); in 3D it is called by the animator in sync. */
+  function feedback(e, in3d) {
+    const c = e.charId ? byId(e.charId) : null;
+    {
       switch (e.type) {
         case 'spun':
-          showRoulette(e.value, c?.name ?? '');
+          if (!in3d) showRoulette(e.value, c?.name ?? '');
           break;
         case 'moneyChanged':
           floatOn(e.charId, `${EMOTION[e.emotion] ?? ''}${e.delta > 0 ? '+' : ''}${won(e.delta)}`, e.delta > 0 ? 'plus' : 'minus');
           break;
         case 'eraChanged':
-          if (c?.isMe) toast(`🌱 ${c.name}: ${e.eraName} 시대 시작!`);
+          if (c?.isMe && !in3d) toast(`🌱 ${c.name}: ${e.eraName} 시대 시작!`);
           break;
         case 'routeChosen': {
           const r = routes()[e.route];
@@ -467,7 +724,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
           break;
         }
         case 'finished':
-          toast(`🏁 ${c?.name ?? ''} ${e.place}등 골인!`);
+          if (!in3d) toast(`🏁 ${c?.name ?? ''} ${e.place}등 골인!`);
           break;
         case 'betResolved':
           for (const r of e.results) {
@@ -485,6 +742,16 @@ export function createGameUI(root, { getMeta, act, toast }) {
           break;
       }
     }
+  }
+
+  /** SSE reaction → floating emoji above that player's pawns (3D only). */
+  function onReaction(r) {
+    if (!ui.b3 || !r?.playerId) return false;
+    const ids = chars()
+      .filter((c) => c.ownerId === r.playerId)
+      .map((c) => c.id);
+    if (ids.length) ui.b3.reaction(ids, r.emoji);
+    return ids.length > 0;
   }
 
   // ---------- results ----------
@@ -517,9 +784,24 @@ export function createGameUI(root, { getMeta, act, toast }) {
   return {
     render,
     onEvents,
+    onReaction,
     renderResult,
+    /** True while the 3D board is still animating events (result screen waits for it). */
+    isBusy: () => !!ui.b3?.isBusy(),
+    whenIdle: () => ui.b3?.whenIdle() ?? Promise.resolve(),
+    /** Stage 5 hook: the animator (pause/resume/enqueue) of the 3D board, or null in 2D. */
+    get animator() {
+      return ui.b3?.animator ?? null;
+    },
+    get board3d() {
+      return ui.b3;
+    },
+    setBoardMode,
     destroy() {
       clearInterval(ticker);
+      clearTimeout(ui.modalTimer);
+      clearTimeout(ui.graceTimer);
+      disposeBoard3D();
     },
   };
 }

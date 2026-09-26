@@ -123,3 +123,19 @@ export function rouletteTargetAngle(current, value, turns = 4, jitter = 0) {
 
 /** Parabolic hop: height at t∈[0,1] for a jump of peak height h. */
 export const hopHeight = (t, h) => 4 * h * t * (1 - t);
+
+/**
+ * Screen region of the roulette overlay inside a w×h canvas (CSS px, y from the top).
+ * idle = small corner dial; active = big wheel (right side on wide screens, top-center on narrow ones).
+ */
+export function rouletteRegion(mode, w, h) {
+  const narrow = w < 560 || w < h * 0.9;
+  if (mode === 'active') {
+    const size = Math.round(narrow ? Math.min(w * 0.8, h * 0.66) : Math.min(h * 0.84, w * 0.46));
+    const x = Math.round(narrow ? (w - size) / 2 : w - size - 12);
+    const y = Math.round(narrow ? Math.max(6, h * 0.04) : Math.max(6, (h - size) / 2));
+    return { x, y, size };
+  }
+  const size = Math.round(narrow ? Math.min(w * 0.3, h * 0.32) : Math.min(h * 0.34, w * 0.22));
+  return { x: Math.round(w - size - 8), y: 8, size };
+}

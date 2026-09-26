@@ -71,7 +71,9 @@
 /* customizer */
 .customizer { margin: 0; box-shadow: none; }
 .customizer-head { display: flex; justify-content: space-between; align-items: center; }
-.customizer-preview { display: flex; justify-content: center; margin: 4px 0 12px; }
+.customizer-preview { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 4px 0 12px; }
+.cz-2d { display: inline-flex; }
+.cz-3d { width: 140px; height: 140px; border-radius: 50%; background: #fff4e0; }
 .customizer-preview svg { border-radius: 50%; animation: pop-in 0.2s; }
 .part-rows { display: grid; gap: 6px; margin-bottom: 8px; }
 .part-row { display: grid; grid-template-columns: 76px 40px 1fr 40px; align-items: center; gap: 6px; }

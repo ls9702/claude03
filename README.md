@@ -1,14 +1,14 @@
 # 인생게임 (HTTP 턴제 멀티플레이)
 
 브라우저로 접속하는 턴제 인생게임 서버. 라즈베리파이 4에서 Node.js 단일 프로세스로 구동합니다.
-전체 설계는 [`docs/PLAN.md`](docs/PLAN.md)를 참고하세요. (현재: 2단계 엔진 코어 + 2D 간이 보드)
+전체 설계는 [`docs/PLAN.md`](docs/PLAN.md)를 참고하세요. (현재: 4단계 3D 말판 — 엔진 코어·에셋 스튜디오 포함)
 
 ## 실행
 
 Node.js 20 이상이 필요합니다.
 
 ```bash
-npm install
+npm install          # postinstall이 three.js를 public/vendor/three/ 로 복사 (CDN 없이 LAN에서 동작)
 ADMIN_PASSWORD=원하는비밀번호 npm start     # 개발 중 자동 재시작: npm run dev
 ```
 
@@ -35,6 +35,37 @@ ADMIN_PASSWORD=원하는비밀번호 npm start     # 개발 중 자동 재시작
 
 규칙 수치는 `server/data/board.json`(칸 풀·가중치·루트 풀·이벤트), `balance.json`(룰렛·베팅·연금·골인 상금),
 `eras.json`(시대·기본 턴 수)에서 조정한다.
+
+## 3D 말판 (4단계)
+
+게임 화면의 말판은 Three.js 3D로 그려집니다(마을 위 트랙·사각 타일·청년/중년 3갈래 루트 리본, 파츠 조합 말,
+대형 룰렛, 이동 애니메이션, 표정·이모지 팝업). WebGL이 없거나 느리면 2D 간이 보드로 자동 전환됩니다.
+
+- **2D/3D 전환**: 말판 오른쪽 위 「2D 보기 / 3D 보기」 버튼(선택은 브라우저에 저장). URL `?board=2d`도 가능.
+  자동 모드에서는 처음 3초 평균이 15fps 미만이면 안내 후 2D로 바뀝니다(버튼으로 다시 켤 수 있음).
+- **카메라**: 드래그 회전 · 핀치/휠 확대 · 두 손가락(또는 우클릭/Shift 드래그) 이동, 「🎥 카메라 리셋」.
+  남의 차례에는 현재 말을 자동으로 클로즈업(관전 스포트라이트), 시대 탭을 누르면 그 시대 전체를 보여 줍니다.
+  내 차례에는 오른쪽 위 작은 룰렛을 눌러도 돌릴 수 있어요.
+- **그래픽 품질**: 말판 위 선택 상자 또는 URL `?quality=`
+
+| 값 | 설명 |
+|---|---|
+| `high` | 화면 해상도 그대로, 파티클·궤도 카메라 (8코어 이상 PC/폰 기본값) |
+| `low` | 75% 해상도·30fps 제한·소품/파티클 축소 (4코어 이하·저사양 폰 기본값) |
+| `tv` | 720p로 렌더 후 브라우저가 확대, 파티클 없음, 고정 조감 카메라 — 라즈베리파이 TV 화면용 |
+
+- **라즈베리파이 TV 모드**: Raspberry Pi OS(Bookworm) Chromium을 GPU 가속으로 키오스크 실행하세요.
+
+```bash
+chromium-browser --kiosk --ignore-gpu-blocklist --enable-gpu-rasterization \
+  "http://localhost:3000/?quality=tv"
+```
+
+  `chrome://gpu`에서 WebGL이 "Hardware accelerated"인지 확인하세요(가속이 꺼지면 4~5fps → 2D로 전환됨).
+- **glTF 말 교체(선택)**: `public/assets/models/pawn.glb`를 넣으면 기본 로우폴리 말 대신 사용합니다.
+  재질 이름에 `skin`/`hair`/`outfit`이 들어간 부분은 캐릭터 파츠 색으로 칠해집니다.
+- 에셋 스튜디오에서 `icon-*`(타일 아이콘)·`tex-grass`(잔디)가 채택되면 3D 말판에 자동 반영됩니다.
+- 성능 예산: 드로우콜 100 이하·삼각형 5만 이하(8캐릭터 인생 전체 보드 실측 약 32콜·2.1만 삼각형).
 
 ## 테스트
 

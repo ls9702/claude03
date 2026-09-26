@@ -1,8 +1,24 @@
-// Character customizer: ◀ ▶ per part, random button, name input.
+// Character customizer: ◀ ▶ per part, random button, name input, 2D portrait + 3D pawn preview.
 import { getAvatarDefs, normalizeAvatar, randomAvatar, renderAvatar } from './avatar2d.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+function want3dPreview() {
+  try {
+    if (localStorage.getItem('jinsei.boardMode') === '2d') return false;
+  } catch {
+    /* storage unavailable */
+  }
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return !!gl;
+  } catch {
+    return false;
+  }
+}
 
 const FALLBACK_LABELS = {
   body: '체형', skin: '피부', hair: '머리 모양', hairColor: '머리색',
@@ -28,7 +44,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
         <h3>${esc(title)}</h3>
         <button type="button" class="btn small ghost" data-act="random" title="랜덤">🎲 랜덤</button>
       </div>
-      <div class="customizer-preview" aria-live="polite"></div>
+      <div class="customizer-preview" aria-live="polite"><span class="cz-2d"></span><canvas class="cz-3d" width="140" height="140" hidden aria-label="3D 미리보기"></canvas></div>
       <label class="field">
         <span>이름</span>
         <input name="name" maxlength="12" required placeholder="캐릭터 이름" value="${esc(initial.name ?? '')}" autocomplete="off">
@@ -57,8 +73,14 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   const preview = form.querySelector('.customizer-preview');
   const errEl = form.querySelector('.form-error');
 
+  const preview2d = preview.querySelector('.cz-2d');
+  const canvas3d = preview.querySelector('.cz-3d');
+  let preview3d = null;
+  let destroyed = false;
+
   const refresh = () => {
-    preview.innerHTML = renderAvatar(avatar, { size: 140, bg: '#fff4e0' });
+    preview2d.innerHTML = renderAvatar(avatar, { size: 140, bg: '#fff4e0' });
+    preview3d?.set(avatar);
     for (const row of form.querySelectorAll('.part-row')) {
       const key = row.dataset.part;
       const opts = defs.parts[key];
@@ -110,8 +132,22 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   });
 
   refresh();
+  // 3D preview = the board pawn (Stage 4); skipped when the player chose the 2D board or WebGL fails.
+  if (want3dPreview()) {
+    import('../scene/pawnPreview.js')
+      .then(({ createPawnPreview }) => {
+        if (destroyed) return;
+        preview3d = createPawnPreview(canvas3d, { defs });
+        preview3d.set(avatar);
+        canvas3d.hidden = false;
+      })
+      .catch(() => {});
+  }
   return {
     destroy() {
+      destroyed = true;
+      preview3d?.dispose();
+      preview3d = null;
       host.innerHTML = '';
     },
   };

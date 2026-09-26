@@ -1,5 +1,6 @@
 // App boot: static files, routes, store.
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as config from './config.js';
@@ -24,6 +25,16 @@ export function createApp({ store, runner = new GameRunner(store), adminPassword
   const adminRouter = createAdminRouter({ store, runner, adminPassword });
   app.use('/admin/api', adminRouter);
   mountAssetRoutes(app, { requireAdmin: adminRouter.requireAdmin, dataDir: store.dataDir, ...assets });
+  // Optional 3D model drop-ins (public/assets/models/*.glb) — lets the client skip 404 probes.
+  app.get('/api/models', (req, res) => {
+    let models = [];
+    try {
+      models = fs.readdirSync(path.join(PUBLIC_DIR, 'assets', 'models')).filter((f) => /\.(glb|gltf)$/i.test(f)).sort();
+    } catch {
+      /* no models folder */
+    }
+    res.json({ models });
+  });
   app.use(['/api', '/admin/api'], (req, res) => res.status(404).json({ error: '없는 API입니다.' }));
 
   app.get(['/admin', '/admin/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));

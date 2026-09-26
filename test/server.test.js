@@ -139,3 +139,15 @@ test('reaction rate limit returns 429', async () => {
   assert.deepEqual(statuses.slice(0, 5), [200, 200, 200, 200, 200]);
   assert.equal(statuses[6], 429);
 });
+
+test('game page carries the three.js import map; /api/models lists drop-in models; scene modules are served', async () => {
+  const home = await call('GET', '/');
+  assert.match(home.text, /"three": "\/vendor\/three\/three\.module\.js"/);
+  const models = await call('GET', '/api/models');
+  assert.equal(models.status, 200);
+  assert.ok(Array.isArray(models.json.models));
+  assert.ok(models.json.models.every((m) => /\.(glb|gltf)$/i.test(m)));
+  for (const f of ['/js/scene/board3d.js', '/js/scene/animator.js', '/js/scene/roulette3d.js', '/js/format.js']) {
+    assert.equal((await call('GET', f)).status, 200, f);
+  }
+});

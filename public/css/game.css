@@ -1,4 +1,4 @@
-/* 2D simple board (Stage 2) + results — mobile-first; desktop gets a side column. */
+/* Game screen: 3D board (Stage 4) / 2D simple board (Stage 2) + results — mobile-first; desktop gets a side column. */
 
 #screen-game { padding-bottom: 90px; }
 .game.busy .spin-btn, .game.busy .choice, .game.busy .bet-go { opacity: 0.6; pointer-events: none; }
@@ -15,6 +15,57 @@
 /* layout */
 .g-layout { display: block; }
 .g-side h3, .g-action h3 { font-size: 0.95rem; }
+
+/* board header: era tabs + tools (camera reset, quality, 2D/3D toggle) */
+.board-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.board-head .era-tabs { flex: 1 1 260px; min-width: 0; margin-bottom: 0; }
+.board-tools { display: flex; gap: 6px; align-items: center; flex: none; margin-left: auto; }
+.quality-select { min-height: 30px; padding: 2px 8px; font-size: 0.8rem; border-radius: 999px; }
+
+/* 3D board */
+.board3d {
+  position: relative; height: clamp(320px, 58vh, 560px); border-radius: 12px; overflow: hidden;
+  background: #bfe6ff; user-select: none; -webkit-user-select: none;
+}
+.board3d-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.board3d-canvas:active { cursor: grabbing; }
+.b3-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.b3-sub {
+  position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px);
+  background: rgba(45, 42, 50, 0.82); color: #fff; font-weight: 800; font-size: 0.9rem;
+  padding: 6px 14px; border-radius: 999px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.b3-sub.mine { background: var(--primary); }
+.b3-banner {
+  position: absolute; left: 50%; top: 16%; transform: translate(-50%, 0);
+  background: rgba(255, 255, 255, 0.96); color: var(--ink); font-weight: 900; font-size: clamp(1.1rem, 3.2vw, 1.8rem);
+  padding: 10px 22px; border-radius: 18px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); white-space: nowrap;
+}
+.b3-banner.show { animation: b3-banner 1.6s ease-out both; }
+@keyframes b3-banner {
+  0% { opacity: 0; transform: translate(-50%, 14px) scale(0.9); }
+  12% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  22% { transform: translate(-50%, 0) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.b3-num {
+  position: absolute; transform: translate(-50%, -50%); color: #ffd166; font-weight: 900; line-height: 1;
+  -webkit-text-stroke: 4px #2d2a32; paint-order: stroke fill; text-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+  font-variant-numeric: tabular-nums;
+}
+.b3-num.show { animation: b3-num 1.1s ease-out both; }
+@keyframes b3-num {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  25% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+  40% { transform: translate(-50%, -50%) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -75%) scale(1); }
+}
+.game.is3d .spin-dial { display: none; }
+/* TV mode: tall board (rendered at 720p and upscaled by the browser) */
+.game[data-quality='tv'] .board3d { height: max(360px, calc(100vh - 250px)); }
+body:has(.game[data-quality='tv']) main { max-width: 1800px; }
 
 /* era tabs */
 .era-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 6px; margin-bottom: 8px; }
@@ -177,6 +228,14 @@
   .g-log { max-height: 40vh; }
   .g-modal { align-items: center; }
   .g-sheet { border-radius: 20px; }
+}
+@media (max-width: 768px) {
+  /* canvas full width on top */
+  .g-board { margin-left: -16px; margin-right: -16px; border-radius: 0; border-left: 0; border-right: 0; padding: 8px 0 0; }
+  .g-board .board-head { padding: 0 10px; }
+  .g-board .track-scroll { padding-left: 10px; padding-right: 10px; }
+  .board3d { height: 52vh; min-height: 300px; border-radius: 0; }
+  .b3-sub { font-size: 0.8rem; }
 }
 @media (max-width: 480px) {
   .tile { width: 76px; font-size: 0.68rem; }

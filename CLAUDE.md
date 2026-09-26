@@ -112,3 +112,39 @@
   an asset is not accepted yet, so keep the SVG placeholders as the default path.
 - Tests use `test/assetFixtures.js` (synthetic magenta/white images, fake Gemini fetch, temp manifest copy) and small
   real samples in `test/fixtures/`. Never hit the real API in tests.
+
+## 3D board (Stage 4)
+- Three.js is an npm dependency; `postinstall` → `scripts/vendor.js` copies `three.module.js` + `three.core.js` and the
+  addons we use (GLTFLoader, BufferGeometryUtils, SkeletonUtils) into `public/vendor/three/` (gitignored, rebuilt by
+  `npm install`). `index.html` has the import map (`three`, `three/addons/`). No CDN.
+- `public/js/scene/` — pure (node-testable, no three/DOM): `math.js` (Catmull-Rom, arc-length resample, easing,
+  `rouletteTargetAngle/ValueAt/Region`), `layout.js` (`layoutBoard(board)` → world tile positions: one meandering
+  centerline, route eras fork love(+normal, near camera)/career(centerline)/money(−normal) between stop and merge;
+  `planProps` deterministic town props, tall ones only behind the track; `slotOffset`, `eraSweepPoints`, `ERA_THEMES`),
+  `quality.js` (`QUALITY_PRESETS` high|low|tv, `pickQuality`, `renderSize`, `shouldFallback`), `animator.js`
+  (`createAnimator` event queue, `planSteps`), `pawnParts.js` (avatar part ids → primitive specs + colors).
+  three-based: `board3d.js` (`createBoard3D(canvas, {quality, meta, hooks:{onStep,onRouletteTap,onError}})` →
+  `setBoard/setCharacters/setCurrent/focus/focusEra/resetCamera/playEvents/onIdle/isBusy/whenIdle/reaction/resize/
+  setQuality/stats/measureFps/dispose`, `.animator`), `pawn.js` (merged vertex-colored pawn = 1 draw call, name tag;
+  `/api/models` lists `public/assets/models/*.glb` → `pawn.glb` drop-in via GLTFLoader), `roulette3d.js` (own scene
+  drawn into a scissored viewport of the same renderer), `emotion.js` (emoji/text popups), `particles.js`,
+  `controls.js` (orbit: drag/pinch/two-finger pan/wheel, taps), `props.js`, `geo.js`, `sprites.js`,
+  `pawnPreview.js` (lobby customizer 3D preview, shares pawn geometry).
+- Budget: ≤100 draw calls, ≤50k triangles (8-char lifetime board ≈ 32 calls / 21k tris incl. roulette), no shadows/
+  post/AA, pixelRatio 1, Hemisphere + 1 Directional, Lambert + vertex colors; tiles are InstancedMeshes, icons one atlas
+  mesh, roads/buildings merged, trees instanced. Keep new scenery inside `buildStatic` merges.
+- Sync model: SSE `state` arrives before its `events`. `setCharacters` never teleports a pawn while an animation may
+  follow — pawns glide to the authoritative tile only when the animator is idle (380 ms grace). `moved` hops from
+  `event.from` along `event.path`. `setCurrent` is applied when idle. game2d opens decision modals only when
+  `b3.isBusy()` is false (+ grace) and hides the roulette spoiler text meanwhile; app.js delays the result screen
+  until `whenIdle()`.
+- `game2d.js` owns mode selection: `?board=2d|3d` > localStorage `jinsei.boardMode` (explicit toggle) > auto
+  (WebGL probe; auto mode falls back to 2D with a toast when the first 3 s average < 15 fps, remembered in
+  sessionStorage `jinsei.board3dFallback`). Quality: `?quality=high|low|tv` > localStorage `jinsei.quality` > device
+  heuristic. `?debug=1` exposes `window.__board3d` (stats: calls/triangles/fps) and `&fpsMin=` for fallback tests.
+- Engine events stay the only animation input; add a new animation = handler in `board3d.js` `handlers` (+ the type
+  in `ANIMATED_EVENTS`). Toasts/side-panel floats go through `hooks.onStep` → `game2d.feedback(e, true)`.
+- Stage 5 hooks: `gameUI.animator` (null in 2D) → `pause()/resume()` between steps, `enqueue(fn)` a custom step
+  (a 2D cut-in that takes over the screen and resolves when closed), `setHandler(type, fn)` to replace/extend an
+  event's animation (e.g. play a cut-in on `landed` of event tiles). A handler returning a Promise blocks the queue
+  (safety timeout 12 s per step; pass `maxMs` to `enqueue` for longer cut-ins).

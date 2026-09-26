@@ -8,6 +8,10 @@
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/lobby.css">
   <link rel="stylesheet" href="/css/game.css">
+  <!-- Three.js is vendored by `npm install` (scripts/vendor.js → public/vendor/three), no CDN. -->
+  <script type="importmap">
+    { "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three/addons/" } }
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -82,7 +86,7 @@
       </div>
     </section>
 
-    <!-- 3. 게임 (2D 간이 보드 — public/js/game2d.js) -->
+    <!-- 3. 게임 (3D 말판 + 2D 폴백 — public/js/game2d.js, public/js/scene/*) -->
     <section id="screen-game" class="screen" hidden>
       <div id="game-root" class="game"></div>
     </section>
