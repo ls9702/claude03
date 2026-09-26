@@ -1,72 +1,120 @@
 {
-  "order": ["body", "skin", "hair", "hairColor", "eyes", "accessory", "outfit", "outfitColor"],
+  "order": ["body", "build", "skin", "face", "eyes", "mouth", "cheek", "hair", "hairColor", "outfit", "outfitColor", "accessory"],
   "labels": {
-    "body": "체형", "skin": "피부", "hair": "머리 모양", "hairColor": "머리색",
-    "eyes": "눈", "accessory": "액세서리", "outfit": "의상", "outfitColor": "의상 색"
+    "body": "체형", "build": "체격", "skin": "피부", "face": "얼굴형", "eyes": "눈", "mouth": "입", "cheek": "볼",
+    "hair": "머리 모양", "hairColor": "머리색", "outfit": "의상", "outfitColor": "의상 색", "accessory": "액세서리"
   },
+  "tabs": [
+    { "id": "body", "name": "체형", "parts": ["body", "build", "skin"] },
+    { "id": "face", "name": "얼굴", "parts": ["face", "eyes", "mouth", "cheek"] },
+    { "id": "hair", "name": "머리", "parts": ["hair", "hairColor"] },
+    { "id": "outfit", "name": "옷", "parts": ["outfit", "outfitColor"] },
+    { "id": "extra", "name": "소품", "parts": ["accessory"] }
+  ],
+  "tint": { "skin": "skin", "hair": "hairColor", "outfit": "outfitColor" },
   "parts": {
     "body": [
-      { "id": "boy", "name": "남자" },
-      { "id": "girl", "name": "여자" }
+      { "id": "boy", "name": "남자", "promptDesc": "a boy" },
+      { "id": "girl", "name": "여자", "promptDesc": "a girl" }
+    ],
+    "build": [
+      { "id": "slim", "name": "마름", "promptDesc": "slim, slender build", "scaleX": 0.9 },
+      { "id": "normal", "name": "보통", "promptDesc": "average build", "scaleX": 1.0 },
+      { "id": "chubby", "name": "통통", "promptDesc": "chubby, round build", "scaleX": 1.14 }
     ],
     "skin": [
-      { "id": "fair", "name": "밝은 피부", "color": "#fde3cf" },
-      { "id": "light", "name": "보통 피부", "color": "#f6cfae" },
-      { "id": "tan", "name": "구릿빛", "color": "#dca77e" },
-      { "id": "deep", "name": "짙은 피부", "color": "#a86f4c" }
+      { "id": "porcelain", "name": "아주 밝은 피부", "color": "#fff0e4", "promptDesc": "very fair porcelain skin" },
+      { "id": "fair", "name": "밝은 피부", "color": "#fde3cf", "promptDesc": "fair skin" },
+      { "id": "light", "name": "보통 피부", "color": "#f6cfae", "promptDesc": "light skin" },
+      { "id": "olive", "name": "올리브 피부", "color": "#d9b48a", "promptDesc": "warm olive skin" },
+      { "id": "tan", "name": "구릿빛", "color": "#dca77e", "promptDesc": "tanned skin" },
+      { "id": "deep", "name": "짙은 피부", "color": "#a86f4c", "promptDesc": "deep brown skin" }
     ],
-    "hair": [
-      { "id": "short", "name": "짧은 머리" },
-      { "id": "bob", "name": "단발" },
-      { "id": "long", "name": "긴 생머리" },
-      { "id": "ponytail", "name": "포니테일" },
-      { "id": "twintail", "name": "양갈래" },
-      { "id": "spiky", "name": "삐죽 머리" },
-      { "id": "curly", "name": "곱슬 머리" },
-      { "id": "bun", "name": "똥머리" }
-    ],
-    "hairColor": [
-      { "id": "black", "name": "흑발", "color": "#2b2222" },
-      { "id": "brown", "name": "갈색", "color": "#6b4226" },
-      { "id": "blonde", "name": "금발", "color": "#e8c15a" },
-      { "id": "red", "name": "적갈색", "color": "#a8452f" },
-      { "id": "pink", "name": "분홍", "color": "#f28bb3" },
-      { "id": "blue", "name": "파랑", "color": "#4d7fd6" }
+    "face": [
+      { "id": "slim", "name": "갸름", "promptDesc": "slim oval face" },
+      { "id": "round", "name": "둥근", "promptDesc": "round chubby-cheeked face" },
+      { "id": "square", "name": "각진", "promptDesc": "square jaw face" }
     ],
     "eyes": [
-      { "id": "round", "name": "동글 눈" },
-      { "id": "smile", "name": "웃는 눈" },
-      { "id": "sparkle", "name": "초롱 눈" },
-      { "id": "sleepy", "name": "졸린 눈" }
+      { "id": "round", "name": "동글 눈", "promptDesc": "big round eyes" },
+      { "id": "smile", "name": "웃는 눈", "promptDesc": "smiling crescent eyes" },
+      { "id": "sparkle", "name": "초롱 눈", "promptDesc": "big sparkling eyes with highlights" },
+      { "id": "sleepy", "name": "졸린 눈", "promptDesc": "half-closed sleepy eyes" },
+      { "id": "cat", "name": "고양이 눈", "promptDesc": "sharp upturned cat-like eyes" },
+      { "id": "star", "name": "반짝 눈", "promptDesc": "eyes with star-shaped highlights" }
     ],
-    "accessory": [
-      { "id": "none", "name": "없음" },
-      { "id": "glasses", "name": "안경" },
-      { "id": "sunglasses", "name": "선글라스" },
-      { "id": "cap", "name": "야구모자" },
-      { "id": "ribbon", "name": "리본" },
-      { "id": "headband", "name": "머리띠" }
+    "mouth": [
+      { "id": "smile", "name": "미소", "promptDesc": "gentle smile" },
+      { "id": "neutral", "name": "무표정", "promptDesc": "small neutral mouth" },
+      { "id": "grin", "name": "헤벌쭉", "promptDesc": "wide open happy grin" },
+      { "id": "cat", "name": "고양이 입", "promptDesc": "cat-like w-shaped mouth" }
+    ],
+    "cheek": [
+      { "id": "none", "name": "없음", "promptDesc": "" },
+      { "id": "blush", "name": "볼터치", "promptDesc": "pink blushing cheeks" },
+      { "id": "freckles", "name": "주근깨", "promptDesc": "light freckles on the cheeks" }
+    ],
+    "hair": [
+      { "id": "short", "name": "짧은 머리", "promptDesc": "short neat hair" },
+      { "id": "bob", "name": "단발", "promptDesc": "chin-length bob cut" },
+      { "id": "long", "name": "긴 생머리", "promptDesc": "long straight hair" },
+      { "id": "ponytail", "name": "포니테일", "promptDesc": "high side ponytail" },
+      { "id": "twintail", "name": "양갈래", "promptDesc": "twin tails" },
+      { "id": "spiky", "name": "삐죽 머리", "promptDesc": "spiky messy hair" },
+      { "id": "curly", "name": "곱슬 머리", "promptDesc": "fluffy curly hair" },
+      { "id": "bun", "name": "똥머리", "promptDesc": "top bun hairstyle" },
+      { "id": "twoblock", "name": "투블럭", "promptDesc": "Korean two-block haircut" },
+      { "id": "parted", "name": "가르마", "promptDesc": "side-parted medium hair" },
+      { "id": "halfup", "name": "반묶음", "promptDesc": "half-up half-down hair" },
+      { "id": "wavy", "name": "웨이브", "promptDesc": "long wavy hair" }
+    ],
+    "hairColor": [
+      { "id": "black", "name": "흑발", "color": "#2b2222", "promptDesc": "black" },
+      { "id": "brown", "name": "갈색", "color": "#6b4226", "promptDesc": "brown" },
+      { "id": "blonde", "name": "금발", "color": "#e8c15a", "promptDesc": "blonde" },
+      { "id": "red", "name": "적갈색", "color": "#a8452f", "promptDesc": "auburn red" },
+      { "id": "pink", "name": "분홍", "color": "#f28bb3", "promptDesc": "pastel pink" },
+      { "id": "blue", "name": "파랑", "color": "#4d7fd6", "promptDesc": "blue" },
+      { "id": "silver", "name": "은발", "color": "#c9ccd6", "promptDesc": "silver" },
+      { "id": "green", "name": "초록", "color": "#4fa86b", "promptDesc": "mint green" },
+      { "id": "purple", "name": "보라", "color": "#8a5cc9", "promptDesc": "lavender purple" }
     ],
     "outfit": [
-      { "id": "tshirt", "name": "티셔츠" },
-      { "id": "hoodie", "name": "후드티" },
-      { "id": "shirt", "name": "셔츠" },
-      { "id": "dress", "name": "원피스" },
-      { "id": "overalls", "name": "멜빵바지" },
-      { "id": "hanbok", "name": "생활한복" }
+      { "id": "tshirt", "name": "티셔츠", "promptDesc": "t-shirt and shorts" },
+      { "id": "hoodie", "name": "후드티", "promptDesc": "hoodie and jeans" },
+      { "id": "shirt", "name": "셔츠", "promptDesc": "collared shirt and trousers" },
+      { "id": "dress", "name": "원피스", "promptDesc": "one-piece dress" },
+      { "id": "overalls", "name": "멜빵바지", "promptDesc": "overalls over a white tee" },
+      { "id": "hanbok", "name": "생활한복", "promptDesc": "modern casual hanbok" },
+      { "id": "suit", "name": "정장", "promptDesc": "business suit with tie" },
+      { "id": "uniform", "name": "교복", "promptDesc": "Korean school uniform blazer" },
+      { "id": "tracksuit", "name": "트레이닝복", "promptDesc": "tracksuit" }
     ],
     "outfitColor": [
-      { "id": "red", "name": "빨강", "color": "#e25b5b" },
-      { "id": "orange", "name": "주황", "color": "#f39a3d" },
-      { "id": "yellow", "name": "노랑", "color": "#f2cf4a" },
-      { "id": "green", "name": "초록", "color": "#5cb87a" },
-      { "id": "blue", "name": "파랑", "color": "#4f8ee0" },
-      { "id": "purple", "name": "보라", "color": "#9a6ad6" }
+      { "id": "red", "name": "빨강", "color": "#e25b5b", "promptDesc": "red" },
+      { "id": "orange", "name": "주황", "color": "#f39a3d", "promptDesc": "orange" },
+      { "id": "yellow", "name": "노랑", "color": "#f2cf4a", "promptDesc": "yellow" },
+      { "id": "green", "name": "초록", "color": "#5cb87a", "promptDesc": "green" },
+      { "id": "blue", "name": "파랑", "color": "#4f8ee0", "promptDesc": "blue" },
+      { "id": "purple", "name": "보라", "color": "#9a6ad6", "promptDesc": "purple" },
+      { "id": "black", "name": "검정", "color": "#3a3a42", "promptDesc": "black" },
+      { "id": "white", "name": "흰색", "color": "#f4f4f2", "promptDesc": "white" },
+      { "id": "pink", "name": "분홍", "color": "#f29ac0", "promptDesc": "pink" }
+    ],
+    "accessory": [
+      { "id": "none", "name": "없음", "promptDesc": "" },
+      { "id": "glasses", "name": "안경", "promptDesc": "round glasses" },
+      { "id": "sunglasses", "name": "선글라스", "promptDesc": "sunglasses" },
+      { "id": "cap", "name": "야구모자", "promptDesc": "baseball cap" },
+      { "id": "ribbon", "name": "리본", "promptDesc": "big hair ribbon" },
+      { "id": "headband", "name": "머리띠", "promptDesc": "headband" },
+      { "id": "earrings", "name": "귀걸이", "promptDesc": "small earrings" },
+      { "id": "hairpin", "name": "꽃핀", "promptDesc": "flower hairpin" }
     ]
   },
   "default": {
-    "body": "boy", "skin": "light", "hair": "short", "hairColor": "black",
-    "eyes": "round", "accessory": "none", "outfit": "tshirt", "outfitColor": "blue"
+    "body": "boy", "build": "normal", "skin": "light", "face": "slim", "eyes": "round", "mouth": "smile", "cheek": "none",
+    "hair": "short", "hairColor": "black", "outfit": "tshirt", "outfitColor": "blue", "accessory": "none"
   },
   "eraOutfits": {}
 }

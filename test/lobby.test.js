@@ -89,7 +89,18 @@ test('non-player cannot add; name required; avatar sanitized', () => {
   assert.equal(av.hair, 'long');
   assert.equal(av.skin, 'light'); // default
   assert.equal(av.evil, undefined);
-  assert.deepEqual(Object.keys(av).sort(), ['accessory', 'body', 'eyes', 'hair', 'hairColor', 'outfit', 'outfitColor', 'skin']);
+  assert.deepEqual(Object.keys(av).sort(), ['accessory', 'body', 'build', 'cheek', 'eyes', 'face', 'hair', 'hairColor', 'mouth', 'outfit', 'outfitColor', 'skin']);
+});
+
+test('old saved avatars (8 keys) migrate: new categories get defaults', () => {
+  const room = joined('A');
+  const old = { body: 'girl', skin: 'tan', hair: 'bun', hairColor: 'pink', eyes: 'sleepy', accessory: 'cap', outfit: 'hanbok', outfitColor: 'green' };
+  const av = addCharacter(room, 'A', { name: '예전', avatar: old }).character.avatar;
+  for (const [k, v] of Object.entries(old)) assert.equal(av[k], v);
+  assert.equal(av.build, 'normal');
+  assert.equal(av.face, 'slim');
+  assert.equal(av.mouth, 'smile');
+  assert.equal(av.cheek, 'none');
 });
 
 test('ownership: only owner can update/delete', () => {
