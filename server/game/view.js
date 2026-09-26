@@ -26,9 +26,38 @@ function publicCharacters(room, sessionId) {
   });
 }
 
+function ownedIds(room, sessionId) {
+  return new Set(sessionId == null ? [] : room.characters.filter((c) => c.ownerSessionId === sessionId).map((c) => c.id));
+}
+
+/** Pending prompt: everyone sees who answered; only my characters' answers are visible. */
+function publicTurn(room, mine) {
+  if (!room.turn) return null;
+  const turn = structuredClone(room.turn);
+  const p = turn.pending;
+  if (p) {
+    p.answered = Object.keys(p.answers);
+    p.answers = Object.fromEntries(Object.entries(p.answers).filter(([id]) => mine.has(id)));
+  }
+  return turn;
+}
+
+/** Side bets: other characters' unresolved bets show only that a bet exists. */
+function publicBets(room, mine) {
+  const out = {};
+  for (const [turnNo, slot] of Object.entries(room.bets ?? {})) {
+    out[turnNo] = {};
+    for (const [charId, bet] of Object.entries(slot)) {
+      out[turnNo][charId] = bet.resolved || mine.has(charId) ? { ...bet } : { hidden: true, target: bet.target, resolved: false };
+    }
+  }
+  return out;
+}
+
 /** Snapshot for one session (null sessionId = spectator/no flags). */
 export function viewFor(room, sessionId = null) {
   const me = sessionId != null ? room.players.find((p) => p.sessionId === sessionId) : null;
+  const mine = ownedIds(room, sessionId);
   return {
     id: room.id,
     code: room.code,
@@ -37,7 +66,10 @@ export function viewFor(room, sessionId = null) {
     config: structuredClone(room.config),
     players: publicPlayers(room, sessionId),
     characters: publicCharacters(room, sessionId),
-    turn: room.turn ? structuredClone(room.turn) : null,
+    turn: publicTurn(room, mine),
+    board: room.board ? structuredClone(room.board) : null, // public; static per game
+    bets: publicBets(room, mine),
+    result: room.result ? structuredClone(room.result) : null,
     log: room.log.slice(-50),
     createdAt: room.createdAt,
     me: me ? { id: me.id, name: me.name, ready: !!me.ready } : null,

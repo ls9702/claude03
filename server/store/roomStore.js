@@ -178,7 +178,7 @@ export class RoomStore {
    * Replace a room with its next state (from a pure rule function), persist
    * (debounced), and push `state` (+ `log` entries) to every subscriber.
    */
-  commit(room, logs = [], now = Date.now()) {
+  commit(room, logs = [], now = Date.now(), events = null) {
     if (!this.rooms.has(room.id)) throw new Error(`unknown room ${room.id}`);
     room.version = (this.rooms.get(room.id).version || 0) + 1;
     room.updatedAt = now;
@@ -186,7 +186,23 @@ export class RoomStore {
     this.scheduleSave(room.id);
     this.broadcastState(room.id);
     for (const entry of logs) this.broadcast(room.id, 'log', entry);
+    // Engine events (for animation/audio). Public by construction: engine events never carry secrets.
+    if (events?.length) this.broadcast(room.id, 'events', { version: room.version, events });
     return room;
+  }
+
+  /**
+   * Run a pure rule function against the current room and commit its result.
+   * `fn(room) → { ok, room, logs?, events? } | { ok: false, status, error }`. Synchronous, so no
+   * other request can interleave between read and write.
+   */
+  transact(roomId, fn, now = Date.now()) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { ok: false, status: 404, error: '방을 찾을 수 없습니다.' };
+    const r = fn(room);
+    if (!r?.ok) return r;
+    this.commit(r.room, r.logs ?? [], now, r.events ?? null);
+    return r;
   }
 
   /** Replace a room silently (persist, no broadcast) — e.g. lastSeen bumps. */

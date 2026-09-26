@@ -3,7 +3,6 @@ import express from 'express';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { getEras } from '../data/index.js';
 import { validateRoomConfig, defaultRoomConfig } from '../game/config.js';
-import { endGame, startGame } from '../game/lobby.js';
 import { adminSummary, adminView } from '../game/view.js';
 import { sendFail } from './common.js';
 
@@ -32,7 +31,7 @@ function safeEqual(a, b) {
   return timingSafeEqual(ha, hb);
 }
 
-export function createAdminRouter({ store, adminPassword }) {
+export function createAdminRouter({ store, runner, adminPassword }) {
   const router = express.Router();
   const tokens = new Map(); // token -> expiresAt
 
@@ -102,17 +101,24 @@ export function createAdminRouter({ store, adminPassword }) {
   });
 
   router.post('/rooms/:id/start', requireAdmin, withRoom, (req, res) => {
-    const r = startGame(req.room);
+    const r = runner.start(req.room.id);
     if (!r.ok) return sendFail(res, r);
-    store.commit(r.room, r.logs);
     res.json({ room: adminView(r.room) });
   });
 
   router.post('/rooms/:id/end', requireAdmin, withRoom, (req, res) => {
-    const r = endGame(req.room);
+    const r = runner.end(req.room.id);
     if (!r.ok) return sendFail(res, r);
-    store.commit(r.room, r.logs);
     res.json({ room: adminView(r.room) });
+  });
+
+  // Admin interventions. Stage 2: force-timeout the pending prompt (default answers).
+  router.post('/rooms/:id/actions', requireAdmin, withRoom, (req, res) => {
+    const body = req.body ?? {};
+    if (body.type !== 'timeout') return res.status(400).json({ error: '관리자는 timeout만 실행할 수 있습니다.' });
+    const r = runner.dispatch(req.room.id, { type: 'timeout', promptId: body.promptId, force: true, actor: { admin: true } });
+    if (!r.ok) return sendFail(res, r);
+    res.json({ room: adminView(r.room), events: r.events });
   });
 
   router.delete('/rooms/:id', requireAdmin, withRoom, async (req, res) => {

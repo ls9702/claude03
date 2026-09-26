@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as config from './config.js';
 import { RoomStore } from './store/roomStore.js';
+import { GameRunner } from './store/gameRunner.js';
 import { createApiRouter } from './routes/api.js';
 import { createSseRouter } from './routes/sse.js';
 import { createAdminRouter } from './routes/admin.js';
@@ -11,14 +12,14 @@ import { createAdminRouter } from './routes/admin.js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 
-export function createApp({ store, adminPassword, heartbeatMs = 15000 }) {
+export function createApp({ store, runner = new GameRunner(store), adminPassword, heartbeatMs = 15000 }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '64kb' }));
 
   app.use('/api', createSseRouter({ store, heartbeatMs }));
-  app.use('/api', createApiRouter({ store }));
-  app.use('/admin/api', createAdminRouter({ store, adminPassword }));
+  app.use('/api', createApiRouter({ store, runner }));
+  app.use('/admin/api', createAdminRouter({ store, runner, adminPassword }));
   app.use(['/api', '/admin/api'], (req, res) => res.status(404).json({ error: '없는 API입니다.' }));
 
   app.get(['/admin', '/admin/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
@@ -46,20 +47,23 @@ export async function startServer({
 } = {}) {
   const store = new RoomStore({ dataDir, debounceMs, log });
   await store.load();
-  const app = createApp({ store, adminPassword, heartbeatMs });
+  const runner = new GameRunner(store, { log });
+  runner.restore(); // re-arm prompt deadline timers of restored rooms
+  const app = createApp({ store, runner, adminPassword, heartbeatMs });
   const server = await new Promise((resolve, reject) => {
     const s = app.listen(port, host, () => resolve(s));
     s.on('error', reject);
   });
   const actualPort = server.address().port;
   const close = async () => {
+    runner.stop();
     await store.close();
     await new Promise((resolve) => {
       server.close(() => resolve());
       server.closeAllConnections?.();
     });
   };
-  return { app, server, store, port: actualPort, url: `http://localhost:${actualPort}`, close };
+  return { app, server, store, runner, port: actualPort, url: `http://localhost:${actualPort}`, close };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;

@@ -1,6 +1,6 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getEras } from '../data/index.js';
+import { getAvatars, getBalance, getBoardData, getEras } from '../data/index.js';
 import {
   addCharacter,
   findPlayer,
@@ -14,9 +14,11 @@ import { sendFail, sessionMiddleware } from './common.js';
 
 export const REACTIONS = ['ㅋㅋㅋ', '헐', '오~', '화이팅', '🐔', '👏', '😂', '😱', '❤️', '🎉'];
 const RATE_WINDOW_MS = 2000;
+// `timeout` is allowed for players too, but the engine only accepts it once the deadline passed.
+const PLAYER_ACTIONS = ['spin', 'choose', 'bet', 'timeout'];
 const RATE_MAX = 5;
 
-export function createApiRouter({ store }) {
+export function createApiRouter({ store, runner }) {
   const router = express.Router();
   const requireSession = sessionMiddleware(store);
   const reactionTimes = new Map(); // sessionId -> timestamps
@@ -30,7 +32,15 @@ export function createApiRouter({ store }) {
   });
 
   router.get('/meta', (req, res) => {
-    res.json({ eras: getEras(), avatars: getAvatars(), reactions: REACTIONS });
+    const board = getBoardData();
+    const { bets, spin, bonusSpinUnit } = getBalance();
+    res.json({
+      eras: getEras(),
+      avatars: getAvatars(),
+      reactions: REACTIONS,
+      board: { tileTypes: board.tileTypes, routes: board.routes },
+      balance: { bets, spin, bonusSpinUnit },
+    });
   });
 
   router.post('/rooms/join', requireSession, (req, res) => {
@@ -77,6 +87,25 @@ export function createApiRouter({ store }) {
 
   router.post('/rooms/:id/ready', requireSession, withRoom, (req, res) => {
     respond(req, res, setReady(req.room, req.sessionId, req.body?.ready));
+  });
+
+  // Game actions → pure engine inside a store transaction; state + events go out over SSE.
+  router.post('/rooms/:id/actions', requireSession, withRoom, (req, res) => {
+    const body = req.body ?? {};
+    if (!PLAYER_ACTIONS.includes(body.type)) return res.status(400).json({ error: '알 수 없는 행동입니다.' });
+    const action = {
+      type: body.type,
+      characterId: typeof body.characterId === 'string' ? body.characterId : undefined,
+      promptId: typeof body.promptId === 'string' ? body.promptId : undefined,
+      optionId: typeof body.optionId === 'string' ? body.optionId : undefined,
+      kind: body.kind,
+      pick: body.pick,
+      amount: body.amount,
+      actor: { sessionId: req.sessionId },
+    };
+    const r = runner.dispatch(req.room.id, action);
+    if (!r.ok) return sendFail(res, r);
+    res.json({ ok: true, events: r.events, room: viewFor(r.room, req.sessionId) });
   });
 
   // Emoji reactions: SSE broadcast only, never stored in room state.

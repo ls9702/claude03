@@ -5,7 +5,7 @@ import { sanitizeAvatar } from './avatar.js';
 
 export const MAX_PLAYERS = 4;
 export const NAME_MAX = 12;
-export const LOG_LIMIT = 200;
+export const LOG_LIMIT = 500;
 
 const fail = (status, error) => ({ ok: false, status, error });
 
