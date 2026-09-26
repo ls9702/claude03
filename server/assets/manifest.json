@@ -1586,7 +1586,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Use exactly the same art style, line weight and color palette as the reference image. Character-creator base mannequin: a chibi young girl, full body, front view, perfectly symmetric neutral standing pose, arms held slightly away from the body with open hands, legs straight with feet slightly apart, feet fully visible, centered with generous margin on every side. Completely bald smooth round head with NO hair at all and simple ears. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Only smooth skin inside a slim oval face outline. Medium neutral skin tone (#e6b48f) everywhere on the skin. Wearing only a plain simple pale cyan (#8fd8e0) sleeveless tank top and plain pale cyan shorts, no patterns, no logos. Barefoot. Flat solid pure magenta background color #FF00FF filling the whole canvas, no gradient, no shadow on the ground, no floor, no other objects. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:28:35.190Z",
-        "acceptedAt": "2026-09-26T08:28:37.926Z",
+        "acceptedAt": "2026-09-26T08:37:52.902Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1636,7 +1636,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY change the body into a boy's body of the same height: slightly broader shoulders, a straighter waist and hips, boyish arms and legs. Keep the head EXACTLY identical in size, shape and position (still bald, same ears). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Same pose and hand positions, the same plain pale cyan (#8fd8e0) tank top and shorts, barefoot. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:28:57.845Z",
-        "acceptedAt": "2026-09-26T08:28:59.375Z",
+        "acceptedAt": "2026-09-26T08:37:54.753Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1686,7 +1686,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY change the body build to slim, slender build (thinner torso, arms and legs). Keep the head EXACTLY identical in size, shape and position (still bald, same ears). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Same height, same pose and hand positions, the same plain pale cyan (#8fd8e0) tank top and shorts fitted to the new build, barefoot. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:29:13.054Z",
-        "acceptedAt": "2026-09-26T08:29:15.154Z",
+        "acceptedAt": "2026-09-26T08:37:56.525Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1736,7 +1736,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY change the body build to chubby, round build (rounder tummy, fuller torso, thicker arms and legs). Keep the head EXACTLY identical in size, shape and position (still bald, same ears). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Same height, same pose and hand positions, the same plain pale cyan (#8fd8e0) tank top and shorts fitted to the new build, barefoot. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:29:06.502Z",
-        "acceptedAt": "2026-09-26T08:29:08.653Z",
+        "acceptedAt": "2026-09-26T08:37:58.456Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1786,7 +1786,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY change the body build to slim, slender build (thinner torso, arms and legs). Keep the head EXACTLY identical in size, shape and position (still bald, same ears). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Same height, same pose and hand positions, the same plain pale cyan (#8fd8e0) tank top and shorts fitted to the new build, barefoot. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:29:21.072Z",
-        "acceptedAt": "2026-09-26T08:29:22.623Z",
+        "acceptedAt": "2026-09-26T08:38:00.258Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1836,7 +1836,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY change the body build to chubby, round build (rounder tummy, fuller torso, thicker arms and legs). Keep the head EXACTLY identical in size, shape and position (still bald, same ears). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Same height, same pose and hand positions, the same plain pale cyan (#8fd8e0) tank top and shorts fitted to the new build, barefoot. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:29:27.694Z",
-        "acceptedAt": "2026-09-26T08:29:30.766Z",
+        "acceptedAt": "2026-09-26T08:38:02.065Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1856,7 +1856,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: short neat hair, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: short neat hair, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -1882,7 +1882,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: short neat hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:07.637Z",
-        "acceptedAt": "2026-09-26T08:30:08.289Z",
+        "acceptedAt": "2026-09-26T08:38:16.720Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1903,7 +1903,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: chin-length bob cut, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: chin-length bob cut, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -1930,7 +1930,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: chin-length bob cut, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:06.415Z",
-        "acceptedAt": "2026-09-26T08:30:09.149Z",
+        "acceptedAt": "2026-09-26T08:38:05.149Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1952,7 +1952,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: long straight hair, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: long straight hair, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -1971,14 +1971,14 @@
         "tint": "hair",
         "neutral": "#4a4440",
         "base": "part-mannequin-girl-normal",
-        "tintRef": "#6d6059"
+        "tintRef": "#6c6059"
       },
       "accepted": {
         "file": "parts/hair/long.webp",
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: long straight hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:17.415Z",
-        "acceptedAt": "2026-09-26T08:30:18.153Z",
+        "acceptedAt": "2026-09-26T08:38:18.717Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -1999,7 +1999,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: high side ponytail, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: high side ponytail, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2025,7 +2025,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: high side ponytail, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:17.827Z",
-        "acceptedAt": "2026-09-26T08:30:18.519Z",
+        "acceptedAt": "2026-09-26T08:38:20.438Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2046,7 +2046,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: twin tails, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: twin tails, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2072,7 +2072,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: twin tails, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:27.463Z",
-        "acceptedAt": "2026-09-26T08:30:28.800Z",
+        "acceptedAt": "2026-09-26T08:38:22.144Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2093,7 +2093,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: spiky messy hair, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: spiky messy hair, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2112,16 +2112,16 @@
         "tint": "hair",
         "neutral": "#4a4440",
         "base": "part-mannequin-girl-normal",
-        "tintRef": "#6e5f57"
+        "tintRef": "#6e6159"
       },
       "accepted": {
         "file": "parts/hair/spiky.webp",
         "model": "gemini-2.5-flash-image",
-        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: spiky messy hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
-        "generatedAt": "2026-09-26T08:30:28.631Z",
-        "acceptedAt": "2026-09-26T08:30:29.162Z",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: spiky messy hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:40:28.634Z",
+        "acceptedAt": "2026-09-26T08:40:29.317Z",
         "source": "generated",
-        "candidate": 1,
+        "candidate": 2,
         "width": 1024,
         "height": 1536,
         "files": {
@@ -2140,7 +2140,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: fluffy curly hair, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: fluffy curly hair, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2166,7 +2166,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: fluffy curly hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:36.531Z",
-        "acceptedAt": "2026-09-26T08:30:37.594Z",
+        "acceptedAt": "2026-09-26T08:38:25.374Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2187,7 +2187,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: top bun hairstyle, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: top bun hairstyle, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2213,7 +2213,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: top bun hairstyle, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:37.455Z",
-        "acceptedAt": "2026-09-26T08:30:38.058Z",
+        "acceptedAt": "2026-09-26T08:38:26.832Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2234,7 +2234,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: Korean two-block haircut, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: Korean two-block haircut, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2260,7 +2260,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: Korean two-block haircut, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:46.467Z",
-        "acceptedAt": "2026-09-26T08:30:47.317Z",
+        "acceptedAt": "2026-09-26T08:38:28.366Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2281,7 +2281,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: side-parted medium hair, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: side-parted medium hair, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2307,7 +2307,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: side-parted medium hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:46.571Z",
-        "acceptedAt": "2026-09-26T08:30:47.335Z",
+        "acceptedAt": "2026-09-26T08:38:30.085Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2328,7 +2328,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: half-up half-down hair, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: half-up half-down hair, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2347,14 +2347,14 @@
         "tint": "hair",
         "neutral": "#4a4440",
         "base": "part-mannequin-girl-normal",
-        "tintRef": "#7d7269"
+        "tintRef": "#7d7169"
       },
       "accepted": {
         "file": "parts/hair/halfup.webp",
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: half-up half-down hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:56.947Z",
-        "acceptedAt": "2026-09-26T08:30:57.577Z",
+        "acceptedAt": "2026-09-26T08:38:31.834Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2375,7 +2375,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: long wavy hair, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: long wavy hair, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2401,7 +2401,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: long wavy hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:30:55.161Z",
-        "acceptedAt": "2026-09-26T08:30:56.594Z",
+        "acceptedAt": "2026-09-26T08:38:33.891Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2422,7 +2422,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: very short buzz cut, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: a very short buzz cut: a thin even layer of short hair covering the whole scalp, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2441,14 +2441,14 @@
         "tint": "hair",
         "neutral": "#4a4440",
         "base": "part-mannequin-girl-normal",
-        "tintRef": "#80736b"
+        "tintRef": "#80736a"
       },
       "accepted": {
         "file": "parts/hair/buzz.webp",
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: very short buzz cut, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:04.201Z",
-        "acceptedAt": "2026-09-26T08:31:05.402Z",
+        "acceptedAt": "2026-09-26T08:38:35.291Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2469,7 +2469,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: slicked-back hair, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: slicked-back hair, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2488,14 +2488,14 @@
         "tint": "hair",
         "neutral": "#4a4440",
         "base": "part-mannequin-girl-normal",
-        "tintRef": "#645952"
+        "tintRef": "#645951"
       },
       "accepted": {
         "file": "parts/hair/slickback.webp",
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: slicked-back hair, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:05.237Z",
-        "acceptedAt": "2026-09-26T08:31:06.022Z",
+        "acceptedAt": "2026-09-26T08:38:36.710Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2516,7 +2516,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: round mushroom bowl cut with straight bangs, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: round mushroom bowl cut with straight bangs, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2542,7 +2542,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: round mushroom bowl cut with straight bangs, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:15.018Z",
-        "acceptedAt": "2026-09-26T08:31:15.655Z",
+        "acceptedAt": "2026-09-26T08:38:38.383Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2563,7 +2563,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: Korean dandy cut with soft side-swept bangs, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: Korean dandy cut with soft side-swept bangs, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2582,14 +2582,14 @@
         "tint": "hair",
         "neutral": "#4a4440",
         "base": "part-mannequin-girl-normal",
-        "tintRef": "#73645d"
+        "tintRef": "#73645c"
       },
       "accepted": {
         "file": "parts/hair/dandy.webp",
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: Korean dandy cut with soft side-swept bangs, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:13.996Z",
-        "acceptedAt": "2026-09-26T08:31:15.152Z",
+        "acceptedAt": "2026-09-26T08:38:39.963Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2610,7 +2610,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: short pixie cut, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: short pixie cut, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2636,7 +2636,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: short pixie cut, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:23.613Z",
-        "acceptedAt": "2026-09-26T08:31:24.304Z",
+        "acceptedAt": "2026-09-26T08:38:41.506Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2657,7 +2657,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: shoulder-length layered cut with face-framing layers, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: shoulder-length layered cut with face-framing layers, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2683,7 +2683,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: shoulder-length layered cut with face-framing layers, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:23.858Z",
-        "acceptedAt": "2026-09-26T08:31:24.523Z",
+        "acceptedAt": "2026-09-26T08:38:43.292Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2704,7 +2704,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: single long braid over the shoulder, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: full hair covering the whole scalp with a centre parting, pulled back and gathered into a single long thick braid that hangs over the front of one shoulder, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2723,22 +2723,23 @@
         "tint": "hair",
         "neutral": "#4a4440",
         "base": "part-mannequin-girl-normal",
-        "tintRef": "#5c5149"
+        "tintRef": "#6f635a"
       },
       "accepted": {
         "file": "parts/hair/braid.webp",
         "model": "gemini-2.5-flash-image",
-        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: single long braid over the shoulder, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
-        "generatedAt": "2026-09-26T08:31:33.031Z",
-        "acceptedAt": "2026-09-26T08:31:33.700Z",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: full hair covering the whole scalp with a centre parting, pulled back and gathered into a single long thick braid that hangs over the front of one shoulder, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:10.053Z",
+        "acceptedAt": "2026-09-26T08:41:10.947Z",
         "source": "generated",
-        "candidate": 1,
+        "candidate": 4,
         "width": 1024,
         "height": 1536,
         "files": {
           "main": "parts/hair/braid.webp",
           "front": "parts/hair/braid-front.webp",
-          "back": "parts/hair/braid-back.webp"
+          "back": "parts/hair/braid-back.webp",
+          "erase": "parts/hair/braid-erase.webp"
         }
       }
     },
@@ -2751,7 +2752,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: big round afro, {{neutralHair}}. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY add hair: big round afro, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2777,7 +2778,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add hair: big round afro, drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; any hair ties in the same gray-brown, no other colors. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:33.193Z",
-        "acceptedAt": "2026-09-26T08:31:34.002Z",
+        "acceptedAt": "2026-09-26T08:38:46.677Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2825,7 +2826,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY change the face shape to a round face with fuller, chubby cheeks and a round jaw line (slightly wider lower face), with the same skin color, the same head top, ears and position. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:41.130Z",
-        "acceptedAt": "2026-09-26T08:31:41.373Z",
+        "acceptedAt": "2026-09-26T08:39:38.752Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2844,7 +2845,7 @@
         "w": 1024,
         "h": 1536
       },
-      "prompt": "{{style}} {{keepMannequin}} ONLY change the face shape to a square face with a broader, slightly angular square jaw line, with the same skin color, the same head top, ears and position. {{blankFace}} Portrait 2:3.",
+      "prompt": "{{style}} {{keepMannequin}} ONLY change the face shape to a clearly square face: a noticeably broader lower face with a flat, angular square jaw line and defined jaw corners, with the same skin color, the same head top, ears and position. {{blankFace}} Portrait 2:3.",
       "refs": [
         "part-mannequin-girl-normal"
       ],
@@ -2864,16 +2865,16 @@
         "tintMode": "selective",
         "neutral": "#e6b48f",
         "base": "part-mannequin-girl-normal",
-        "tintRef": "#4b3a29"
+        "tintRef": "#e7cab3"
       },
       "accepted": {
         "file": "parts/face/square.webp",
         "model": "gemini-2.5-flash-image",
-        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY change the face shape to a square face with a broader, slightly angular square jaw line, with the same skin color, the same head top, ears and position. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
-        "generatedAt": "2026-09-26T08:31:43.324Z",
-        "acceptedAt": "2026-09-26T08:31:43.527Z",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY change the face shape to a clearly square face: a noticeably broader lower face with a flat, angular square jaw line and defined jaw corners, with the same skin color, the same head top, ears and position. The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:40:45.542Z",
+        "acceptedAt": "2026-09-26T08:40:45.760Z",
         "source": "generated",
-        "candidate": 1,
+        "candidate": 2,
         "width": 1024,
         "height": 1536,
         "files": {
@@ -2915,7 +2916,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add eyes and eyebrows on the blank face at the usual position in the middle of the face: big round eyes, dark brown irises with white highlights, simple thin dark brown eyebrows. No mouth, no nose, no blush. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:47.856Z",
-        "acceptedAt": "2026-09-26T08:31:49.209Z",
+        "acceptedAt": "2026-09-26T08:39:59.336Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -2960,7 +2961,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add eyes and eyebrows on the blank face at the usual position in the middle of the face: smiling crescent eyes, dark brown irises with white highlights, simple thin dark brown eyebrows. No mouth, no nose, no blush. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:50.699Z",
-        "acceptedAt": "2026-09-26T08:31:52.015Z",
+        "acceptedAt": "2026-09-26T08:40:01.053Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3005,7 +3006,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add eyes and eyebrows on the blank face at the usual position in the middle of the face: big sparkling eyes with highlights, dark brown irises with white highlights, simple thin dark brown eyebrows. No mouth, no nose, no blush. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:56.379Z",
-        "acceptedAt": "2026-09-26T08:31:57.743Z",
+        "acceptedAt": "2026-09-26T08:40:02.764Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3050,7 +3051,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add eyes and eyebrows on the blank face at the usual position in the middle of the face: half-closed sleepy eyes, dark brown irises with white highlights, simple thin dark brown eyebrows. No mouth, no nose, no blush. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:31:59.084Z",
-        "acceptedAt": "2026-09-26T08:32:00.461Z",
+        "acceptedAt": "2026-09-26T08:40:04.468Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3095,7 +3096,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add eyes and eyebrows on the blank face at the usual position in the middle of the face: sharp upturned cat-like eyes, dark brown irises with white highlights, simple thin dark brown eyebrows. No mouth, no nose, no blush. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:04.831Z",
-        "acceptedAt": "2026-09-26T08:32:06.187Z",
+        "acceptedAt": "2026-09-26T08:40:06.113Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3140,7 +3141,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add eyes and eyebrows on the blank face at the usual position in the middle of the face: eyes with star-shaped highlights, dark brown irises with white highlights, simple thin dark brown eyebrows. No mouth, no nose, no blush. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:07.447Z",
-        "acceptedAt": "2026-09-26T08:32:08.753Z",
+        "acceptedAt": "2026-09-26T08:40:07.808Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3184,7 +3185,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same eyebrows, bald head, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. ONLY close the eyes: replace each open eye with gently closed eyelids drawn as a curved line with eyelashes, exactly where the eyes are now and at the same width. No mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:13.005Z",
-        "acceptedAt": "2026-09-26T08:32:13.213Z",
+        "acceptedAt": "2026-09-26T08:40:08.303Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3227,7 +3228,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same eyebrows, bald head, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. ONLY close the eyes: replace each open eye with gently closed eyelids drawn as a curved line with eyelashes, exactly where the eyes are now and at the same width. No mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:16.298Z",
-        "acceptedAt": "2026-09-26T08:32:16.489Z",
+        "acceptedAt": "2026-09-26T08:40:08.816Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3270,7 +3271,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same eyebrows, bald head, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. ONLY close the eyes: replace each open eye with gently closed eyelids drawn as a curved line with eyelashes, exactly where the eyes are now and at the same width. No mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:20.456Z",
-        "acceptedAt": "2026-09-26T08:32:20.671Z",
+        "acceptedAt": "2026-09-26T08:40:09.329Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3313,7 +3314,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same eyebrows, bald head, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. ONLY close the eyes: replace each open eye with gently closed eyelids drawn as a curved line with eyelashes, exactly where the eyes are now and at the same width. No mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:23.830Z",
-        "acceptedAt": "2026-09-26T08:32:24.048Z",
+        "acceptedAt": "2026-09-26T08:40:09.834Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3356,7 +3357,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same eyebrows, bald head, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. ONLY close the eyes: replace each open eye with gently closed eyelids drawn as a curved line with eyelashes, exactly where the eyes are now and at the same width. No mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:27.632Z",
-        "acceptedAt": "2026-09-26T08:32:27.897Z",
+        "acceptedAt": "2026-09-26T08:40:10.314Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3399,7 +3400,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same eyebrows, bald head, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. ONLY close the eyes: replace each open eye with gently closed eyelids drawn as a curved line with eyelashes, exactly where the eyes are now and at the same width. No mouth. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:31.394Z",
-        "acceptedAt": "2026-09-26T08:32:31.634Z",
+        "acceptedAt": "2026-09-26T08:40:10.790Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3442,7 +3443,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a mouth on the blank face at the usual position in the lower middle of the face: gentle smile, small and cute. No eyes, no eyebrows, no nose. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:34.956Z",
-        "acceptedAt": "2026-09-26T08:32:35.106Z",
+        "acceptedAt": "2026-09-26T08:40:11.274Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3485,7 +3486,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a mouth on the blank face at the usual position in the lower middle of the face: small neutral mouth, small and cute. No eyes, no eyebrows, no nose. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:38.221Z",
-        "acceptedAt": "2026-09-26T08:32:38.380Z",
+        "acceptedAt": "2026-09-26T08:40:11.745Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3528,7 +3529,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a mouth on the blank face at the usual position in the lower middle of the face: wide open happy grin, small and cute. No eyes, no eyebrows, no nose. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:41.671Z",
-        "acceptedAt": "2026-09-26T08:32:41.865Z",
+        "acceptedAt": "2026-09-26T08:40:12.192Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3571,7 +3572,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a mouth on the blank face at the usual position in the lower middle of the face: cat-like w-shaped mouth, small and cute. No eyes, no eyebrows, no nose. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:44.807Z",
-        "acceptedAt": "2026-09-26T08:32:45.011Z",
+        "acceptedAt": "2026-09-26T08:40:12.646Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3614,7 +3615,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add clearly visible soft pink blush ovals on both cheeks. No eyes, no mouth, no nose. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:49.168Z",
-        "acceptedAt": "2026-09-26T08:32:49.373Z",
+        "acceptedAt": "2026-09-26T08:40:13.114Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3657,7 +3658,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a few small light-brown freckles on both cheeks and across the nose bridge area. No eyes, no mouth, no nose. Still bald. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:51.258Z",
-        "acceptedAt": "2026-09-26T08:32:51.483Z",
+        "acceptedAt": "2026-09-26T08:40:13.583Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3701,7 +3702,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a full facial expression on the blank face — joy: closed happy eyes shaped like upside-down U arcs, happy eyebrows, a big open smiling mouth and rosy blush. Draw the complete eyes, eyebrows and mouth (and any effects) at the usual positions, large enough to fully cover the normal eye and mouth area. Still bald, nothing else changes. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:56.891Z",
-        "acceptedAt": "2026-09-26T08:32:57.127Z",
+        "acceptedAt": "2026-09-26T08:38:54.443Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3745,7 +3746,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a full facial expression on the blank face — crying: sad eyebrows, teary closed eyes with big tears streaming down the cheeks, a wavy wailing open mouth. Draw the complete eyes, eyebrows and mouth (and any effects) at the usual positions, large enough to fully cover the normal eye and mouth area. Still bald, nothing else changes. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:32:59.195Z",
-        "acceptedAt": "2026-09-26T08:32:59.418Z",
+        "acceptedAt": "2026-09-26T08:38:55.036Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3789,7 +3790,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a full facial expression on the blank face — shock: wide open eyes with tiny pupils, raised eyebrows, a round open O-shaped mouth and a few blue shock lines on the forehead. Draw the complete eyes, eyebrows and mouth (and any effects) at the usual positions, large enough to fully cover the normal eye and mouth area. Still bald, nothing else changes. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:33:04.479Z",
-        "acceptedAt": "2026-09-26T08:33:04.717Z",
+        "acceptedAt": "2026-09-26T08:38:55.659Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3833,7 +3834,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a full facial expression on the blank face — angry: sharply slanted angry eyebrows, glaring eyes, a frowning mouth with gritted teeth and a red cross-shaped anger mark near the forehead. Draw the complete eyes, eyebrows and mouth (and any effects) at the usual positions, large enough to fully cover the normal eye and mouth area. Still bald, nothing else changes. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:33:07.502Z",
-        "acceptedAt": "2026-09-26T08:33:07.677Z",
+        "acceptedAt": "2026-09-26T08:38:56.227Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3877,7 +3878,7 @@
         "model": "gemini-2.5-flash-image",
         "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a full facial expression on the blank face — in love: pink heart-shaped eyes, a happy open smile and pink blush. Draw the complete eyes, eyebrows and mouth (and any effects) at the usual positions, large enough to fully cover the normal eye and mouth area. Still bald, nothing else changes. Portrait 2:3.",
         "generatedAt": "2026-09-26T08:33:12.035Z",
-        "acceptedAt": "2026-09-26T08:33:12.247Z",
+        "acceptedAt": "2026-09-26T08:38:56.844Z",
         "source": "generated",
         "candidate": 1,
         "width": 1024,
@@ -3907,7 +3908,7 @@
         "diffExtract:expression"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "expression",
         "option": "sweat",
@@ -3915,6 +3916,20 @@
         "expression": "sweat",
         "tint": null,
         "base": "part-mannequin-girl-normal"
+      },
+      "accepted": {
+        "file": "parts/expression/sweat.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a full facial expression on the blank face — nervous: worried eyebrows, awkward eyes, a nervous wobbly smile and a big blue sweat drop on the side of the forehead. Draw the complete eyes, eyebrows and mouth (and any effects) at the usual positions, large enough to fully cover the normal eye and mouth area. Still bald, nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:14.468Z",
+        "acceptedAt": "2026-09-26T08:38:57.453Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/expression/sweat.webp"
+        }
       }
     },
     {
@@ -3937,7 +3952,7 @@
         "diffExtract:expression"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "expression",
         "option": "shy",
@@ -3945,6 +3960,20 @@
         "expression": "shy",
         "tint": null,
         "base": "part-mannequin-girl-normal"
+      },
+      "accepted": {
+        "file": "parts/expression/shy.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a full facial expression on the blank face — shy: eyes looking away shyly, soft eyebrows, a small wavy embarrassed mouth and strong red blush on both cheeks. Draw the complete eyes, eyebrows and mouth (and any effects) at the usual positions, large enough to fully cover the normal eye and mouth area. Still bald, nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:19.024Z",
+        "acceptedAt": "2026-09-26T08:38:58.054Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/expression/shy.webp"
+        }
       }
     },
     {
@@ -3967,13 +3996,27 @@
         "diffExtract:accessory"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "accessory",
         "option": "glasses",
         "slot": "accessory",
         "tint": null,
         "base": "part-eyes-round"
+      },
+      "accepted": {
+        "file": "parts/accessory/glasses.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same eyes and eyebrows, bald parts, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add round glasses with thin dark frames and clear lenses, worn over the eyes (the eyes stay visible through the lenses). Nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:22.238Z",
+        "acceptedAt": "2026-09-26T08:40:14.244Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/accessory/glasses.webp"
+        }
       }
     },
     {
@@ -3996,13 +4039,27 @@
         "diffExtract:accessory"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "accessory",
         "option": "sunglasses",
         "slot": "accessory",
         "tint": null,
         "base": "part-eyes-round"
+      },
+      "accepted": {
+        "file": "parts/accessory/sunglasses.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same eyes and eyebrows, bald parts, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add dark sunglasses worn over the eyes. Nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:26.457Z",
+        "acceptedAt": "2026-09-26T08:40:14.964Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/accessory/sunglasses.webp"
+        }
       }
     },
     {
@@ -4025,13 +4082,27 @@
         "diffExtract:accessory"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "accessory",
         "option": "cap",
         "slot": "accessory",
         "tint": null,
         "base": "part-hair-bob"
+      },
+      "accepted": {
+        "file": "parts/accessory/cap.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same hair, bald parts, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a navy blue baseball cap worn on the head over the hair. Nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:29.881Z",
+        "acceptedAt": "2026-09-26T08:39:00.181Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/accessory/cap.webp"
+        }
       }
     },
     {
@@ -4054,13 +4125,27 @@
         "diffExtract:accessory"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "accessory",
         "option": "ribbon",
         "slot": "accessory",
         "tint": null,
         "base": "part-hair-bob"
+      },
+      "accepted": {
+        "file": "parts/accessory/ribbon.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same hair, bald parts, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a big red hair ribbon bow on the side of the head, on top of the hair. Nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:34.371Z",
+        "acceptedAt": "2026-09-26T08:39:00.911Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/accessory/ribbon.webp"
+        }
       }
     },
     {
@@ -4083,13 +4168,27 @@
         "diffExtract:accessory"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "accessory",
         "option": "headband",
         "slot": "accessory",
         "tint": null,
         "base": "part-hair-bob"
+      },
+      "accepted": {
+        "file": "parts/accessory/headband.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same hair, bald parts, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a pastel pink headband on the hair. Nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:38.825Z",
+        "acceptedAt": "2026-09-26T08:39:01.593Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/accessory/headband.webp"
+        }
       }
     },
     {
@@ -4112,13 +4211,27 @@
         "diffExtract:accessory"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "accessory",
         "option": "earrings",
         "slot": "accessory",
         "tint": null,
         "base": "part-mannequin-girl-normal"
+      },
+      "accepted": {
+        "file": "parts/accessory/earrings.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add small round gold earrings on both earlobes. Nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:41.059Z",
+        "acceptedAt": "2026-09-26T08:39:02.187Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/accessory/earrings.webp"
+        }
       }
     },
     {
@@ -4141,13 +4254,27 @@
         "diffExtract:accessory"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "accessory",
         "option": "hairpin",
         "slot": "accessory",
         "tint": null,
         "base": "part-hair-bob"
+      },
+      "accepted": {
+        "file": "parts/accessory/hairpin.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, the same hair, bald parts, body, pose, position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY add a small yellow flower hairpin clipped on the side of the hair. Nothing else changes. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:33:48.248Z",
+        "acceptedAt": "2026-09-26T08:39:02.880Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/accessory/hairpin.webp"
+        }
       }
     },
     {
@@ -4170,7 +4297,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "tshirt",
@@ -4179,7 +4306,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#d2d0cf"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/tshirt.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: t-shirt and shorts, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:25.362Z",
+        "acceptedAt": "2026-09-26T08:41:26.265Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/tshirt.webp"
+        }
       }
     },
     {
@@ -4202,7 +4344,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "hoodie",
@@ -4211,7 +4353,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c1bbb9"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/hoodie.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: hoodie and jeans, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:26.423Z",
+        "acceptedAt": "2026-09-26T08:41:26.976Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/hoodie.webp",
+          "erase": "parts/outfit/boy-normal/hoodie-erase.webp"
+        }
       }
     },
     {
@@ -4234,7 +4392,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "shirt",
@@ -4243,7 +4401,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c6c6c6"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/shirt.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: collared shirt and trousers, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:35.782Z",
+        "acceptedAt": "2026-09-26T08:41:36.333Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/shirt.webp",
+          "erase": "parts/outfit/boy-normal/shirt-erase.webp"
+        }
       }
     },
     {
@@ -4266,7 +4440,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "dress",
@@ -4275,7 +4449,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#cbc8c4"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/dress.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: one-piece dress, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:34.924Z",
+        "acceptedAt": "2026-09-26T08:41:35.910Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/dress.webp",
+          "erase": "parts/outfit/boy-normal/dress-erase.webp"
+        }
       }
     },
     {
@@ -4298,7 +4488,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "overalls",
@@ -4307,7 +4497,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c2c2c2"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/overalls.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: overalls over a white tee, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:43.250Z",
+        "acceptedAt": "2026-09-26T08:41:43.614Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/overalls.webp"
+        }
       }
     },
     {
@@ -4330,7 +4535,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "hanbok",
@@ -4339,7 +4544,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c5c5c5"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/hanbok.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: modern casual hanbok, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:44.444Z",
+        "acceptedAt": "2026-09-26T08:41:44.716Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/hanbok.webp"
+        }
       }
     },
     {
@@ -4362,7 +4582,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "suit",
@@ -4371,7 +4591,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#bababa"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/suit.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: business suit with tie, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:51.737Z",
+        "acceptedAt": "2026-09-26T08:41:52.295Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/suit.webp",
+          "erase": "parts/outfit/boy-normal/suit-erase.webp"
+        }
       }
     },
     {
@@ -4394,7 +4630,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "uniform",
@@ -4403,7 +4639,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#b4b4b4"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/uniform.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: Korean school uniform blazer, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:41:53.780Z",
+        "acceptedAt": "2026-09-26T08:41:54.309Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/uniform.webp",
+          "erase": "parts/outfit/boy-normal/uniform-erase.webp"
+        }
       }
     },
     {
@@ -4426,7 +4678,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "tracksuit",
@@ -4435,7 +4687,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c2c2c2"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/tracksuit.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: tracksuit, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:00.866Z",
+        "acceptedAt": "2026-09-26T08:42:02.104Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/tracksuit.webp",
+          "erase": "parts/outfit/boy-normal/tracksuit-erase.webp"
+        }
       }
     },
     {
@@ -4458,7 +4726,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "cardigan",
@@ -4467,7 +4735,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#cac3bf"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/cardigan.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: cardigan over a plain tee, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:02.264Z",
+        "acceptedAt": "2026-09-26T08:42:02.801Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/cardigan.webp",
+          "erase": "parts/outfit/boy-normal/cardigan-erase.webp"
+        }
       }
     },
     {
@@ -4490,7 +4774,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "sweater",
@@ -4499,7 +4783,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#b1aead"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/sweater.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: cozy knit sweater and trousers, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:11.118Z",
+        "acceptedAt": "2026-09-26T08:42:11.465Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/sweater.webp"
+        }
       }
     },
     {
@@ -4522,7 +4821,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "blouse",
@@ -4531,7 +4830,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#cccccc"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/blouse.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: frilled blouse and pleated skirt, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:11.362Z",
+        "acceptedAt": "2026-09-26T08:42:11.898Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/blouse.webp",
+          "erase": "parts/outfit/boy-normal/blouse-erase.webp"
+        }
       }
     },
     {
@@ -4554,7 +4869,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "jeanjacket",
@@ -4563,7 +4878,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c3c1c0"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/jeanjacket.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: denim jacket over a tee and jeans, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:20.280Z",
+        "acceptedAt": "2026-09-26T08:42:21.008Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/jeanjacket.webp",
+          "erase": "parts/outfit/boy-normal/jeanjacket-erase.webp"
+        }
       }
     },
     {
@@ -4586,7 +4917,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "leather",
@@ -4595,7 +4926,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#9c868a"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/leather.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: biker leather jacket and black jeans, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:20.383Z",
+        "acceptedAt": "2026-09-26T08:42:21.020Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/leather.webp",
+          "erase": "parts/outfit/boy-normal/leather-erase.webp"
+        }
       }
     },
     {
@@ -4618,7 +4965,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "longpadding",
@@ -4627,7 +4974,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c3c1c0"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/longpadding.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: Korean knee-length puffer padded coat, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:29.261Z",
+        "acceptedAt": "2026-09-26T08:42:29.584Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/longpadding.webp"
+        }
       }
     },
     {
@@ -4650,7 +5012,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "trenchcoat",
@@ -4659,7 +5021,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#bfb4ae"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/trenchcoat.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: belted trench coat, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:29.421Z",
+        "acceptedAt": "2026-09-26T08:42:30.044Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/trenchcoat.webp",
+          "erase": "parts/outfit/boy-normal/trenchcoat-erase.webp"
+        }
       }
     },
     {
@@ -4682,7 +5060,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "sailor",
@@ -4691,7 +5069,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c1c0c1"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/sailor.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: sailor-collar school uniform, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:38.367Z",
+        "acceptedAt": "2026-09-26T08:42:38.958Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/sailor.webp",
+          "erase": "parts/outfit/boy-normal/sailor-erase.webp"
+        }
       }
     },
     {
@@ -4714,7 +5108,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "soccer",
@@ -4723,7 +5117,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#d2d1d2"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/soccer.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: soccer jersey, shorts and knee socks, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:38.599Z",
+        "acceptedAt": "2026-09-26T08:42:39.102Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/soccer.webp",
+          "erase": "parts/outfit/boy-normal/soccer-erase.webp"
+        }
       }
     },
     {
@@ -4746,7 +5156,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "stadium",
@@ -4755,7 +5165,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c6c2bc"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/stadium.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: varsity baseball jacket, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:47.135Z",
+        "acceptedAt": "2026-09-26T08:42:47.506Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/stadium.webp"
+        }
       }
     },
     {
@@ -4778,7 +5203,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "pajamas",
@@ -4787,7 +5212,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#a79fa3"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/pajamas.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: striped pajamas, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:47.379Z",
+        "acceptedAt": "2026-09-26T08:42:47.689Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/pajamas.webp"
+        }
       }
     },
     {
@@ -4810,7 +5250,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "hawaiian",
@@ -4819,7 +5259,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#b8b6b5"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/hawaiian.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: Hawaiian floral shirt and shorts, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:55.233Z",
+        "acceptedAt": "2026-09-26T08:42:56.046Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/hawaiian.webp"
+        }
       }
     },
     {
@@ -4842,7 +5297,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "hiking",
@@ -4851,7 +5306,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c0c0c0"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/hiking.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: outdoor hiking jacket and hiking pants, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:42:56.195Z",
+        "acceptedAt": "2026-09-26T08:42:56.743Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/hiking.webp",
+          "erase": "parts/outfit/boy-normal/hiking-erase.webp"
+        }
       }
     },
     {
@@ -4874,7 +5345,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "apron",
@@ -4883,7 +5354,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#cabfb6"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/apron.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: cafe barista apron over a shirt, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:03.621Z",
+        "acceptedAt": "2026-09-26T08:43:04.690Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/apron.webp",
+          "erase": "parts/outfit/boy-normal/apron-erase.webp"
+        }
       }
     },
     {
@@ -4906,7 +5393,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "hanbokTrad",
@@ -4915,7 +5402,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c6c5c5"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/hanbok-trad.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: traditional Korean hanbok with jeogori and chima/baji, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:04.847Z",
+        "acceptedAt": "2026-09-26T08:43:05.162Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/hanbok-trad.webp"
+        }
       }
     },
     {
@@ -4938,7 +5440,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "idol",
@@ -4947,7 +5449,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#cfc3c1"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/idol.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: sparkly K-pop idol stage outfit, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:13.158Z",
+        "acceptedAt": "2026-09-26T08:43:14.392Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/idol.webp",
+          "erase": "parts/outfit/boy-normal/idol-erase.webp"
+        }
       }
     },
     {
@@ -4970,7 +5488,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "dino",
@@ -4979,7 +5497,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-boy-normal"
+        "base": "part-mannequin-boy-normal",
+        "tintRef": "#c5bfbb"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/dino.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: cute dinosaur onesie costume with hood, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:14.160Z",
+        "acceptedAt": "2026-09-26T08:43:14.661Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/dino.webp",
+          "hat": "parts/outfit/boy-normal/dino-hat.webp"
+        }
       }
     },
     {
@@ -5002,7 +5536,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "doctor",
@@ -5011,6 +5545,20 @@
         "slot": "outfit",
         "tint": null,
         "base": "part-mannequin-boy-normal"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/doctor.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: white doctor coat with stethoscope, with matching shoes, covering the tank top and shorts completely. In their natural real-world colors. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:23.095Z",
+        "acceptedAt": "2026-09-26T08:43:23.298Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/doctor.webp"
+        }
       }
     },
     {
@@ -5033,7 +5581,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "police",
@@ -5042,6 +5590,21 @@
         "slot": "outfit",
         "tint": null,
         "base": "part-mannequin-boy-normal"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/police.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: Korean police uniform with cap, with matching shoes, covering the tank top and shorts completely. In their natural real-world colors. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:23.215Z",
+        "acceptedAt": "2026-09-26T08:43:23.637Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/police.webp",
+          "erase": "parts/outfit/boy-normal/police-erase.webp"
+        }
       }
     },
     {
@@ -5064,7 +5627,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "chef",
@@ -5073,6 +5636,20 @@
         "slot": "outfit",
         "tint": null,
         "base": "part-mannequin-boy-normal"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/chef.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: white chef jacket and chef hat, with matching shoes, covering the tank top and shorts completely. In their natural real-world colors. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:32.267Z",
+        "acceptedAt": "2026-09-26T08:43:32.460Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/chef.webp"
+        }
       }
     },
     {
@@ -5095,7 +5672,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "taekwondo",
@@ -5104,6 +5681,20 @@
         "slot": "outfit",
         "tint": null,
         "base": "part-mannequin-boy-normal"
+      },
+      "accepted": {
+        "file": "parts/outfit/boy-normal/taekwondo.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: white taekwondo dobok with a belt, with matching shoes, covering the tank top and shorts completely. In their natural real-world colors. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:32.329Z",
+        "acceptedAt": "2026-09-26T08:43:32.520Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/boy-normal/taekwondo.webp"
+        }
       }
     },
     {
@@ -5126,7 +5717,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "tshirt",
@@ -5135,7 +5726,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#cdc6be"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/tshirt.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: t-shirt and shorts, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:41.361Z",
+        "acceptedAt": "2026-09-26T08:43:41.622Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/tshirt.webp"
+        }
       }
     },
     {
@@ -5158,7 +5764,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "hoodie",
@@ -5167,7 +5773,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#c1c1c1"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/hoodie.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: hoodie and jeans, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:41.486Z",
+        "acceptedAt": "2026-09-26T08:43:42.054Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/hoodie.webp",
+          "erase": "parts/outfit/girl-normal/hoodie-erase.webp"
+        }
       }
     },
     {
@@ -5190,7 +5812,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "shirt",
@@ -5199,7 +5821,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#c5c5c5"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/shirt.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: collared shirt and trousers, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:50.552Z",
+        "acceptedAt": "2026-09-26T08:43:51.086Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/shirt.webp",
+          "erase": "parts/outfit/girl-normal/shirt-erase.webp"
+        }
       }
     },
     {
@@ -5222,7 +5860,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "dress",
@@ -5231,7 +5869,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#ccc6c1"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/dress.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: one-piece dress, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:50.316Z",
+        "acceptedAt": "2026-09-26T08:43:50.663Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/dress.webp"
+        }
       }
     },
     {
@@ -5254,7 +5907,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "overalls",
@@ -5263,7 +5916,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#bcbbbb"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/overalls.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: overalls over a white tee, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:59.607Z",
+        "acceptedAt": "2026-09-26T08:43:59.981Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/overalls.webp"
+        }
       }
     },
     {
@@ -5286,7 +5954,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "hanbok",
@@ -5295,7 +5963,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#c7c7c7"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/hanbok.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: modern casual hanbok, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:43:59.679Z",
+        "acceptedAt": "2026-09-26T08:43:59.969Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/hanbok.webp"
+        }
       }
     },
     {
@@ -5318,7 +6001,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "suit",
@@ -5327,7 +6010,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#b8b8b8"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/suit.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: business suit with tie, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:07.510Z",
+        "acceptedAt": "2026-09-26T08:44:08.103Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/suit.webp",
+          "erase": "parts/outfit/girl-normal/suit-erase.webp"
+        }
       }
     },
     {
@@ -5350,7 +6049,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "uniform",
@@ -5359,7 +6058,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#bfbfbf"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/uniform.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: Korean school uniform blazer, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:09.116Z",
+        "acceptedAt": "2026-09-26T08:44:09.356Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/uniform.webp"
+        }
       }
     },
     {
@@ -5382,7 +6096,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "tracksuit",
@@ -5391,7 +6105,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#c4c4c4"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/tracksuit.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: tracksuit, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:15.854Z",
+        "acceptedAt": "2026-09-26T08:44:16.446Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/tracksuit.webp",
+          "erase": "parts/outfit/girl-normal/tracksuit-erase.webp"
+        }
       }
     },
     {
@@ -5414,7 +6144,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "cardigan",
@@ -5423,7 +6153,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#bcbcbc"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/cardigan.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: cardigan over a plain tee, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:17.376Z",
+        "acceptedAt": "2026-09-26T08:44:17.621Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/cardigan.webp"
+        }
       }
     },
     {
@@ -5446,7 +6191,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "sweater",
@@ -5455,7 +6200,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#c6c6c6"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/sweater.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: cozy knit sweater and trousers, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:24.746Z",
+        "acceptedAt": "2026-09-26T08:44:25.469Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/sweater.webp"
+        }
       }
     },
     {
@@ -5478,7 +6238,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "blouse",
@@ -5487,7 +6247,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#cecac7"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/blouse.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: frilled blouse and pleated skirt, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:25.610Z",
+        "acceptedAt": "2026-09-26T08:44:25.879Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/blouse.webp"
+        }
       }
     },
     {
@@ -5510,7 +6285,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "jeanjacket",
@@ -5519,7 +6294,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#bfb7b3"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/jeanjacket.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: denim jacket over a tee and jeans, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:33.177Z",
+        "acceptedAt": "2026-09-26T08:44:33.769Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/jeanjacket.webp",
+          "erase": "parts/outfit/girl-normal/jeanjacket-erase.webp"
+        }
       }
     },
     {
@@ -5542,7 +6333,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "leather",
@@ -5551,7 +6342,23 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#958483"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/leather.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: biker leather jacket and black jeans, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:36.445Z",
+        "acceptedAt": "2026-09-26T08:44:37.035Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/leather.webp",
+          "erase": "parts/outfit/girl-normal/leather-erase.webp"
+        }
       }
     },
     {
@@ -5574,7 +6381,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "longpadding",
@@ -5583,7 +6390,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#c9bfb9"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/longpadding.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: Korean knee-length puffer padded coat, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:41.973Z",
+        "acceptedAt": "2026-09-26T08:44:42.341Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/longpadding.webp"
+        }
       }
     },
     {
@@ -5606,7 +6428,7 @@
         "diffExtract:body"
       ],
       "candidates": 2,
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "category": "outfit",
         "option": "trenchcoat",
@@ -5615,7 +6437,22 @@
         "slot": "outfit",
         "tint": "outfit",
         "neutral": "#c8c8c8",
-        "base": "part-mannequin-girl-normal"
+        "base": "part-mannequin-girl-normal",
+        "tintRef": "#bcbcbc"
+      },
+      "accepted": {
+        "file": "parts/outfit/girl-normal/trenchcoat.webp",
+        "model": "gemini-2.5-flash-image",
+        "promptUsed": "Art style: modern Korean anime-inspired game illustration, clean cel shading, soft gradients, bright saturated but harmonious colors, thick-and-thin clean line art, chibi proportions (head about 1/3 of body height), friendly and cheerful, high quality 2D game asset, consistent lighting from upper left, no text, no watermark, no signature. Edit the reference image. Keep EVERYTHING else pixel-identical: the same character, same bald head shape, same blank face, same body, same pose, same position, size and scale on the canvas, same line weight, same flat magenta background. Do not move, redraw or recolor anything that is not part of the change. ONLY dress the character in: belted trench coat, with matching shoes, covering the tank top and shorts completely. All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; no other colors, no patterns in other colors, no logos, no text. Keep the head, face, hands and body shape unchanged (still bald). The face stays blank: no eyes, no eyebrows, no nose, no mouth. Portrait 2:3.",
+        "generatedAt": "2026-09-26T08:44:44.726Z",
+        "acceptedAt": "2026-09-26T08:44:45.024Z",
+        "source": "generated",
+        "candidate": 1,
+        "width": 1024,
+        "height": 1536,
+        "files": {
+          "main": "parts/outfit/girl-normal/trenchcoat.webp"
+        }
       }
     },
     {

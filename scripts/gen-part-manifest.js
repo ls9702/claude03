@@ -56,6 +56,12 @@ const ACCESSORY_DESC = {
   earrings: 'small round gold earrings on both earlobes',
 };
 
+/** Hair descriptions that need more than promptDesc for the edit (the model otherwise keeps the scalp bald). */
+const HAIR_DESC = {
+  braid: 'full hair covering the whole scalp with a centre parting, pulled back and gathered into a single long thick braid that hangs over the front of one shoulder',
+  buzz: 'a very short buzz cut: a thin even layer of short hair covering the whole scalp',
+};
+
 const P = (s) => s.replace(/\s+/g, ' ').trim();
 const nameOf = (avatars, cat, id) => avatars.parts[cat]?.find((o) => o.id === id)?.name ?? id;
 const descOf = (avatars, cat, id) => avatars.parts[cat]?.find((o) => o.id === id)?.promptDesc || id;
@@ -126,7 +132,8 @@ export function buildPartItems(avatars) {
       item({
         id: partId.hair(h),
         label: `파츠 · 머리 ${nameOf(avatars, 'hair', h)}`,
-        prompt: edit(`hair: ${descOf(avatars, 'hair', h)}, {{neutralHair}}. {{blankFace}}`),
+        prompt: edit(`hair: ${HAIR_DESC[h] ?? descOf(avatars, 'hair', h)}, {{neutralHair}}. The hair grows from the scalp and covers the top and sides of
+          the head — the head is no longer bald (keep the ears where the style shows them). {{blankFace}}`),
         refs,
         output: partOutput.hair(h),
         postprocess: STEPS(['diffExtract:hair']),
@@ -136,7 +143,10 @@ export function buildPartItems(avatars) {
   }
 
   // 3. Face-shape overlays (slim = the mannequin itself).
-  const FACE = { round: 'a round face with fuller, chubby cheeks and a round jaw line (slightly wider lower face)', square: 'a square face with a broader, slightly angular square jaw line' };
+  const FACE = {
+    round: 'a round face with fuller, chubby cheeks and a round jaw line (slightly wider lower face)',
+    square: 'a clearly square face: a noticeably broader lower face with a flat, angular square jaw line and defined jaw corners',
+  };
   for (const f of opts('face')) {
     const { refs, base } = onBase();
     items.push(

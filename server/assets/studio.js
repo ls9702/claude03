@@ -287,6 +287,39 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
 
   const regenerate = (id, opts = {}) => generateCandidates(id, { ...opts, force: true });
 
+  /**
+   * Paper-doll parts: re-run the part steps (diffExtract / mannequin) of candidate n from its saved keyed
+   * source (`n.src.png`, mannequins `n.base.png`) — no API call. Used after tuning the extractor; an accepted
+   * item whose accepted candidate is n is re-published.
+   */
+  async function reprocess(id, n) {
+    const { m, item } = await mustItem(id);
+    if (item.kind !== 'part') throw new StudioError('파츠만 다시 처리할 수 있습니다.');
+    const dir = candDir(id);
+    const meta = (await listCandidates(id)).find((c) => c.n === Number(n));
+    if (!meta) throw new StudioError('후보 정보가 없습니다.', { status: 404, code: 'NOT_FOUND' });
+    const isMannequin = item.meta.slot === 'mannequin';
+    const srcFile = path.join(dir, `${n}.${isMannequin ? 'base' : 'src'}.png`);
+    if (!(await exists(srcFile))) throw new StudioError('원본(src) 파일이 없습니다.', { status: 404, code: 'NOT_FOUND' });
+    const steps = item.postprocess.filter((st) => st.startsWith('diffExtract:') || st === 'mannequin');
+    const base = isMannequin ? null : await resolveBase(m, item);
+    const pp = await applySteps([await readFile(srcFile)], steps, { base });
+    const image = pp.frames[0];
+    await writeFile(path.join(dir, `${n}.png`), await sharp(image).png().toBuffer());
+    await sharp(image).resize(PREVIEW_PX, PREVIEW_PX, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toFile(path.join(dir, `${n}.preview.webp`));
+    for (const f of await readdir(dir)) {
+      const mm = new RegExp(`^${n}\\.([a-z]+)\\.png$`).exec(f);
+      if (mm && !['src', 'base'].includes(mm[1]) && !(mm[1] in (pp.layers ?? {}))) await rm(path.join(dir, f), { force: true });
+    }
+    const layers = Object.keys(pp.layers ?? {});
+    for (const k of layers) await writeFile(path.join(dir, `${n}.${k}.png`), await sharp(pp.layers[k]).png().toBuffer());
+    const next = { ...meta, notes: Object.keys(pp.notes).length ? pp.notes : undefined, layers: layers.length ? layers : undefined, tintRef: await measureTintRef(item, image) };
+    delete next.n;
+    await writeFile(path.join(dir, `${n}.json`), `${JSON.stringify({ n: Number(n), ...next }, null, 2)}\n`);
+    if (item.status === 'accepted' && item.accepted?.candidate === Number(n)) return accept(id, n);
+    return summarize(m, item);
+  }
+
   async function writeOutput(item, pngBuffer, rel = item.output, { lossless = false } = {}) {
     const dest = outPath(rel);
     await mkdir(path.dirname(dest), { recursive: true });
@@ -465,6 +498,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     client: gemini,
     generateCandidates,
     regenerate,
+    reprocess,
     accept,
     upload,
     deleteCandidates,

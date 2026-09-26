@@ -495,10 +495,12 @@ export function regionBox(fig, region, w, h) {
       box = { ...pad(0.55, 0.45, 0.55, 0), bottom: B.top + B.height * 0.9 };
       break;
     case 'face':
+      box = pad(0.08, 0.08, 0.08, 0.1);
+      break;
     case 'eyes':
     case 'mouth':
     case 'cheek':
-      box = pad(0.08, 0.08, 0.08, 0.1);
+      box = pad(-0.1, 0.02, -0.1, 0.05); // inside the face: excludes the ears (their inner lines get redrawn)
       break;
     case 'expression':
       box = pad(0.35, 0.35, 0.35, 0.3);
@@ -524,11 +526,11 @@ export function regionBox(fig, region, w, h) {
 export const DIFF_DEFAULTS = {
   hair: { threshold: 38, soft: 14, radius: 2, open: 2, close: 4, minComponent: 400, maxChroma: 40 },
   body: { threshold: 36, soft: 14, radius: 2, open: 2, close: 3, minComponent: 400, maxChroma: 40 },
-  face: { threshold: 22, soft: 10, radius: 2, close: 1, minComponent: 120 },
-  eyes: { threshold: 30, soft: 12, radius: 2, close: 1, minComponent: 40 },
-  mouth: { threshold: 30, soft: 12, radius: 2, close: 1, minComponent: 30 },
-  cheek: { threshold: 14, soft: 6, radius: 2, close: 1, minComponent: 12 },
-  expression: { threshold: 28, soft: 12, radius: 2, close: 1, minComponent: 40 },
+  face: { threshold: 22, soft: 10, radius: 2, close: 1, minComponent: 120, minRelY: 0.45 },
+  eyes: { threshold: 30, soft: 12, radius: 2, close: 1, minComponent: 40, edgeBand: 5 },
+  mouth: { threshold: 30, soft: 12, radius: 2, close: 1, minComponent: 30, edgeBand: 5 },
+  cheek: { threshold: 14, soft: 6, radius: 2, close: 1, minComponent: 12, edgeBand: 5 },
+  expression: { threshold: 28, soft: 12, radius: 2, close: 1, minComponent: 40, edgeBand: 4 },
   accessory: { threshold: 34, soft: 14, radius: 2, close: 2, minComponent: 80 },
 };
 
@@ -725,11 +727,39 @@ export function diffExtractPixels(base, edited, w, h, opts = {}) {
   // Binary mask → closing (bridges lines the part shares with the base) → fill enclosed holes (eye whites).
   let mask = new Uint8Array(bw * bh);
   for (let p = 0; p < mask.length; p++) mask[p] = ramp[p] >= 0.5 ? 1 : 0;
+  // Inner-face parts never live on the head outline: drop the re-drawn silhouette edge band.
+  if (d.edgeBand > 0) {
+    let sil = new Uint8Array(bw * bh);
+    for (let y = box.top; y <= box.bottom; y++) for (let x = box.left; x <= box.right; x++) sil[(y - box.top) * bw + (x - box.left)] = base[(y * w + x) * 4 + 3] > 128 ? 1 : 0;
+    const outer = morph(sil, bw, bh, d.edgeBand, true);
+    const inner = morph(sil, bw, bh, d.edgeBand, false);
+    for (let p = 0; p < mask.length; p++) if (outer[p] && !inner[p]) mask[p] = 0;
+    sil = null;
+  }
+  // Face-shape overlays only change the lower face (cheeks/jaw).
+  if (d.minRelY !== undefined) {
+    const y0 = fig.head.top + fig.head.height * d.minRelY;
+    for (let y = box.top; y < Math.min(box.bottom + 1, y0); y++) mask.fill(0, (y - box.top) * bw, (y - box.top + 1) * bw);
+  }
   // Closing first (joins a part drawn right over base lines, e.g. hair over the ear outline), then opening
   // removes thin re-rendered outlines of the body that hair/outfit edits redraw next to the part.
   if (close > 0) mask = morph(morph(mask, bw, bh, close, true), bw, bh, close, false);
   if (open > 0) mask = morph(morph(mask, bw, bh, open, false), bw, bh, open, true);
   fillHoles(mask, bw, bh, d.maxHole ?? Math.round(bw * bh * 0.02));
+  // Next to the part, anything the edit painted where the base is fully transparent is new content even when
+  // it resembles a nearby base outline (hair right behind the face outline). Without this the back hair
+  // leaves a thin see-through gap around the mannequin silhouette.
+  const nearMask = morph(mask, bw, bh, d.hug ?? 6, true);
+  for (let y = box.top; y <= box.bottom; y++) {
+    for (let x = box.left; x <= box.right; x++) {
+      const p = (y - box.top) * bw + (x - box.left);
+      if (mask[p] || !nearMask[p]) continue;
+      const sx = x + dx;
+      const sy = y + dy;
+      if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
+      if (base[(y * w + x) * 4 + 3] < 40 && edited[(sy * w + sx) * 4 + 3] > 128) mask[p] = 1;
+    }
+  }
   for (let p = 0; p < mask.length; p++) if (veto[p]) mask[p] = 0;
   // Alpha = mask, softened by a small box feather on its inner edge (the edited image's own alpha keeps
   // the anti-aliasing against the backdrop). Nothing outside the mask: partial ramps there are re-drawn
@@ -837,10 +867,21 @@ function eraseMask(base, edited, layer, w, h, { region, fig, dx, dy }) {
     }
   }
   m = morph(morph(m, w, h, 2, false), w, h, 2, true); // drop 1–4 px slivers (registration jitter)
+  // Grow into the anti-aliased rim of the erased shape (else a faint outline of the ear stays).
+  const grown = morph(m, w, h, 3, true);
+  for (let p = 0; p < w * h; p++) {
+    if (m[p] || !grown[p] || !base[p * 4 + 3] || layer[p * 4 + 3] > 0) continue;
+    const x = p % w;
+    const y = (p - x) / w;
+    const sx = x + dx;
+    const sy = y + dy;
+    const ea = sx >= 0 && sy >= 0 && sx < w && sy < h ? edited[(sy * w + sx) * 4 + 3] : 0;
+    if (ea <= 60) m[p] = 2;
+  }
   const data = new Uint8Array(w * h * 4);
   let count = 0;
   for (let p = 0; p < w * h; p++) {
-    if (m[p] && base[p * 4 + 3] >= 200) {
+    if (m[p] === 2 || (m[p] && base[p * 4 + 3] >= 200)) {
       data[p * 4 + 3] = 255;
       count++;
     }
@@ -939,6 +980,22 @@ export async function mannequinDisplay(buf, { color = '#4a4446' } = {}) {
     data[i + 1] = Math.round(Math.min(255, t.g * k));
     data[i + 2] = Math.round(Math.min(255, t.b * k));
     recolored++;
+  }
+  // Light greyish rim pixels (cyan blended into skin) would read as pale lines once the skin is tinted.
+  const rim = morph(m, w, h, 3, true);
+  for (let p = 0; p < w * h; p++) {
+    if (!rim[p] || m[p]) continue;
+    const i = p * 4;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const c = Math.max(r, g, b) - Math.min(r, g, b);
+    if (data[i + 3] > 128 && c < 30 && 0.299 * r + 0.587 * g + 0.114 * b > 90) {
+      data[i] = t.r;
+      data[i + 1] = t.g;
+      data[i + 2] = t.b;
+      recolored++;
+    }
   }
   return { buffer: await fromRaw(data, w, h).png().toBuffer(), recolored };
 }
