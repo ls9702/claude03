@@ -245,6 +245,7 @@ function startCustomizer(charId = null) {
     title: existing ? `「${existing.name}」 편집` : '새 캐릭터',
     submitLabel: existing ? '저장' : '만들기',
     initial: existing ? { name: existing.name, avatar: existing.avatar } : {},
+    art: existing ? { roomId: room.id, charId: existing.id } : undefined,
     onSave: async ({ name, avatar }) => {
       const res = existing
         ? await api('PATCH', `/api/rooms/${room.id}/characters/${existing.id}`, { name, avatar })

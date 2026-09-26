@@ -298,3 +298,40 @@
 - TEST-ONLY smoke hook: env `CHAR_ART_FAKE=1` (fake Gemini echoing the reference on magenta; `402` = credits
   exhausted; `CHAR_ART_FAKE_DELAY_MS`, default 250) → `server/assets/fakeGemini.js`. Never set it in production.
   Tests (`test/charArt*.test.js`) inject `assets.studioOptions.fetchImpl` / `charArtOptions` / `charArtThrottleMs`.
+
+## Layered avatars (Stage 5.5-C)
+- Shared pure modules: `public/js/shared/partStack.js` + `public/js/shared/tintMath.js` are the ONLY implementations
+  (served as `/js/shared/*`); `server/assets/partStack.js` / `tintMath.js` are `export *` re-exports, so server code,
+  scripts and tests keep their imports. Keep both files free of Node/DOM imports (a test greps for it).
+- `public/js/ui/avatarCompose.js` — browser compositor, pixel-identical to `scripts/part-sheets.js` (mean abs diff
+  < 0.3/255). `composeAvatar(avatar, {expression, blink, size, crop: 'full'|'bust'|'face'|{x,y,w,h}, dpr})` →
+  `Promise<canvas|null>` (a fresh copy, class `av-cmp`; null = layers missing → keep the SVG). `size` = CSS px of
+  the longer side, canvas = size × dpr (≤ 2). `peekAvatar(...)` = synchronous copy when cached (no SVG flicker),
+  `preloadAvatar`, `composeKey` (pure, normalized avatar in `defs.order` + expr + blink + size + crop + dpr),
+  `stackFor` (= `layerStack` + fixed-colour outfits forced untinted), `COMPOSE_CROPS`, `FIGURE_SPAN` (hairline 200 …
+  feet 1360: the cut-in figure box), `composeGeometry/levelFor`, `layeredPreviewRenderer` (customizer hook,
+  registered in app.js). Caches: images by URL (+ alpha bbox measured once on a 128×192 thumb), prepared layers
+  (tint via `tintPixels` / erase via destination-out, cropped to the bbox, at working level 0.25|0.5|0.75|1; LRU 90),
+  composed results (LRU `COMPOSE_CACHE_MAX` 40). AI art: `AI_CROPS` (schoolgirl placement), `composeArt(url, {size,
+  crop})` / `peekArt`. `composeStats()` for debugging.
+- Source priority = pure `cutinMap.resolveCharacterArt(character, {pose, expression, portrait})`: `art.status ===
+  'ready'` → AI file (non-idle pose file > expression file (joy/cry/shock/angry) > idle pose > base; portraits: base >
+  idle) > paper-doll layers (`motion` = requested pose, `expression` ∈ `PART_EXPRESSIONS`) > SVG (compose → null).
+  `expressionFor(emotion)` now also returns `part` (joy cry shock angry love sweat shy).
+- `avatar2d.renderAvatarLayers(parts, {pose, emotion, name, flip, art})` (cut-ins; `cutin2d` passes `char.art`):
+  AI → `<img class="av2-layer full ai">` (broken file → layers from then on); layers → composed canvas
+  `.av2-layer.cmp.main` sized from `FIGURE_SPAN` (inline height/bottom) + a `.blink` canvas toggled every 3–6 s
+  (`.av2.blinking`); SVG last. `el.dataset.source` = ai|layers|svg. Layered art has only the front pose: poses are
+  CSS motion (`data-pose`: jump hop, cheer bounce + ✨ overlay, wave sway (`.av2.cmp`), cry sob, shock shake);
+  `playSprite()` = procedural double hop (`.av2.bigjump`). The old schoolgirl recolor path (`avatarPalette`,
+  `recolorPixels`, `hueFilterFor`, `characterBaseFor`, `layerSet`, `recoloredCanvas`) is gone; `layerPlan` stays
+  for Stage 6 costume sets. `preloadAvatarLayers(characterOrAvatar, {expressions})`.
+- Portraits: `renderPortrait(el, characterOrAvatar, {size, crop: 'face'|'bust', title})` (SVG first, composed/AI
+  canvas `canvas.av-pt-img` when ready; AI art uses the bust of `files.base`), and for HTML templates
+  `portraitHtml(subject, opts)` + `hydratePortraits(root)` right after `innerHTML` (synchronous when cached). Used by
+  lobby cards (bust), HUD panel / now-playing / decision sheet / ranking (face), cut-in tabs. 2D board pawns (26 px)
+  and admin stay SVG.
+- Customizer: preview = `layeredPreviewRenderer` (bust in the circle; 「전신 보기」 chip `[data-crop-toggle]` passes
+  `crop: 'full'` → `.cz-preview.full` tall card); expression chips → part expressions.
+- Measured (SwiftShader headless, desktop dpr 1): first compose with images cached 15–45 ms (≤ 105 ms at dpr 2 /
+  level 0.75), cached < 0.5 ms, cold incl. image loading ≈ 180–370 ms. E2E: `s55c` scripts in the session scratchpad.
