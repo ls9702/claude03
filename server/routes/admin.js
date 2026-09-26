@@ -126,5 +126,6 @@ export function createAdminRouter({ store, runner, adminPassword }) {
     res.json({ ok: true });
   });
 
+  router.requireAdmin = requireAdmin; // reused by routes/adminAssets.js
   return router;
 }

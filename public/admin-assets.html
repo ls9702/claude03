@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>에셋 스튜디오 · 인생게임 관리자</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-assets.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1 class="logo">🎨 에셋 스튜디오</h1>
+    <div class="topbar-right">
+      <a class="btn small ghost" href="/admin">관리자 홈</a>
+      <a class="btn small ghost" href="/" target="_blank" rel="noopener">게임 페이지</a>
+    </div>
+  </header>
+
+  <main>
+    <section id="login-view" hidden>
+      <form id="login-form" class="card login-card">
+        <h2>관리자 로그인</h2>
+        <label class="field"><span>비밀번호</span><input type="password" name="password" autocomplete="current-password" required></label>
+        <p class="form-error" role="alert"></p>
+        <button class="btn primary block" type="submit">로그인</button>
+      </form>
+    </section>
+
+    <section id="studio-view" hidden>
+      <div class="card status-card">
+        <div class="status-block">
+          <h2>Gemini API 키</h2>
+          <p id="key-status" class="muted">확인 중…</p>
+          <form id="key-form" class="key-form" autocomplete="off">
+            <input type="password" name="key" placeholder="AIza… 키 붙여넣기" autocomplete="off" spellcheck="false" aria-label="Gemini API 키">
+            <button class="btn small primary" type="submit">저장</button>
+            <button class="btn small ghost danger" type="button" id="key-clear" hidden>삭제</button>
+          </form>
+          <p class="muted small">키는 서버의 <code>data/secrets.json</code>에만 저장되고 브라우저로 다시 내려오지 않습니다. 환경변수 <code>GEMINI_API_KEY</code>가 있으면 그것이 우선합니다.</p>
+        </div>
+        <div class="status-block">
+          <h2>오늘 사용량</h2>
+          <div class="usage"><div class="usage-bar"><span id="usage-fill"></span></div><strong id="usage-text">-</strong></div>
+          <p class="muted small">모델 <code id="model-id">-</code> · 채택 <strong id="accepted-count">0</strong> / <span id="total-count">0</span></p>
+        </div>
+      </div>
+
+      <div class="studio-grid">
+        <div class="card list-card">
+          <div class="filters" id="kind-filters" role="tablist" aria-label="종류 필터"></div>
+          <label class="field inline"><span>상태</span>
+            <select id="status-filter">
+              <option value="">전체</option>
+              <option value="todo">미생성</option>
+              <option value="candidate">후보 있음</option>
+              <option value="accepted">채택됨</option>
+            </select>
+          </label>
+          <div id="item-list" class="item-list"></div>
+        </div>
+
+        <div class="card detail-card" id="detail">
+          <p class="muted">왼쪽에서 에셋 항목을 고르세요.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/js/admin-assets.js"></script>
+</body>
+</html>

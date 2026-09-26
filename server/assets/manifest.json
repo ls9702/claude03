@@ -1,0 +1,1085 @@
+{
+  "version": 1,
+  "settings": {
+    "model": "gemini-2.5-flash-image",
+    "dailyCap": 300,
+    "defaultCandidates": 4
+  },
+  "items": [
+    {
+      "refs": [],
+      "postprocess": [],
+      "status": "todo",
+      "id": "style-anchor",
+      "kind": "anchor",
+      "label": "스타일 앵커 (산길의 교복 커플)",
+      "aspect": "16:9",
+      "prompt": "{{style}} Scene: a bright forest mountain trail in Korea, tall trees on both sides, wildflowers and small rocks, distant blue mountains and sky. Two chibi Korean high school students stand on the path waving happily: on the left a girl with a blonde side ponytail and a blue scrunchie, navy blazer, red ribbon, blue plaid skirt; on the right a boy with short black hair, navy blazer, red tie, blue plaid trousers. Both have closed happy eyes (> <) and open smiling mouths. Wide 16:9 game event illustration.",
+      "output": "anchor/style-anchor.png",
+      "candidates": 4
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "bg-school",
+      "kind": "bg",
+      "label": "컷인 배경 · 학교",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a sunny Korean high school classroom seen from the back row: green blackboard, rows of wooden desks and chairs, big windows with cherry blossom trees outside, bulletin board with colorful papers. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+      "output": "bg/school.webp",
+      "meta": {
+        "scene": "school"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "bg-mountain-trail",
+      "kind": "bg",
+      "label": "컷인 배경 · 산길",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a bright forest mountain trail in Korea, tall trees on both sides, wildflowers and small rocks along the path, distant blue mountains and sky. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+      "output": "bg/mountain-trail.webp",
+      "meta": {
+        "scene": "mountain-trail"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "bg-wedding-hall",
+      "kind": "bg",
+      "label": "컷인 배경 · 웨딩홀",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: interior of a bright modern Korean wedding hall, white flower arch in the center, pink and white roses, red carpet aisle, soft warm lights, pastel pink walls, confetti in the air. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+      "output": "bg/wedding-hall.webp",
+      "meta": {
+        "scene": "wedding-hall"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "bg-office",
+      "kind": "bg",
+      "label": "컷인 배경 · 회사",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a cheerful modern Korean open-plan office: desks with monitors, potted plants, big windows with a city skyline, whiteboard, coffee mugs, warm afternoon light. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+      "output": "bg/office.webp",
+      "meta": {
+        "scene": "office"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "bg-hospital",
+      "kind": "bg",
+      "label": "컷인 배경 · 병원",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a clean bright Korean hospital corridor and ward: white beds with light blue curtains, reception counter, green cross sign without text, potted plants, soft daylight. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand.",
+      "output": "bg/hospital.webp",
+      "meta": {
+        "scene": "hospital"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "char-schoolgirl-base",
+      "kind": "charLayer",
+      "label": "캐릭터 베이스 · 교복 여학생",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "prompt": "{{style}} {{sameStyle}} {{fullBody}} Standing straight in a relaxed neutral pose, arms down at the sides, a cheerful Korean high school girl with a blonde side ponytail and a blue scrunchie, navy blazer, red ribbon, blue plaid skirt, white socks and white shoes, gentle smile with open eyes. {{magentaBg}} Portrait 2:3.",
+      "output": "char/schoolgirl/base.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "layer": "base",
+        "expression": "neutral",
+        "outfit": "school"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "char-schoolgirl-expr-joy",
+      "kind": "charLayer",
+      "label": "표정 · 기쁨",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "prompt": "{{style}} {{keepCharacter}} Change ONLY the facial expression to a big happy open-mouth smile with closed happy eyes (> <) and rosy cheeks. Keep the pose and outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/expr-joy.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "layer": "expression",
+        "expression": "joy",
+        "outfit": "school"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "char-schoolgirl-expr-cry",
+      "kind": "charLayer",
+      "label": "표정 · 눈물",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "prompt": "{{style}} {{keepCharacter}} Change ONLY the facial expression to crying: big tears streaming down, wobbly open mouth, eyebrows raised in the middle. Keep the pose and outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/expr-cry.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "layer": "expression",
+        "expression": "cry",
+        "outfit": "school"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "char-schoolgirl-expr-shock",
+      "kind": "charLayer",
+      "label": "표정 · 놀람",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "prompt": "{{style}} {{keepCharacter}} Change ONLY the facial expression to shocked: wide round eyes with small pupils, open O-shaped mouth, a sweat drop on the forehead. Keep the pose and outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/expr-shock.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "layer": "expression",
+        "expression": "shock",
+        "outfit": "school"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "char-schoolgirl-expr-angry",
+      "kind": "charLayer",
+      "label": "표정 · 분노",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "prompt": "{{style}} {{keepCharacter}} Change ONLY the facial expression to angry: furrowed eyebrows, puffed red cheeks, clenched teeth, a small anger mark on the head. Keep the pose and outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/expr-angry.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "layer": "expression",
+        "expression": "angry",
+        "outfit": "school"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "char-schoolgirl-outfit-doctor",
+      "kind": "charLayer",
+      "label": "의상 · 의사 가운",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "prompt": "{{style}} {{keepCharacter}} Change ONLY the outfit to a white doctor's coat over a light blue shirt and dark trousers, a stethoscope around the neck. Keep the face, hairstyle, expression and pose unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/outfit-doctor.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "layer": "outfit",
+        "expression": "neutral",
+        "outfit": "doctor"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "char-schoolgirl-outfit-suit",
+      "kind": "charLayer",
+      "label": "의상 · 회사원 정장",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "prompt": "{{style}} {{keepCharacter}} Change ONLY the outfit to a neat navy office suit with a white blouse, an employee ID badge on a lanyard, black low heels. Keep the face, hairstyle, expression and pose unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/outfit-suit.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "layer": "outfit",
+        "expression": "neutral",
+        "outfit": "suit"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "char-schoolgirl-outfit-wedding",
+      "kind": "charLayer",
+      "label": "의상 · 웨딩드레스",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "prompt": "{{style}} {{keepCharacter}} Change ONLY the outfit to a white wedding dress with a short veil and a small bouquet of pink roses held in both hands. Keep the face, hairstyle, expression and pose unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/outfit-wedding.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "layer": "outfit",
+        "expression": "neutral",
+        "outfit": "wedding"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "normalizeFrames",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "pose-schoolgirl-idle",
+      "kind": "pose",
+      "label": "키포즈 · 대기",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "anchor": "bottom-center",
+      "prompt": "{{style}} {{keepCharacter}} Change only the pose: standing relaxed, arms down at the sides, weight on one leg, gentle smile, open eyes. Keep the outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/pose-idle.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "pose": "idle"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "normalizeFrames",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "pose-schoolgirl-wave",
+      "kind": "pose",
+      "label": "키포즈 · 손 흔들기",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "anchor": "bottom-center",
+      "prompt": "{{style}} {{keepCharacter}} Change only the pose: waving happily with the right hand raised high, left hand on the hip, closed happy eyes (> <), big smile. Keep the outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/pose-wave.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "pose": "wave"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "normalizeFrames",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "pose-schoolgirl-jump",
+      "kind": "pose",
+      "label": "키포즈 · 점프",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "anchor": "bottom-center",
+      "prompt": "{{style}} {{keepCharacter}} Change only the pose: jumping for joy, both feet off the ground with knees bent, both arms raised high, big open smile, ponytail and skirt lifting. Keep the outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/pose-jump.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "pose": "jump"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "normalizeFrames",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "pose-schoolgirl-cheer",
+      "kind": "pose",
+      "label": "키포즈 · 환호",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "anchor": "bottom-center",
+      "prompt": "{{style}} {{keepCharacter}} Change only the pose: cheering with both fists pumped in the air, mouth wide open shouting with joy, sparkling eyes. Keep the outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/pose-cheer.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "pose": "cheer"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "normalizeFrames",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "pose-schoolgirl-cry",
+      "kind": "pose",
+      "label": "키포즈 · 울기",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "anchor": "bottom-center",
+      "prompt": "{{style}} {{keepCharacter}} Change only the pose: crying loudly, rubbing the eyes with both fists, tears flying, shoulders slumped. Keep the outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/pose-cry.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "pose": "cry"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "normalizeFrames",
+        "resize:1024x1536"
+      ],
+      "status": "todo",
+      "id": "pose-schoolgirl-shock",
+      "kind": "pose",
+      "label": "키포즈 · 놀람",
+      "aspect": "2:3",
+      "size": {
+        "w": 1024,
+        "h": 1536
+      },
+      "anchor": "bottom-center",
+      "prompt": "{{style}} {{keepCharacter}} Change only the pose: shocked: leaning back, both hands raised beside the face with open palms, wide round eyes, open mouth. Keep the outfit unchanged. Portrait 2:3.",
+      "output": "char/schoolgirl/pose-shock.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "pose": "shock"
+      }
+    },
+    {
+      "refs": [
+        "char-schoolgirl-base"
+      ],
+      "postprocess": [
+        "chromaKey",
+        "normalizeFrames",
+        "resize:256x384",
+        "sheet",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "sprite-schoolgirl-jump",
+      "kind": "sprite",
+      "label": "스프라이트 · 점프 (4프레임)",
+      "aspect": "2:3",
+      "size": {
+        "w": 256,
+        "h": 384
+      },
+      "anchor": "bottom-center",
+      "candidates": 1,
+      "prompt": "{{style}} {{keepCharacter}} Change only the pose: {{frame}} Keep the outfit unchanged. Portrait 2:3.",
+      "frames": [
+        {
+          "id": "crouch",
+          "prompt": "she crouches slightly with knees bent, both arms down and slightly back, getting ready to jump, eyes open and determined."
+        },
+        {
+          "id": "up",
+          "prompt": "she is jumping upward, feet off the ground, both arms raised high, closed happy eyes (> <), big open smile, hair and skirt lifting."
+        },
+        {
+          "id": "peak",
+          "prompt": "she is at the top of a joyful jump, body slightly leaning back, both arms spread wide in a V, closed happy eyes, big smile, skirt and ponytail flying."
+        },
+        {
+          "id": "land",
+          "prompt": "she has just landed, knees slightly bent, arms out to the sides for balance, open eyes, cheerful smile."
+        }
+      ],
+      "frameDelays": [
+        140,
+        110,
+        160,
+        140
+      ],
+      "output": "sprites/schoolgirl-jump.png",
+      "meta": {
+        "character": "schoolgirl",
+        "body": "girl",
+        "hair": "ponytail",
+        "hairColor": "blonde",
+        "action": "jump"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-money",
+      "kind": "icon",
+      "label": "칸 아이콘 · 돈",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a green money bag tied with a string, with a white Korean won sign (₩) on it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/money.png",
+      "meta": {
+        "tile": "money"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-love",
+      "kind": "icon",
+      "label": "칸 아이콘 · 연애",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a glossy red heart. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/love.png",
+      "meta": {
+        "tile": "love"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-job",
+      "kind": "icon",
+      "label": "칸 아이콘 · 직업",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a navy blue leather briefcase. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/job.png",
+      "meta": {
+        "tile": "job"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-house",
+      "kind": "icon",
+      "label": "칸 아이콘 · 집",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a small cozy house with a red roof, chimney and a patch of grass. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/house.png",
+      "meta": {
+        "tile": "house"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-treasure",
+      "kind": "icon",
+      "label": "칸 아이콘 · 보물",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: an open wooden treasure chest overflowing with gold coins and a blue gem. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/treasure.png",
+      "meta": {
+        "tile": "treasure"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-card",
+      "kind": "icon",
+      "label": "칸 아이콘 · 카드",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a single playing card with a red heart symbol, tilted slightly. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/card.png",
+      "meta": {
+        "tile": "card"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-shop",
+      "kind": "icon",
+      "label": "칸 아이콘 · 쇼핑",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a yellow shopping bag with blue handles and a small flower sticking out. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/shop.png",
+      "meta": {
+        "tile": "shop"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-stop",
+      "kind": "icon",
+      "label": "칸 아이콘 · 정지",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a red octagonal stop sign shape without any letters. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/stop.png",
+      "meta": {
+        "tile": "stop"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-bad",
+      "kind": "icon",
+      "label": "칸 아이콘 · 나쁜 일",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a yellow triangular warning sign with a black exclamation mark. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/bad.png",
+      "meta": {
+        "tile": "bad"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-goal",
+      "kind": "icon",
+      "label": "칸 아이콘 · 골",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a shiny golden trophy cup. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/goal.png",
+      "meta": {
+        "tile": "goal"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-school",
+      "kind": "icon",
+      "label": "칸 아이콘 · 학교",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a black graduation cap with a golden tassel. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/school.png",
+      "meta": {
+        "tile": "school"
+      }
+    },
+    {
+      "refs": [
+        "style-anchor"
+      ],
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "id": "icon-lottery",
+      "kind": "icon",
+      "label": "칸 아이콘 · 로또",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game board tile icon: a colorful lottery ticket with small circles, no readable text. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no labels. Square 1:1.",
+      "output": "icons/lottery.png",
+      "meta": {
+        "tile": "lottery"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "tex-grass",
+      "kind": "texture",
+      "label": "텍스처 · 잔디",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{seamless}} Top-down texture of bright stylized cartoon grass for a low-poly 3D board game town, soft cel shading, flat lighting, no shadows, no objects, repeats perfectly at the edges.",
+      "output": "textures/grass.webp",
+      "meta": {
+        "surface": "grass"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "tex-road",
+      "kind": "texture",
+      "label": "텍스처 · 도로",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{seamless}} Top-down texture of a stylized cartoon asphalt road surface for a low-poly 3D board game, warm gray with subtle speckles and tiny cracks, soft cel shading, flat lighting, no lane markings, no objects, repeats perfectly at the edges.",
+      "output": "textures/road.webp",
+      "meta": {
+        "surface": "road"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "frame-love",
+      "kind": "frame",
+      "label": "프레임 테마 · 연애·육아 (분홍)",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{style}} {{seamless}} A cute flat decorative repeating pattern for a game dialog frame, colors pastel pink and white, small hearts and ribbons, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+      "output": "frames/love.webp",
+      "meta": {
+        "tone": "love"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "frame-career",
+      "kind": "frame",
+      "label": "프레임 테마 · 일·커리어 (파랑)",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{style}} {{seamless}} A cute flat decorative repeating pattern for a game dialog frame, colors sky blue and white, small briefcases, stars and paper planes, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+      "output": "frames/career.webp",
+      "meta": {
+        "tone": "career"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "frame-treasure",
+      "kind": "frame",
+      "label": "프레임 테마 · 보물·부동산 (금색)",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{style}} {{seamless}} A cute flat decorative repeating pattern for a game dialog frame, colors warm gold and cream, small coins, gems and tiny houses, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+      "output": "frames/treasure.webp",
+      "meta": {
+        "tone": "treasure"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "frame-good",
+      "kind": "frame",
+      "label": "프레임 테마 · 좋은 일 (초록)",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{style}} {{seamless}} A cute flat decorative repeating pattern for a game dialog frame, colors fresh green and white, four-leaf clovers and small sparkles, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+      "output": "frames/good.webp",
+      "meta": {
+        "tone": "good"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "frame-bad",
+      "kind": "frame",
+      "label": "프레임 테마 · 나쁜 일 (남색)",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{style}} {{seamless}} A cute flat decorative repeating pattern for a game dialog frame, colors deep navy and slate blue, small rain clouds and raindrops, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+      "output": "frames/bad.webp",
+      "meta": {
+        "tone": "bad"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "frame-holiday",
+      "kind": "frame",
+      "label": "프레임 테마 · 명절 (빨강)",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{style}} {{seamless}} A cute flat decorative repeating pattern for a game dialog frame, colors festive red and gold, traditional Korean cloud patterns and small lucky pouches (bokjumeoni), evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+      "output": "frames/holiday.webp",
+      "meta": {
+        "tone": "holiday"
+      }
+    },
+    {
+      "refs": [],
+      "postprocess": [
+        "resize:512x512",
+        "seamless",
+        "webp"
+      ],
+      "status": "todo",
+      "id": "frame-result",
+      "kind": "frame",
+      "label": "프레임 테마 · 결과발표 (보라)",
+      "aspect": "1:1",
+      "size": {
+        "w": 512,
+        "h": 512
+      },
+      "prompt": "{{style}} {{seamless}} A cute flat decorative repeating pattern for a game dialog frame, colors royal purple and gold, small crowns, trophies and confetti, evenly scattered small motifs on a soft solid background, low contrast so text on top stays readable.",
+      "output": "frames/result.webp",
+      "meta": {
+        "tone": "result"
+      }
+    }
+  ]
+}
