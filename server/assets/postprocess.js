@@ -2,6 +2,7 @@
 // Gemini never returns an exact #FF00FF backdrop (measured ~rgb(213,37,136)) and sometimes paints a
 // ground shadow, so chromaKey samples the corners and also kills pixels in the backdrop's hue family.
 import sharp from 'sharp';
+import { measureFill, tintPixels } from './tintMath.js';
 
 const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
 
@@ -348,9 +349,11 @@ export const toPng = (buffer) => sharp(buffer).png().toBuffer();
  * - `normalizeFrames` with a single frame and a `ref` aligns it to the ref (key poses vs. the base).
  * - `sheet` / `webp` on multiple frames produce a sprite sheet and an animated WebP.
  * - `webp` on a single frame only marks the result for WebP encoding (the output extension decides).
- * @returns {Promise<{frames: Buffer[], sheet?: {buffer: Buffer, meta: object}, anim?: Buffer, notes: object}>}
+ * - `diffExtract:<region>` (paper-doll parts) diffs the frame against `base` (the keyed mannequin);
+ *   region `hair` additionally returns `layers: {front, back}`.
+ * @returns {Promise<{frames: Buffer[], sheet?: {buffer: Buffer, meta: object}, anim?: Buffer, layers?: {front: Buffer, back: Buffer}, notes: object}>}
  */
-export async function applySteps(frames, steps, { ref, delays, anchor = 'bottom-center' } = {}) {
+export async function applySteps(frames, steps, { ref, delays, anchor = 'bottom-center', base, diffOptions } = {}) {
   let cur = frames;
   const out = { notes: {} };
   for (const step of steps) {
@@ -367,8 +370,480 @@ export async function applySteps(frames, steps, { ref, delays, anchor = 'bottom-
     else if (step === 'webp') {
       if (cur.length > 1) out.anim = await animatedWebp(cur, delays ?? 120);
     } else if (step === 'seamless') out.notes.seamless = await isSeamless(cur[0]);
-    else throw new Error(`unknown postprocess step: ${step}`);
+    else if (step.startsWith('diffExtract:')) {
+      // Paper-doll part: keep only what the edit added to the base mannequin (`base` = keyed base PNG).
+      if (!base) throw new Error('diffExtract needs a base image (the mannequin ref)');
+      const region = step.slice('diffExtract:'.length);
+      const r = await diffExtractDetailed(base, cur[0], { region, ...(diffOptions ?? {}) });
+      out.notes.diff = r.info;
+      if (region === 'hair') {
+        const split = await splitFrontBack(r.buffer, base);
+        out.layers = { front: split.front, back: split.back };
+        out.notes.split = split.info;
+      }
+      cur = [r.buffer, ...cur.slice(1)];
+    } else throw new Error(`unknown postprocess step: ${step}`);
   }
   out.frames = cur;
   return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Paper-doll layers (Stage 5.5-B): every avatar option is a Gemini *edit* of a shared mannequin
+// ("keep everything, only add X"). diffExtract keeps only the pixels the edit added/changed inside a
+// category region, so every layer lands on the mannequin's 1024×1536 canvas already aligned.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Figure landmarks from a keyed mannequin: silhouette bbox and the head box (top of the skull down to the
+ * chin, where the silhouette narrows to the neck; ears included).
+ * @returns {{bbox: object, head: {left, top, right, bottom, width, height}} | null}
+ */
+export function detectFigure(data, w, h, thr = 128) {
+  const bbox = alphaBBox(data, w, h, thr);
+  if (!bbox) return null;
+  const span = (y) => {
+    let l = -1;
+    let r = -1;
+    const row = y * w;
+    for (let x = bbox.left; x <= bbox.right; x++) {
+      if (data[(row + x) * 4 + 3] > thr) {
+        if (l < 0) l = x;
+        r = x;
+      }
+    }
+    return l < 0 ? null : [l, r];
+  };
+  const lim = bbox.top + Math.round(bbox.height * 0.55);
+  let maxW = 0;
+  let maxY = bbox.top;
+  const spans = [];
+  for (let y = bbox.top; y <= lim; y++) {
+    const s = span(y);
+    spans.push(s);
+    const wd = s ? s[1] - s[0] + 1 : 0;
+    if (wd > maxW) {
+      maxW = wd;
+      maxY = y;
+    }
+  }
+  let chin = -1;
+  for (let y = maxY; y <= lim; y++) {
+    const s = spans[y - bbox.top];
+    if (!s || s[1] - s[0] + 1 < 0.55 * maxW) {
+      chin = y;
+      break;
+    }
+  }
+  if (chin < 0) chin = bbox.top + Math.round(bbox.height * 0.4);
+  let left = w;
+  let right = -1;
+  for (let y = bbox.top; y < chin; y++) {
+    const s = spans[y - bbox.top];
+    if (s) {
+      left = Math.min(left, s[0]);
+      right = Math.max(right, s[1]);
+    }
+  }
+  const head = { left, top: bbox.top, right, bottom: chin, width: right - left + 1, height: chin - bbox.top };
+  return { bbox, head };
+}
+
+/** Region names used by `diffExtract:<region>` (manifest postprocess) → part slots. */
+export const DIFF_REGIONS = ['hair', 'face', 'eyes', 'mouth', 'cheek', 'expression', 'accessory', 'body'];
+
+/**
+ * Category region box (inclusive pixel bounds, clamped) derived from the base figure.
+ * head-ish parts use the head box (padded); hair extends up/sideways and down to the knees (long hair);
+ * body (outfits) spans neck → below the feet, wider than the silhouette.
+ */
+export function regionBox(fig, region, w, h) {
+  const H = fig.head;
+  const B = fig.bbox;
+  const hw = H.width;
+  const hh = H.height;
+  const pad = (l, t, r, b) => ({ left: H.left - l * hw, top: H.top - t * hh, right: H.right + r * hw, bottom: H.bottom + b * hh });
+  let box;
+  switch (region) {
+    case 'hair':
+      box = { ...pad(0.55, 0.45, 0.55, 0), bottom: B.top + B.height * 0.9 };
+      break;
+    case 'face':
+    case 'eyes':
+    case 'mouth':
+    case 'cheek':
+      box = pad(0.08, 0.08, 0.08, 0.1);
+      break;
+    case 'expression':
+      box = pad(0.35, 0.35, 0.35, 0.3);
+      break;
+    case 'accessory':
+      box = pad(0.4, 0.5, 0.4, 0.35);
+      break;
+    case 'body':
+      box = { left: B.left - B.width * 0.18, top: H.bottom - hh * 0.25, right: B.right + B.width * 0.18, bottom: B.bottom + B.height * 0.05 };
+      break;
+    default:
+      throw new Error(`unknown diff region: ${region}`);
+  }
+  return {
+    left: Math.max(0, Math.round(box.left)),
+    top: Math.max(0, Math.round(box.top)),
+    right: Math.min(w - 1, Math.round(box.right)),
+    bottom: Math.min(h - 1, Math.round(box.bottom)),
+  };
+}
+
+/** Per-region tuning. Faint parts (blush, freckles) need a low threshold and tiny components. */
+export const DIFF_DEFAULTS = {
+  hair: { threshold: 38, soft: 14, radius: 2, open: 2, close: 2, minComponent: 400, maxChroma: 40 },
+  body: { threshold: 36, soft: 14, radius: 2, open: 2, close: 2, minComponent: 400, maxChroma: 40 },
+  face: { threshold: 22, soft: 10, radius: 2, close: 1, minComponent: 120 },
+  eyes: { threshold: 30, soft: 12, radius: 2, close: 1, minComponent: 40 },
+  mouth: { threshold: 30, soft: 12, radius: 2, close: 1, minComponent: 30 },
+  cheek: { threshold: 14, soft: 6, radius: 2, close: 1, minComponent: 12 },
+  expression: { threshold: 28, soft: 12, radius: 2, close: 1, minComponent: 40 },
+  accessory: { threshold: 34, soft: 14, radius: 2, close: 2, minComponent: 80 },
+};
+
+/**
+ * Pixel distance between two RGBA pixels: alpha difference + colour distance of the shared coverage.
+ * Colour distance is measured in a luma/opponent space with chroma weighted ×2: neutral parts (grey hair,
+ * grey outfits) over the chromatic mannequin (skin, pale-cyan underwear) differ mostly in chroma.
+ */
+function pixDist(a, i, b, j) {
+  const aa = a[i + 3] / 255;
+  const ba = b[j + 3] / 255;
+  const dr = a[i] - b[j];
+  const dg = a[i + 1] - b[j + 1];
+  const db = a[i + 2] - b[j + 2];
+  const dy = 0.299 * dr + 0.587 * dg + 0.114 * db;
+  const c1 = dr - dg;
+  const c2 = (dr + dg) / 2 - db;
+  return Math.abs(aa - ba) * 255 + Math.min(aa, ba) * Math.sqrt(dy * dy + 2 * (c1 * c1 + c2 * c2));
+}
+
+/**
+ * Global translation of `edited` relative to `base` (both keyed RGBA, same size): minimises silhouette
+ * mismatch outside `exclude` (the region the edit is allowed to change). Coarse (step 2) then fine search.
+ * @returns {{dx, dy, cost, baseCost}} — sample edited at (x + dx, y + dy) to align it with base.
+ */
+export function estimateShift(base, edited, w, h, exclude, { maxShift = 16, thr = 128 } = {}) {
+  const bb = alphaBBox(base, w, h, thr);
+  if (!bb) return { dx: 0, dy: 0, cost: 0, baseCost: 0 };
+  // Sample the band around the base silhouette edge (where a shift shows), outside the excluded box.
+  const pts = [];
+  const band = maxShift + 2;
+  const x0 = Math.max(band, bb.left - band);
+  const x1 = Math.min(w - band - 1, bb.right + band);
+  const y0 = Math.max(band, bb.top - band);
+  const y1 = Math.min(h - band - 1, bb.bottom + band);
+  const inA = (x, y) => base[(y * w + x) * 4 + 3] > thr;
+  for (let y = y0; y <= y1; y += 2) {
+    for (let x = x0; x <= x1; x += 2) {
+      if (exclude && x >= exclude.left && x <= exclude.right && y >= exclude.top && y <= exclude.bottom) continue;
+      const a = inA(x, y);
+      if (a !== inA(x + 6, y) || a !== inA(x - 6, y) || a !== inA(x, y + 6) || a !== inA(x, y - 6)) pts.push(y * w + x);
+    }
+  }
+  if (pts.length < 200) return { dx: 0, dy: 0, cost: 0, baseCost: 0, samples: pts.length };
+  const cost = (dx, dy) => {
+    let c = 0;
+    for (const p of pts) {
+      const x = (p % w) + dx;
+      const y = ((p - (p % w)) / w) + dy;
+      const ea = x >= 0 && y >= 0 && x < w && y < h ? edited[(y * w + x) * 4 + 3] > thr : false;
+      if (ea !== base[p * 4 + 3] > thr) c++;
+    }
+    return c;
+  };
+  const baseCost = cost(0, 0);
+  let best = { dx: 0, dy: 0, cost: baseCost };
+  for (let dy = -maxShift; dy <= maxShift; dy += 2) {
+    for (let dx = -maxShift; dx <= maxShift; dx += 2) {
+      const c = cost(dx, dy);
+      if (c < best.cost) best = { dx, dy, cost: c };
+    }
+  }
+  const c0 = best;
+  for (let dy = c0.dy - 1; dy <= c0.dy + 1; dy++) {
+    for (let dx = c0.dx - 1; dx <= c0.dx + 1; dx++) {
+      const c = cost(dx, dy);
+      if (c < best.cost) best = { dx, dy, cost: c };
+    }
+  }
+  return { ...best, baseCost, samples: pts.length };
+}
+
+/** Binary max (dilate) / min (erode) filter with a (2r+1)² square kernel, separable. */
+function morph(mask, w, h, r, dilate) {
+  if (r <= 0) return mask;
+  const tmp = new Uint8Array(w * h);
+  const out = new Uint8Array(w * h);
+  const want = dilate ? 1 : 0;
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let v = dilate ? 0 : 1;
+      for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) {
+        if (mask[row + k] === want) {
+          v = want;
+          break;
+        }
+      }
+      tmp[row + x] = v;
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    for (let y = 0; y < h; y++) {
+      let v = dilate ? 0 : 1;
+      for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) {
+        if (tmp[k * w + x] === want) {
+          v = want;
+          break;
+        }
+      }
+      out[y * w + x] = v;
+    }
+  }
+  return out;
+}
+
+/** Holes of `mask` (0-components not touching the border) smaller than maxArea → 1. In place. */
+function fillHoles(mask, w, h, maxArea) {
+  const seen = new Uint8Array(w * h);
+  const stack = new Int32Array(w * h);
+  const members = [];
+  for (let s = 0; s < w * h; s++) {
+    if (seen[s] || mask[s]) continue;
+    members.length = 0;
+    let border = false;
+    let sp = 0;
+    stack[sp++] = s;
+    seen[s] = 1;
+    while (sp) {
+      const p = stack[--sp];
+      members.push(p);
+      const x = p % w;
+      const y = (p - x) / w;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) border = true;
+      if (x > 0 && !seen[p - 1] && !mask[p - 1]) (seen[p - 1] = 1), (stack[sp++] = p - 1);
+      if (x < w - 1 && !seen[p + 1] && !mask[p + 1]) (seen[p + 1] = 1), (stack[sp++] = p + 1);
+      if (y > 0 && !seen[p - w] && !mask[p - w]) (seen[p - w] = 1), (stack[sp++] = p - w);
+      if (y < h - 1 && !seen[p + w] && !mask[p + w]) (seen[p + w] = 1), (stack[sp++] = p + w);
+    }
+    if (!border && members.length <= maxArea) for (const p of members) mask[p] = 1;
+  }
+  return mask;
+}
+
+/**
+ * Raw-pixel core of diffExtract. `base`/`edited` are keyed RGBA arrays of the same w×h.
+ * @returns {{data: Uint8Array, info: object}} RGBA of the edited colours with the diff alpha.
+ */
+export function diffExtractPixels(base, edited, w, h, opts = {}) {
+  const region = opts.region ?? 'face';
+  const d = { ...(DIFF_DEFAULTS[region] ?? DIFF_DEFAULTS.face), ...opts };
+  const { threshold, soft, radius, close, open = 0, feather = 1, maxShift = 16, register = true, maxChroma, chromaSoft = 16, lineLuma = 90 } = d;
+  const lineRadius = d.lineRadius ?? radius + 3;
+  const minComponent = d.minComponent ?? 120;
+  const fig = detectFigure(base, w, h);
+  if (!fig) throw new Error('diffExtract: the base image has no figure');
+  const box = opts.box ?? regionBox(fig, region, w, h);
+  const shift = register ? estimateShift(base, edited, w, h, box, { maxShift }) : { dx: 0, dy: 0 };
+  const { dx, dy } = shift;
+  const bw = box.right - box.left + 1;
+  const bh = box.bottom - box.top + 1;
+  const ramp = new Float32Array(bw * bh);
+  const veto = new Uint8Array(bw * bh); // never filled by closing / hole filling
+  const lo = threshold - soft;
+  const hi = threshold + soft;
+  for (let y = box.top; y <= box.bottom; y++) {
+    for (let x = box.left; x <= box.right; x++) {
+      const sx = x + dx;
+      const sy = y + dy;
+      if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
+      const ei = (sy * w + sx) * 4;
+      if (edited[ei + 3] < 8) continue;
+      let best = Infinity;
+      let aMin = 255;
+      let aMax = 0;
+      // Line art jitters more than fills between edits: dark pixels search a wider neighbourhood.
+      const er = edited[ei];
+      const eg = edited[ei + 1];
+      const eb = edited[ei + 2];
+      const rad = 0.299 * er + 0.587 * eg + 0.114 * eb < lineLuma ? lineRadius : radius;
+      for (let ny = Math.max(0, y - rad); ny <= Math.min(h - 1, y + rad) && best > lo; ny++) {
+        for (let nx = Math.max(0, x - rad); nx <= Math.min(w - 1, x + rad); nx++) {
+          const bi = (ny * w + nx) * 4;
+          const dd = pixDist(edited, ei, base, bi);
+          if (dd < best) best = dd;
+          if (base[bi + 3] < aMin) aMin = base[bi + 3];
+          if (base[bi + 3] > aMax) aMax = base[bi + 3];
+        }
+      }
+      // Anti-aliased fringe of the edited silhouette right on the base silhouette edge = re-rendered outline.
+      if (edited[ei + 3] < 217 && aMin < 128 && aMax >= 128) best = 0;
+      let v = best <= lo ? 0 : best >= hi ? 1 : (best - lo) / (hi - lo);
+      // Neutral-only parts (grey hair / outfits): chromatic pixels (skin, underwear) are base redraws.
+      if (maxChroma !== undefined) {
+        const c = Math.max(er, eg, eb) - Math.min(er, eg, eb);
+        if (c > maxChroma) {
+          v *= Math.max(0, 1 - (c - maxChroma) / chromaSoft);
+          if (c > maxChroma + chromaSoft / 2) veto[(y - box.top) * bw + (x - box.left)] = 1;
+        }
+      }
+      ramp[(y - box.top) * bw + (x - box.left)] = v;
+    }
+  }
+  // Binary mask → closing (bridges lines the part shares with the base) → fill enclosed holes (eye whites).
+  let mask = new Uint8Array(bw * bh);
+  for (let p = 0; p < mask.length; p++) mask[p] = ramp[p] >= 0.5 ? 1 : 0;
+  // Opening removes thin re-rendered outlines of the body (hair/outfit edits redraw arms and torso).
+  if (open > 0) mask = morph(morph(mask, bw, bh, open, false), bw, bh, open, true);
+  if (close > 0) mask = morph(morph(mask, bw, bh, close, true), bw, bh, close, false);
+  fillHoles(mask, bw, bh, d.maxHole ?? Math.round(bw * bh * 0.02));
+  for (let p = 0; p < mask.length; p++) if (veto[p]) mask[p] = 0;
+  // Alpha = mask, softened by a small box feather on its inner edge (the edited image's own alpha keeps
+  // the anti-aliasing against the backdrop). Nothing outside the mask: partial ramps there are re-drawn
+  // base outlines (e.g. the body outline next to long hair) and would show as ghost lines.
+  const hard = new Float32Array(bw * bh);
+  for (let p = 0; p < hard.length; p++) hard[p] = mask[p];
+  let alpha = hard;
+  if (feather > 0) {
+    const f = feather;
+    alpha = new Float32Array(hard.length);
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        let s = 0;
+        let n = 0;
+        for (let yy = Math.max(0, y - f); yy <= Math.min(bh - 1, y + f); yy++) {
+          for (let xx = Math.max(0, x - f); xx <= Math.min(bw - 1, x + f); xx++) {
+            s += hard[yy * bw + xx];
+            n++;
+          }
+        }
+        const p = y * bw + x;
+        alpha[p] = mask[p] ? (hard[p] + s / n) / 2 : Math.min(hard[p], s / n);
+      }
+    }
+  }
+  const out = new Uint8Array(w * h * 4);
+  let opaque = 0;
+  for (let y = box.top; y <= box.bottom; y++) {
+    for (let x = box.left; x <= box.right; x++) {
+      const a = Math.min(1, alpha[(y - box.top) * bw + (x - box.left)]);
+      if (a <= 0.02) continue;
+      const sx = x + dx;
+      const sy = y + dy;
+      if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
+      const ei = (sy * w + sx) * 4;
+      const oi = (y * w + x) * 4;
+      out[oi] = edited[ei];
+      out[oi + 1] = edited[ei + 1];
+      out[oi + 2] = edited[ei + 2];
+      out[oi + 3] = Math.round(a * edited[ei + 3]);
+      if (out[oi + 3] > 128) opaque++;
+    }
+  }
+  const removed = removeSmallComponents(out, w, h, minComponent);
+  for (let i = 0; i < out.length; i += 4) if (!out[i + 3]) out[i] = out[i + 1] = out[i + 2] = 0;
+  const bboxOut = alphaBBox(out, w, h, 128);
+  return {
+    data: out,
+    info: { region, box, head: fig.head, figure: fig.bbox, shift: { dx, dy, cost: shift.cost, baseCost: shift.baseCost }, opaque: opaque - removed, removed, bbox: bboxOut },
+  };
+}
+
+async function sameSizeRaw(buffer, w, h) {
+  const m = await sharp(buffer).metadata();
+  if (m.width === w && m.height === h) return toRaw(buffer);
+  return toRaw(await sharp(buffer).resize(w, h, { fit: 'fill' }).png().toBuffer());
+}
+
+/**
+ * Keep only what `edited` added to `base` inside a category region.
+ * Both images are expected to be chroma-keyed already (pass `key: true` to key raw magenta renders);
+ * the edited image is resized to the base canvas and re-registered (global shift) before diffing.
+ * @param {{region?: string, box?: object, threshold?: number, soft?: number, radius?: number, close?: number,
+ *          feather?: number, minComponent?: number, register?: boolean, key?: boolean}} opts
+ * @returns {Promise<{buffer: Buffer, info: object}>}
+ */
+export async function diffExtractDetailed(baseBuf, editedBuf, opts = {}) {
+  const b = opts.key ? await chromaKey(baseBuf) : baseBuf;
+  const e = opts.key ? await chromaKey(editedBuf) : editedBuf;
+  const base = await toRaw(b);
+  const edited = await sameSizeRaw(e, base.w, base.h);
+  const r = diffExtractPixels(base.data, edited.data, base.w, base.h, opts);
+  return { buffer: await fromRaw(r.data, base.w, base.h).png().toBuffer(), info: r.info };
+}
+
+/** diffExtract → PNG buffer (same canvas as the base). See diffExtractDetailed. */
+export async function diffExtract(baseBuf, editedBuf, opts = {}) {
+  return (await diffExtractDetailed(baseBuf, editedBuf, opts)).buffer;
+}
+
+/**
+ * Split a hair layer into front/back: pixels over the (slightly grown) mannequin silhouette are drawn
+ * in front of the body/outfit, the rest (volume around the skull, long hair beside the torso) behind it.
+ * @returns {Promise<{front: Buffer, back: Buffer, info: {front: number, back: number}}>}
+ */
+export async function splitFrontBack(layerBuf, baseBuf, { grow = 2, thr = 128 } = {}) {
+  const layer = await toRaw(layerBuf);
+  const base = await sameSizeRaw(baseBuf, layer.w, layer.h);
+  const { w, h } = layer;
+  let sil = new Uint8Array(w * h);
+  for (let p = 0; p < w * h; p++) sil[p] = base.data[p * 4 + 3] > thr ? 1 : 0;
+  sil = morph(sil, w, h, grow, true);
+  const front = new Uint8Array(layer.data);
+  const back = new Uint8Array(layer.data);
+  let nf = 0;
+  let nb = 0;
+  for (let p = 0; p < w * h; p++) {
+    if (!layer.data[p * 4 + 3]) continue;
+    // Cleared pixels also get RGB 0 so the transparent area compresses away.
+    if (sil[p]) {
+      back.fill(0, p * 4, p * 4 + 4);
+      nf++;
+    } else {
+      front.fill(0, p * 4, p * 4 + 4);
+      nb++;
+    }
+  }
+  return {
+    front: await fromRaw(front, w, h).png().toBuffer(),
+    back: await fromRaw(back, w, h).png().toBuffer(),
+    info: { front: nf, back: nb },
+  };
+}
+
+/**
+ * Tint a neutral layer (see server/assets/tintMath.js for the contract).
+ * @param {Buffer} buf  PNG layer
+ * @param {string} hex  target colour
+ * @param {{mode?: 'full'|'selective', ref?: string}} opts  ref = the layer's meta.tintRef
+ */
+export async function tintLayer(buf, hex, { mode = 'full', ref } = {}) {
+  const { data, w, h } = await toRaw(buf);
+  const refHex = ref ?? measureFill(data) ?? '#808080';
+  tintPixels(data, refHex, hex, { mode });
+  return fromRaw(data, w, h).png().toBuffer();
+}
+
+/**
+ * Stack layers bottom→top on one canvas (all layers share the mannequin canvas).
+ * @param {Array<{buffer: Buffer, tint?: {color: string, ref?: string, mode?: string} | null}>} layers
+ * @param {{width?: number, height?: number, background?: string}} [opts]
+ */
+export async function composeLayers(layers, { width = 1024, height = 1536, background } = {}) {
+  const inputs = [];
+  for (const l of layers) {
+    let buf = l.buffer;
+    const m = await sharp(buf).metadata();
+    if (m.width !== width || m.height !== height) buf = await sharp(buf).resize(width, height, { fit: 'fill' }).png().toBuffer();
+    if (l.tint?.color) buf = await tintLayer(buf, l.tint.color, { mode: l.tint.mode, ref: l.tint.ref });
+    inputs.push({ input: buf });
+  }
+  const bg = background ? sharp({ create: { width, height, channels: 4, background } }) : sharp({ create: { width, height, channels: 4, background: CLEAR } });
+  return bg.composite(inputs).png().toBuffer();
 }

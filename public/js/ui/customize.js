@@ -1,8 +1,87 @@
-// Character customizer: ◀ ▶ per part, random button, name input, 2D portrait + 3D pawn preview.
+// Character customizer (Stage 5.5): tabs from avatars.json (`tabs`), option grids (color swatches / zoomed
+// portrait thumbnails), a big live preview (2D portrait with expression chips | 3D pawn), random buttons.
+//
+// Part C hook: `setPreviewRenderer(fn)` swaps the renderer of the big 2D preview (default = SVG renderAvatar).
+//   fn(avatar, { expression, size, defs }) → string (markup) | HTMLElement | Promise<string|HTMLElement|null>
+//   A Promise keeps the current preview until it resolves; stale results are dropped; null / a throw / a rejection
+//   falls back to the SVG portrait. `setPreviewRenderer(null)` restores the default. Open customizers re-render.
 import { getAvatarDefs, normalizeAvatar, randomAvatar, renderAvatar } from './avatar2d.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+const FALLBACK_LABELS = {
+  body: '체형', build: '체격', skin: '피부', face: '얼굴형', eyes: '눈', mouth: '입', cheek: '볼',
+  hair: '머리 모양', hairColor: '머리색', outfit: '의상', outfitColor: '의상 색', accessory: '액세서리',
+};
+
+/** Categories drawn as round color swatches (options carry `color`). */
+export const COLOR_PARTS = ['skin', 'hairColor', 'outfitColor'];
+
+/** Zoom region (AVATAR_CROPS key) of each category's thumbnails. */
+export const THUMB_CROPS = {
+  body: 'full', build: 'full', face: 'face', eyes: 'eyes', mouth: 'eyes', cheek: 'eyes',
+  hair: 'head', outfit: 'torso', accessory: 'head',
+};
+
+/** Expression chips of the 2D preview. */
+export const PREVIEW_EXPRESSIONS = [
+  { id: 'neutral', name: '기본' },
+  { id: 'joy', name: '기쁨' },
+  { id: 'cry', name: '울음' },
+  { id: 'shock', name: '놀람' },
+];
+
+/**
+ * Tabs for the customizer: `defs.tabs` filtered to known categories (each category once, first tab wins);
+ * categories no tab lists go to a trailing 「기타」 tab. Pure (node-tested).
+ * @returns {{id: string, name: string, parts: string[]}[]}
+ */
+export function buildTabs(defs) {
+  const known = new Set(defs.order);
+  const seen = new Set();
+  const tabs = [];
+  for (const t of defs.tabs ?? []) {
+    const parts = (t.parts ?? []).filter((p) => known.has(p) && !seen.has(p));
+    for (const p of parts) seen.add(p);
+    if (parts.length) tabs.push({ id: String(t.id), name: String(t.name ?? t.id), parts });
+  }
+  const rest = defs.order.filter((p) => !seen.has(p));
+  if (rest.length) tabs.push({ id: 'etc', name: tabs.length ? '기타' : '꾸미기', parts: rest });
+  return tabs;
+}
+
+/** Randomize only `parts` of an avatar (always changes something when possible). */
+export function randomizeParts(avatar, parts, defs, rnd = Math.random) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const next = { ...avatar };
+    for (const key of parts) {
+      const opts = defs.parts[key];
+      if (opts?.length) next[key] = opts[Math.floor(rnd() * opts.length)].id;
+    }
+    if (parts.some((k) => next[k] !== avatar[k])) return next;
+  }
+  return { ...avatar };
+}
+
+// ---------- preview renderer hook (part C) ----------
+
+export function defaultPreviewRenderer(avatar, { expression = 'neutral', size = 220 } = {}) {
+  return renderAvatar(avatar, { size, bg: '#fff4e0', expression, title: '미리보기' });
+}
+
+let previewRenderer = defaultPreviewRenderer;
+const openInstances = new Set();
+
+/** Replace the big 2D preview renderer (null → default SVG). See the file header for the contract. */
+export function setPreviewRenderer(fn) {
+  previewRenderer = typeof fn === 'function' ? fn : defaultPreviewRenderer;
+  for (const inst of openInstances) inst.refreshPreview();
+}
+
+export function getPreviewRenderer() {
+  return previewRenderer;
+}
 
 function want3dPreview() {
   try {
@@ -20,93 +99,312 @@ function want3dPreview() {
   }
 }
 
-const FALLBACK_LABELS = {
-  body: '체형', skin: '피부', hair: '머리 모양', hairColor: '머리색',
-  eyes: '눈', accessory: '액세서리', outfit: '의상', outfitColor: '의상 색',
-};
+const THUMB_CACHE_MAX = 400;
+const thumbCache = new Map(); // `${part}|${avatar json}` → svg string
+
+function thumbSvg(part, avatar) {
+  const key = `${part}|${JSON.stringify(avatar)}`;
+  let svg = thumbCache.get(key);
+  if (!svg) {
+    svg = renderAvatar(avatar, { size: 56, crop: THUMB_CROPS[part] ?? 'full' });
+    if (thumbCache.size >= THUMB_CACHE_MAX) thumbCache.delete(thumbCache.keys().next().value);
+    thumbCache.set(key, svg);
+  }
+  return svg;
+}
 
 /**
- * Render a customizer into `host`.
+ * Render a customizer into `host` (a full-screen dialog on mobile, a centered modal on desktop).
  * @param {HTMLElement} host
  * @param {{title?: string, initial?: {name?: string, avatar?: object}, submitLabel?: string,
  *          onSave: (v: {name: string, avatar: object}) => Promise<void>|void, onCancel?: () => void}} opts
- * @returns {{destroy: () => void}}
+ * @returns {{destroy: () => void, getAvatar: () => object}}
  */
 export function openCustomizer(host, { title = '캐릭터 만들기', initial = {}, submitLabel = '저장', onSave, onCancel }) {
   const defs = getAvatarDefs();
-  const labels = defs.labels || FALLBACK_LABELS;
+  const labels = { ...FALLBACK_LABELS, ...(defs.labels ?? {}) };
+  const tabs = buildTabs(defs);
   let avatar = initial.avatar ? normalizeAvatar(initial.avatar, defs) : randomAvatar(defs);
+  let activeTab = tabs[0]?.id;
+  let expression = 'neutral';
+  let view = '2d';
   let busy = false;
-
-  host.innerHTML = `
-    <form class="customizer card" novalidate>
-      <div class="customizer-head">
-        <h3>${esc(title)}</h3>
-        <button type="button" class="btn small ghost" data-act="random" title="랜덤">🎲 랜덤</button>
-      </div>
-      <div class="customizer-preview" aria-live="polite"><span class="cz-2d"></span><canvas class="cz-3d" width="140" height="140" hidden aria-label="3D 미리보기"></canvas></div>
-      <label class="field">
-        <span>이름</span>
-        <input name="name" maxlength="12" required placeholder="캐릭터 이름" value="${esc(initial.name ?? '')}" autocomplete="off">
-      </label>
-      <div class="part-rows">
-        ${defs.order
-          .map(
-            (key) => `
-          <div class="part-row" data-part="${key}">
-            <span class="part-label">${esc(labels[key] ?? key)}</span>
-            <button type="button" class="arrow" data-dir="-1" aria-label="${esc(labels[key] ?? key)} 이전">◀</button>
-            <span class="part-value"></span>
-            <button type="button" class="arrow" data-dir="1" aria-label="${esc(labels[key] ?? key)} 다음">▶</button>
-          </div>`,
-          )
-          .join('')}
-      </div>
-      <p class="form-error" role="alert"></p>
-      <div class="customizer-actions">
-        <button type="button" class="btn ghost" data-act="cancel">취소</button>
-        <button type="submit" class="btn primary">${esc(submitLabel)}</button>
-      </div>
-    </form>`;
-
-  const form = host.querySelector('form');
-  const preview = form.querySelector('.customizer-preview');
-  const errEl = form.querySelector('.form-error');
-
-  const preview2d = preview.querySelector('.cz-2d');
-  const canvas3d = preview.querySelector('.cz-3d');
-  let preview3d = null;
   let destroyed = false;
+  const can3d = want3dPreview();
+  const thumbState = new Map(); // tab id → avatar json its thumbnails were drawn with
 
-  const refresh = () => {
-    preview2d.innerHTML = renderAvatar(avatar, { size: 140, bg: '#fff4e0' });
-    preview3d?.set(avatar);
-    for (const row of form.querySelectorAll('.part-row')) {
-      const key = row.dataset.part;
-      const opts = defs.parts[key];
-      const idx = opts.findIndex((o) => o.id === avatar[key]);
-      const opt = opts[idx];
-      const swatch = opt.color ? `<i class="swatch" style="background:${esc(opt.color)}"></i>` : '';
-      row.querySelector('.part-value').innerHTML = `${swatch}${esc(opt.name ?? opt.id)} <small>${idx + 1}/${opts.length}</small>`;
-    }
+  const optionButton = (part, opt) => {
+    const isColor = COLOR_PARTS.includes(part) && opt.color;
+    const name = opt.name ?? opt.id;
+    return `<button type="button" class="cz-opt${isColor ? ' cz-swatch' : ''}" role="radio" aria-checked="false" tabindex="-1"
+      data-part="${esc(part)}" data-id="${esc(opt.id)}" title="${esc(name)}" aria-label="${esc(name)}">${
+        isColor ? `<i style="background:${esc(opt.color)}"></i>` : '<span class="cz-thumb"></span>'
+      }${isColor ? '' : `<span class="cz-opt-name">${esc(name)}</span>`}</button>`;
   };
 
-  form.addEventListener('click', (ev) => {
-    const arrow = ev.target.closest('.arrow');
-    if (arrow) {
-      const key = arrow.closest('.part-row').dataset.part;
-      const opts = defs.parts[key];
-      const idx = opts.findIndex((o) => o.id === avatar[key]);
-      const next = (idx + Number(arrow.dataset.dir) + opts.length) % opts.length;
-      avatar = { ...avatar, [key]: opts[next].id };
-      refresh();
+  host.innerHTML = `
+    <div class="cz-overlay">
+      <form class="customizer" novalidate role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <header class="cz-head">
+          <h3>${esc(title)}</h3>
+          <button type="button" class="cz-close" data-act="cancel" aria-label="닫기">✕</button>
+        </header>
+        <div class="cz-body">
+          <section class="cz-stage">
+            <div class="cz-preview" aria-live="polite">
+              <div class="cz-2d"></div>
+              <canvas class="cz-3d" width="260" height="260" hidden aria-label="3D 미리보기"></canvas>
+            </div>
+            <div class="cz-stage-tools">
+              <div class="cz-seg cz-view" role="group" aria-label="미리보기 방식"${can3d ? '' : ' hidden'}>
+                <button type="button" data-view="2d" aria-pressed="true">2D</button>
+                <button type="button" data-view="3d" aria-pressed="false">3D</button>
+              </div>
+              <div class="cz-expr" role="group" aria-label="표정 미리보기">
+                ${PREVIEW_EXPRESSIONS.map((e) => `<button type="button" class="cz-chip" data-expr="${e.id}" aria-pressed="${e.id === 'neutral'}">${esc(e.name)}</button>`).join('')}
+              </div>
+            </div>
+            <label class="field cz-name">
+              <span>이름</span>
+              <input name="name" maxlength="12" required placeholder="캐릭터 이름" value="${esc(initial.name ?? '')}" autocomplete="off">
+            </label>
+          </section>
+          <section class="cz-editor">
+            <div class="cz-tabs" role="tablist" aria-label="꾸미기 항목">
+              ${tabs.map((t) => `<button type="button" role="tab" id="cz-tab-${esc(t.id)}" data-tab="${esc(t.id)}" aria-controls="cz-panel-${esc(t.id)}" aria-selected="false" tabindex="-1">${esc(t.name)}</button>`).join('')}
+            </div>
+            <div class="cz-panels">
+              ${tabs
+                .map(
+                  (t) => `
+                <div class="cz-panel" role="tabpanel" id="cz-panel-${esc(t.id)}" data-tab="${esc(t.id)}" aria-labelledby="cz-tab-${esc(t.id)}" hidden>
+                  ${t.parts
+                    .map(
+                      (part) => `
+                    <div class="cz-cat" data-part="${esc(part)}">
+                      <div class="cz-cat-head"><span class="cz-cat-label" id="cz-lbl-${esc(part)}">${esc(labels[part] ?? part)}</span><span class="cz-cat-value"></span></div>
+                      <div class="cz-grid${COLOR_PARTS.includes(part) ? ' colors' : ''}" role="radiogroup" aria-labelledby="cz-lbl-${esc(part)}">
+                        ${defs.parts[part].map((o) => optionButton(part, o)).join('')}
+                      </div>
+                    </div>`,
+                    )
+                    .join('')}
+                </div>`,
+                )
+                .join('')}
+            </div>
+            <div class="cz-randoms">
+              <button type="button" class="btn small ghost" data-act="random-tab">🎲 이 탭만 랜덤</button>
+              <button type="button" class="btn small ghost" data-act="random">🎲 전체 랜덤</button>
+            </div>
+          </section>
+        </div>
+        <p class="form-error" role="alert"></p>
+        <footer class="cz-actions">
+          <div class="cz-ai-slot"></div>
+          <button type="button" class="btn ghost" data-act="cancel">취소</button>
+          <button type="submit" class="btn primary">${esc(submitLabel)}</button>
+        </footer>
+      </form>
+    </div>`;
+
+  const form = host.querySelector('form');
+  const errEl = form.querySelector('.form-error');
+  const preview2d = form.querySelector('.cz-2d');
+  const canvas3d = form.querySelector('.cz-3d');
+  const exprBar = form.querySelector('.cz-expr');
+  let preview3d = null;
+  let previewSeq = 0;
+  document.body.classList.add('cz-open');
+
+  // ----- preview -----
+  const PREVIEW_SIZE = 220;
+  function placePreview(content) {
+    if (content == null || content === '') return false;
+    if (typeof content === 'string') preview2d.innerHTML = content;
+    else if (typeof Node !== 'undefined' && content instanceof Node) preview2d.replaceChildren(content);
+    else return false;
+    return true;
+  }
+  function refreshPreview() {
+    if (destroyed) return;
+    const my = ++previewSeq;
+    const opts = { expression, size: PREVIEW_SIZE, defs };
+    const fallback = () => my === previewSeq && !destroyed && placePreview(defaultPreviewRenderer(avatar, opts));
+    let out;
+    try {
+      out = previewRenderer(avatar, opts);
+    } catch {
+      fallback();
       return;
     }
+    if (out && typeof out.then === 'function') {
+      if (!preview2d.firstChild) fallback(); // nothing on screen yet → show the SVG meanwhile
+      out.then(
+        (res) => {
+          if (my !== previewSeq || destroyed) return;
+          if (!placePreview(res)) fallback();
+        },
+        fallback,
+      );
+    } else if (!placePreview(out)) fallback();
+  }
+
+  // ----- grids -----
+  function renderThumbs(tabId, force = false) {
+    const key = JSON.stringify(avatar);
+    if (!force && thumbState.get(tabId) === key) return;
+    thumbState.set(tabId, key);
+    const panel = form.querySelector(`.cz-panel[data-tab="${CSS.escape(tabId)}"]`);
+    if (!panel) return;
+    for (const btn of panel.querySelectorAll('.cz-opt')) {
+      const slot = btn.querySelector('.cz-thumb');
+      if (!slot) continue;
+      const part = btn.dataset.part;
+      const variant = { ...avatar, [part]: btn.dataset.id };
+      if (part !== 'accessory') variant.accessory = 'none'; // glasses/caps would hide eyes/hair
+      const svg = thumbSvg(part, variant);
+      if (slot.dataset.svg !== svg) {
+        slot.innerHTML = svg;
+        slot.dataset.svg = svg;
+      }
+    }
+  }
+
+  function syncSelection() {
+    for (const cat of form.querySelectorAll('.cz-cat')) {
+      const part = cat.dataset.part;
+      const opt = defs.parts[part].find((o) => o.id === avatar[part]);
+      cat.querySelector('.cz-cat-value').textContent = opt?.name ?? opt?.id ?? '';
+      const focused = cat.contains(document.activeElement) ? document.activeElement : null;
+      for (const btn of cat.querySelectorAll('.cz-opt')) {
+        const on = btn.dataset.id === avatar[part];
+        btn.setAttribute('aria-checked', String(on));
+        btn.classList.toggle('on', on);
+        if (!focused) btn.tabIndex = on ? 0 : -1;
+      }
+    }
+  }
+
+  function refresh() {
+    refreshPreview();
+    preview3d?.set(avatar);
+    syncSelection();
+    renderThumbs(activeTab);
+  }
+
+  function selectTab(id, focus = false) {
+    activeTab = id;
+    for (const b of form.querySelectorAll('[role=tab]')) {
+      const on = b.dataset.tab === id;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+      if (on && focus) b.focus();
+    }
+    for (const p of form.querySelectorAll('.cz-panel')) p.hidden = p.dataset.tab !== id;
+    renderThumbs(id);
+    try {
+      localStorage.setItem('jinsei.czTab', id);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function setPart(part, id) {
+    if (avatar[part] === id) return;
+    avatar = { ...avatar, [part]: id };
+    refresh();
+  }
+
+  function setView(next) {
+    view = next === '3d' && can3d ? '3d' : '2d';
+    for (const b of form.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
+    preview2d.hidden = view !== '2d';
+    exprBar.hidden = view !== '2d';
+    canvas3d.hidden = view !== '3d' || !preview3d;
+    if (view === '3d' && !preview3d) {
+      // 3D preview = the board pawn (Stage 4); created lazily on first use.
+      import('../scene/pawnPreview.js')
+        .then(({ createPawnPreview }) => {
+          if (destroyed) return;
+          preview3d = createPawnPreview(canvas3d, { defs, size: 260 });
+          preview3d.set(avatar);
+          canvas3d.hidden = view !== '3d';
+        })
+        .catch(() => {
+          setView('2d');
+          form.querySelector('.cz-view').hidden = true;
+        });
+    }
+  }
+
+  function setExpression(next) {
+    expression = next;
+    for (const b of exprBar.querySelectorAll('[data-expr]')) b.setAttribute('aria-pressed', String(b.dataset.expr === expression));
+    refreshPreview();
+  }
+
+  // ----- events -----
+  form.addEventListener('click', (ev) => {
+    const opt = ev.target.closest('.cz-opt');
+    if (opt) {
+      setPart(opt.dataset.part, opt.dataset.id);
+      for (const b of opt.parentElement.children) b.tabIndex = b === opt ? 0 : -1;
+      return;
+    }
+    const tab = ev.target.closest('[role=tab]');
+    if (tab) return selectTab(tab.dataset.tab);
+    const v = ev.target.closest('[data-view]');
+    if (v) return setView(v.dataset.view);
+    const e = ev.target.closest('[data-expr]');
+    if (e) return setExpression(e.dataset.expr);
     const act = ev.target.closest('[data-act]')?.dataset.act;
     if (act === 'random') {
-      avatar = randomAvatar(defs);
+      avatar = randomizeParts(avatar, defs.order, defs);
       refresh();
+    } else if (act === 'random-tab') {
+      const t = tabs.find((x) => x.id === activeTab);
+      if (t) {
+        avatar = randomizeParts(avatar, t.parts, defs);
+        refresh();
+      }
     } else if (act === 'cancel') {
+      onCancel?.();
+    }
+  });
+
+  form.addEventListener('keydown', (ev) => {
+    const tab = ev.target.closest?.('[role=tab]');
+    if (tab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) {
+      ev.preventDefault();
+      const i = tabs.findIndex((t) => t.id === tab.dataset.tab);
+      const n = tabs.length;
+      const j = ev.key === 'Home' ? 0 : ev.key === 'End' ? n - 1 : (i + (ev.key === 'ArrowRight' ? 1 : -1) + n) % n;
+      selectTab(tabs[j].id, true);
+      return;
+    }
+    const opt = ev.target.closest?.('.cz-opt');
+    if (opt && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(ev.key)) {
+      ev.preventDefault();
+      const items = [...opt.parentElement.querySelectorAll('.cz-opt')];
+      const i = items.indexOf(opt);
+      // columns of the (wrapping) grid: count items on the first row
+      const top0 = items[0].offsetTop;
+      const cols = Math.max(1, items.filter((b) => b.offsetTop === top0).length);
+      let j = i;
+      if (ev.key === 'ArrowRight') j = (i + 1) % items.length;
+      else if (ev.key === 'ArrowLeft') j = (i - 1 + items.length) % items.length;
+      else if (ev.key === 'ArrowDown') j = cols < items.length ? Math.min(items.length - 1, i + cols) : (i + 1) % items.length;
+      else if (ev.key === 'ArrowUp') j = cols < items.length ? Math.max(0, i - cols) : (i - 1 + items.length) % items.length;
+      else if (ev.key === 'Home') j = 0;
+      else if (ev.key === 'End') j = items.length - 1;
+      for (const b of items) b.tabIndex = b === items[j] ? 0 : -1;
+      items[j].focus();
+      items[j].scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+      return;
+    }
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
       onCancel?.();
     }
   });
@@ -114,10 +412,10 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     if (busy) return;
-    const name = form.name.value.trim();
+    const name = form.elements.name.value.trim();
     if (!name) {
       errEl.textContent = '이름을 입력하세요.';
-      form.name.focus();
+      form.elements.name.focus();
       return;
     }
     busy = true;
@@ -131,24 +429,27 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
     }
   });
 
-  refresh();
-  // 3D preview = the board pawn (Stage 4); skipped when the player chose the 2D board or WebGL fails.
-  if (want3dPreview()) {
-    import('../scene/pawnPreview.js')
-      .then(({ createPawnPreview }) => {
-        if (destroyed) return;
-        preview3d = createPawnPreview(canvas3d, { defs });
-        preview3d.set(avatar);
-        canvas3d.hidden = false;
-      })
-      .catch(() => {});
+  let savedTab = null;
+  try {
+    savedTab = localStorage.getItem('jinsei.czTab');
+  } catch {
+    /* ignore */
   }
+  selectTab(tabs.some((t) => t.id === savedTab) ? savedTab : activeTab);
+  refresh();
+  setView('2d');
+
+  const inst = { refreshPreview };
+  openInstances.add(inst);
   return {
+    getAvatar: () => ({ ...avatar }),
     destroy() {
       destroyed = true;
+      openInstances.delete(inst);
       preview3d?.dispose();
       preview3d = null;
       host.innerHTML = '';
+      document.body.classList.remove('cz-open');
     },
   };
 }
