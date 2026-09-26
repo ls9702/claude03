@@ -1,0 +1,19 @@
+{
+  "name": "jinsei-game",
+  "version": "0.1.0",
+  "private": true,
+  "description": "브라우저 기반 HTTP 턴제 멀티플레이 인생게임 (라즈베리파이 4 서버)",
+  "type": "module",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
