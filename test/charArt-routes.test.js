@@ -2,9 +2,12 @@
 // edit/delete lifecycle, admin force. Fake Gemini only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 import { startServer } from '../server/index.js';
-import { MSG, artKey } from '../server/assets/charArt.js';
+import { ART_STEPS, ART_VERSION, MSG, artKey, placeFigure } from '../server/assets/charArt.js';
+import { chromaKey } from '../server/assets/postprocess.js';
 import { getAvatars } from '../server/data/index.js';
 import { fakeGeminiFetch, jsonResponse, magentaCharacter, tempManifest } from './assetFixtures.js';
 import { httpCall, sseReader, tempDir } from './helpers.js';
@@ -101,7 +104,7 @@ test('meta.features.charArt reflects the server key; without a key the route is 
   assert.equal(r.json.error, 'AI 일러스트 기능이 꺼져 있어요');
 });
 
-test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per character; admin force; edit/restore', async () => {
+test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per character; edit/cache reuse; admin force', async () => {
   const c1 = (await call(srv, 'POST', `/api/rooms/${roomId}/characters`, { token: A, body: { name: '곱슬', avatar: AV } })).json.characterId;
   const url = `/api/rooms/${roomId}/characters/${c1}/art`;
   assert.equal((await call(srv, 'POST', url, { token: B })).status, 403, 'not the owner');
@@ -111,6 +114,19 @@ test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per charact
   const es = await fetch(`${srv.url}/api/rooms/${roomId}/events?token=${B}`, { signal: ac.signal });
   const until = sseReader(es.body);
   await until((f) => f.event === 'state');
+
+  // Keep the suite fast: an earlier (interrupted) job already made the base and 8 edits, so this job
+  // generates the last 2 steps; progress still reports every step (resumed ones included).
+  const dir = path.join(tmp.dir, 'on', 'char-art', artKey(AV));
+  await mkdir(dir, { recursive: true });
+  const base = await sharp(await placeFigure(await chromaKey(await magentaCharacter()))).webp().toBuffer();
+  const steps = {};
+  for (const st of ART_STEPS.slice(0, 9)) {
+    await writeFile(path.join(dir, `${st.name}.webp`), base);
+    steps[st.name] = { file: `${st.name}.webp` };
+  }
+  await writeFile(path.join(dir, 'index.json'), JSON.stringify({ key: artKey(AV), version: ART_VERSION, avatar: AV, rev: 0, complete: false, steps }));
+  const calls0 = ok.calls.length;
 
   const r = await call(srv, 'POST', url, { token: A });
   assert.equal(r.status, 202);
@@ -147,6 +163,7 @@ test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per charact
   assert.equal(art.files.base, `/api/char-art/${key}/base.webp`);
   assert.equal(art.files.poses.jump, `/api/char-art/${key}/pose-jump.webp`);
   assert.equal(art.files.expressions.angry, `/api/char-art/${key}/expr-angry.webp`);
+  assert.equal(ok.calls.length - calls0, 2, 'only the missing steps were generated');
   ac.abort();
 
   const img = await fetch(srv.url + art.files.poses.cheer);
@@ -170,13 +187,16 @@ test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per charact
   assert.equal(c2.room.characters.find((c) => c.id === c2.characterId).art.status, 'ready');
   assert.equal(ok.calls.length, calls);
 
-  // admin: auth required; force regenerates (cache-busting ?v=1 URLs)
+  // admin: auth required; force ignores the cache and the 1-per-character rule (here: credits run out)
   assert.equal((await call(srv, 'POST', `/admin/api/rooms/${roomId}/characters/${c1}/art?force=1`)).status, 401);
+  ctl.mode = '402';
   const f = await call(srv, 'POST', `/admin/api/rooms/${roomId}/characters/${c1}/art?force=1`, { cookie });
   assert.equal(f.status, 202);
-  const done = await waitArt(srv, A, c1, (a) => a?.status === 'ready' && a.files.base.endsWith('?v=1'), 8000);
-  assert.equal(done.art.progress, 1);
-  assert.equal(ok.calls.length, calls + 11);
+  assert.equal(f.json.art.status, 'pending');
+  const failed = await waitArt(srv, A, c1, (a) => a?.status === 'failed');
+  assert.equal(failed.art.reason, MSG.credits);
+  assert.equal(ok.calls.length, calls);
+  ctl.mode = 'ok';
 });
 
 test('402 → failed with the Korean credits reason; delete cancels a running job', async () => {
@@ -218,7 +238,7 @@ test('lobby only; strict file validation (traversal → 400/404); the key never 
     [`/api/char-art/${key}/..%2Findex.json`, [400]],
     [`/api/char-art/${key}/..%2F..%2Fsecrets.webp`, [400]],
     [`/api/char-art/..%2F..%2Fsaves/base.webp`, [400]],
-    [`/api/char-art/%2e%2e/base.webp`, [400]],
+    [`/api/char-art/%2e%2e/base.webp`, [400, 404]], // fetch resolves %2e%2e itself
     [`/api/char-art/${key.toUpperCase()}/base.webp`, [400]],
     [`/api/char-art/abc/base.webp`, [400]],
     [`/api/char-art/${key}/BASE.webp`, [400]],

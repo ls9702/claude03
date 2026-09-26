@@ -157,3 +157,23 @@ node scripts/gen-assets.js --all --accept-first --dry-run        # 호출 수만
   node scripts/part-sheets.js --out /tmp/sheets                       # 콘택트 시트로 눈으로 확인
   ```
 - 추출 알고리즘을 고친 뒤에는 `node scripts/part-qa.js --reprocess`로 API 호출 없이 전부 다시 추출할 수 있습니다.
+
+## AI character art (Stage 5.5-D)
+
+로비에서 캐릭터를 저장한 뒤 편집 화면 아래의 **✨ AI 일러스트 만들기** 버튼으로, 고른 모습 그대로의 고품질 일러스트
+(기본 전신 1장 + 포즈 6장 + 표정 4장 = 11장)를 Gemini로 만듭니다. 서버에 Gemini 키가 있을 때만 버튼이 보입니다.
+
+- 캐릭터마다 1번(실패하면 다시 시도 가능). 다시 만들기는 관리자만: `POST /admin/api/rooms/<방>/characters/<캐릭터>/art?force=1`.
+- 같은 모습은 `DATA_DIR/char-art/<해시>/`에 저장되어 다른 방·다른 판에서도 즉시 재사용됩니다. 일일 생성 한도는 에셋 스튜디오와 공유합니다.
+- 생성 중에는 진행률(n/11)이 로비에 표시되고, 게임 시작은 기다리지 않습니다. 서버를 재시작하면 진행 중이던 작업은 실패(서버 재시작)로 바뀝니다.
+- 크레딧이 없으면(HTTP 402) "AI 생성 크레딧이 부족합니다. 관리자에게 문의하세요."로 실패 처리됩니다.
+
+실제 생성(크레딧 충전 후):
+```bash
+export GEMINI_API_KEY=...          # 또는 /admin/assets 에서 키 저장 (DATA_DIR/secrets.json)
+npm start                          # /api/meta → features.charArt: true
+# 로비 → 내 캐릭터 편집 → ✨ AI 일러스트 만들기
+```
+
+API 없이 흐름만 확인(테스트 전용): `CHAR_ART_FAKE=1 DATA_DIR=/tmp/jinsei-smoke npm start`
+(`CHAR_ART_FAKE=402`는 크레딧 부족 흉내). 운영에서는 절대 켜지 마세요.

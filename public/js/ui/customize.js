@@ -7,6 +7,7 @@
 //   A Promise keeps the current preview until it resolves; stale results are dropped; null / a throw / a rejection
 //   falls back to the SVG portrait. `setPreviewRenderer(null)` restores the default. Open customizers re-render.
 import { getAvatarDefs, normalizeAvatar, outfitTintable, randomAvatar, renderAvatar } from './avatar2d.js';
+import { mountArtSlot } from './charArt.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -164,10 +165,13 @@ function nextInGrid(items, i, key) {
  * Render a customizer into `host` (a full-screen dialog on mobile, a centered modal on desktop).
  * @param {HTMLElement} host
  * @param {{title?: string, initial?: {name?: string, avatar?: object}, submitLabel?: string,
- *          onSave: (v: {name: string, avatar: object}) => Promise<void>|void, onCancel?: () => void}} opts
+ *          onSave: (v: {name: string, avatar: object}) => Promise<void>|void, onCancel?: () => void,
+ *          art?: {roomId: string, charId: string}}} opts
+ *   `art` = the saved character being edited (Stage 5.5-D "✨ AI 일러스트 만들기" in `.cz-ai-slot`); when omitted
+ *   while editing (`initial.avatar`), the character is looked up in the saved room by name + avatar.
  * @returns {{destroy: () => void, getAvatar: () => object}}
  */
-export function openCustomizer(host, { title = '캐릭터 만들기', initial = {}, submitLabel = '저장', onSave, onCancel }) {
+export function openCustomizer(host, { title = '캐릭터 만들기', initial = {}, submitLabel = '저장', onSave, onCancel, art = null }) {
   const defs = getAvatarDefs();
   const labels = { ...FALLBACK_LABELS, ...(defs.labels ?? {}) };
   const tabs = buildTabs(defs);
@@ -338,6 +342,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   }
 
   function refresh() {
+    artSlot?.update(); // Stage 5.5-D: the AI art button only applies to the saved look
     refreshPreview();
     preview3d?.set(avatar);
     syncSelection();
@@ -480,6 +485,9 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
     }
   });
 
+  // Stage 5.5-D: AI illustration button / progress in the footer slot (editing a saved character only).
+  const artSlot = initial.avatar ? mountArtSlot(form.querySelector('.cz-ai-slot'), { initial, target: art, getAvatar: () => avatar }) : null;
+
   let savedTab = null;
   try {
     savedTab = localStorage.getItem('jinsei.czTab');
@@ -496,6 +504,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
     getAvatar: () => ({ ...avatar }),
     destroy() {
       destroyed = true;
+      artSlot?.destroy();
       openInstances.delete(inst);
       preview3d?.dispose();
       preview3d = null;

@@ -261,3 +261,40 @@
   (idempotent upsert, keeps accepted) → `node scripts/gen-assets.js --kind part --accept-first --parallel 2` →
   `node scripts/part-qa.js [--fix]` (alignment/coverage QA, regenerates outliers) → `node scripts/part-sheets.js --out
   <dir>` (contact sheets) for a visual check.
+
+## AI character art (Stage 5.5-D)
+- Optional per-character illustration set generated with Gemini that matches the customization exactly. Room state:
+  `character.art = {key, status: 'pending'|'ready'|'failed', progress: 0..1, reason?, files?: {base, poses: {idle, wave,
+  jump, cheer, cry, shock}, expressions: {joy, cry, shock, angry}}}` + `character.artGenerations` (successful player
+  requests). URLs `/api/char-art/<key>/<name>.webp` (`base`, `pose-<id>`, `expr-<id>`; `?v=<rev>` only after an admin
+  force). Transparent WebP, 1024×1536, schoolgirl placement (bbox y 371..1303, feet on 1303, centred x 512).
+  `viewFor` passes `art` to everyone (contract fields only).
+- `server/assets/charArt.js` — pure: `artKey(avatar)` (sha256 of stable JSON + `ART_VERSION`, 24 hex), `ART_STEPS`
+  (base + 6 poses + 4 expressions = 11), `artFiles(key, rev)`, `describeAvatar`/`buildArtPrompt` (STYLE bible +
+  promptDesc of every category, hex colours, outfitColor skipped for `tintable:false`, "match the reference character's
+  design exactly", magenta, full body, front view), `buildEditPrompt(step)`, `classifyError` (402 → "AI 생성 크레딧이
+  부족합니다. 관리자에게 문의하세요.", 401/403/NO_KEY/DAILY_CAP fatal). Service `createCharArtService({dataDir, client,
+  avatars, composeRef?, styleAnchorPath?, stepRetries=2, editConcurrency=2})`: `generate(avatar, {onProgress, force})`
+  → `{key, cached, promise, detach}` (jobs deduped per key across rooms; detach of the last listener cancels before
+  the next step), `cached(key)` (sync), `filePath(key, file)` (regex + containment). Base refs = style anchor +
+  `composeReference` (paper-doll `layerStack` + `composeLayers` of the exact avatar on white); edits ref = base on
+  flat magenta. Each result → `chromaKey` → `placeFigure` (base) / `normalizeFrames([base, frame])` → WebP. Cache
+  `DATA_DIR/char-art/<key>/{index.json, *.webp}`; index lists finished steps, so a failed/cancelled job resumes.
+  Uses the studio's Gemini client (same limiter, retries and daily cap).
+- `server/store/charArtRunner.js` — `CharArtRunner(store, service, {throttleMs=1000})`: `request(roomId, charId,
+  {admin, force})` (409 without key / already pending / used up; cached look → ready at once), per-room queue (max 1
+  running job per room), progress committed ≤ 1/s per room + SSE `charArt {charId, status, progress, done?, total?,
+  reason?}`, `syncCharacter(room, charId)` (called by add/edit routes: unchanged look keeps art, changed look → cached
+  set or cleared; lobby `updateCharacter` itself drops `art` on an avatar change), `cancel` (delete), `restore()`
+  (boot: pending → failed "서버 재시작"), `enabled()` (key present). `createApp` exposes it as `app.locals.charArt`.
+- Routes: `POST /api/rooms/:id/characters/:charId/art` (owner 403, lobby 409, feature off 409 "AI 일러스트 기능이 꺼져
+  있어요", 1 per character → 202 pending | 200 cached), admin `POST /admin/api/rooms/:id/characters/:charId/art?force=1`,
+  `GET /api/char-art/:key/:file` (key `/^[a-f0-9]{16,64}$/`, file `/^[a-z0-9-]+\.webp$/` → 400; `max-age=604800`),
+  `GET /api/meta` → `features.charArt`.
+- Client: `public/js/ui/charArt.js` `mountArtSlot(slot, {initial, target, getAvatar})` renders into the customizer's
+  `.cz-ai-slot` (button → "AI가 그리는 중… n/11" → thumbnail + "완성!", failed → reason + 다시 시도); `openCustomizer`
+  accepts `art: {roomId, charId}` (else it finds the edited character in the saved room by name + avatar). Polls the
+  room once a second while pending. Hidden when `features.charArt` is false or the look is unsaved.
+- TEST-ONLY smoke hook: env `CHAR_ART_FAKE=1` (fake Gemini echoing the reference on magenta; `402` = credits
+  exhausted; `CHAR_ART_FAKE_DELAY_MS`, default 250) → `server/assets/fakeGemini.js`. Never set it in production.
+  Tests (`test/charArt*.test.js`) inject `assets.studioOptions.fetchImpl` / `charArtOptions` / `charArtThrottleMs`.

@@ -139,7 +139,7 @@ export class CharArtRunner {
     const handle = this.service.generate(c.avatar, {
       force,
       onProgress: (p) => {
-        if (!current()) return;
+        if (!current()) return slot.detach(); // room / character gone without a cancel → stop listening
         const art = { key, status: 'pending', progress: p.progress };
         this.store.broadcast(roomId, 'charArt', { charId, status: 'pending', progress: p.progress, done: p.done, total: p.total });
         this.#setArt(roomId, charId, art);

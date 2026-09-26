@@ -12,6 +12,7 @@ import {
   artKey,
   buildArtPrompt,
   buildEditPrompt,
+  classifyError,
   composeReference,
   createCharArtService,
   describeAvatar,
@@ -126,6 +127,18 @@ test('cache key: stable for the same avatar (any key order), different for any p
   assert.equal(f.base, `/api/char-art/${k}/base.webp`);
   assert.deepEqual(Object.keys(f.poses), ['idle', 'wave', 'jump', 'cheer', 'cry', 'shock']);
   assert.deepEqual(Object.keys(f.expressions), ['joy', 'cry', 'shock', 'angry']);
+  assert.equal(artFiles(k, 2).poses.idle, `/api/char-art/${k}/pose-idle.webp?v=2`, 'admin force busts caches');
+});
+
+test('error classification: 402/401/403/no key/daily cap stop the job with Korean reasons', () => {
+  assert.deepEqual(classifyError({ status: 402 }), { reason: MSG.credits, fatal: true });
+  assert.equal(classifyError({ status: 401 }).fatal, true);
+  assert.equal(classifyError({ status: 403 }).reason, MSG.badKey);
+  assert.equal(classifyError({ code: 'NO_KEY' }).reason, 'AI 일러스트 기능이 꺼져 있어요');
+  assert.equal(classifyError({ code: 'DAILY_CAP' }).fatal, true);
+  const other = classifyError({ status: 500, message: `boom ${KEY}` });
+  assert.equal(other.fatal, false);
+  assert.ok(!other.reason.includes(KEY));
 });
 
 test('paper-doll reference composition of the exact avatar', async () => {
