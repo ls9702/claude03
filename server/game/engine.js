@@ -18,6 +18,7 @@ import {
 import { endGame as lobbyEndGame, startGame as lobbyStartGame } from './lobby.js';
 import { applyResult } from './result.js';
 import { createRng } from './rng.js';
+import { decorateEvents } from './presentation.js';
 import { openPrompt, promptComplete, resolvePrompt, resolveTile } from './spaces.js';
 
 export { EngineError };
@@ -64,6 +65,7 @@ export function startGame(room, ctx = {}) {
   emit(tx, 'gameStarted', { eras: next.board.eras.map((e) => e.id) });
   announceTurn(tx);
   next.rngState = rng.state;
+  decorateEvents(tx.events, { room: next, data, seed: rng.state });
   return { ok: true, room: next, logs: [...r.logs, ...tx.logs], events: tx.events };
 }
 
@@ -363,6 +365,7 @@ export function applyAction(room, action, ctx = {}) {
   const tx = createTx(next, c);
   handler(tx, action);
   next.rngState = c.rng.state;
+  decorateEvents(tx.events, { room: next, data: c.data, seed: c.rng.state });
   return { room: next, events: tx.events, logs: tx.logs };
 }
 

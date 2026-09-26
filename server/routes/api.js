@@ -1,6 +1,6 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getBalance, getBoardData, getEras } from '../data/index.js';
+import { getAvatars, getBalance, getBoardData, getEras, getTones } from '../data/index.js';
 import {
   addCharacter,
   findPlayer,
@@ -40,6 +40,7 @@ export function createApiRouter({ store, runner }) {
       reactions: REACTIONS,
       board: { tileTypes: board.tileTypes, routes: board.routes },
       balance: { bets, spin, bonusSpinUnit },
+      presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
     });
   });
 

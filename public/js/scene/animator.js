@@ -13,12 +13,12 @@
 /** Event types that get their own animation step (in engine order). */
 export const ANIMATED_EVENTS = new Set([
   'turnStarted', 'spun', 'betResolved', 'moved', 'eraChanged', 'landed', 'moneyChanged',
-  'routeChosen', 'finished', 'bonusSpin', 'gameOver',
+  'routeChosen', 'finished', 'bonusSpin', 'gameOver', 'promptResolved',
 ]);
 
 /**
  * Map an engine event batch to animation steps. Events carrying `emotion` + `charId` also get an
- * `emotion` step right after their own; consecutive duplicates (same char + emotion, e.g. a
+ * `emotion` step right after their own (Stage 5 `neutral` = none); consecutive duplicates (same char + emotion, e.g. a
  * moneyChanged followed by its log line) collapse into one.
  * @returns {{kind:string, event:object}[]}
  */
@@ -28,7 +28,7 @@ export function planSteps(events) {
   for (const e of events ?? []) {
     if (!e || typeof e.type !== 'string') continue;
     if (ANIMATED_EVENTS.has(e.type)) steps.push({ kind: e.type, event: e });
-    if (e.emotion && e.charId) {
+    if (e.emotion && e.emotion !== 'neutral' && e.charId) {
       const key = `${e.charId}:${e.emotion}`;
       if (key !== lastEmotion) steps.push({ kind: 'emotion', event: e });
       lastEmotion = key;
@@ -169,6 +169,10 @@ export function createAnimator({ handlers = {}, clock = realClock, maxStepMs = 1
     },
     setHandler(kind, fn) {
       handlers[kind] = fn;
+    },
+    /** Current handler of a step kind (wrap it: `const orig = getHandler('landed'); setHandler('landed', …)`). */
+    getHandler(kind) {
+      return handlers[kind] ?? null;
     },
     sleep,
   };

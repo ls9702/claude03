@@ -1,0 +1,253 @@
+/* Stage 5 — 2D event cut-in (public/js/ui/cutin2d.js) + layered avatars (avatar2d.renderAvatarLayers).
+   Layout (원작 방식): tone frame → 16:9 illustration window → yellow dialogue box → character tabs.
+   Tone colors come from tones.json via --ci-f1/--ci-f2/--ci-f3/--ci-tag/--ci-chipBg/--ci-chipInk. */
+
+.cutin {
+  --ci-f1: #fed7aa; --ci-f2: #fb923c; --ci-f3: #c2410c; --ci-tag: #ea580c; --ci-chipBg: #ffedd5; --ci-chipInk: #7c2d12;
+  position: fixed; inset: 0; z-index: 22; /* above the top bar (20), below the reaction bar (25) and toasts */
+  display: flex; align-items: center; justify-content: center;
+  padding: 12px 8px calc(72px + env(safe-area-inset-bottom));
+  overflow: auto; overscroll-behavior: contain; font-family: var(--font); color: #fff;
+  -webkit-tap-highlight-color: transparent; cursor: pointer;
+}
+.cutin[hidden] { display: none; }
+body.cutin-open { overflow: hidden; }
+
+.ci-frame {
+  position: fixed; inset: 0; background-color: var(--ci-f2);
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.22) 0 40px, transparent 41px),
+    radial-gradient(circle at 88% 78%, rgba(255, 255, 255, 0.22) 0 46px, transparent 47px),
+    radial-gradient(circle at 80% 14%, rgba(255, 255, 255, 0.16) 0 28px, transparent 29px),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0 18px, transparent 18px 36px),
+    linear-gradient(180deg, var(--ci-f1), var(--ci-f2));
+}
+.cutin.has-frame .ci-frame {
+  background-size: 240px 240px; background-repeat: repeat;
+  animation: ci-pan 40s linear infinite;
+}
+@keyframes ci-pan { to { background-position: 240px 240px; } }
+
+.ci-stage {
+  position: relative; margin: auto;
+  width: min(1040px, calc(100vw - 32px), calc((100dvh - 330px) * 16 / 9));
+  min-width: min(560px, calc(100vw - 16px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+.cutin.prompt .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 400px) * 16 / 9)); }
+@media (min-width: 701px) {
+  /* prompts: smaller window, full-width dialogue box so the options fit above the reaction bar */
+  .cutin.prompt .ci-box, .cutin.prompt .ci-tabs, .cutin.prompt .ci-reacts { width: min(1040px, calc(100vw - 32px)); align-self: center; }
+}
+.ci-top { display: flex; justify-content: flex-end; min-height: 18px; margin-bottom: -8px; }
+.ci-top:has(.ci-era:empty) { display: none; }
+.ci-era { font-weight: 900; font-size: 0.9rem; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45); }
+
+/* illustration window */
+.ci-win {
+  position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: 8px; overflow: hidden;
+  background: #bfe3ff; container-type: inline-size;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 8px var(--ci-f3), 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+.ci-bg, .ci-cast, .ci-fx { position: absolute; inset: 0; }
+.ci-bg-img, .ci-bg-svg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.ci-bg-img { animation: ci-kenburns 9s ease-out both; transform-origin: 50% 60%; }
+@keyframes ci-kenburns { from { transform: scale(1.07); } to { transform: scale(1); } }
+.ci-fx { pointer-events: none; }
+.ci-tag {
+  position: absolute; left: 12px; top: 12px; z-index: 3; max-width: calc(100% - 24px);
+  background: var(--ci-tag); color: #fff; font-weight: 900; font-size: clamp(12px, 1.6cqw, 16px);
+  padding: 4px 14px; border-radius: 999px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.ci-slot {
+  position: absolute; bottom: 2%; height: 86%; aspect-ratio: 0.52; transform: translateX(-50%);
+  container-type: size; z-index: 1;
+}
+.ci-emo {
+  position: absolute; top: 2%; left: -16%; font-size: 13cqh; line-height: 1; z-index: 2;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25)); animation: ci-emo-pop 0.5s 0.35s cubic-bezier(0.3, 1.8, 0.5, 1) both;
+}
+.ci-slot.right .ci-emo { left: auto; right: -16%; } /* opposite side of the speech bubble */
+@keyframes ci-emo-pop { from { transform: scale(0) rotate(-30deg); opacity: 0; } }
+
+/* speech bubble */
+.ci-bubble {
+  position: absolute; top: 7%; max-width: 40%; z-index: 4;
+  background: #fff; color: #1f1a24; border: 3px solid var(--ci-tag); border-radius: 16px;
+  padding: 0.5em 0.8em; font-weight: 800; font-size: clamp(13px, 2.1cqw, 21px); line-height: 1.35;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2); transform-origin: 20% 100%;
+  animation: ci-bubble-pop 0.35s cubic-bezier(0.3, 1.7, 0.5, 1) both;
+}
+.ci-bubble::after {
+  content: ''; position: absolute; bottom: -12px; left: 28px;
+  border: 8px solid transparent; border-top-color: #fff; border-bottom: 0;
+}
+.ci-bubble.right { transform-origin: 80% 100%; }
+.ci-bubble.right::after { left: auto; right: 28px; }
+@keyframes ci-bubble-pop { from { transform: scale(0.2); opacity: 0; } }
+
+.ci-reacts { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; min-height: 0; margin: -6px 0 -4px; }
+.ci-react {
+  background: rgba(255, 255, 255, 0.96); color: #1f1a24; border-radius: 999px; padding: 3px 10px;
+  font-size: 0.85rem; font-weight: 800; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); animation: ci-bubble-pop 0.3s both;
+}
+
+/* dialogue box */
+.ci-box {
+  position: relative; background: rgba(20, 12, 24, 0.93); border: 5px solid #fde047; border-radius: 10px;
+  box-shadow: 0 0 0 4px #b45309, 0 14px 30px rgba(0, 0, 0, 0.35);
+  padding: 22px 28px 14px; min-height: 118px; cursor: pointer;
+}
+.ci-who {
+  position: absolute; left: 22px; top: -20px; background: #fde047; color: #7c2d12;
+  font-size: 0.95rem; font-weight: 900; padding: 3px 14px; border-radius: 8px;
+}
+.ci-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; float: right; max-width: 48%; margin: -4px 0 6px 12px; }
+.ci-chip {
+  font-size: 0.9rem; font-weight: 800; background: var(--ci-chipBg); color: var(--ci-chipInk);
+  padding: 4px 12px; border-radius: 999px; animation: ci-bubble-pop 0.3s 0.4s both;
+}
+.ci-chip.plus { background: #dcfce7; color: #14532d; }
+.ci-chip.minus { background: #fee2e2; color: #7f1d1d; }
+.ci-text { font-size: clamp(17px, 2.3vw, 27px); font-weight: 700; line-height: 1.5; min-height: 1.5em; word-break: keep-all; overflow-wrap: anywhere; }
+.ci-options { clear: both; }
+.ci-opt-who { margin: 10px 0 0; font-size: 0.95rem; color: #fde047; font-weight: 800; }
+.ci-opt-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+.ci-opt {
+  appearance: none; font: inherit; font-size: 1.05rem; font-weight: 800; color: #1f1a24; cursor: pointer;
+  background: #fff; border: 3px solid var(--ci-tag); border-radius: 14px; min-height: 52px; padding: 8px 14px;
+  display: flex; align-items: center; gap: 8px; justify-content: center; box-shadow: 0 4px 0 var(--ci-f3);
+  transition: transform 0.08s;
+}
+.ci-opt:hover:not(:disabled), .ci-opt:focus-visible { background: var(--ci-chipBg); outline: none; transform: translateY(-2px); }
+.ci-opt:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--ci-f3); }
+.ci-opt:disabled { opacity: 0.55; cursor: default; }
+.ci-opt.picked { opacity: 1; background: #fde047; }
+.ci-opt .c-icon { font-size: 1.4rem; }
+.ci-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; min-height: 28px; clear: both; }
+.ci-wait { color: #fde68a; font-weight: 700; font-size: 0.95rem; }
+.ci-deadline { color: #fff; opacity: 0.85; font-size: 0.85rem; }
+.ci-next {
+  appearance: none; border: 0; background: none; color: #fde047; font-size: 1.4rem; cursor: pointer; line-height: 1;
+  padding: 2px 4px; margin-left: auto; position: relative; animation: ci-next-bob 0.9s ease-in-out infinite;
+}
+.ci-next[hidden] { display: none; }
+.ci-progress { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 3px; border-radius: 2px; background: rgba(253, 224, 71, 0.85); transform: scaleX(0); transform-origin: left; pointer-events: none; }
+.ci-progress.run { animation: ci-auto var(--ci-auto, 4s) linear both; }
+@keyframes ci-next-bob { 50% { transform: translateY(4px); } }
+@keyframes ci-auto { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* character tabs */
+.ci-tabs { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; cursor: default; }
+.ci-tabs-l, .ci-tabs-r { display: flex; gap: 6px; flex-wrap: wrap; }
+.ci-tab {
+  display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.93); color: #0f172a;
+  font-weight: 800; font-size: 0.8rem; padding: 3px 10px 3px 4px; border-radius: 999px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  border: 0; font-family: inherit;
+}
+.ci-tab.on { background: #22c55e; color: #fff; }
+.ci-tab.me { outline: 2px solid #fde047; }
+.ci-tab-av svg { display: block; border-radius: 50%; background: #fff0dc; }
+.ci-tab.btn-sound { padding: 5px 12px; cursor: pointer; }
+
+/* entry / exit */
+.cutin.enter .ci-frame { animation: ci-fade 0.25s ease-out both; }
+.cutin.has-frame.enter .ci-frame { animation: ci-fade 0.25s ease-out both, ci-pan 40s linear infinite; }
+.cutin.enter .ci-win { animation: ci-win-in 0.38s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.cutin.enter .ci-box { animation: ci-box-in 0.35s 0.08s ease-out both; }
+.cutin.leaving .ci-stage { animation: ci-out 0.14s ease-in forwards; }
+@keyframes ci-fade { from { opacity: 0; } }
+@keyframes ci-win-in { from { transform: scale(0.9) translateY(-12px); opacity: 0; } }
+@keyframes ci-box-in { from { transform: translateY(24px); opacity: 0; } }
+@keyframes ci-out { to { transform: scale(0.97); opacity: 0; } }
+
+/* ---------- layered avatar (renderAvatarLayers) ---------- */
+.av2 { position: absolute; inset: 0; }
+.av2-body { position: absolute; inset: 0; transform-origin: 50% 100%; animation: av2-breathe 2.6s ease-in-out infinite; }
+.av2-stack { position: absolute; inset: 0; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.25)); }
+.av2.flip .av2-stack, .av2.flip .av2-sprite { scale: -1 1; }
+.av2-layer {
+  position: absolute; left: 50%; bottom: -5.7%; height: 113.3%; width: auto; max-width: none;
+  transform: translateX(-50%); opacity: 0; transition: opacity 0.15s ease-out; user-select: none; pointer-events: none;
+}
+.av2-layer.full { bottom: -25%; height: 164.8%; } /* raw full-canvas image (recolor unavailable) */
+.av2-layer.on { opacity: 1; }
+.av2-sprite { position: absolute; left: 50%; transform: translateX(-50%); background-repeat: no-repeat; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.25)); }
+.av2.sprite-on .av2-stack { opacity: 0; }
+.av2.svg .av2-stack svg { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; }
+.av2.enter { animation: av2-enter 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; transform-origin: 50% 100%; }
+
+.av2[data-pose='idle'] .av2-body { animation: av2-breathe 2.6s ease-in-out infinite; }
+.av2[data-pose='wave'] .av2-body { animation: av2-bob 1.1s ease-in-out infinite; }
+.av2[data-pose='cheer'] .av2-body { animation: av2-bounce 0.62s ease-in-out infinite; }
+.av2[data-pose='jump'] .av2-body { animation: av2-hop 0.9s cubic-bezier(0.3, 0, 0.4, 1) infinite; }
+.av2[data-pose='cry'] .av2-body { animation: av2-sob 0.55s ease-in-out infinite; }
+.av2[data-pose='shock'] .av2-body { animation: av2-shake 0.09s linear 5, av2-breathe 2.6s 0.5s ease-in-out infinite; }
+
+@keyframes av2-enter {
+  0% { transform: translateY(18%) scale(1.18, 0.55); opacity: 0; }
+  45% { transform: translateY(-4%) scale(0.9, 1.12); opacity: 1; }
+  72% { transform: scale(1.05, 0.95); }
+  100% { transform: none; }
+}
+@keyframes av2-breathe { 50% { transform: scale(1.006, 1.02); } }
+@keyframes av2-bob { 50% { transform: translateY(-2.2%) scale(1, 1.01); } }
+@keyframes av2-bounce { 0%, 100% { transform: none; } 30% { transform: translateY(-5%) scale(0.98, 1.03); } 60% { transform: scale(1.03, 0.97); } }
+@keyframes av2-hop {
+  0% { transform: scale(1.06, 0.92); }
+  30% { transform: translateY(-11%) scale(0.95, 1.07); }
+  55% { transform: translateY(-13%) scale(1, 1); }
+  85% { transform: translateY(0) scale(1.05, 0.94); }
+  100% { transform: scale(1.06, 0.92); }
+}
+@keyframes av2-sob { 50% { transform: translateY(1%) rotate(-1.2deg) scale(1.01, 0.985); } }
+@keyframes av2-shake { 25% { transform: translateX(-2.5%); } 75% { transform: translateX(2.5%); } }
+
+/* particles (tears / sweat / hearts) — positioned in the figure box (head ≈ top 45 %) */
+.av2-fx { position: absolute; inset: 0; pointer-events: none; container-type: size; }
+.av2-p { position: absolute; line-height: 1; }
+.av2-p.heart { font-size: 11cqh; animation: av2-heart 1.8s ease-out infinite; }
+.av2-p.heart.h1 { left: 62%; top: 2%; }
+.av2-p.heart.h2 { left: 12%; top: 10%; animation-delay: 0.6s; font-size: 8cqh; }
+.av2-p.heart.h3 { left: 76%; top: 18%; animation-delay: 1.2s; font-size: 7cqh; }
+@keyframes av2-heart { 0% { transform: translateY(20%) scale(0.4); opacity: 0; } 25% { opacity: 1; transform: scale(1); } 100% { transform: translateY(-120%) scale(0.9); opacity: 0; } }
+.av2-p.sweat { left: 74%; top: 8%; font-size: 9cqh; animation: av2-sweat 1.4s ease-in infinite; }
+@keyframes av2-sweat { 0% { transform: translateY(-20%); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(80%); opacity: 0; } }
+.av2-p.tear { width: 3.2cqh; height: 4.4cqh; background: #60a5fa; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; top: 28%; opacity: 0; animation: av2-tear 1s ease-in infinite; }
+.av2-p.tear.t1 { left: 34%; }
+.av2-p.tear.t2 { left: 60%; animation-delay: 0.25s; }
+.av2-p.tear.t3 { left: 31%; animation-delay: 0.5s; }
+.av2-p.tear.t4 { left: 63%; animation-delay: 0.75s; }
+@keyframes av2-tear { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 15% { opacity: 0.95; } 100% { transform: translateY(260%) scale(1); opacity: 0; } }
+
+/* ---------- result list revealed after the 「결과 발표」 intro cut-in ---------- */
+.ranking.reveal { opacity: 0; }
+.ranking.reveal.shown { opacity: 1; }
+.ranking.reveal.shown .rank-row { animation: ci-box-in 0.4s ease-out both; }
+.ranking.reveal.shown .rank-row:nth-child(2) { animation-delay: 0.12s; }
+.ranking.reveal.shown .rank-row:nth-child(3) { animation-delay: 0.24s; }
+.ranking.reveal.shown .rank-row:nth-child(n + 4) { animation-delay: 0.36s; }
+
+/* ---------- phones: same structure stacked, window stays 16:9 ---------- */
+@media (max-width: 700px), (max-aspect-ratio: 4/5) {
+  .cutin { padding: 10px 8px calc(76px + env(safe-area-inset-bottom)); }
+  .ci-stage { width: calc(100vw - 16px); min-width: 0; gap: 12px; }
+  .ci-box { padding: 20px 14px 10px; min-height: 0; }
+  .ci-chips { float: none; max-width: none; justify-content: flex-start; margin: 2px 0 8px; }
+  .ci-chip { font-size: 0.8rem; }
+  .ci-text { font-size: 17px; }
+  .ci-opt-list { grid-template-columns: 1fr; }
+  .cutin.prompt .ci-stage { width: calc(100vw - 16px); }
+  .ci-bubble { max-width: 50%; top: 14%; font-size: clamp(11px, 3.3cqw, 16px); border-width: 2px; }
+  .ci-tag { font-size: 11px; padding: 3px 10px; left: 8px; top: 8px; }
+  .ci-tab { font-size: 0.72rem; }
+  .ci-who { font-size: 0.85rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cutin *, .cutin *::before, .cutin *::after, .av2, .av2 * { animation: none !important; transition: none !important; }
+  .av2-layer { opacity: 1; }
+  .av2-p.tear, .av2-p.sweat, .av2-p.heart { opacity: 1; }
+}

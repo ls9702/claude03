@@ -1,0 +1,17 @@
+{
+  "eras": [
+    { "id": "baby", "name": "아기", "defaultTurns": 3 },
+    { "id": "elem", "name": "초등학생", "defaultTurns": 5 },
+    { "id": "middle", "name": "중학생", "defaultTurns": 4 },
+    { "id": "high", "name": "고등학생", "defaultTurns": 5 },
+    { "id": "young", "name": "청년", "defaultTurns": 15 },
+    { "id": "middle_age", "name": "중년", "defaultTurns": 15 },
+    { "id": "senior", "name": "노년", "defaultTurns": 6 }
+  ],
+  "modes": {
+    "lifetime": { "name": "인생 전체", "eras": ["baby", "elem", "middle", "high", "young", "middle_age", "senior"] },
+    "kids": { "name": "어린 시절", "eras": ["baby", "elem", "middle", "high"] },
+    "adult": { "name": "어른 인생", "eras": ["young", "middle_age", "senior"] }
+  },
+  "limits": { "minTurns": 1, "maxTurns": 40 }
+}

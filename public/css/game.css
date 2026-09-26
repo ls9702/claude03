@@ -19,7 +19,7 @@
 /* board header: era tabs + tools (camera reset, quality, 2D/3D toggle) */
 .board-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .board-head .era-tabs { flex: 1 1 260px; min-width: 0; margin-bottom: 0; }
-.board-tools { display: flex; gap: 6px; align-items: center; flex: none; margin-left: auto; }
+.board-tools { display: flex; gap: 6px; align-items: center; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
 .quality-select { min-height: 30px; padding: 2px 8px; font-size: 0.8rem; border-radius: 999px; }
 
 /* 3D board */
@@ -184,6 +184,12 @@ body:has(.game[data-quality='tv']) main { max-width: 1800px; }
 .g-log .tone-money { border-color: #d4a017; }
 .g-log .tone-result { border-color: #8a4fd6; font-weight: 700; }
 .g-log .tone-holiday { border-color: #e2504c; }
+.g-log .tone-treasure { border-color: #d4a017; }
+.g-log .tone-neutral { border-color: var(--line); }
+
+/* Stage 5 toolbar toggles (sound / BGM / cut-ins) */
+.tool-toggle { min-width: 36px; }
+.tool-toggle.off { opacity: 0.55; text-decoration: line-through; }
 
 /* decision modal: bottom sheet on mobile, centered on desktop */
 .g-modal {

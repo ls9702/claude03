@@ -1,0 +1,151 @@
+{
+  "tileTypes": {
+    "start":    { "name": "출발",     "icon": "🚩", "color": "#9aa5b1" },
+    "money":    { "name": "돈",       "icon": "💰", "color": "#f2c94c" },
+    "loss":     { "name": "지출",     "icon": "💸", "color": "#6c7bd1" },
+    "event":    { "name": "이벤트",   "icon": "❗", "color": "#5cb87a" },
+    "heart":    { "name": "하트",     "icon": "💗", "color": "#ff7eb6" },
+    "job":      { "name": "직업",     "icon": "💼", "color": "#4f8ee0" },
+    "card":     { "name": "카드",     "icon": "🃏", "color": "#9a6ad6" },
+    "shop":     { "name": "상점",     "icon": "🛍️", "color": "#f39a3d" },
+    "treasure": { "name": "보물",     "icon": "🏺", "color": "#d4a017" },
+    "house":    { "name": "부동산",   "icon": "🏠", "color": "#c7773a" },
+    "stop":     { "name": "정지",     "icon": "🛑", "color": "#e2504c" },
+    "merge":    { "name": "합류",     "icon": "🔗", "color": "#8d99ae" },
+    "goal":     { "name": "골",       "icon": "🏁", "color": "#2d2a32" }
+  },
+
+  "routes": {
+    "love":   { "name": "연애·육아",        "icon": "💕", "color": "#ff7eb6", "tone": "love" },
+    "career": { "name": "일·커리어",        "icon": "💼", "color": "#4f8ee0", "tone": "career" },
+    "money":  { "name": "보물·부동산·금전", "icon": "💰", "color": "#d4a017", "tone": "money" }
+  },
+  "routeEras": ["young", "middle_age"],
+  "routeStop": { "promptId": "routeChoice", "label": "인생 갈림길", "icon": "🔀" },
+  "mergeTile": { "label": "합류 지점", "icon": "🔗" },
+
+  "fixedStops": {
+    "high": [{ "index": 0, "promptId": "exam", "label": "수능", "icon": "📝" }]
+  },
+
+  "eras": {
+    "baby": {
+      "pool": [
+        { "type": "money", "weight": 5 },
+        { "type": "loss", "weight": 1 },
+        { "type": "event", "weight": 3 }
+      ],
+      "money": { "min": 10, "max": 50, "labels": ["돌잔치 축하금", "세뱃돈", "할머니 용돈", "아기 모델 촬영"] },
+      "loss": { "min": 10, "max": 30, "labels": ["분유값", "기저귀 대란", "장난감 파손"] }
+    },
+    "elem": {
+      "pool": [
+        { "type": "money", "weight": 4 },
+        { "type": "loss", "weight": 2 },
+        { "type": "event", "weight": 3 },
+        { "type": "card", "weight": 1 }
+      ],
+      "money": { "min": 20, "max": 80, "labels": ["받아쓰기 100점 용돈", "세뱃돈", "어린이날 선물", "그림대회 상금"] },
+      "loss": { "min": 10, "max": 50, "labels": ["학원비", "태권도 도복", "문방구 뽑기", "게임 현질"] }
+    },
+    "middle": {
+      "pool": [
+        { "type": "money", "weight": 4 },
+        { "type": "loss", "weight": 2 },
+        { "type": "event", "weight": 3 },
+        { "type": "card", "weight": 1 }
+      ],
+      "money": { "min": 30, "max": 100, "labels": ["세뱃돈", "성적 장학금", "용돈 인상", "중고거래 대박"] },
+      "loss": { "min": 20, "max": 70, "labels": ["학원비", "수학여행비", "브랜드 패딩", "휴대폰 액정 파손"] }
+    },
+    "high": {
+      "pool": [
+        { "type": "money", "weight": 4 },
+        { "type": "loss", "weight": 2 },
+        { "type": "event", "weight": 3 },
+        { "type": "card", "weight": 1 }
+      ],
+      "money": { "min": 30, "max": 120, "labels": ["편의점 알바비", "교내 대회 상금", "세뱃돈", "모의고사 장학금"] },
+      "loss": { "min": 30, "max": 100, "labels": ["인강 결제", "독서실비", "과외비", "야자 간식비"] }
+    },
+    "young": {
+      "pool": [
+        { "type": "money", "weight": 4 },
+        { "type": "loss", "weight": 2 },
+        { "type": "event", "weight": 3 }
+      ],
+      "money": { "min": 100, "max": 400, "labels": ["월급날", "성과급", "중고차 되팔기", "공모전 상금"] },
+      "loss": { "min": 50, "max": 300, "labels": ["월세", "학자금 상환", "자취방 이사", "카드값 폭탄"] }
+    },
+    "middle_age": {
+      "pool": [
+        { "type": "money", "weight": 4 },
+        { "type": "loss", "weight": 2 },
+        { "type": "event", "weight": 3 }
+      ],
+      "money": { "min": 150, "max": 600, "labels": ["월급날", "연말 보너스", "적금 만기", "부업 수익"] },
+      "loss": { "min": 100, "max": 400, "labels": ["자녀 학원비", "차 수리비", "경조사비", "건강검진 재검"] }
+    },
+    "senior": {
+      "pool": [
+        { "type": "money", "weight": 4 },
+        { "type": "loss", "weight": 3 },
+        { "type": "event", "weight": 3 },
+        { "type": "treasure", "weight": 1 }
+      ],
+      "money": { "min": 100, "max": 500, "labels": ["연금 수령", "손주 용돈 역송금", "텃밭 수확", "퇴직금 이자"] },
+      "loss": { "min": 100, "max": 400, "labels": ["병원비", "보청기", "손주 선물", "효도 관광 바가지"] }
+    }
+  },
+
+  "routePools": {
+    "love": {
+      "pool": [
+        { "type": "heart", "weight": 5 },
+        { "type": "event", "weight": 2 },
+        { "type": "money", "weight": 2, "scale": 0.6 },
+        { "type": "loss", "weight": 1, "scale": 0.8 }
+      ],
+      "labels": { "money": ["맞벌이 월급", "축의금", "육아 수당"], "loss": ["데이트 비용", "기념일 선물", "기저귀·분유"] }
+    },
+    "career": {
+      "pool": [
+        { "type": "money", "weight": 5, "scale": 1.2 },
+        { "type": "job", "weight": 3 },
+        { "type": "card", "weight": 2 },
+        { "type": "loss", "weight": 1 }
+      ],
+      "labels": { "money": ["월급날", "승진 보너스", "야근 수당", "스톡옵션"], "loss": ["회식 2차", "자기계발비", "야근 택시비"] }
+    },
+    "money": {
+      "pool": [
+        { "type": "treasure", "weight": 3 },
+        { "type": "house", "weight": 2 },
+        { "type": "shop", "weight": 1 },
+        { "type": "money", "weight": 2, "scale": 1.8 },
+        { "type": "loss", "weight": 3, "scale": 1.5 }
+      ],
+      "labels": { "money": ["코인 떡상", "주식 배당", "로또 3등", "경매 낙찰 차익"], "loss": ["코인 떡락", "세무조사", "사기 투자", "주식 물타기"] }
+    }
+  },
+
+  "placeholders": {
+    "heart": "두근두근 만남의 기운… (연애 시스템은 준비 중)",
+    "job": "직업 칸! (취업·승진은 곧 열려요)",
+    "card": "카드를 한 장 주웠다… 아직 쓸 수 없는 카드다",
+    "shop": "상점 구경만 하고 나왔다 (상점 준비 중)",
+    "treasure": "뭔가 반짝이는 걸 봤는데… (보물 감정은 준비 중)",
+    "house": "부동산 매물을 둘러봤다 (매매는 준비 중)"
+  },
+
+  "events": [
+    { "id": "chicken", "text": "{name}, 야식으로 배달 치킨을 시켰다", "min": -5, "max": -2, "scale": false, "emotion": "joy" },
+    { "id": "found_money", "text": "{name}, 길에서 주운 돈을 파출소에 맡겼더니 사례금을 받았다", "min": 5, "max": 20, "scale": false, "emotion": "joy" },
+    { "id": "rain", "text": "{name}, 갑자기 쏟아진 비에 우산을 샀다", "min": -2, "max": -1, "scale": false, "emotion": "sweat" },
+    { "id": "lucky", "text": "{name}, 오늘 운세 대박! 뭘 해도 된다", "min": 10, "max": 40, "scale": true, "emotion": "joy" },
+    { "id": "phone", "text": "{name}, 휴대폰을 떨어뜨려 액정이 깨졌다", "min": -30, "max": -10, "scale": true, "emotion": "cry" },
+    { "id": "karaoke", "text": "{name}, 친구들과 코인노래방에서 목이 쉬었다", "min": -3, "max": -1, "scale": false, "emotion": "joy" },
+    { "id": "nothing", "text": "{name}, 평범하고 평화로운 하루를 보냈다", "min": 0, "max": 0, "scale": false, "emotion": null },
+    { "id": "birthday", "kind": "groupGift", "text": "{name}의 생일 파티! 다른 캐릭터들은 선물을 줄까?", "gift": 10, "weight": 1.5 }
+  ]
+}

@@ -35,6 +35,16 @@ export function createApp({ store, runner = new GameRunner(store), adminPassword
     }
     res.json({ models });
   });
+  // Optional audio drop-ins (public/assets/audio/bgm_<era>.mp3, sfx_<name>.mp3) — listed once, no 404 probes.
+  app.get('/api/audio', (req, res) => {
+    let files = [];
+    try {
+      files = fs.readdirSync(path.join(PUBLIC_DIR, 'assets', 'audio')).filter((f) => /^(bgm|sfx)_[a-z0-9_-]+\.(mp3|ogg|m4a|wav)$/i.test(f)).sort();
+    } catch {
+      /* no audio folder */
+    }
+    res.json({ files });
+  });
   app.use(['/api', '/admin/api'], (req, res) => res.status(404).json({ error: '없는 API입니다.' }));
 
   app.get(['/admin', '/admin/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));

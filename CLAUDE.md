@@ -72,8 +72,9 @@
   simultaneous, answers{}, deadlineAt|null, context}`. Multi-character prompts get `balance.prompts.multiTimeoutMs`.
 - Events: `turnStarted, spun, moved{path,halted}, landed{tileId,tileType,route}, moneyChanged{delta,reason,money,debt}`,
   `prompt, chose` (optionId omitted for simultaneous prompts), `eraChanged, routeChosen, finished{place,prize},
-  bonusSpin, betPlaced, betResolved, gameOver{ranking}, log{text,tone}` with optional `emotion`/`tone`.
-  Events are broadcast to everyone → never put secret info in them (masking lives in `viewFor`).
+  bonusSpin, betPlaced, betResolved, promptResolved{promptId,kind,charId} (exam/groupGift result anchor),
+  gameOver{ranking}, log{text,tone}`. Since Stage 5 every event also has `tone, emotion, scene, line, cutin, lineTag`
+  (see Stage 5). Events are broadcast to everyone → never put secret info in them (masking lives in `viewFor`).
 - `viewFor` masks: other sessions' pending answers (exposes `pending.answered[]` instead) and unresolved bets.
 - Hooks for later stages: `heart/job/card/shop/treasure/house` tiles are log-only placeholders in `resolveTile`
   (text in `board.json.placeholders`); add jobs/cards/romance/submaps as new tile handlers + `PROMPTS` entries;
@@ -148,3 +149,53 @@
   (a 2D cut-in that takes over the screen and resolves when closed), `setHandler(type, fn)` to replace/extend an
   event's animation (e.g. play a cut-in on `landed` of event tiles). A handler returning a Promise blocks the queue
   (safety timeout 12 s per step; pass `maxMs` to `enqueue` for longer cut-ins).
+
+## Cut-ins & sound (Stage 5)
+- `server/game/presentation.js` — pure post-pass `decorateEvents(events, {room, data, seed})`, called at the end of
+  `applyAction`/`startGame`: every event gets `tone` (love|career|treasure|good|bad|holiday|result|neutral; aliases
+  money→treasure, info→neutral), `emotion` (joy|cry|angry|sweat|love|shock|neutral), `scene` (school|mountain-trail|
+  wedding-hall|office|hospital|none), `line` (speech bubble; null for chose/betPlaced), `lineTag`, `cutin` (bool).
+  Explicit `tone`/`emotion` set at emit sites win. `landed` looks at its follow-ups (money/log/prompt) for the outcome.
+  Lines come from a sub-RNG `createRng(hashSeed(engineRngState, turnNo, index, type))` → identical for all clients
+  and the gameplay RNG stream is not consumed. The prompt presentation is copied onto `turn.pending` (`tone, emotion,
+  scene, line, cutin`) so a reloaded client rebuilds the prompt cut-in from state. `EVENT_TYPES`/`CUTIN_TYPES` list
+  what the tests enforce — a new event type must be added there (and get a mapping).
+- `cutin: true`: `landed` on `tones.cutinTiles` (event/heart/job/card/shop/treasure/house/stop, but not when a prompt
+  follows — the prompt cut-in replaces it), `eraChanged, routeChosen, finished, prompt, promptResolved, gameOver`.
+  money/loss tiles and `moneyChanged` stay on the board (floating text).
+- Data: `server/data/lines.json` (`tags.<tag>` = 5–10 반말 lines, placeholders `{name} {era} {amount} {place}`),
+  `server/data/tones.json` (tone → frame asset id | null, colors, sfx, default scene; `scenes` → bg asset id;
+  `eraScenes/routeScenes/tagScenes/eventScenes`, `cutinTiles`, `tileTones`, `sfx` event map). Both are in `gameData()`;
+  `/api/meta.presentation` = tones.json. `PROMPTS[kind].resultCutin` → `promptResolved` anchor.
+- Client pure module `public/js/ui/cutinMap.js` (node-tested): `planCutins(events)` (anchor + money/log follow-ups;
+  prompts excluded — they are state-driven), `poseFor`, `expressionFor`, `layerPlan` (outfit > pose > expression >
+  base), `avatarPalette`/`recolorPixels` (blonde hair/navy uniform/skin of the shared layer set → avatar colors),
+  `tagLabel`, `autoAdvanceMs`, `sfxForEvent`.
+- `public/js/ui/cutin2d.js` `createCutin(document.body, {getMeta, assets:{findAsset, assetUrl}, audio})` →
+  `show(group|event|spec, {characters, room, onClose}) → Promise` (queued), `queue`, `showPrompt(pending, {characters,
+  forMe, room, onChoose})` / `closePrompt(id)` / `promptId`, `hide`, `reaction({emoji,name})`, `busy/busyEvents/
+  whenIdle/onIdle`. Overlay z-index 22 (above top bar, below reaction bar 25 and toasts). Spectators auto-advance 4 s,
+  owners 7 s, prompts never (deadline). A spec is `{key, kind, tone, scene, tag, who, text[], line, speaker, chips[],
+  cast[{char, pose, emotion}], bigWin, currentId, era, autoMs, characters, prompt?}` — later stages can build specs
+  directly (e.g. wedding with spouse in `cast`, stat chips in `chips`).
+- `avatar2d.renderAvatarLayers(parts, {pose, emotion, expression, outfit, name, flip})` → `.av2` element with
+  `setState()`, `playSprite()`, `ready`, `layered`. Every avatar maps to the `schoolgirl` layer set for now
+  (`characterBaseFor` prefers a base whose meta matches body/hair once more bases are accepted), recolored on a canvas
+  (cropped to `LAYER_CROP` 160,300 704×1056 of the 1024×1536 canvas, 440 px, LRU of 28); SVG portrait fallback.
+  Figure box = layer bbox (y 371..1303): cropped layers are 113.3 % tall / −5.7 % bottom, raw full-canvas fallback
+  164.8 % / −25 %, sprite frames 176.1 % / −33 %. New layers must stay inside the crop (tests don't check pixels).
+  `preloadAvatarLayers` warms the cache.
+- game2d: 3D → wraps animator handlers (`getHandler`/`setHandler`) for `landed, eraChanged, routeChosen, finished,
+  promptResolved`: after the board animation it pauses the animator, shows the cut-in, resumes on close. 2D → cut-ins
+  are queued straight from `onEvents`. Prompts: cut-in dialogue options when `promptCutins()` (3D, or 2D with
+  generated frame/bg art), else the old modal. `gameOver` is not a board cut-in: `renderResult` plays a 「결과 발표」
+  intro cut-in once per room, then reveals the ranking. `isBusy/whenIdle` include event cut-ins. Toolbar: 🎬 cut-ins
+  (localStorage `jinsei.cutins`, `?cutins=off`), 🎵 BGM, 🔊/🔇. `?debug=1` also exposes `window.__cutin`.
+- `public/js/audio.js` — `audio` singleton: `install()` (unlocks AudioContext on first pointer/touch/key; nothing is
+  created before), `play(name)` (`SFX_NAMES`: tick coin thud fanfare heart whoosh pop tears babble), `rouletteTicks(ms)`,
+  `playEvent(e)` (tones.json sfx map), `setEra(era)` (BGM `bgm_<era>.mp3` drop-in else a generated pad loop),
+  `setMuted/toggleMuted/setBgm/setVolume/onChange/state`; localStorage `jinsei.muted|bgm|volume`. Drop-ins are
+  listed once by `GET /api/audio` (`public/assets/audio/(bgm|sfx)_*.mp3|ogg|m4a|wav`) — no 404 probes.
+- Stage 6 hooks: stat chips → `spec.chips` (`{text, kind}`); job/era costumes → `layerPlan({outfit})` (outfit layers
+  `char-<base>-outfit-<id>`, map job ids → outfit ids, e.g. doctor/suit); new scenes = new `bg-<scene>` items +
+  `tones.json.scenes` (+ `SCENES` in presentation.js); new line tags just need a pool in lines.json.

@@ -36,6 +36,7 @@ export const PROMPTS = {
   },
 
   exam: {
+    resultCutin: true, // promptResolved → result cut-in (pass/fail)
     build(tx, c) {
       return {
         forCharacterIds: [c.id],
@@ -63,6 +64,7 @@ export const PROMPTS = {
   },
 
   groupGift: {
+    resultCutin: true,
     build(tx, c, { event }) {
       const others = tx.room.turn.order.filter((id) => id !== c.id);
       return {
@@ -144,7 +146,10 @@ export function resolvePrompt(tx) {
   const p = tx.room.turn.pending;
   tx.room.turn.pending = null;
   tx.room.turn.phase = 'resolveSpace';
-  PROMPTS[p.kind].resolve(tx, p);
+  const def = PROMPTS[p.kind];
+  // Result cut-in anchor (answers stay out of it: simultaneous prompts were secret until now).
+  if (def.resultCutin) emit(tx, 'promptResolved', { promptId: p.promptId, kind: p.kind, charId: p.charId });
+  def.resolve(tx, p);
 }
 
 // ---------- tiles ----------

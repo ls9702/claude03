@@ -1,0 +1,38 @@
+{
+  "_comment": "컷인 연출 톤(프레임 테마) 정의. tone → 프레임 에셋 id(null=CSS 패턴 폴백), 색, 효과음, 기본 장소. 엔진 events의 tone/scene 값과 클라이언트 cutin2d.js·audio.js가 함께 쓴다.",
+  "tones": {
+    "love":     { "label": "연애·육아",   "icon": "💕", "frame": "frame-love",     "sfx": "heart",   "scene": "wedding-hall",   "colors": { "f1": "#f9a8d4", "f2": "#ec4899", "f3": "#db2777", "tag": "#ec4899", "chipBg": "#fce7f3", "chipInk": "#9d174d" } },
+    "career":   { "label": "일·커리어",   "icon": "💼", "frame": "frame-career",   "sfx": "pop",     "scene": "office",         "colors": { "f1": "#93c5fd", "f2": "#3b82f6", "f3": "#1d4ed8", "tag": "#2563eb", "chipBg": "#dbeafe", "chipInk": "#1e3a8a" } },
+    "treasure": { "label": "보물·금전",   "icon": "💰", "frame": "frame-treasure", "sfx": "coin",    "scene": "mountain-trail", "colors": { "f1": "#fde68a", "f2": "#f59e0b", "f3": "#b45309", "tag": "#d97706", "chipBg": "#fef3c7", "chipInk": "#92400e" } },
+    "good":     { "label": "좋은 일",     "icon": "✨", "frame": "frame-good",     "sfx": "coin",    "scene": null,             "colors": { "f1": "#bbf7d0", "f2": "#22c55e", "f3": "#15803d", "tag": "#16a34a", "chipBg": "#dcfce7", "chipInk": "#14532d" } },
+    "bad":      { "label": "나쁜 일",     "icon": "⚠️", "frame": "frame-bad",      "sfx": "thud",    "scene": null,             "colors": { "f1": "#6366f1", "f2": "#312e81", "f3": "#1e1b4b", "tag": "#4338ca", "chipBg": "#e0e7ff", "chipInk": "#312e81" } },
+    "holiday":  { "label": "명절·잔치",   "icon": "🎉", "frame": "frame-holiday",  "sfx": "fanfare", "scene": null,             "colors": { "f1": "#fca5a5", "f2": "#dc2626", "f3": "#991b1b", "tag": "#b91c1c", "chipBg": "#fee2e2", "chipInk": "#7f1d1d" } },
+    "result":   { "label": "결과 발표",   "icon": "🏆", "frame": "frame-result",   "sfx": "fanfare", "scene": "mountain-trail", "colors": { "f1": "#d8b4fe", "f2": "#8b5cf6", "f3": "#6d28d9", "tag": "#7c3aed", "chipBg": "#ede9fe", "chipInk": "#4c1d95" } },
+    "neutral":  { "label": "인생 이야기", "icon": "📖", "frame": null,             "sfx": "pop",     "scene": null,             "colors": { "f1": "#fed7aa", "f2": "#fb923c", "f3": "#c2410c", "tag": "#ea580c", "chipBg": "#ffedd5", "chipInk": "#7c2d12" } }
+  },
+  "toneAliases": { "money": "treasure", "info": "neutral" },
+  "scenes": {
+    "school":         { "label": "학교",   "bg": "bg-school" },
+    "mountain-trail": { "label": "산길",   "bg": "bg-mountain-trail" },
+    "wedding-hall":   { "label": "웨딩홀", "bg": "bg-wedding-hall" },
+    "office":         { "label": "회사",   "bg": "bg-office" },
+    "hospital":       { "label": "병원",   "bg": "bg-hospital" },
+    "none":           { "label": "",       "bg": null }
+  },
+  "eraScenes": { "baby": "hospital", "elem": "school", "middle": "school", "high": "school", "young": "office", "middle_age": "office", "senior": "mountain-trail" },
+  "routeScenes": { "love": "wedding-hall", "career": "office", "money": "mountain-trail" },
+  "tagScenes": {
+    "exam": "school", "exam_pass": "school", "exam_fail": "school",
+    "route_love": "wedding-hall", "route_career": "office", "route_money": "mountain-trail",
+    "heart": "wedding-hall", "job": "office", "treasure": "mountain-trail", "pension": "hospital",
+    "goal": "mountain-trail", "goal_first": "mountain-trail", "game_over": "mountain-trail", "era_baby": "hospital"
+  },
+  "eventScenes": { "rain": "mountain-trail", "phone": "school", "lucky": "mountain-trail", "found_money": "school" },
+  "cutinTiles": ["event", "heart", "job", "card", "shop", "treasure", "house", "stop"],
+  "tileTones": { "money": "good", "loss": "bad", "heart": "love", "job": "career", "card": "neutral", "shop": "treasure", "treasure": "treasure", "house": "treasure", "stop": "neutral", "merge": "neutral", "goal": "result", "event": "neutral" },
+  "sfx": {
+    "spun": "tick", "moved": "whoosh", "landed": "pop", "moneyGain": "coin", "moneyLoss": "thud", "eraChanged": "whoosh",
+    "routeChosen": "fanfare", "finished": "fanfare", "gameOver": "fanfare", "bonusSpin": "coin", "betWin": "coin", "betLose": "thud",
+    "prompt": "pop", "cry": "tears", "love": "heart", "reaction": "pop"
+  }
+}

@@ -2,7 +2,13 @@
 // decision modals, and the board — the Three.js 3D board (Stage 4, scene/board3d.js) when WebGL works
 // and the user hasn't chosen 2D, else the 2D simple track (Stage 2). Engine events (SSE `events`) go to
 // the 3D animator (which calls back into `feedback` at the right moment) or straight to 2D feedback.
-import { renderAvatar } from './ui/avatar2d.js';
+// Stage 5: cut-in-worthy events (`cutin: true`) open the 2D cut-in (ui/cutin2d.js) after the board's own
+// animation (3D: animator paused meanwhile), prompts use the cut-in dialogue box, sounds via audio.js.
+import { renderAvatar, preloadAvatarLayers } from './ui/avatar2d.js';
+import { createCutin } from './ui/cutin2d.js';
+import { planCutins, tagLabel } from './ui/cutinMap.js';
+import { audio } from './audio.js';
+import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
 import { won, esc } from './format.js';
 import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
 
@@ -10,6 +16,9 @@ export { won };
 
 const MODE_KEY = 'jinsei.boardMode'; // '2d' | '3d' (explicit choice); absent = auto
 const QUALITY_KEY = 'jinsei.quality';
+const CUTIN_KEY = 'jinsei.cutins'; // 'off' = board-only (toasts + decision modal)
+const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved'];
+const RESULT_LINES = ['두근두근… 인생 결산 시간!', '누가 제일 잘 살았을까?', '다들 수고했어, 멋진 인생이었어', '결과 발표 갑니다~!'];
 const FALLBACK_KEY = 'jinsei.board3dFallback'; // sessionStorage: auto-fallback happened this session
 const FPS_MIN = 15;
 const FPS_PROBE_MS = 3000;
@@ -35,6 +44,11 @@ function sSet(key, value, kind = 'local') {
   } catch {
     /* storage unavailable */
   }
+}
+
+function modeParamCutin(params) {
+  const v = params.get('cutins');
+  return v === 'off' ? 'off' : v === 'on' ? 'on' : null;
 }
 
 /** Cheap WebGL capability probe (the real renderer may still fail → fallback). */
@@ -88,6 +102,9 @@ export function createGameUI(root, { getMeta, act, toast }) {
                 .map((q) => `<option value="${q.name}">${q.label}</option>`)
                 .join('')}</select>
               <button type="button" class="btn tiny" data-el="modebtn" aria-pressed="false">2D 보기</button>
+              <button type="button" class="btn tiny ghost tool-toggle" data-el="cutinbtn" aria-pressed="true" title="이벤트 컷인 연출 켜기/끄기">🎬 컷인</button>
+              <button type="button" class="btn tiny ghost tool-toggle" data-el="bgmbtn" aria-pressed="true" title="배경음악 켜기/끄기">🎵 BGM</button>
+              <button type="button" class="btn tiny ghost tool-toggle" data-el="soundbtn" aria-pressed="false" aria-label="소리 켜기/끄기">🔊</button>
             </div>
           </div>
           <div class="board3d" data-el="wrap3d" hidden><canvas class="board3d-canvas" data-el="canvas3d" aria-label="3D 말판"></canvas></div>
@@ -140,7 +157,63 @@ export function createGameUI(root, { getMeta, act, toast }) {
     modalKey: null,
     bet: { bettor: null, pick: 'odd', amount: null },
     lastScrollKey: null,
+    cutinPref: modeParamCutin(params) ?? sGet(CUTIN_KEY), // 'off' | null
+    cutinGroups: new WeakMap(), // engine event (animator step) → cut-in group
+    promptTimer: null,
+    assetsReady: false,
+    preloaded: new Set(),
+    resultIntroFor: null,
+    gameOverLine: null,
   };
+
+  // ---------- Stage 5: cut-ins + sound ----------
+  const cutin = createCutin(document.body, { getMeta, assets: { findAsset, assetUrl }, audio });
+  audio.install();
+  audio.setSfxMap(getMeta()?.presentation?.sfx);
+  loadAssetIndex().then(() => {
+    ui.assetsReady = true;
+    if (ui.room?.status === 'playing') render(ui.room);
+  });
+  cutin.onIdle(() => ui.room?.status === 'playing' && render(ui.room));
+  if (params.has('debug')) window.__cutin = cutin;
+  audio.onChange(() => applySoundUi());
+  const cutinsOn = () => ui.cutinPref !== 'off';
+  const hasCutinArt = () => !!(findAsset({ kind: 'frame' }) || findAsset({ kind: 'bg' }));
+  /** Prompts use the cut-in dialogue box in 3D, or in 2D once generated art exists; else the modal. */
+  const promptCutins = () => cutinsOn() && (!!ui.b3 || hasCutinArt());
+  const orderedChars = () => (ui.room?.turn?.order ?? []).map((id) => byId(id)).filter(Boolean);
+  const cutinOpts = () => ({ characters: orderedChars(), room: ui.room });
+
+  function applySoundUi() {
+    const st = audio.state;
+    el.soundbtn.textContent = st.muted ? '🔇' : '🔊';
+    el.soundbtn.setAttribute('aria-pressed', String(st.muted));
+    el.soundbtn.title = st.muted ? '소리 켜기' : '소리 끄기';
+    el.bgmbtn.setAttribute('aria-pressed', String(st.bgm));
+    el.bgmbtn.classList.toggle('off', !st.bgm);
+    el.cutinbtn.setAttribute('aria-pressed', String(cutinsOn()));
+    el.cutinbtn.classList.toggle('off', !cutinsOn());
+  }
+  queueMicrotask(applySoundUi);
+
+  /** Warm the per-avatar recolor cache in the background: common poses first, the rest after. */
+  function preloadLayers() {
+    if (!ui.assetsReady || !cutinsOn()) return;
+    const todo = chars().filter((c) => !ui.preloaded.has(c.id));
+    if (!todo.length) return;
+    for (const c of todo) ui.preloaded.add(c.id);
+    const jobs = [
+      ...todo.map((c) => [c, ['idle', 'wave']]),
+      ...todo.slice(0, 4).map((c) => [c, ['jump', 'cry']]), // the rest recolor on demand (LRU-capped cache)
+    ];
+    let i = 0;
+    const next = () => {
+      const job = jobs[i++];
+      if (!job) return;
+      preloadAvatarLayers(job[0].avatar, job[1]).finally(() => setTimeout(next, 60));
+    };
+    setTimeout(next, 200);
+  }
 
   // ---------- helpers ----------
   const chars = () => ui.room?.characters ?? [];
@@ -363,7 +436,37 @@ export function createGameUI(root, { getMeta, act, toast }) {
   }
 
   // ---------- decision modal ----------
+  /** Prompt as a cut-in: options for my characters, a waiting screen for everyone else. */
+  function renderPromptCutin(room) {
+    const p = room.turn.pending;
+    clearTimeout(ui.promptTimer);
+    if (!p) return cutin.closePrompt();
+    if (cutin.promptId && cutin.promptId !== p.promptId) cutin.closePrompt();
+    const answered = new Set(p.answered ?? []);
+    const forMe = p.forCharacterIds.map(byId).filter((c) => c?.isMe && !answered.has(c.id));
+    if (cutin.promptId !== p.promptId) {
+      // open only after the board animation (spin → hops → landing) and earlier cut-ins have played
+      const boardBusy = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 380);
+      if (boardBusy || cutin.busyEvents()) {
+        ui.promptTimer = setTimeout(() => ui.room && renderModal(ui.room), 250);
+        return;
+      }
+    }
+    cutin.showPrompt(p, {
+      characters: orderedChars(),
+      forMe,
+      room,
+      onChoose: (b) => run({ type: 'choose', ...b }),
+    });
+  }
+
   function renderModal(room) {
+    if (promptCutins()) {
+      el.modal.hidden = true;
+      ui.modalKey = null;
+      return renderPromptCutin(room);
+    }
+    cutin.closePrompt();
     const p = room.turn.pending;
     const answered = new Set(p?.answered ?? []);
     const forMe = p ? p.forCharacterIds.map(byId).filter((c) => c?.isMe && !answered.has(c.id)) : [];
@@ -439,6 +542,22 @@ export function createGameUI(root, { getMeta, act, toast }) {
       setBoardMode(ui.b3 || ui.b3Loading ? '2d' : '3d', { explicit: true });
       return;
     }
+    if (t.closest('[data-el="soundbtn"]')) {
+      audio.toggleMuted();
+      return;
+    }
+    if (t.closest('[data-el="bgmbtn"]')) {
+      audio.setBgm(!audio.state.bgm);
+      return;
+    }
+    if (t.closest('[data-el="cutinbtn"]')) {
+      ui.cutinPref = cutinsOn() ? 'off' : 'on';
+      sSet(CUTIN_KEY, ui.cutinPref === 'off' ? 'off' : null);
+      if (!cutinsOn()) cutin.hide();
+      applySoundUi();
+      toast(cutinsOn() ? '🎬 이벤트 컷인을 켰어요.' : '이벤트 컷인을 껐어요. (말판 연출만)');
+      return render(ui.room);
+    }
     if (t.closest('[data-el="camreset"]')) {
       ui.viewEra = null;
       ui.b3?.resetCamera();
@@ -512,7 +631,10 @@ export function createGameUI(root, { getMeta, act, toast }) {
     if (!ui.b3 && !ui.b3Loading && !ui.b3Failed && wants3D()) ensureBoard3D();
     // 3D: keep the header / character panel / log on the previous state until the board has played the
     // events (no spoilers while the roulette spins); onIdle and the grace timer render again.
-    const holdHud = ui.b3 && ui.hudShown && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 400);
+    const holdHud = ui.b3 && ui.hudShown && (ui.b3.isBusy() || cutin.busyEvents() || performance.now() - ui.lastStateAt < 400);
+    const bgmEra = room.board.eras[cur?.position?.eraIndex ?? 0]?.id;
+    if (bgmEra) audio.setEra(bgmEra);
+    preloadLayers();
     if (!holdHud) {
       renderTop(room);
       renderTabs(room, shown);
@@ -597,6 +719,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
           },
         });
         ui.b3 = b3;
+        installCutinHandlers(b3);
         b3.onIdle(() => ui.room && ui.room.status === 'playing' && render(ui.room));
         if (typeof window !== 'undefined' && params.has('debug')) window.__board3d = b3;
         applyModeUi();
@@ -616,6 +739,33 @@ export function createGameUI(root, { getMeta, act, toast }) {
       }
     })();
     return ui.b3Loading;
+  }
+
+  /**
+   * 3D: after the board's own animation of a cut-in-worthy event, pause the animator, show the cut-in and
+   * resume on close. Also hooks hop/landing sounds.
+   */
+  function installCutinHandlers(b3) {
+    const anim = b3.animator;
+    for (const type of CUTIN_TYPES) {
+      const orig = anim.getHandler(type);
+      anim.setHandler(type, async (e, ctx) => {
+        if (type === 'landed' && !ctx.instant) audio.play('pop');
+        if (type === 'promptResolved') feedback(e, true);
+        if (orig) await orig(e, ctx);
+        const g = ui.cutinGroups.get(e);
+        if (!g) return;
+        ui.cutinGroups.delete(e);
+        if (ctx.instant || !cutinsOn() || ui.b3 !== b3) return;
+        anim.pause();
+        cutin.show(g, cutinOpts()).finally(() => anim.resume());
+      });
+    }
+    const moved = anim.getHandler('moved');
+    anim.setHandler('moved', (e, ctx) => {
+      if (!ctx.instant) audio.play('whoosh');
+      return moved?.(e, ctx);
+    });
   }
 
   function setBoardMode(mode, { explicit = false } = {}) {
@@ -697,16 +847,29 @@ export function createGameUI(root, { getMeta, act, toast }) {
 
   function onEvents(payload) {
     const events = payload?.events ?? [];
+    const go = events.find((e) => e.type === 'gameOver');
+    if (go) ui.gameOverLine = go.line ?? null;
+    // gameOver is shown as the result screen's intro instead of a board cut-in
+    const groups = cutinsOn() ? planCutins(events).filter((g) => g.anchor.type !== 'gameOver') : [];
     if (ui.b3) {
+      for (const g of groups) ui.cutinGroups.set(g.anchor, g);
       ui.b3.playEvents(events);
       return;
     }
     for (const e of events) feedback(e, false);
+    if (typeof document !== 'undefined' && document.hidden) return;
+    for (const g of groups) {
+      if (cutin.size() > 5) break; // backlog → skip (toasts / log still tell the story)
+      cutin.show(g, cutinOpts());
+    }
   }
 
   /** Per-event feedback (toasts / side-panel floats); in 3D it is called by the animator in sync. */
   function feedback(e, in3d) {
     const c = e.charId ? byId(e.charId) : null;
+    if (e.type === 'spun') audio.rouletteTicks(in3d ? 2300 : 650);
+    else if (!in3d && (e.type === 'moved' || e.type === 'landed')) audio.play(e.type === 'moved' ? 'whoosh' : 'pop');
+    else audio.playEvent(e);
     {
       switch (e.type) {
         case 'spun':
@@ -736,7 +899,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
           floatOn(e.charId, `🎰 ${e.value}`, 'plus');
           break;
         case 'gameOver':
-          toast('🏆 게임 종료! 결과 발표');
+          if (!cutinsOn()) toast('🏆 게임 종료! 결과 발표'); // else the result intro cut-in announces it
           break;
         default:
           break;
@@ -746,6 +909,8 @@ export function createGameUI(root, { getMeta, act, toast }) {
 
   /** SSE reaction → floating emoji above that player's pawns (3D only). */
   function onReaction(r) {
+    audio.play('pop');
+    cutin.reaction(r); // chip under the cut-in window (spectators react to the current event)
     if (!ui.b3 || !r?.playerId) return false;
     const ids = chars()
       .filter((c) => c.ownerId === r.playerId)
@@ -762,9 +927,10 @@ export function createGameUI(root, { getMeta, act, toast }) {
       host.innerHTML = '<p class="muted">순위 정보가 없어요.</p>';
       return;
     }
+    const intro = ui.resultIntroFor !== room.id && cutinsOn();
     host.innerHTML = `
       ${room.result.forced ? '<p class="small muted">관리자가 게임을 종료했어요. 현재 자산 기준 순위입니다.</p>' : ''}
-      <ol class="ranking">${ranking
+      <ol class="ranking${intro ? ' reveal' : ''}">${ranking
         .map((r) => {
           const c = cmap.get(r.charId);
           const routesTxt = (c?.routeHistory ?? []).map((h) => routes()[h.route]?.icon ?? '').join(' ');
@@ -779,6 +945,43 @@ export function createGameUI(root, { getMeta, act, toast }) {
           </li>`;
         })
         .join('')}</ol>`;
+    if (intro) showResultIntro(room, ranking, cmap);
+  }
+
+  /** Cut-in style 「결과 발표」 intro (tone result) before the ranking list. */
+  function showResultIntro(room, ranking, cmap) {
+    ui.resultIntroFor = room.id;
+    cutin.closePrompt();
+    const top = ranking.slice(0, 3).map((r) => cmap.get(r.charId)).filter(Boolean);
+    const first = ranking[0];
+    const order = (room.turn?.order ?? []).map((id) => cmap.get(id)).filter(Boolean);
+    const line = ui.gameOverLine ?? RESULT_LINES[(room.id.charCodeAt(0) + ranking.length) % RESULT_LINES.length];
+    const spec = {
+      key: `result:${room.id}`,
+      kind: 'result',
+      tone: 'result',
+      scene: 'mountain-trail',
+      tag: tagLabel({ type: 'result', tone: 'result' }, { tones: getMeta()?.presentation?.tones }),
+      who: '결과 발표',
+      text: [
+        `🏆 1등은 ${first?.name ?? ''}! 총자산 ${won(first?.total ?? 0)}`,
+        ranking
+          .slice(1, 3)
+          .map((r) => `${MEDAL[r.rank - 1] ?? `${r.rank}위`} ${r.name} ${won(r.total)}`)
+          .join(' · '),
+      ].filter(Boolean),
+      line,
+      speaker: first?.charId ?? null,
+      chips: ranking.slice(0, 3).map((r) => ({ text: `${MEDAL[r.rank - 1] ?? ''} ${r.name}`, kind: r.rank === 1 ? 'plus' : '' })),
+      cast: top.map((c, i) => ({ char: c, pose: i === 0 ? 'cheer' : 'wave', emotion: i === 0 ? 'joy' : null })),
+      bigWin: true,
+      currentId: first?.charId ?? null,
+      era: '',
+      autoMs: 6500,
+      characters: order.length ? order : [...cmap.values()],
+    };
+    const list = document.querySelector('.ranking.reveal');
+    cutin.show(spec).finally(() => list?.classList.add('shown'));
   }
 
   return {
@@ -787,8 +990,19 @@ export function createGameUI(root, { getMeta, act, toast }) {
     onReaction,
     renderResult,
     /** True while the 3D board is still animating events (result screen waits for it). */
-    isBusy: () => !!ui.b3?.isBusy(),
-    whenIdle: () => ui.b3?.whenIdle() ?? Promise.resolve(),
+    isBusy: () => !!ui.b3?.isBusy() || cutin.busyEvents(),
+    /** Resolves once the board animation and the event cut-ins have finished (prompt cut-ins are closed). */
+    async whenIdle() {
+      cutin.closePrompt();
+      for (let i = 0; i < 20; i++) {
+        await (ui.b3?.whenIdle() ?? Promise.resolve());
+        if (cutin.busy()) await cutin.whenIdle();
+        if (!ui.b3?.isBusy() && !cutin.busy()) return;
+      }
+    },
+    /** Stage 5: the cut-in controller (show/queue/showPrompt/reaction…). */
+    cutin,
+    audio,
     /** Stage 5 hook: the animator (pause/resume/enqueue) of the 3D board, or null in 2D. */
     get animator() {
       return ui.b3?.animator ?? null;
@@ -800,6 +1014,8 @@ export function createGameUI(root, { getMeta, act, toast }) {
     destroy() {
       clearInterval(ticker);
       clearTimeout(ui.modalTimer);
+      clearTimeout(ui.promptTimer);
+      cutin.destroy();
       clearTimeout(ui.graceTimer);
       disposeBoard3D();
     },

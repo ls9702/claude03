@@ -1,6 +1,8 @@
-// 2D avatar portrait composed as an SVG string from avatars.json part ids.
-// Placeholder look until generated PNG layers arrive (Stage 3/5); keep the
-// public API `renderAvatar(parts, { size })` and part ids stable.
+// 2D avatar portrait composed as an SVG string from avatars.json part ids (HUD lists, lobby, fallback),
+// plus Stage 5 `renderAvatarLayers` (full-body generated PNG layers for cut-ins, SVG fallback).
+// Keep the public API `renderAvatar(parts, { size })` and part ids stable.
+import { findAsset } from '../assets.js';
+import { avatarPalette, expressionFor, hueFilterFor, layerPlan, recolorPixels } from './cutinMap.js';
 
 const FALLBACK_DEFS = {
   order: ['body', 'skin', 'hair', 'hairColor', 'eyes', 'accessory', 'outfit', 'outfitColor'],
@@ -282,4 +284,246 @@ export function renderAvatar(parts, { size = 96, bg = null, title = '' } = {}) {
     accessory(a.accessory, cloth),
     '</svg>',
   ].join('');
+}
+
+// ---------- Stage 5: generated full-body layers ----------
+
+const EXPRESSIONS = ['joy', 'cry', 'shock', 'angry'];
+const OUTFITS = ['doctor', 'suit', 'wedding', 'school'];
+const POSE_IDS = ['idle', 'wave', 'jump', 'cheer', 'cry', 'shock'];
+// Generated layers share a 1024×1536 canvas; the figure spans y 371..1303 → the element box is the figure and the
+// image overflows it. Recolored layers are cropped to LAYER_CROP (union bbox of every accepted layer + margin, 2:3):
+// height 113.3 %, bottom −5.7 % (CSS .av2-layer); raw full-canvas fallbacks use 164.8 % / −25 % (.av2-layer.full).
+// Sprite frames: figure 218/384 px, feet at 312.
+const LAYER_CROP = { x: 160, y: 300, w: 704, h: 1056 }; // in 1024×1536 canvas units
+const SPRITE_FIT = { height: '176.1%', bottom: '-33%' };
+const CACHE_MAX = 28; // recolored canvases kept (≈1.2 MB each at 440 px)
+
+/**
+ * Character base for an avatar. Only `schoolgirl` exists so far → every avatar maps to it (recolored);
+ * later bases are picked by matching meta (body/hair) when accepted.
+ */
+export function characterBaseFor(parts = {}) {
+  const a = normalizeAvatar(parts);
+  const exact = findAsset({ kind: 'charLayer', layer: 'base', body: a.body, hair: a.hair });
+  const any = exact ?? findAsset({ kind: 'charLayer', layer: 'base', body: a.body }) ?? findAsset({ kind: 'charLayer', layer: 'base' });
+  return any?.meta?.character ?? null;
+}
+
+/** URLs of accepted layers for a character base. */
+export function layerSet(character) {
+  if (!character) return null;
+  const url = (q) => findAsset(q)?.url ?? null;
+  const set = { base: url({ kind: 'charLayer', character, layer: 'base' }), expressions: {}, outfits: {}, poses: {}, sprite: null };
+  for (const e of EXPRESSIONS) set.expressions[e] = url({ kind: 'charLayer', character, layer: 'expression', expression: e });
+  for (const o of OUTFITS) set.outfits[o] = url({ kind: 'charLayer', character, layer: 'outfit', outfit: o });
+  for (const p of POSE_IDS) set.poses[p] = url({ kind: 'pose', character, pose: p });
+  const sprite = findAsset({ kind: 'sprite', character, action: 'jump' });
+  set.sheet = sprite?.url && sprite.sheet ? { url: sprite.url, json: sprite.sheet, anim: sprite.anim ?? null } : null;
+  return set.base || set.poses.idle ? set : null;
+}
+
+const sheetCache = new Map();
+function loadSheet(url) {
+  if (!sheetCache.has(url)) {
+    sheetCache.set(
+      url,
+      fetch(url)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+    );
+  }
+  return sheetCache.get(url);
+}
+
+const recolorCache = new Map(); // `${url}|${palette.key}|${width}` → Promise<HTMLCanvasElement|null> (LRU order)
+
+/**
+ * Recolor a layer for an avatar palette on a canvas (cached). Resolves to the recolored source canvas, or
+ * null when the image can't be read (then callers show the raw image with a CSS hue filter). Canvases are
+ * copied with drawImage — no PNG encode, which is slow on low-end / software-rendered devices.
+ */
+export function recoloredCanvas(url, palette, { width = 440, crop = LAYER_CROP } = {}) {
+  if (!url || typeof document === 'undefined') return Promise.resolve(null);
+  const key = `${url}|${palette.key}|${width}|${crop ? 'c' : 'f'}`;
+  if (recolorCache.has(key)) {
+    const hit = recolorCache.get(key);
+    recolorCache.delete(key); // LRU: move to the end
+    recolorCache.set(key, hit);
+    return hit;
+  }
+  while (recolorCache.size >= CACHE_MAX) recolorCache.delete(recolorCache.keys().next().value);
+  recolorCache.set(
+    key,
+    new Promise((resolve) => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        try {
+          const k = img.naturalWidth / 1024; // crop is in 1024-wide canvas units
+          const src = crop ? { x: crop.x * k, y: crop.y * k, w: crop.w * k, h: crop.h * k } : { x: 0, y: 0, w: img.naturalWidth, h: img.naturalHeight };
+          const w = Math.min(width, Math.round(src.w));
+          const h = Math.round((src.h * w) / src.w);
+          const cv = document.createElement('canvas');
+          cv.width = w;
+          cv.height = h;
+          const g = cv.getContext('2d', { willReadFrequently: true });
+          g.drawImage(img, src.x, src.y, src.w, src.h, 0, 0, w, h);
+          const d = g.getImageData(0, 0, w, h);
+          recolorPixels(d.data, palette);
+          g.putImageData(d, 0, 0);
+          resolve(cv);
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    }),
+  );
+  return recolorCache.get(key);
+}
+
+function copyCanvas(src, className) {
+  const cv = document.createElement('canvas');
+  cv.width = src.width;
+  cv.height = src.height;
+  cv.className = className;
+  cv.getContext('2d').drawImage(src, 0, 0);
+  return cv;
+}
+
+/** Warm the recolor cache for an avatar (e.g. at game start) — cheap no-op without assets. */
+export function preloadAvatarLayers(parts, poses = ['idle']) {
+  const set = layerSet(characterBaseFor(parts));
+  if (!set) return Promise.resolve();
+  const pal = avatarPalette(normalizeAvatar(parts), DEFS);
+  return poses.reduce((p, pose) => p.then(() => recoloredCanvas(set.poses[pose] ?? set.base, pal)), Promise.resolve()).then(() => {});
+}
+
+function overlayHtml(kind) {
+  switch (kind) {
+    case 'heart':
+      return '<span class="av2-p heart h1">💗</span><span class="av2-p heart h2">💕</span><span class="av2-p heart h3">💗</span>';
+    case 'sweat':
+      return '<span class="av2-p sweat">💦</span>';
+    case 'tears':
+      return '<span class="av2-p tear t1"></span><span class="av2-p tear t2"></span><span class="av2-p tear t3"></span><span class="av2-p tear t4"></span>';
+    default:
+      return '';
+  }
+}
+
+/**
+ * Full-body character for cut-ins: generated PNG layers (recolored per avatar) with procedural keypose
+ * animation, or the SVG portrait when no layers are accepted.
+ * @param {object} parts avatar part ids
+ * @param {{expression?, emotion?, outfit?, pose?, name?, flip?: boolean}} opts
+ * @returns {HTMLElement} `.av2` element with `.setState({pose, emotion, outfit})`, `.playSprite()` → Promise,
+ *   `.ready` (Promise, first image shown) and `.layered` (false = SVG fallback)
+ */
+export function renderAvatarLayers(parts, { expression = null, emotion = null, outfit = null, pose = 'idle', name = '', flip = false } = {}) {
+  const a = normalizeAvatar(parts);
+  const set = layerSet(characterBaseFor(a));
+  const el = document.createElement('div');
+  el.className = 'av2 enter';
+  el.dataset.pose = pose;
+  if (flip) el.classList.add('flip');
+  el.setAttribute('role', 'img');
+  el.setAttribute('aria-label', name || '캐릭터');
+  el.innerHTML = '<div class="av2-body"><div class="av2-stack"></div></div><div class="av2-fx" aria-hidden="true"></div>';
+  const body = el.querySelector('.av2-body');
+  const stack = el.querySelector('.av2-stack');
+  const fx = el.querySelector('.av2-fx');
+  el.layered = !!set;
+  const pal = avatarPalette(a, DEFS);
+  let token = 0;
+  const emo = () => emotion ?? (expression && EXPRESSIONS.includes(expression) ? expression : null);
+
+  function setOverlay(kind) {
+    fx.dataset.kind = kind ?? '';
+    fx.innerHTML = overlayHtml(kind);
+  }
+
+  if (!set) {
+    el.classList.add('svg');
+    stack.innerHTML = renderAvatar(a, { size: 200, title: name });
+    setOverlay(expressionFor(emo()).overlay);
+    el.ready = Promise.resolve();
+    el.setState = (next = {}) => {
+      if (next.emotion !== undefined) emotion = next.emotion;
+      if (next.pose) el.dataset.pose = next.pose;
+      setOverlay(expressionFor(emo()).overlay);
+    };
+    el.playSprite = () => Promise.resolve(false);
+    return el;
+  }
+
+  function show(want) {
+    const plan = layerPlan(set, want);
+    const my = ++token;
+    el.dataset.pose = plan.pose;
+    setOverlay(plan.overlay);
+    if (!plan.url) return Promise.resolve();
+    return recoloredCanvas(plan.url, pal).then(async (src) => {
+      const prev = [...stack.querySelectorAll('.av2-layer')];
+      // a newer state was requested meanwhile: drop this one unless nothing is on screen yet
+      if (my !== token && prev.length) return;
+      if (prev.length && prev.at(-1).dataset.src === plan.url) return;
+      let layer;
+      if (src) layer = copyCanvas(src, 'av2-layer');
+      else {
+        layer = new Image();
+        layer.className = 'av2-layer full';
+        layer.alt = '';
+        layer.style.filter = hueFilterFor(a, DEFS); // recolor unavailable → CSS hue fallback
+        layer.src = plan.url;
+        await (layer.decode?.() ?? Promise.resolve()).catch(() => {});
+      }
+      layer.dataset.src = plan.url;
+      stack.appendChild(layer);
+      requestAnimationFrame(() => layer.classList.add('on')); // 150 ms cross-fade (CSS)
+      setTimeout(() => {
+        for (const p of prev) p.remove();
+      }, 220);
+    });
+  }
+
+  el.ready = show({ pose, emotion: emo(), outfit });
+  el.setState = (next = {}) => {
+    if (next.emotion !== undefined) emotion = next.emotion;
+    if (next.outfit !== undefined) outfit = next.outfit;
+    if (next.pose) pose = next.pose;
+    return show({ pose, emotion: emo(), outfit });
+  };
+  /** Play the jump sprite (recolored sheet frames with the sheet's delays), then return to the pose. */
+  el.playSprite = async (loops = 2) => {
+    const sheet = set.sheet ? await loadSheet(set.sheet.json) : null;
+    if (!sheet?.frames?.length) return false;
+    const src = await recoloredCanvas(set.sheet.url, pal, { width: sheet.frameWidth * sheet.cols, crop: null });
+    if (!src) return false;
+    const k = src.width / (sheet.frameWidth * sheet.cols);
+    const sp = document.createElement('canvas');
+    sp.className = 'av2-sprite';
+    sp.width = Math.round(sheet.frameWidth * k);
+    sp.height = Math.round(sheet.frameHeight * k);
+    sp.style.height = SPRITE_FIT.height;
+    sp.style.bottom = SPRITE_FIT.bottom;
+    const g = sp.getContext('2d');
+    body.appendChild(sp);
+    el.classList.add('sprite-on');
+    const n = sheet.frames.length;
+    for (let step = 0; step < n * loops; step++) {
+      const i = step % n;
+      const f = sheet.frames[i];
+      g.clearRect(0, 0, sp.width, sp.height);
+      g.drawImage(src, f.x * k, f.y * k, f.w * k, f.h * k, 0, 0, sp.width, sp.height);
+      sp.dataset.frame = sheet.frameIds?.[i] ?? String(i);
+      await new Promise((r) => setTimeout(r, sheet.delays?.[i] ?? 120));
+    }
+    el.classList.remove('sprite-on');
+    sp.remove();
+    return true;
+  };
+  return el;
 }

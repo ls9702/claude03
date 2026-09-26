@@ -1,0 +1,16 @@
+{
+  "spin": { "min": 1, "max": 10 },
+  "bonusSpinUnit": 10,
+  "goalPrizes": [500, 300, 200, 100, 50, 30, 20, 10],
+  "eventScale": { "baby": 1, "elem": 1, "middle": 1.5, "high": 2, "young": 5, "middle_age": 8, "senior": 6 },
+  "bets": {
+    "minAmount": 5,
+    "maxAmount": 20,
+    "payout": { "oddEven": 2, "range": 3 },
+    "ranges": { "1-3": [1, 3], "4-7": [4, 7], "8-10": [8, 10] },
+    "keepTurns": 6
+  },
+  "prompts": { "multiTimeoutMs": 20000, "decisionTimeoutMs": null },
+  "pension": { "era": "senior", "minCharacters": 3, "bottomN": 2, "base": 200, "gapRatio": 0.1, "max": 1000 },
+  "exam": { "study": { "threshold": 4, "reward": 50 }, "guess": { "threshold": 8, "reward": 120 } }
+}
