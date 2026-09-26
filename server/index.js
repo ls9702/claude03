@@ -7,18 +7,22 @@ import { RoomStore } from './store/roomStore.js';
 import { createApiRouter } from './routes/api.js';
 import { createSseRouter } from './routes/sse.js';
 import { createAdminRouter } from './routes/admin.js';
+import { UPLOAD_PATH, assetUploadJsonParser, mountAssetRoutes } from './routes/adminAssets.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 
-export function createApp({ store, adminPassword, heartbeatMs = 15000 }) {
+export function createApp({ store, adminPassword, heartbeatMs = 15000, assets = {} }) {
   const app = express();
   app.disable('x-powered-by');
+  app.use(UPLOAD_PATH, assetUploadJsonParser()); // large asset uploads are parsed after admin auth
   app.use(express.json({ limit: '64kb' }));
 
   app.use('/api', createSseRouter({ store, heartbeatMs }));
   app.use('/api', createApiRouter({ store }));
-  app.use('/admin/api', createAdminRouter({ store, adminPassword }));
+  const adminRouter = createAdminRouter({ store, adminPassword });
+  app.use('/admin/api', adminRouter);
+  mountAssetRoutes(app, { requireAdmin: adminRouter.requireAdmin, dataDir: store.dataDir, ...assets });
   app.use(['/api', '/admin/api'], (req, res) => res.status(404).json({ error: '없는 API입니다.' }));
 
   app.get(['/admin', '/admin/'], (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
@@ -43,10 +47,11 @@ export async function startServer({
   heartbeatMs = 15000,
   debounceMs = 300,
   log = () => {},
+  assets,
 } = {}) {
   const store = new RoomStore({ dataDir, debounceMs, log });
   await store.load();
-  const app = createApp({ store, adminPassword, heartbeatMs });
+  const app = createApp({ store, adminPassword, heartbeatMs, assets: { log, ...assets } });
   const server = await new Promise((resolve, reject) => {
     const s = app.listen(port, host, () => resolve(s));
     s.on('error', reject);
