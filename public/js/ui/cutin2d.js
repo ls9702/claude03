@@ -12,6 +12,7 @@
 import { won, esc } from '../format.js';
 import { renderAvatarLayers, portraitHtml, hydratePortraits } from './avatar2d.js';
 import { autoAdvanceMs, fallbackText, isBigWin, planCutins, poseFor, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
+import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from './mc.js';
 
 const REASON_ICON = { tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲' };
 const SLOT_X = { 1: [34], 2: [27, 73], 3: [18, 50, 82] };
@@ -37,6 +38,26 @@ function sceneSvg(scene, tone) {
     case 'mountain-trail':
       body = `<path d="M0 560 L240 320 L460 520 L700 260 L960 520 L1200 300 L1600 540 L1600 900 L0 900 Z" fill="#8fb7d9"/><path d="M0 640 L200 520 L420 630 L640 500 L860 640 L1080 520 L1320 640 L1600 540 L1600 900 L0 900 Z" fill="#5f9a6e"/><rect y="700" width="1600" height="200" fill="#4d8a4d"/><path d="M700 700 L900 700 L1120 900 L480 900 Z" fill="#d9c39a"/>`;
       break;
+    case 'studio': {
+      // 「인생 방송국」 TV studio (Stage 5.6 MC cut-in): truss lights, screens, sign, stage
+      const beams = [220, 560, 1040, 1380]
+        .map((x, i) => `<path d="M${x} 70 L${x + (i < 2 ? 160 : -160)} 900 L${x + (i < 2 ? -40 : 40)} 900 Z" fill="#fff6c8" opacity=".16"/>`)
+        .join('');
+      const lamps = [220, 560, 1040, 1380].map((x) => `<rect x="${x - 26}" y="54" width="52" height="40" rx="10" fill="#3b3350"/><circle cx="${x}" cy="94" r="16" fill="#fff3b0"/>`).join('');
+      const stars = [[150, 330], [1450, 300], [300, 520], [1300, 540], [800, 110]]
+        .map(([x, y]) => `<path d="M${x} ${y - 26}l8 18 20 3-15 13 4 20-17-10-17 10 4-20-15-13 20-3z" fill="#ffd23f" opacity=".85"/>`)
+        .join('');
+      body = `<rect width="1600" height="900" fill="#3a2d6b"/><rect y="0" width="1600" height="420" fill="#4b3a8c"/>
+        <rect x="0" y="40" width="1600" height="26" fill="#2a2240"/>${lamps}${beams}
+        <rect x="120" y="170" width="300" height="200" rx="18" fill="#6d5dfc" stroke="#b8b0ff" stroke-width="8"/><rect x="1180" y="170" width="300" height="200" rx="18" fill="#ff8a3d" stroke="#ffd0ad" stroke-width="8"/>
+        <rect x="520" y="140" width="560" height="130" rx="30" fill="#ff8a3d" stroke="#fff" stroke-width="10"/>
+        <text x="800" y="228" text-anchor="middle" font-size="74" font-weight="900" fill="#fff" font-family="system-ui,sans-serif">인생 방송국</text>
+        <rect x="730" y="92" width="140" height="36" rx="18" fill="#ff4d4d"/><circle cx="752" cy="110" r="7" fill="#fff"/><text x="766" y="118" font-size="22" font-weight="900" fill="#fff" font-family="system-ui,sans-serif">ON AIR</text>
+        ${stars}
+        <ellipse cx="800" cy="860" rx="760" ry="170" fill="#ffb36b"/><ellipse cx="800" cy="840" rx="640" ry="120" fill="#ffd2a3"/>
+        <ellipse cx="800" cy="830" rx="420" ry="60" fill="#fff0de" opacity=".7"/>`;
+      break;
+    }
     default:
       body = `<g fill="#fff" opacity=".7"><ellipse cx="300" cy="180" rx="140" ry="44"/><ellipse cx="1200" cy="140" rx="120" ry="38"/></g><rect y="700" width="1600" height="200" fill="#8ccf7e"/>`;
   }
@@ -129,6 +150,33 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       era: a.type === 'eraChanged' ? `${a.eraName ?? ''} 시대` : '', // board state may already be ahead → no turn/era spoilers
       autoMs: autoAdvanceMs({ owner: !!ownerChar?.isMe, reduced: isReduced() }),
       characters,
+      mc: g.mc ?? null, // Stage 5.6: small MC corner lines
+    };
+  }
+
+  /**
+   * Studio MC cut-in (Stage 5.6): 호야 & 봄이 center stage on the TV-studio background, dialogue in the box.
+   * @param {object[]} lines  [{speaker, line, expression, pose}]
+   */
+  function studioSpec(lines, { key = 'mc', tone = 'good', title = '', era = '', characters = [], currentId = null } = {}) {
+    return {
+      key: `mc:${key}`,
+      kind: 'mc',
+      tone,
+      scene: 'studio',
+      tag: title || '🎙️ 인생 방송국',
+      who: '🎙️ 인생 방송국 · 호야 & 봄이',
+      text: [],
+      line: null,
+      speaker: null,
+      chips: [],
+      cast: [],
+      bigWin: false,
+      currentId,
+      era,
+      autoMs: mcScriptMs(lines, { delay: 350, gap: 1500, hold: 1600 }) + 400,
+      characters,
+      mcScript: lines,
     };
   }
 
@@ -202,6 +250,47 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     $.fx.appendChild(b);
   }
 
+  // ---------- MCs (Stage 5.6) ----------
+  const mcSound = (l) => audio?.play('bark', { mc: l.speaker, force: true });
+
+  /** Two MCs center stage; each line → bubble above the dog + a line in the dialogue box. */
+  function renderStudio(item) {
+    const lines = item.spec.mcScript ?? [];
+    const stage = document.createElement('div');
+    stage.className = 'ci-studio';
+    const booth = createMcBooth({ ids: ['hoya', 'bomi'], size: 0 });
+    stage.innerHTML = '<i class="mc-desk" aria-hidden="true"></i>';
+    stage.appendChild(booth.el);
+    $.fx.appendChild(stage);
+    const shown = [];
+    playMcScript(booth, lines, {
+      delay: isReduced() ? 0 : 350,
+      gap: 1500,
+      hold: 1600,
+      cancelled: () => cur !== item,
+      onLine: (l) => {
+        mcSound(l);
+        shown.push(`<span class="mc-line-who ${esc(l.speaker)}">${esc(MC_NAMES[l.speaker] ?? '')}</span>${esc(l.line)}`);
+        $.text.innerHTML = shown.slice(-3).join('<br>');
+        cur && (cur.typing = null);
+      },
+    });
+  }
+
+  /** Small MC(s) at the bottom-right of the illustration window, after the character's own line. */
+  function renderSmallMc(item) {
+    const lines = item.spec.mc;
+    const box = document.createElement('div');
+    box.className = 'ci-mc';
+    const booth = createMcBooth({ ids: mcSpeakers(lines), size: 0 });
+    box.appendChild(booth.el);
+    box.hidden = true;
+    $.fx.appendChild(box);
+    const delay = isReduced() ? 0 : item.spec.line ? 1100 : 500;
+    item.timers.push(setTimeout(() => cur === item && (box.hidden = false), delay));
+    playMcScript(booth, lines, { delay, gap: 1200, hold: 99999, cancelled: () => cur !== item, onLine: mcSound });
+  }
+
   function renderTabs(spec) {
     const chars = spec.characters ?? [];
     const state = audio?.state;
@@ -267,6 +356,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     overlay.classList.add('enter');
     const els = renderCast(spec);
     item.els = els;
+    if (spec.kind === 'mc') renderStudio(item);
+    else if (spec.mc?.length) renderSmallMc(item);
     audio?.play(pres().tones?.[spec.tone]?.sfx ?? 'pop');
     typeText(spec.text ?? [], null);
     // keyposes after the entry squash: cross-fade to the target pose, speech bubble pops, big win → jump sprite
@@ -287,6 +378,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       }, isReduced() ? 0 : 320),
     );
     $.progress.classList.remove('run');
+    if (spec.autoMs && spec.kind !== 'mc' && spec.mc?.length) spec.autoMs = Math.max(spec.autoMs, (spec.line ? 1100 : 500) + mcScriptMs(spec.mc, { gap: 1200, hold: 1500 }));
     if (spec.autoMs) {
       item.timers.push(setTimeout(() => cur === item && close(), spec.autoMs));
       $.progress.style.setProperty('--ci-auto', `${spec.autoMs}ms`);
@@ -492,6 +584,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       return Promise.all((list ?? []).map((g) => api.show(g, opts)));
     },
     specFromGroup,
+    studioSpec,
     /**
      * Prompt cut-in from `room.turn.pending`: options for my characters, a waiting screen for others.
      * Re-calling with the same prompt updates it in place (e.g. my next character, answered list).

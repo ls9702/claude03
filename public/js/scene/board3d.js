@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { layoutBoard, planProps, slotOffset, eraSweepPoints, ROUTE_ORDER, ROUTE_COLORS, themeFor, boundsOf } from './layout.js';
 import { QUALITY_PRESETS, renderSize, particleCount } from './quality.js';
+import { createMascots } from './mascots.js';
 import { createAnimator } from './animator.js';
 import { createPawn, loadPawnTemplate } from './pawn.js';
 import { createRoulette3D } from './roulette3d.js';
@@ -184,6 +185,35 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   scene.add(pulse);
 
   const particles = createParticles(scene);
+  // Stage 5.6: MC dog mascots (호야 & 봄이) beside the track at the start of the current era (6 draw calls)
+  const mascots = createMascots(scene, { material: vcMat });
+  const mascotState = { on: false, era: null };
+
+  function mascotSpot(eraIndex) {
+    const L = S.layout;
+    const e = L?.eras[eraIndex];
+    if (!e) return null;
+    const t = eraIndex === 0 ? L.tiles.start : L.tiles[e.tileIds[0]];
+    if (!t) return null;
+    const dx = Math.sin(t.yaw);
+    const dz = Math.cos(t.yaw);
+    const nx = -dz; // "near" normal (towards the camera side)
+    const nz = dx;
+    // behind the era's first tile (pawns walk away from them), slightly on the far side, facing the camera side
+    return { x: t.x - dx * 2.5 - nx * 1.1, z: t.z - dz * 2.5 - nz * 1.1, yaw: Math.atan2(nx, nz) };
+  }
+
+  function updateMascots(dt, t) {
+    if (!mascotState.on || !S.layout) return;
+    const era = eraOfChar(S.shownCurrent ?? S.current);
+    if (era !== mascotState.era) {
+      const spot = mascotSpot(era);
+      if (spot) mascots.setTarget(spot.x, spot.z, spot.yaw, mascotState.era == null);
+      mascotState.era = era;
+      mascots.setVisible(true);
+    }
+    mascots.update(dt, t, camera);
+  }
   const pawnAnchor = (charId) => {
     const P = S.pawns.get(charId);
     if (!P) return null;
@@ -839,6 +869,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     emotion.update(dt);
     particles.update(dt);
     const t = now / 1000;
+    updateMascots(dt, t);
     for (const [id, P] of S.pawns) {
       const grp = P.pawn.group;
       if (!P.moving) {
@@ -932,6 +963,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       disposeStatic();
       S.layout = layoutBoard(board);
       buildStatic();
+      mascotState.era = null;
       for (const P of S.pawns.values()) placeAt(P, 'start', true);
       const st = S.layout.tiles.start;
       rig.target.set(st.x, 0, st.z);
@@ -1021,6 +1053,21 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     /** Floating emoji above characters (SSE reactions). */
     reaction(charIds, emoji) {
       for (const id of charIds) emotion.pop(id, emoji, { dur: 2.2 });
+      mascots.look(2400); // the MCs look at the camera
+    },
+
+    /** Stage 5.6: show/hide the MC dog mascots (room config mcFrequency !== 'off'). */
+    setMascots(on) {
+      mascotState.on = !!on;
+      if (!on) mascots.setVisible(false);
+      else if (mascotState.era != null) mascots.setVisible(true);
+    },
+    /** MC mascots react to a big event: 'hop' | 'spin'. */
+    mascotReact(kind = 'hop') {
+      if (mascotState.on) mascots.react(kind);
+    },
+    get mascots() {
+      return mascots;
     },
 
     resize,
@@ -1036,6 +1083,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         disposeStatic();
         S.layout = layoutBoard(board);
         buildStatic();
+        mascotState.era = null;
         for (const [id, P] of S.pawns) placeAt(P, shown.get(id), true);
       }
     },
@@ -1043,6 +1091,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     /** renderer.info of the last frame + fps. */
     stats() {
       return { ...S.stats, fps: Math.round(S.fps * 10) / 10, quality: preset.name, popups: emotion.count, bursts: particles.count, busy: animator.busy(),
+        mascots: { visible: mascots.group.visible, triangles: mascots.triangles, x: mascots.group.position.x, z: mascots.group.position.z },
         buffer: { width: canvas.width, height: canvas.height }, css: { width: canvas.clientWidth, height: canvas.clientHeight }, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, frames: S.frames };
     },
 
@@ -1066,6 +1115,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       S.pawns.clear();
       disposeStatic();
       roulette.dispose();
+      mascots.dispose();
       renderer.dispose();
       overlay.remove();
     },

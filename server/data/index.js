@@ -53,8 +53,9 @@ export const getBoardData = () => loadData('board');
 export const getBalance = () => loadData('balance');
 export const getLines = () => loadData('lines');
 export const getTones = () => loadData('tones');
+export const getMc = () => loadData('mc');
 
 /** Everything the engine reads, as one object (tests may pass overrides). */
 export function gameData() {
-  return { eras: getEras(), board: getBoardData(), balance: getBalance(), lines: getLines(), tones: getTones() };
+  return { eras: getEras(), board: getBoardData(), balance: getBalance(), lines: getLines(), tones: getTones(), mc: getMc() };
 }

@@ -31,7 +31,7 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
   assert.equal(validateManifest(m).ok, true);
   const count = (k) => m.items.filter((i) => i.kind === k).length;
   assert.equal(count('anchor'), 1);
-  assert.equal(count('bg'), 5);
+  assert.equal(count('bg'), 6); // 5 event scenes + the MC studio (Stage 5.6)
   assert.equal(count('charLayer'), 8); // base + 4 expressions + 3 outfits
   assert.equal(count('pose'), 6);
   assert.ok(count('sprite') >= 1);

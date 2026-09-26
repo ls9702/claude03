@@ -13,6 +13,7 @@ import { createGameUI } from './game2d.js';
 import { hydratePortraits, portraitHtml, setAvatarDefs } from './ui/avatar2d.js';
 import { openCustomizer, setPreviewRenderer } from './ui/customize.js';
 import { layeredPreviewRenderer } from './ui/avatarCompose.js';
+import { MC_NAMES, mcLinesFrom, renderMc } from './ui/mc.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) =>
@@ -162,7 +163,57 @@ function charCard(c, { mine = false } = {}) {
     </div>`;
 }
 
+// Stage 5.6: 호야 & 봄이 welcome banner (a random greeting dialogue; hidden with mcFrequency off / ✕)
+const MC_WELCOME_KEY = 'jinsei.mcWelcomeClosed';
+function renderMcWelcome(room) {
+  let box = $('#mc-welcome');
+  let closed = null;
+  try {
+    closed = sessionStorage.getItem(MC_WELCOME_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+  const off = (room.config.mcFrequency ?? 'normal') === 'off' || closed === room.id || !state.meta?.mc;
+  if (off) {
+    if (box) box.hidden = true;
+    return;
+  }
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'mc-welcome';
+    box.className = 'mc-welcome';
+    box.setAttribute('role', 'note');
+    box.setAttribute('aria-label', 'MC 호야와 봄이의 인사');
+    $('.lobby-main').prepend(box);
+  }
+  box.hidden = false;
+  if (box.dataset.room === room.id) return; // keep the same greeting while the lobby re-renders
+  box.dataset.room = room.id;
+  const lines = mcLinesFrom(state.meta.mc, 'gameStart', { duo: true, seed: `${room.id}:${Math.floor(Math.random() * 1e6)}` });
+  const pair = document.createElement('div');
+  pair.className = 'mc-pair';
+  pair.append(renderMc('hoya', { expression: 'joy', pose: 'wave', size: 0 }), renderMc('bomi', { expression: 'neutral', pose: 'mic', size: 0 }));
+  const say = document.createElement('div');
+  say.className = 'mc-say';
+  say.innerHTML = lines.map((l) => `<p><b class="${esc(l.speaker)}">${esc(MC_NAMES[l.speaker] ?? '')}</b>${esc(l.line)}</p>`).join('');
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.className = 'mc-x';
+  x.setAttribute('aria-label', 'MC 인사 닫기');
+  x.textContent = '✕';
+  x.addEventListener('click', () => {
+    box.hidden = true;
+    try {
+      sessionStorage.setItem(MC_WELCOME_KEY, room.id);
+    } catch {
+      /* ignore */
+    }
+  });
+  box.replaceChildren(pair, say, x);
+}
+
 function renderLobby(room) {
+  renderMcWelcome(room);
   $('#lobby-code').textContent = room.code;
   $('#lobby-mode').textContent = modeLabel(room);
 

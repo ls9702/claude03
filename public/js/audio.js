@@ -2,7 +2,8 @@
 //
 //   import { audio } from './audio.js';
 //   audio.install();               // unlock the AudioContext on the first pointer/touch/key (autoplay policy)
-//   audio.play('coin');            // tick|coin|thud|fanfare|heart|whoosh|pop|tears|babble
+//   audio.play('coin');            // tick|coin|thud|fanfare|heart|whoosh|pop|tears|babble|bark
+//   audio.play('bark', { mc: 'hoya' });  // Stage 5.6 MC 「멍!」 (호야 high double yip, 봄이 one low woof)
 //   audio.rouletteTicks(2400);     // slowing tick ramp while the wheel spins
 //   audio.playEvent(engineEvent);  // tones.json `sfx` map → effect (setSfxMap(meta.presentation.sfx))
 //   audio.setEra('elem');          // BGM: /assets/audio/bgm_<era>.mp3 when present, else a soft generated pad
@@ -14,7 +15,7 @@ import { sfxForEvent } from './ui/cutinMap.js';
 
 const KEYS = { muted: 'jinsei.muted', bgm: 'jinsei.bgm', volume: 'jinsei.volume' };
 /** Synthesized effects (tones.json `sfx` values must be one of these). */
-export const SFX_NAMES = ['tick', 'coin', 'thud', 'fanfare', 'heart', 'whoosh', 'pop', 'tears', 'babble'];
+export const SFX_NAMES = ['tick', 'coin', 'thud', 'fanfare', 'heart', 'whoosh', 'pop', 'tears', 'babble', 'bark'];
 const ERA_CHORDS = {
   // root MIDI notes of a 4-chord loop per era (gentle, major-ish; senior slower)
   baby: [60, 65, 67, 65],
@@ -144,6 +145,34 @@ export function createAudio({ fetchImpl = globalThis.fetch?.bind(globalThis) } =
     src.stop(t + dur + 0.05);
   }
 
+  /** Short synthesized dog bark: pitch-dropping voiced tone + formant-ish noise burst. */
+  function bark(t, f0, f1, dur, peak) {
+    const ctx = st.ctx;
+    const o = ctx.createOscillator();
+    const o2 = ctx.createOscillator();
+    const bp = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+    o.type = 'sawtooth';
+    o2.type = 'square';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    o2.frequency.setValueAtTime(f0 * 0.5, t);
+    o2.frequency.exponentialRampToValueAtTime(f1 * 0.5, t + dur);
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(f0 * 2.2, t);
+    bp.frequency.exponentialRampToValueAtTime(f1 * 1.6, t + dur);
+    bp.Q.value = 2.2;
+    env(g, t, 0.012, peak, dur);
+    o.connect(bp);
+    o2.connect(bp);
+    bp.connect(g).connect(st.sfxBus);
+    o.start(t);
+    o2.start(t);
+    o.stop(t + dur + 0.05);
+    o2.stop(t + dur + 0.05);
+    noise(t, dur * 0.6, { f0: f0 * 3, f1: f1 * 2, q: 1.4, peak: peak * 0.5 });
+  }
+
   const VOICES = {
     tick: (t) => tone('square', 1900, 1400, t, 0.025, 0.07),
     coin: (t) => {
@@ -170,6 +199,13 @@ export function createAudio({ fetchImpl = globalThis.fetch?.bind(globalThis) } =
     tears: (t) => {
       tone('triangle', 740, 520, t, 0.35, 0.1);
       tone('triangle', 622, 415, t + 0.3, 0.5, 0.1);
+    },
+    bark: (t, { mc = 'hoya' } = {}) => {
+      if (mc === 'bomi') bark(t, 420, 240, 0.16, 0.16);
+      else {
+        bark(t, 760, 430, 0.1, 0.13);
+        bark(t + 0.13, 820, 470, 0.09, 0.11);
+      }
     },
     babble: (t, { seed = 3, count = 4 } = {}) => {
       for (let i = 0; i < count; i++) {

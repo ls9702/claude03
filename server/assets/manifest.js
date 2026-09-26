@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 export const MANIFEST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'manifest.json');
 
-export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part'];
+export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part', 'mc'];
 export const KIND_LABELS = {
   anchor: '스타일 앵커',
   bg: '컷인 배경',
@@ -20,6 +20,7 @@ export const KIND_LABELS = {
   texture: '텍스처',
   ui: 'UI',
   part: '아바타 파츠',
+  mc: 'MC 캐릭터',
 };
 export const STATUSES = ['todo', 'candidate', 'accepted'];
 /** Aspect ratios accepted by gemini-2.5-flash-image `imageConfig.aspectRatio`. */
@@ -33,6 +34,36 @@ export const PART_TINTS = ['skin', 'hair', 'outfit'];
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const OUTPUT_RE = /^[a-z0-9][a-z0-9_\-/]*\.(png|webp)$/;
+/** MC NPC ids (Stage 5.6) and what an `mc` item may show (meta.expression | meta.pose; duo = both dogs). */
+export const MC_ITEM_IDS = ['hoya', 'bomi', 'duo'];
+export const MC_ITEM_EXPRESSIONS = ['neutral', 'joy', 'surprise', 'sad', 'angry', 'proud', 'sleepy'];
+export const MC_ITEM_POSES = ['idle', 'wave', 'clap', 'mic'];
+/**
+ * Local photo references (Stage 5.6): files under DATA_DIR/mc-refs (gitignored, never published), written
+ * `data/mc-refs/<file>` or `mc-refs/<file>` in the manifest. Only a plain file name is allowed — no
+ * sub-directories, no traversal.
+ */
+export const LOCAL_REF_DIR = 'mc-refs';
+const LOCAL_REF_RE = /^(?:data\/)?mc-refs\/([a-z0-9][a-z0-9_-]{0,63}\.(?:jpe?g|png|webp))$/i;
+
+/** File name of a valid local ref, else null. */
+export function localRefName(ref) {
+  if (typeof ref !== 'string' || ref.includes('..') || ref.includes('\\')) return null;
+  return LOCAL_REF_RE.exec(ref)?.[1] ?? null;
+}
+
+/**
+ * Absolute path of a local ref inside `<dataDir>/mc-refs` (throws on anything that would escape it).
+ * The caller should still realpath-check the result (symlinks).
+ */
+export function localRefPath(dataDir, ref) {
+  const name = localRefName(ref);
+  if (!name) throw new Error(`잘못된 로컬 참조 경로입니다: ${ref}`);
+  const root = path.resolve(dataDir, LOCAL_REF_DIR);
+  const p = path.resolve(root, name);
+  if (path.dirname(p) !== root) throw new Error(`잘못된 로컬 참조 경로입니다: ${ref}`);
+  return p;
+}
 
 /**
  * Style bible: prepended (via {{style}}) to every prompt so all assets share one look.
@@ -130,11 +161,33 @@ export function validateItem(item) {
       errs.push(`${at} frameDelays는 ms 정수 배열이어야 합니다.`);
   } else if (item.frames !== undefined) errs.push(`${at} frames는 sprite에만 쓸 수 있습니다.`);
   if (item.meta !== undefined && !isObj(item.meta)) errs.push(`${at} meta는 객체여야 합니다.`);
+  if (item.localRefs !== undefined) {
+    if (!Array.isArray(item.localRefs) || item.localRefs.some((r) => !localRefName(r)))
+      errs.push(`${at} localRefs는 data/mc-refs/<파일명>.jpg|png|webp 배열이어야 합니다.`);
+  }
+  if (item.kind === 'mc') errs.push(...validateMcMeta(item, at));
   if (item.kind === 'part') errs.push(...validatePartMeta(item, at));
   else if (item.postprocess?.some?.((st) => typeof st === 'string' && /^(diffExtract:|alignHead$|mannequin$)/.test(st)))
     errs.push(`${at} diffExtract/alignHead/mannequin 단계는 part에만 쓸 수 있습니다.`);
   if (item.candidates !== undefined && (!Number.isInteger(item.candidates) || item.candidates < 1 || item.candidates > 8))
     errs.push(`${at} candidates는 1~8이어야 합니다.`);
+  return errs;
+}
+
+function validateMcMeta(item, at) {
+  const m = item.meta;
+  if (!isObj(m)) return [`${at} mc에는 meta가 필요합니다.`];
+  const errs = [];
+  if (!MC_ITEM_IDS.includes(m.mc)) errs.push(`${at} meta.mc는 ${MC_ITEM_IDS.join('/')} 중 하나여야 합니다.`);
+  if (m.mc === 'duo') {
+    if (m.expression !== undefined || m.pose !== undefined) errs.push(`${at} duo에는 expression/pose를 쓰지 않습니다.`);
+  } else {
+    const hasE = m.expression !== undefined;
+    const hasP = m.pose !== undefined;
+    if (hasE === hasP) errs.push(`${at} mc 항목은 meta.expression 또는 meta.pose 중 하나만 가져야 합니다.`);
+    if (hasE && !MC_ITEM_EXPRESSIONS.includes(m.expression)) errs.push(`${at} meta.expression이 올바르지 않습니다: ${m.expression}`);
+    if (hasP && !MC_ITEM_POSES.includes(m.pose)) errs.push(`${at} meta.pose가 올바르지 않습니다: ${m.pose}`);
+  }
   return errs;
 }
 

@@ -91,7 +91,8 @@ const BOUNDARY = new Set([
  * Group an engine batch into cut-ins. Every event with `cutin: true` except `prompt` (prompts are driven
  * by `room.turn.pending`, so a reload can rebuild them) becomes an anchor; its follow-up money/log events
  * (until the next boundary) give the dialogue text and effect chips.
- * @returns {{anchor: object, charId: string|null, texts: string[], money: {charId, delta, reason}[], delta: number, involved: string[]}[]}
+ * @returns {{anchor: object, charId: string|null, texts: string[], money: {charId, delta, reason}[], delta: number, involved: string[],
+ *   mc: object[]|null, studio: object[]|null, mcEvents: object[]}[]}
  */
 export function planCutins(events = []) {
   const groups = [];
@@ -109,7 +110,12 @@ export function planCutins(events = []) {
     add(charId);
     for (const m of money) add(m.charId);
     if (a.type === 'gameOver') for (const r of (a.ranking ?? []).slice(0, 3)) add(r.charId);
-    groups.push({ anchor: a, charId, texts, money, delta, involved: involved.slice(0, 3) });
+    // Stage 5.6 MCs: a studio anchor (game start / first entry into an era) opens its own MC cut-in (`studio`);
+    // the small MC corner of the event cut-in takes the anchor's lines, else the first follow-up's (e.g. pension).
+    const mcFollow = follow.find((e) => e.mc?.length);
+    const mc = (!a.mcStudio && a.mc?.length ? a.mc : null) ?? mcFollow?.mc ?? null;
+    const mcEvents = [a.mc?.length ? a : null, mcFollow ?? null].filter(Boolean);
+    groups.push({ anchor: a, charId, texts, money, delta, involved: involved.slice(0, 3), mc, studio: a.mcStudio && a.mc?.length ? a.mc : null, mcEvents });
   }
   return groups;
 }

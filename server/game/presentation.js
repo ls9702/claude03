@@ -4,8 +4,9 @@
 //
 // Lines are picked with a sub-RNG seeded from the engine RNG state + event index, so every client shows the
 // same text without consuming the gameplay RNG stream (existing seeds keep their outcomes).
-import { getLines, getTones } from '../data/index.js';
+import { getLines, getMc, getTones } from '../data/index.js';
 import { createRng } from './rng.js';
+import { MC_FREQUENCIES } from './config.js';
 
 export const TONES = ['love', 'career', 'treasure', 'good', 'bad', 'holiday', 'result', 'neutral'];
 export const SCENES = ['school', 'mountain-trail', 'wedding-hall', 'office', 'hospital', 'none'];
@@ -297,6 +298,200 @@ export function decorateEvents(events, { room, data = {}, seed = 0 } = {}) {
     if (ev.type === 'prompt' && pending && pending.promptId === ev.promptId) {
       Object.assign(pending, { tone: ev.tone, emotion: ev.emotion, scene: ev.scene, line: ev.line, cutin: true });
     }
+  });
+  attachMc(events, { room, data, seed, lines });
+  return events;
+}
+
+// ---------- MC NPCs (Stage 5.6): 호야 & 봄이 ----------
+//
+// Qualifying events get `mc: [{speaker: 'hoya'|'bomi', line, expression, pose, part?}]` (1 line, or a 2–3 line
+// duo dialogue), `mcWeight` (big|medium|minor) and `mcStudio: true` for the full-screen MC cut-in (game start,
+// first character entering an era). Big events always get the MCs (unless the room's `config.mcFrequency` is
+// 'off'); medium/minor ones roll a chance and respect a cooldown (`room.mcState.cool` = candidates to skip after
+// any appearance) so the MCs never talk over consecutive minor events. Picked with a separate sub-RNG → the
+// gameplay stream is untouched and every client sees the same lines.
+
+export const MC_IDS = ['hoya', 'bomi'];
+export { MC_FREQUENCIES };
+export const MC_EXPRESSIONS = ['neutral', 'joy', 'surprise', 'sad', 'angry', 'proud', 'sleepy'];
+export const MC_POSES = ['idle', 'wave', 'clap', 'mic'];
+
+/** Normalize a line-pool entry (string | {t, e?, p?} | {s, t, e?, p?}) into an MC line. */
+export function mcEntry(entry, speaker, situation, vars = {}) {
+  const e = typeof entry === 'string' ? { t: entry } : entry ?? {};
+  const who = e.s ?? speaker;
+  const def = situation?.[who] ?? {};
+  return {
+    speaker: who,
+    line: fillLine(e.t ?? '', vars),
+    expression: MC_EXPRESSIONS.includes(e.e) ? e.e : def.expression ?? 'neutral',
+    pose: MC_POSES.includes(e.p) ? e.p : def.pose ?? 'idle',
+  };
+}
+
+/**
+ * Deterministic MC lines for a situation.
+ * @param {{lines, mc}} data  lines.json + mc.json
+ * @param {string} key        situation key (lines.mc.<key>)
+ * @param {{next, int}} rng
+ * @param {{duo?: boolean, speaker?: string, vars?: object}} opts
+ */
+export function pickMcLines({ lines, mc }, key, rng, { duo = false, speaker = null, vars = {} } = {}) {
+  const pool = lines?.mc?.[key];
+  const sit = mc?.situations?.[key];
+  if (!pool || !sit) return [];
+  if (duo && pool.duo?.length) return pool.duo[rng.int(0, pool.duo.length - 1)].map((d) => mcEntry(d, d.s, sit, vars));
+  const who = MC_IDS.includes(speaker) ? speaker : sit.lead === 'any' || !MC_IDS.includes(sit.lead) ? MC_IDS[rng.int(0, 1)] : sit.lead;
+  const list = pool[who] ?? [];
+  if (!list.length) return [];
+  return [mcEntry(list[rng.int(0, list.length - 1)], who, sit, vars)];
+}
+
+export function mcFrequencyOf(room) {
+  const f = room?.config?.mcFrequency;
+  return MC_FREQUENCIES.includes(f) ? f : 'normal';
+}
+
+/** Which MC situation an event is (null = MCs stay quiet). Pure; `state` is read, not written. */
+export function mcSituationFor(ev, { events, index, room, mc, state, eraName }) {
+  const chars = room?.characters ?? [];
+  const c = ev.charId ? chars.find((x) => x.id === ev.charId) : null;
+  const vars = { name: c?.name ?? '', era: '', amount: '', place: '' };
+  const big = mc?.bigAmount ?? BIG_GAIN;
+  const money = (delta, debt) => {
+    vars.amount = wonText(delta);
+    if (debt) return 'bankrupt';
+    if (delta >= big) return 'bigWin';
+    if (delta <= -big) return 'bigLoss';
+    return delta > 0 ? 'smallWin' : delta < 0 ? 'smallLoss' : null;
+  };
+  let key = null;
+  let studio = false;
+  switch (ev.type) {
+    case 'gameStarted':
+      key = 'gameStart';
+      studio = true;
+      break;
+    case 'turnStarted':
+      if (!state.firstSpin && c) key = 'firstSpin';
+      break;
+    case 'eraChanged':
+      vars.era = ev.eraName ?? eraName(ev.era);
+      if (!state.eras.includes(ev.era) && mc?.eraSituations?.[ev.era]) {
+        key = mc.eraSituations[ev.era];
+        studio = true;
+      } else key = 'eraChange';
+      break;
+    case 'routeChosen':
+      key = 'routeChoice';
+      break;
+    case 'landed': {
+      const { list, next } = followersOf(events, index);
+      if (next?.type === 'prompt' && next.charId === ev.charId) break; // the prompt takes the stage
+      const tileKey = mc?.tileSituations?.[ev.tileType];
+      const o = outcome(list, ev.charId);
+      if (tileKey) {
+        key = tileKey;
+        if (o.delta) vars.amount = wonText(o.delta);
+      } else key = money(o.delta, o.debt);
+      break;
+    }
+    case 'moneyChanged':
+      if (ev.reason === 'pension') {
+        key = 'pension';
+        vars.amount = wonText(ev.delta);
+      }
+      break;
+    case 'promptResolved':
+      if (ev.kind === 'exam') {
+        const o = outcome(followersOf(events, index).list, ev.charId);
+        key = o.delta > 0 ? 'examPass' : 'examFail';
+      }
+      break;
+    case 'finished': {
+      vars.place = ev.place ?? '';
+      if (ev.prize) vars.amount = wonText(ev.prize);
+      key = ev.place === 1 ? 'goalFirst' : ev.place === chars.length ? 'goalLast' : 'goal';
+      break;
+    }
+    case 'betResolved': {
+      const w = (ev.results ?? []).find((r) => r.won);
+      if (w) {
+        key = 'betWin';
+        vars.name = chars.find((x) => x.id === w.charId)?.name ?? '';
+      }
+      break;
+    }
+    case 'gameOver':
+      key = 'resultIntro';
+      break;
+    default:
+      break;
+  }
+  if (!key || !mc?.situations?.[key]) return null;
+  return { key, weight: mc.situations[key].weight, studio, vars };
+}
+
+/** The result show (gameOver): intro duo → winner duo → last place → penalty. */
+function resultMc(ev, data, rng) {
+  const ranking = ev.ranking ?? [];
+  const out = [];
+  const add = (part, list) => out.push(...list.map((l) => ({ ...l, part })));
+  add('intro', pickMcLines(data, 'resultIntro', rng, { duo: true }));
+  const first = ranking[0];
+  if (first) add('winner', pickMcLines(data, 'resultWinner', rng, { duo: true, vars: { name: first.name, amount: wonText(first.total) } }));
+  const last = ranking.length > 1 ? ranking.at(-1) : null;
+  if (last) {
+    add('last', pickMcLines(data, 'resultLast', rng, { vars: { name: last.name } }));
+    add('penalty', pickMcLines(data, 'penalty', rng, { speaker: 'bomi', vars: { name: last.name } }));
+  }
+  return out;
+}
+
+/**
+ * Attach MC lines to a decorated batch (in place) and advance `room.mcState`.
+ * @param {object[]} events
+ * @param {{room, data?, seed?, lines?}} opts
+ */
+export function attachMc(events, { room, data = {}, seed = 0, lines = data.lines ?? getLines() } = {}) {
+  const freqKey = mcFrequencyOf(room);
+  if (freqKey === 'off' || !room) return events;
+  const mc = data.mc ?? getMc();
+  const freq = mc.frequency?.[freqKey] ?? mc.frequency?.normal ?? { medium: 0.7, minor: 0.3, cooldown: 2, duoChance: 0.35 };
+  const src = { lines, mc };
+  const state = room.mcState ?? { cool: 0, eras: room.board?.eras?.[0] ? [room.board.eras[0].id] : [], firstSpin: false };
+  room.mcState = state;
+  const turnNo = room.turn?.turnNo ?? 0;
+  const eraName = (id) => room.board?.eras?.find((e) => e.id === id)?.name ?? data.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
+  events.forEach((ev, index) => {
+    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName });
+    if (!sit) return;
+    const rng = createRng(hashSeed(seed, turnNo, index, ev.type, 'mc'));
+    if (sit.weight !== 'big') {
+      if (state.cool > 0) {
+        state.cool--;
+        return;
+      }
+      const chance = freq[sit.weight] ?? 0;
+      if (!(rng.next() < chance)) return;
+    }
+    const meta = mc.situations[sit.key];
+    let list;
+    if (ev.type === 'gameOver') list = resultMc(ev, src, rng);
+    else {
+      const duo = meta.duo === true || (meta.duo === 'chance' && rng.next() < (freq.duoChance ?? 0));
+      list = pickMcLines(src, sit.key, rng, { duo, vars: sit.vars });
+    }
+    if (!list.length) return;
+    ev.mc = list;
+    ev.mcWeight = sit.weight;
+    ev.mcKey = sit.key;
+    if (sit.studio) ev.mcStudio = true;
+    state.cool = freq.cooldown ?? 0;
+    if (ev.type === 'turnStarted') state.firstSpin = true;
+    if (ev.type === 'eraChanged' && !state.eras.includes(ev.era)) state.eras.push(ev.era);
+    if (ev.type === 'gameOver' && room.result) room.result.mc = list;
   });
   return events;
 }

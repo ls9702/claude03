@@ -1,12 +1,12 @@
 // Asset studio: generate candidates → review → accept / upload, driven by the manifest.
 // Used by the admin routes (server/routes/adminAssets.js) and the CLI (scripts/gen-assets.js).
 import { readFileSync } from 'node:fs';
-import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { createGeminiClient } from './gemini.js';
-import { KIND_LABELS, MANIFEST_PATH, getItem, loadManifest, outputsFor, partFiles, renderPrompt, saveManifest, topoOrder } from './manifest.js';
+import { KIND_LABELS, LOCAL_REF_DIR, MANIFEST_PATH, getItem, loadManifest, localRefPath, outputsFor, partFiles, renderPrompt, saveManifest, topoOrder } from './manifest.js';
 import { applySteps, toRaw } from './postprocess.js';
 import { measureFill } from './tintMath.js';
 
@@ -172,7 +172,37 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
         .toBuffer();
       refs.push({ id: rid, kind: r.kind, file, raw, buffer, mimeType: 'image/png' });
     }
+    for (const lr of item.localRefs ?? []) refs.push(await readLocalRef(lr));
     return refs;
+  }
+
+  /**
+   * Local photo reference (Stage 5.6, MC dogs): `DATA_DIR/mc-refs/<file>` only (realpath-checked, so a symlink
+   * cannot point outside). Read at generation time and sent to Gemini; never copied to public/.
+   */
+  async function readLocalRef(ref) {
+    let file;
+    try {
+      file = localRefPath(dataDir, ref);
+    } catch (e) {
+      throw new StudioError(e.message, { status: 400, code: 'LOCAL_REF_INVALID' });
+    }
+    const root = path.resolve(dataDir, LOCAL_REF_DIR);
+    let real;
+    try {
+      real = await realpath(file);
+    } catch {
+      throw new StudioError(`로컬 참조 사진이 없습니다: ${ref} (DATA_DIR/${LOCAL_REF_DIR}/에 넣어 주세요)`, { status: 409, code: 'LOCAL_REF_MISSING' });
+    }
+    const realRoot = await realpath(root).catch(() => root);
+    if (path.dirname(real) !== realRoot) throw new StudioError(`잘못된 로컬 참조 경로입니다: ${ref}`, { status: 400, code: 'LOCAL_REF_INVALID' });
+    const raw = await readFile(real);
+    const buffer = await sharp(raw)
+      .rotate() // EXIF orientation (phone photos)
+      .resize(REF_MAX_PX, REF_MAX_PX, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 88 })
+      .toBuffer();
+    return { id: `local:${path.basename(real)}`, kind: 'photo', file: null, raw: null, buffer, mimeType: 'image/jpeg' };
   }
 
   function framePrompts(item, override) {

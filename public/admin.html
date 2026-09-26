@@ -46,6 +46,14 @@
             <option value="index">캐릭터 번호 순</option>
           </select>
         </label>
+        <label class="field"><span>MC 등장 빈도 <small class="muted">(🐶 호야 &amp; 봄이)</small></span>
+          <select name="mcFrequency">
+            <option value="many">많이</option>
+            <option value="normal" selected>보통</option>
+            <option value="few">적게</option>
+            <option value="off">끄기</option>
+          </select>
+        </label>
         <label class="check"><input type="checkbox" name="allowCpu"> CPU 캐릭터 허용 <small class="muted">(이후 단계에서 동작)</small></label>
         <p class="form-error" role="alert"></p>
         <button class="btn primary block" type="submit">방 만들기</button>

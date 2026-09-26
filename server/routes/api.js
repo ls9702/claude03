@@ -1,6 +1,6 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getBalance, getBoardData, getEras, getTones } from '../data/index.js';
+import { getAvatars, getBalance, getBoardData, getEras, getLines, getMc, getTones } from '../data/index.js';
 import {
   addCharacter,
   findPlayer,
@@ -46,6 +46,7 @@ export function createApiRouter({ store, runner, charArt = null }) {
       balance: { bets, spin, bonusSpinUnit },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
+      mc: { ...getMc(), lines: getLines().mc ?? {} }, // Stage 5.6: MC NPC profiles + line pools (lobby greeting, result fallback)
     });
   });
 

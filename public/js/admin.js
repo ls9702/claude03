@@ -5,6 +5,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const STATUS = { lobby: '대기 중', playing: '진행 중', finished: '종료' };
+const MC_FREQ_LABEL = { many: '많이', normal: '보통', few: '적게', off: '끄기' };
 
 let meta = null;
 let selectedId = null;
@@ -121,6 +122,7 @@ async function onCreate(ev) {
     maxCharacters: Number(f.maxCharacters.value),
     startingMoney: Number(f.startingMoney.value),
     turnOrder: f.turnOrder.value,
+    mcFrequency: f.mcFrequency.value,
     allowCpu: f.allowCpu.checked,
   };
   try {
@@ -192,6 +194,7 @@ async function renderDetail() {
       <dt>최대 캐릭터</dt><dd>${room.config.maxCharacters}</dd>
       <dt>초기 자금</dt><dd>${room.config.startingMoney.toLocaleString()}만원</dd>
       <dt>턴 순서</dt><dd>${room.config.turnOrder === 'family' ? '가문 순' : '캐릭터 번호 순'}</dd>
+      <dt>MC 빈도</dt><dd>${MC_FREQ_LABEL[room.config.mcFrequency ?? 'normal'] ?? '보통'}</dd>
       <dt>CPU</dt><dd>${room.config.allowCpu ? '허용' : '없음'}</dd>
       ${room.turn ? `<dt>턴 순서(실제)</dt><dd>${room.turn.order.map((id) => esc(byId.get(id)?.name ?? id)).join(' → ')}</dd>` : ''}
     </dl>

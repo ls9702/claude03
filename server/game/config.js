@@ -2,6 +2,8 @@
 import { defaultEraTurns, eraIds, getEras } from '../data/index.js';
 
 export const TURN_ORDERS = ['family', 'index'];
+/** MC NPC (호야 & 봄이) appearance frequency (Stage 5.6). */
+export const MC_FREQUENCIES = ['many', 'normal', 'few', 'off'];
 export const MAX_CHARACTERS_LIMIT = 8;
 export const MIN_CHARACTERS_LIMIT = 2;
 export const MAX_STARTING_MONEY = 100000;
@@ -14,6 +16,7 @@ export function defaultRoomConfig() {
     startingMoney: 1000,
     allowCpu: false,
     turnOrder: 'family',
+    mcFrequency: 'normal',
   };
 }
 
@@ -76,6 +79,11 @@ export function validateRoomConfig(input = {}) {
   if (input.turnOrder !== undefined) {
     if (!TURN_ORDERS.includes(input.turnOrder)) errors.push('턴 순서는 family 또는 index여야 합니다.');
     else cfg.turnOrder = input.turnOrder;
+  }
+
+  if (input.mcFrequency !== undefined) {
+    if (!MC_FREQUENCIES.includes(input.mcFrequency)) errors.push('MC 등장 빈도는 많이/보통/적게/끄기(many/normal/few/off) 중 하나여야 합니다.');
+    else cfg.mcFrequency = input.mcFrequency;
   }
 
   return errors.length ? { ok: false, errors } : { ok: true, config: cfg };

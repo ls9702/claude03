@@ -335,3 +335,48 @@
   `crop: 'full'` → `.cz-preview.full` tall card); expression chips → part expressions.
 - Measured (SwiftShader headless, desktop dpr 1): first compose with images cached 15–45 ms (≤ 105 ms at dpr 2 /
   level 0.75), cached < 0.5 ms, cold incl. image loading ≈ 180–370 ms. E2E: `s55c` scripts in the session scratchpad.
+
+## MC NPCs (Stage 5.6)
+- 호야 (`hoya`, 리액션, 반말 "~멍!") & 봄이 (`bomi`, 진행, 짧은 존댓말 "…그렇습니다"/"흥") — the user's Shih Tzus. Photos live
+  ONLY in `DATA_DIR/mc-refs/` (gitignored); never copy them into `public/` or tracked paths.
+- Data: `server/data/mc.json` (`getMc()`, in `gameData().mc`): `order`, `expressions` (neutral joy surprise sad angry proud
+  sleepy), `poses` (idle wave clap mic), `profiles.<id>` {name, role, personality, speech, looks, colors}, `bigAmount`,
+  `frequency.<many|normal|few|off>` {label, medium, minor (chances), cooldown, duoChance}, `situations.<key>` {weight
+  big|medium|minor, lead hoya|bomi|any, duo true|false|'chance', vars[], hoya/bomi: {expression, pose}}, `eraSituations`,
+  `tileSituations` (heart→marriage, job, treasure). Pools: `lines.json` `mc.<key>.{hoya,bomi}` = string | {t, e?, p?},
+  `mc.<key>.duo` = 2–3 line dialogues [{s, t, e?, p?}] (both MCs). Tests: ≥6 per speaker + ≥6 duos per situation,
+  ≤48 chars, placeholders ⊂ situation `vars`, every 호야 line has 멍. `birth` is reserved (no engine event yet — Stage 6).
+- Engine: `presentation.js` `attachMc` (end of `decorateEvents`) → qualifying events get `mc: [{speaker, line, expression,
+  pose, part?}]`, `mcWeight`, `mcKey`, `mcStudio` (game start + first character entering each era after the first).
+  Situations: gameStarted→gameStart, first turnStarted→firstSpin, eraChanged→era<Era>|eraChange, routeChosen→routeChoice,
+  landed→tile situation | bankrupt/bigWin/bigLoss/smallWin/smallLoss (skipped when a prompt follows), moneyChanged
+  pension, exam promptResolved→examPass/Fail, finished→goalFirst/goalLast/goal, betResolved win→betWin, gameOver→result
+  show (parts intro/winner/last/penalty, also copied to `room.result.mc` for reloads). Sub-RNG `hashSeed(seed, turnNo,
+  index, type, 'mc')`; big = always (unless off), medium/minor roll `frequency` and respect `room.mcState.cool`
+  (`{cool, eras[], firstSpin}`, engine-only). Room config `mcFrequency` many|normal|few|off (default normal;
+  `server/game/config.js` `MC_FREQUENCIES`, admin form 많이/보통/적게/끄기). `/api/meta.mc` = mc.json + `lines` (mc pools).
+- Client `public/js/ui/mc.js`: `mcSvg(id, {expression, pose, uid})` pure SVG chibi dog (markings per photos; groups
+  `.mc-tail/.mc-ear-l|r/.mc-breath/.mc-headbob/.mc-wave/.mc-clap-*` animated by `public/css/mc.css`), `renderMc` (generated
+  art via `mcArt`: only once `mc-<id>-neutral` is accepted, then pose > expression > neutral; never mixes art + SVG),
+  `createMcBooth` / `playMcScript` / `mcScriptMs` / `mcSpeakers`, `createMcCorner` (fixed bottom-right booth for lines outside
+  cut-ins, waits for `cutin.whenIdle()`), `mcLinesFrom` / `resultMcFrom` (client picking for the lobby greeting and the
+  result fallback after an admin force-end). Sizes come from `--mc-size` (cut-ins use `cqw`).
+- Cut-ins: `planCutins` groups carry `mc` (anchor's lines, else the first follow-up's), `studio` (anchor lines of an
+  `mcStudio` event) and `mcEvents`. `cutin2d`: `spec.mc` → `.ci-mc` small booth bottom-right of the window after the
+  character line (1.2 s apart, auto-advance stretched, never blocks ▼); `cutin.studioSpec(lines, {key, tone, title, era,
+  characters})` → spec `kind: 'mc'` (TV studio bg `findAsset({kind:'bg', scene:'studio'})` else the SVG 「인생 방송국」 scene;
+  `.ci-studio` two MCs + desk, lines accumulate in the box). game2d: `showGroup` = studio (if any) then the event cut-in;
+  gameStarted studio from `onEvents`; other `mc` events → corner (3D: after their animator step via `MC_CORNER_TYPES`
+  wrappers). Result intro = studio (`part: 'intro'`) → podium cut-in with the other parts as `spec.mc`. `mcFrequency: off`
+  hides everything client-side too. Sound: `audio.play('bark', {mc})` (`SFX_NAMES` has `bark`).
+- 3D: `scene/mascotParts.js` (pure specs: body/head/tail per dog, pivots) + `scene/mascots.js` (`createMascots(scene,
+  {material})`: 3 merged meshes per dog = 6 draw calls, ~1.2k tris each (test ≤1.5k), tail wag/breathing, `react('hop'|
+  'spin')`, `look(ms)`). board3d places them behind the first tile of the shown character's era (hop over on era change);
+  API `setMascots(on)`, `mascotReact(kind)`, `mascots`; `reaction()` makes them look at the camera; `stats().mascots`.
+- Assets: manifest kind `mc` (meta `{mc: hoya|bomi|duo, expression | pose}`), items `mc-<dog>-<expression>` (7),
+  `mc-<dog>-pose-<wave|clap|mic>`, `mc-duo`, plus `bg-studio` (kind bg, meta.scene studio — NOT in tones.json scenes).
+  `localRefs: ['data/mc-refs/<file>']` (validated by `localRefName`; plain file names only) are read by the studio from
+  `DATA_DIR/mc-refs` at generation time (realpath containment, 409 `LOCAL_REF_MISSING`, 400 `LOCAL_REF_INVALID`), sent as
+  JPEG refs, never published. `scripts/gen-mc-manifest.js` = idempotent upsert of the 22 items (prompts describe the
+  markings). Generate: `node scripts/gen-assets.js --kind mc --accept-first --parallel 2` + `--only bg-studio`.
+- Tests: `test/mc.test.js`. E2E (session scratchpad `s56/e2e.cjs`, screenshots `s56-*.png`).

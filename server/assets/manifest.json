@@ -12950,6 +12950,742 @@
           "erase": "parts/outfit/girl-chubby/taekwondo-erase.webp"
         }
       }
+    },
+    {
+      "id": "mc-hoya-neutral",
+      "kind": "mc",
+      "label": "MC 호야 · 기본",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} Default face: open happy eyes, mouth slightly open with the tongue tip out, relaxed sitting pose.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg",
+        "data/mc-refs/hoya-2.jpg"
+      ],
+      "output": "mc/hoya/neutral.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "expression": "neutral"
+      }
+    },
+    {
+      "id": "mc-hoya-joy",
+      "kind": "mc",
+      "label": "MC 호야 · 기쁨",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Overjoyed: eyes closed in happy upward arcs, wide open smiling mouth, ears lifted, tail wagging.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/joy.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "expression": "joy"
+      }
+    },
+    {
+      "id": "mc-hoya-surprise",
+      "kind": "mc",
+      "label": "MC 호야 · 놀람",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Surprised: eyes wide open with small pupils, round O-shaped mouth, ears flipped up, a small sweat drop.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/surprise.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "expression": "surprise"
+      }
+    },
+    {
+      "id": "mc-hoya-sad",
+      "kind": "mc",
+      "label": "MC 호야 · 슬픔",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Sad: glossy teary eyes with one tear, droopy ears, small frown, head slightly lowered.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/sad.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "expression": "sad"
+      }
+    },
+    {
+      "id": "mc-hoya-angry",
+      "kind": "mc",
+      "label": "MC 호야 · 화남",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Cute grumpy anger: furrowed brows, puffed cheeks, a small red anger mark, looking sideways with a huff.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/angry.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "expression": "angry"
+      }
+    },
+    {
+      "id": "mc-hoya-proud",
+      "kind": "mc",
+      "label": "MC 호야 · 자신만만",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Proud and smug: eyes closed confidently, nose up, chest out, a small sparkle next to the head.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/proud.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "expression": "proud"
+      }
+    },
+    {
+      "id": "mc-hoya-sleepy",
+      "kind": "mc",
+      "label": "MC 호야 · 졸림",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Sleepy: droopy half-closed eyes, a big yawn, slouched, a small \"Zz\" bubble shape (no letters needed).",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/sleepy.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "expression": "sleepy"
+      }
+    },
+    {
+      "id": "mc-hoya-pose-wave",
+      "kind": "mc",
+      "label": "MC 호야 · 포즈 손 흔들기",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Pose: waving one front paw high in greeting, the other paw on the ground, friendly face.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/pose-wave.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "pose": "wave"
+      }
+    },
+    {
+      "id": "mc-hoya-pose-clap",
+      "kind": "mc",
+      "label": "MC 호야 · 포즈 박수",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Pose: sitting up on the hind legs and clapping both front paws together in front of the chest, happy face.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/pose-clap.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "pose": "clap"
+      }
+    },
+    {
+      "id": "mc-hoya-pose-mic",
+      "kind": "mc",
+      "label": "MC 호야 · 포즈 마이크 들기",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Pose: holding a small black handheld microphone with one front paw near the mouth like a TV show host.",
+      "vars": {
+        "dog": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/hoya-1.jpg"
+      ],
+      "output": "mc/hoya/pose-mic.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "hoya",
+        "pose": "mic"
+      }
+    },
+    {
+      "id": "mc-bomi-neutral",
+      "kind": "mc",
+      "label": "MC 봄이 · 기본",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} Default face: calm half-lidded unimpressed eyes, mouth closed, relaxed dignified sitting pose.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg",
+        "data/mc-refs/bomi-2.jpg"
+      ],
+      "output": "mc/bomi/neutral.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "expression": "neutral"
+      }
+    },
+    {
+      "id": "mc-bomi-joy",
+      "kind": "mc",
+      "label": "MC 봄이 · 기쁨",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Overjoyed: eyes closed in happy upward arcs, wide open smiling mouth, ears lifted, tail wagging.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/joy.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "expression": "joy"
+      }
+    },
+    {
+      "id": "mc-bomi-surprise",
+      "kind": "mc",
+      "label": "MC 봄이 · 놀람",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Surprised: eyes wide open with small pupils, round O-shaped mouth, ears flipped up, a small sweat drop.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/surprise.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "expression": "surprise"
+      }
+    },
+    {
+      "id": "mc-bomi-sad",
+      "kind": "mc",
+      "label": "MC 봄이 · 슬픔",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Sad: glossy teary eyes with one tear, droopy ears, small frown, head slightly lowered.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/sad.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "expression": "sad"
+      }
+    },
+    {
+      "id": "mc-bomi-angry",
+      "kind": "mc",
+      "label": "MC 봄이 · 화남",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Cute grumpy anger: furrowed brows, puffed cheeks, a small red anger mark, looking sideways with a huff.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/angry.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "expression": "angry"
+      }
+    },
+    {
+      "id": "mc-bomi-proud",
+      "kind": "mc",
+      "label": "MC 봄이 · 자신만만",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Proud and smug: eyes closed confidently, nose up, chest out, a small sparkle next to the head.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/proud.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "expression": "proud"
+      }
+    },
+    {
+      "id": "mc-bomi-sleepy",
+      "kind": "mc",
+      "label": "MC 봄이 · 졸림",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Sleepy: droopy half-closed eyes, a big yawn, slouched, a small \"Zz\" bubble shape (no letters needed).",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/sleepy.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "expression": "sleepy"
+      }
+    },
+    {
+      "id": "mc-bomi-pose-wave",
+      "kind": "mc",
+      "label": "MC 봄이 · 포즈 손 흔들기",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Pose: waving one front paw high in greeting, the other paw on the ground, friendly face.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/pose-wave.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "pose": "wave"
+      }
+    },
+    {
+      "id": "mc-bomi-pose-clap",
+      "kind": "mc",
+      "label": "MC 봄이 · 포즈 박수",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Pose: sitting up on the hind legs and clapping both front paws together in front of the chest, happy face.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/pose-clap.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "pose": "clap"
+      }
+    },
+    {
+      "id": "mc-bomi-pose-mic",
+      "kind": "mc",
+      "label": "MC 봄이 · 포즈 마이크 들기",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} {{dog}} {{common}} {{sameDog}} Pose: holding a small black handheld microphone with one front paw near the mouth like a TV show host.",
+      "vars": {
+        "dog": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail.",
+        "common": "Draw it as a stylized 2D game illustration (not a photo): sitting upright facing the viewer, full body visible, centered with generous margin on every side, feet near the lower part of the canvas. The photo references show the real dog: match its fur pattern, markings and colors exactly.",
+        "sameDog": "Keep exactly the same dog design, markings, colors, accessory and proportions as the MC reference image."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/bomi-1.jpg"
+      ],
+      "output": "mc/bomi/pose-mic.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1024x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "bomi",
+        "pose": "mic"
+      }
+    },
+    {
+      "id": "mc-duo",
+      "kind": "mc",
+      "label": "MC 호야 & 봄이 · 듀오",
+      "aspect": "3:2",
+      "size": {
+        "w": 1536,
+        "h": 1024
+      },
+      "prompt": "{{style}} {{sameStyle}} {{magentaBg}} Two chibi Shih Tzu TV-show host mascots sitting side by side, facing the viewer, full bodies visible with margin. On the LEFT: {{hoya}} On the RIGHT: {{bomi}} Hoya waves happily with one paw, Bomi holds a small handheld microphone and looks calm. Keep both dogs exactly like their MC reference images; the photo reference shows the real pair together.",
+      "vars": {
+        "hoya": "HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, white fluffy plume tail.",
+        "bomi": "BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; big round dark eyes; black nose; calm, serious, slightly grumpy \"unimpressed\" face. Wears a small purple bow tie. Huge round head, small round body, short legs, fluffy tail."
+      },
+      "refs": [
+        "style-anchor",
+        "mc-hoya-neutral",
+        "mc-bomi-neutral"
+      ],
+      "localRefs": [
+        "data/mc-refs/duo.jpg"
+      ],
+      "output": "mc/duo.png",
+      "postprocess": [
+        "chromaKey",
+        "resize:1536x1024"
+      ],
+      "status": "todo",
+      "candidates": 3,
+      "meta": {
+        "mc": "duo"
+      }
+    },
+    {
+      "id": "bg-studio",
+      "kind": "bg",
+      "label": "컷인 배경 · 인생 방송국 스튜디오",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a bright, cheerful Korean TV variety show studio seen from the audience: a curved glossy stage with a low host desk in the center, warm spotlights and colorful stage lights hanging from a truss, big blank screens and a large blank sign board above the stage, star-shaped decorations, pastel orange and purple colors. Wide 16:9 background illustration for a game cut-in, leave open empty space in the lower center for two small mascot hosts to stand. No text, no letters.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/studio.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "studio"
+      }
     }
   ]
 }

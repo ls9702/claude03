@@ -7,6 +7,7 @@
 import { renderAvatar, preloadAvatarLayers, portraitHtml, hydratePortraits } from './ui/avatar2d.js';
 import { createCutin } from './ui/cutin2d.js';
 import { planCutins, tagLabel } from './ui/cutinMap.js';
+import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
 import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
 import { won, esc } from './format.js';
@@ -18,6 +19,8 @@ const MODE_KEY = 'jinsei.boardMode'; // '2d' | '3d' (explicit choice); absent = 
 const QUALITY_KEY = 'jinsei.quality';
 const CUTIN_KEY = 'jinsei.cutins'; // 'off' = board-only (toasts + decision modal)
 const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved'];
+/** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
+const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver'];
 const RESULT_LINES = ['두근두근… 인생 결산 시간!', '누가 제일 잘 살았을까?', '다들 수고했어, 멋진 인생이었어', '결과 발표 갑니다~!'];
 const FALLBACK_KEY = 'jinsei.board3dFallback'; // sessionStorage: auto-fallback happened this session
 const FPS_MIN = 15;
@@ -159,6 +162,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
     lastScrollKey: null,
     cutinPref: modeParamCutin(params) ?? sGet(CUTIN_KEY), // 'off' | null
     cutinGroups: new WeakMap(), // engine event (animator step) → cut-in group
+    mcCornerEvents: new WeakSet(), // 3D: events whose MC lines go to the corner when the animator plays them
     promptTimer: null,
     assetsReady: false,
     preloaded: new Set(),
@@ -175,6 +179,14 @@ export function createGameUI(root, { getMeta, act, toast }) {
     if (ui.room?.status === 'playing') render(ui.room);
   });
   cutin.onIdle(() => ui.room?.status === 'playing' && render(ui.room));
+  // Stage 5.6 MCs: lines outside cut-ins go to a small booth in the board corner (after cut-ins close)
+  const mcCorner = createMcCorner(document.body, {
+    whenFree: () => cutin.whenIdle(),
+    onLine: (l) => audio.play('bark', { mc: l.speaker, force: true }),
+  });
+  /** Room setting 「MC 등장 빈도」 (off hides the MCs everywhere). */
+  const mcOn = () => (ui.room?.config?.mcFrequency ?? 'normal') !== 'off';
+  if (params.has('debug')) window.__mcCorner = mcCorner;
   if (params.has('debug')) window.__cutin = cutin;
   audio.onChange(() => applySoundUi());
   const cutinsOn = () => ui.cutinPref !== 'off';
@@ -213,6 +225,32 @@ export function createGameUI(root, { getMeta, act, toast }) {
       preloadAvatarLayers(job[0], { expressions: job[1] }).finally(() => setTimeout(next, 60));
     };
     setTimeout(next, 200);
+  }
+
+  /** A cut-in group, preceded by the MC studio cut-in when it opens an era (Stage 5.6). */
+  function showGroup(g) {
+    const jobs = [];
+    if (g.studio && mcOn()) jobs.push(cutin.show(studioSpecFor(g.studio, g.anchor)));
+    jobs.push(cutin.show(mcOn() ? g : { ...g, mc: null }, cutinOpts()));
+    return Promise.all(jobs);
+  }
+
+  function studioSpecFor(lines, anchor) {
+    const era = anchor?.type === 'eraChanged' ? anchor.eraName ?? '' : '';
+    return cutin.studioSpec(lines, {
+      key: `${anchor?.type ?? 'mc'}:${anchor?.era ?? ''}:${anchor?.charId ?? ''}`,
+      tone: anchor?.type === 'gameStarted' ? 'holiday' : 'good',
+      title: anchor?.type === 'gameStarted' ? '🎙️ 인생 방송국 · 생방송 시작' : `🎙️ ${era} 시대 개막`,
+      era: era ? `${era} 시대` : '',
+      characters: orderedChars(),
+      currentId: anchor?.charId ?? null,
+    });
+  }
+
+  /** MC lines on the board (corner booth). */
+  function mcFeedback(e) {
+    if (!mcOn() || !e?.mc?.length) return;
+    mcCorner.say(e.mc);
   }
 
   // ---------- helpers ----------
@@ -761,7 +799,19 @@ export function createGameUI(root, { getMeta, act, toast }) {
         ui.cutinGroups.delete(e);
         if (ctx.instant || !cutinsOn() || ui.b3 !== b3) return;
         anim.pause();
-        cutin.show(g, cutinOpts()).finally(() => anim.resume());
+        showGroup(g).finally(() => anim.resume());
+      });
+    }
+    // Stage 5.6: MC corner lines + mascot reactions once the event's own animation has played
+    for (const type of MC_CORNER_TYPES) {
+      const orig = anim.getHandler(type);
+      anim.setHandler(type, async (e, ctx) => {
+        if (!ctx.instant && e?.mc?.length && mcOn()) b3.mascotReact?.(e.mcWeight === 'big' ? 'spin' : 'hop');
+        if (orig) await orig(e, ctx);
+        if (ui.mcCornerEvents.has(e)) {
+          ui.mcCornerEvents.delete(e);
+          if (!ctx.instant) mcFeedback(e);
+        }
       });
     }
     const moved = anim.getHandler('moved');
@@ -812,6 +862,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
       rouletteIdle: room.turn.phase === 'awaitSpin' && !room.turn.pending && !cur?.finished,
       rouletteTappable: canSpin,
     });
+    b3.setMascots?.(mcOn());
     if (ui.viewEra == null && ui.lastFocusEra != null) b3.resetCamera();
     ui.lastFocusEra = ui.viewEra;
   }
@@ -854,17 +905,29 @@ export function createGameUI(root, { getMeta, act, toast }) {
     if (go) ui.gameOverLine = go.line ?? null;
     // gameOver is shown as the result screen's intro instead of a board cut-in
     const groups = cutinsOn() ? planCutins(events).filter((g) => g.anchor.type !== 'gameOver') : [];
+    // Stage 5.6 MCs: game start → studio cut-in; lines not shown inside a cut-in → board corner booth
+    const covered = new Set(groups.flatMap((g) => g.mcEvents ?? []));
+    const start = events.find((e) => e.type === 'gameStarted' && e.mc?.length);
+    const corner = events.filter((e) => e.mc?.length && e.type !== 'gameStarted' && e.type !== 'gameOver' && !covered.has(e));
+    const hidden = typeof document !== 'undefined' && document.hidden;
+    if (start && mcOn() && !hidden) {
+      if (cutinsOn() && start.mcStudio) cutin.show(studioSpecFor(start.mc, start));
+      else mcFeedback(start);
+      ui.b3?.mascotReact?.('spin');
+    }
     if (ui.b3) {
       for (const g of groups) ui.cutinGroups.set(g.anchor, g);
+      for (const e of corner) ui.mcCornerEvents.add(e);
       ui.b3.playEvents(events);
       return;
     }
     for (const e of events) feedback(e, false);
-    if (typeof document !== 'undefined' && document.hidden) return;
+    if (hidden) return;
     for (const g of groups) {
       if (cutin.size() > 5) break; // backlog → skip (toasts / log still tell the story)
-      cutin.show(g, cutinOpts());
+      showGroup(g);
     }
+    for (const e of corner) mcFeedback(e);
   }
 
   /** Per-event feedback (toasts / side-panel floats); in 3D it is called by the animator in sync. */
@@ -985,7 +1048,18 @@ export function createGameUI(root, { getMeta, act, toast }) {
       characters: order.length ? order : [...cmap.values()],
     };
     const list = document.querySelector('.ranking.reveal');
-    cutin.show(spec).finally(() => list?.classList.add('shown'));
+    // Stage 5.6: MC-hosted — studio intro (봄이 announces, 호야 reacts), then the podium with winner/last lines
+    const mc = mcOn() ? room.result?.mc ?? resultMcFrom(getMeta()?.mc, ranking, { seed: mcHash(room.id, 'result'), won }) : [];
+    const intro = mc.filter((l) => l.part === 'intro');
+    const rest = mc.filter((l) => l.part !== 'intro');
+    const jobs = [];
+    if (intro.length) jobs.push(cutin.show(cutin.studioSpec(intro, { key: `result:${room.id}`, tone: 'result', title: '🏆 결과 발표', characters: spec.characters })));
+    if (rest.length) {
+      spec.mc = rest;
+      spec.line = null; // the MCs host the podium
+    }
+    jobs.push(cutin.show(spec));
+    Promise.all(jobs).finally(() => list?.classList.add('shown'));
   }
 
   return {
@@ -1020,6 +1094,7 @@ export function createGameUI(root, { getMeta, act, toast }) {
       clearTimeout(ui.modalTimer);
       clearTimeout(ui.promptTimer);
       cutin.destroy();
+      mcCorner.destroy();
       clearTimeout(ui.graceTimer);
       disposeBoard3D();
     },
