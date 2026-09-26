@@ -1,5 +1,5 @@
 // Room config validation (pure).
-import { defaultEraTurns, eraIds, getEras } from '../data/index.js';
+import { defaultEraTurns, eraIds, getBoardData, getEras } from '../data/index.js';
 
 export const TURN_ORDERS = ['family', 'index'];
 /** MC NPC (호야 & 봄이) appearance frequency (Stage 5.6). */
@@ -7,6 +7,27 @@ export const MC_FREQUENCIES = ['many', 'normal', 'few', 'off'];
 export const MAX_CHARACTERS_LIMIT = 8;
 export const MIN_CHARACTERS_LIMIT = 2;
 export const MAX_STARTING_MONEY = 100000;
+/** Host tool: seconds per spin / single-character decision before the server acts (0 = off). */
+export const TURN_TIMEOUTS = [0, 30, 60, 90, 120];
+/** Route eras need a 갈림길 stop + merge + ≥1 route tile. */
+export const ROUTE_ERA_MIN_TURNS = 3;
+
+/**
+ * Minimum turns of an era in a mode: route eras ≥ 3; the mode's last era must keep its fixed stops
+ * (e.g. 수능 at index 0 of 고등학생 in kids mode) apart from the goal tile.
+ */
+export function minEraTurns(eraId, mode) {
+  const { limits, modes } = getEras();
+  const board = getBoardData();
+  let min = limits.minTurns;
+  if (board.routeEras.includes(eraId)) min = Math.max(min, ROUTE_ERA_MIN_TURNS);
+  const last = modes[mode]?.eras?.at(-1);
+  if (eraId === last) {
+    const stops = board.fixedStops?.[eraId] ?? [];
+    if (stops.length) min = Math.max(min, Math.max(...stops.map((st) => st.index)) + 2);
+  }
+  return min;
+}
 
 export function defaultRoomConfig() {
   return {
@@ -17,6 +38,7 @@ export function defaultRoomConfig() {
     allowCpu: false,
     turnOrder: 'family',
     mcFrequency: 'normal',
+    turnTimeoutSec: 0,
   };
 }
 
@@ -79,6 +101,25 @@ export function validateRoomConfig(input = {}) {
   if (input.turnOrder !== undefined) {
     if (!TURN_ORDERS.includes(input.turnOrder)) errors.push('턴 순서는 family 또는 index여야 합니다.');
     else cfg.turnOrder = input.turnOrder;
+  }
+
+  if (input.turnTimeoutSec !== undefined) {
+    if (!TURN_TIMEOUTS.includes(input.turnTimeoutSec)) errors.push('턴 제한 시간은 끄기(0)/30/60/90/120초 중 하나여야 합니다.');
+    else cfg.turnTimeoutSec = input.turnTimeoutSec;
+  }
+
+  // Per-era minimums depend on the mode (checked on the merged config, so defaults are covered too).
+  for (const eraId of getEras().modes[cfg.mode]?.eras ?? []) {
+    const min = minEraTurns(eraId, cfg.mode);
+    const v = cfg.eraTurns[eraId];
+    if (Number.isInteger(v) && v < min) {
+      const name = eras.find((e) => e.id === eraId)?.name ?? eraId;
+      errors.push(
+        getBoardData().routeEras.includes(eraId)
+          ? `${name} 턴 수는 갈림길·합류 칸이 있어 ${min} 이상이어야 합니다.`
+          : `${name} 턴 수는 이 모드에서 ${min} 이상이어야 합니다. (수능 칸과 골인 칸이 겹치지 않게)`,
+      );
+    }
   }
 
   if (input.mcFrequency !== undefined) {

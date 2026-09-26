@@ -21,7 +21,7 @@ test('isMe flags on players and characters', () => {
   const v = viewFor(sample(), TOKEN_A);
   assert.deepEqual(v.players.map((p) => p.isMe), [true, false]);
   assert.deepEqual(v.characters.map((c) => c.isMe), [true, false, true]);
-  assert.deepEqual(v.me, { id: 'p1', name: '에이', ready: false });
+  assert.deepEqual(v.me, { id: 'p1', name: '에이', ready: false, role: 'player' });
   const vb = viewFor(sample(), TOKEN_B);
   assert.deepEqual(vb.characters.map((c) => c.isMe), [false, true, false]);
 });

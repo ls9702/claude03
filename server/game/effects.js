@@ -38,6 +38,12 @@ export function charById(room, id) {
   return room.characters.find((c) => c.id === id) || null;
 }
 
+/** Host tool (room config `turnTimeoutSec`): ms per spin / single-character decision, 0 = off. */
+export function turnTimeoutMs(room) {
+  const sec = room?.config?.turnTimeoutSec;
+  return Number.isInteger(sec) && sec > 0 ? sec * 1000 : 0;
+}
+
 /** Net worth used for ranking in Stage 2 (later stages add assets). */
 export const netWorth = (c) => (c.money ?? 0) - (c.debt ?? 0);
 

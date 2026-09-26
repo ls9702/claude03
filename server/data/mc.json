@@ -90,5 +90,5 @@
     "baby": "eraBaby", "elem": "eraElem", "middle": "eraMiddle", "high": "eraHigh",
     "young": "eraYoung", "middle_age": "eraMiddleAge", "senior": "eraSenior"
   },
-  "tileSituations": { "heart": "marriage", "job": "job", "treasure": "treasure" }
+  "tileSituations": {}
 }

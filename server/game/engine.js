@@ -13,6 +13,7 @@ import {
   fail,
   josa,
   netWorth,
+  turnTimeoutMs,
   won,
 } from './effects.js';
 import { endGame as lobbyEndGame, startGame as lobbyStartGame } from './lobby.js';
@@ -21,8 +22,8 @@ import { createRng } from './rng.js';
 import { decorateEvents } from './presentation.js';
 import { openPrompt, promptComplete, resolvePrompt, resolveTile } from './spaces.js';
 
-export { EngineError };
-export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout'];
+export { EngineError, turnTimeoutMs };
+export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout', 'skip'];
 export const BET_KINDS = ['oddEven', 'range'];
 
 function makeCtx(room, ctx = {}) {
@@ -35,14 +36,26 @@ function makeCtx(room, ctx = {}) {
 
 // ---------- start ----------
 
+/** Mix a secret uint32 into an RNG state (FNV-style avalanche; pure). */
+export function mixSecret(state, secret) {
+  let h = (state ^ Math.imul(secret >>> 0, 0x9e3779b1)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 /** Admin start: lobby validation + board + character init. Returns lobby-style result. */
 export function startGame(room, ctx = {}) {
   const c0 = { ...ctx, rng: ctx.rng ?? createRng(room.seed ?? 0) };
-  const { rng, now, data } = makeCtx(room, c0);
+  const { rng: boardRng, now, data } = makeCtx(room, c0);
   const r = lobbyStartGame(room, now);
   if (!r.ok) return r;
   const next = r.room;
-  next.board = buildBoard(next.config, rng, data);
+  next.board = buildBoard(next.config, boardRng, data);
+  // The board is public; without a secret, its tiles would reveal the seed and so every future spin.
+  // The side-effect layer (GameRunner) passes `ctx.secret` = crypto random uint32; tests/simulator omit it
+  // (or inject a fixed one) and stay deterministic. The game continues from `rngState` either way.
+  const rng = ctx.secret != null ? createRng(mixSecret(boardRng.state, ctx.secret)) : boardRng;
   const firstEra = next.board.eras[0].id;
   next.characters = next.characters.map((c) => ({
     ...c,
@@ -57,7 +70,8 @@ export function startGame(room, ctx = {}) {
     goalBonus: 0,
     pensionGiven: false,
   }));
-  next.turn = { ...next.turn, turnNo: 1, round: 1, lastSpin: null };
+  next.turn = { ...next.turn, turnNo: 1, round: 1, lastSpin: null, spinDeadlineAt: null };
+  next.pension = null;
   next.bets = {};
   next.promptSeq = 0;
   next.result = null;
@@ -86,6 +100,8 @@ const currentCharId = (room) => room.turn?.order?.[room.turn.currentIndex] ?? nu
 
 function announceTurn(tx) {
   const c = charById(tx.room, currentCharId(tx.room));
+  const limit = turnTimeoutMs(tx.room);
+  tx.room.turn.spinDeadlineAt = limit ? tx.now + limit : null;
   emit(tx, 'turnStarted', { charId: c.id, turnNo: tx.room.turn.turnNo, round: tx.room.turn.round });
 }
 
@@ -109,15 +125,34 @@ function enterEra(tx, c, eraIndex) {
   if (era.id === tx.data.balance.pension.era) catchUpBonus(tx, c);
 }
 
-/** 역전 보정: bottom-N by net worth on entering the pension era get 기초연금. */
+/**
+ * 역전 보정 (기초연금): the recipients are decided ONCE, when the first character enters the pension era —
+ * the bottom `bottomN` by net worth (games with ≥ `minCharacters`) — and stored in `room.pension =
+ * {recipients, decidedAt, turnNo}`. Each recipient is paid on their own entry (the amount uses the gap to
+ * the richest character at that moment), so later entries can never add more recipients.
+ */
 function catchUpBonus(tx, c) {
   const cfg = tx.data.balance.pension;
-  const chars = tx.room.characters;
-  if (c.pensionGiven || chars.length < cfg.minCharacters) return;
-  const sorted = [...chars].sort((a, b) => netWorth(a) - netWorth(b) || (a.seq ?? 0) - (b.seq ?? 0));
-  const bottom = sorted.slice(0, cfg.bottomN).map((x) => x.id);
-  if (!bottom.includes(c.id)) return;
-  const top = netWorth(sorted.at(-1));
+  const room = tx.room;
+  const chars = room.characters;
+  if (chars.length < cfg.minCharacters) return;
+  if (!room.pension) {
+    // Saves from before the fixed rule: pensions already paid count as recipients.
+    const given = chars.filter((x) => x.pensionGiven).map((x) => x.id);
+    const sorted = [...chars].filter((x) => !given.includes(x.id)).sort((a, b) => netWorth(a) - netWorth(b) || (a.seq ?? 0) - (b.seq ?? 0));
+    const recipients = [...given, ...sorted.map((x) => x.id)].slice(0, Math.max(given.length, cfg.bottomN));
+    room.pension = { recipients, decidedAt: tx.now, turnNo: room.turn?.turnNo ?? 0 };
+  }
+  // Pay the entering character and any recipient already in the era (e.g. restored older saves).
+  const due = room.pension.recipients
+    .map((id) => charById(room, id))
+    .filter((x) => x && !x.pensionGiven && (x.id === c.id || x.era === cfg.era));
+  for (const x of due) payPension(tx, x);
+}
+
+function payPension(tx, c) {
+  const cfg = tx.data.balance.pension;
+  const top = Math.max(...tx.room.characters.map(netWorth));
   const raw = cfg.base + Math.max(0, top - netWorth(c)) * cfg.gapRatio;
   const amount = Math.min(cfg.max, Math.round(raw / 10) * 10);
   c.pensionGiven = true;
@@ -200,6 +235,16 @@ function continueTurn(tx) {
 
 // ---------- bets (훈수 베팅) ----------
 
+/** Payout multiplier of a bet pick (stake included); `balance.bets.payouts[pick]`. */
+export function betPayout(bet, balance) {
+  return balance.bets.payouts?.[bet.pick] ?? 0;
+}
+
+/** Winnings (stake excluded) of a won bet, rounded down so no pick has a positive expected value. */
+export function betWinDelta(bet, balance) {
+  return Math.floor(bet.amount * (betPayout(bet, balance) - 1));
+}
+
 export function betWins(bet, value, balance) {
   if (bet.kind === 'oddEven') return (value % 2 === 1 ? 'odd' : 'even') === bet.pick;
   const [lo, hi] = balance.bets.ranges[bet.pick] ?? [];
@@ -246,7 +291,7 @@ function resolveBets(tx, value) {
     const c = charById(room, charId);
     if (!c) continue;
     const won_ = betWins(bet, value, tx.data.balance);
-    const delta = won_ ? bet.amount * (cfg.payout[bet.kind] - 1) : -bet.amount;
+    const delta = won_ ? betWinDelta(bet, tx.data.balance) : -bet.amount;
     bet.resolved = true;
     bet.won = won_;
     bet.delta = delta;
@@ -271,11 +316,16 @@ function doSpin(tx, action) {
   const c = assertOwner(room, action.actor, action.characterId);
   if (c.id !== cur) fail(409, `지금은 ${charById(room, cur)?.name ?? '다른 캐릭터'}의 차례예요.`);
   if (turn.phase !== 'awaitSpin' || turn.pending) fail(409, '지금은 룰렛을 돌릴 수 없어요.');
+  const actor = action.actor;
+  if (action.auto && actor?.system && (turn.spinDeadlineAt == null || tx.now < turn.spinDeadlineAt)) fail(409, '아직 시간이 남았어요.');
   const { min, max } = tx.data.balance.spin;
   const value = tx.rng.int(min, max);
   turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo };
   turn.phase = 'resolveSpace';
-  emit(tx, 'spun', { charId: c.id, value });
+  turn.spinDeadlineAt = null;
+  if (action.auto && actor?.system) addLog(tx, `⏰ 시간 초과! ${c.name}의 룰렛을 자동으로 돌렸어요.`, { tone: 'info', charId: c.id });
+  else if (actor?.admin) addLog(tx, `🛠️ 관리자가 ${c.name}의 룰렛을 대신 돌렸어요.`, { tone: 'info', charId: c.id });
+  emit(tx, 'spun', { charId: c.id, value, ...(action.auto && actor?.system ? { auto: true } : {}) });
   addLog(tx, `🎡 ${c.name}의 룰렛: ${value}`, { charId: c.id });
   resolveBets(tx, value);
 
@@ -345,11 +395,28 @@ function doTimeout(tx, action) {
   continueTurn(tx);
 }
 
-const HANDLERS = { spin: doSpin, choose: doChoose, bet: placeBet, timeout: doTimeout };
+/** Host tool: the current character's turn ends without moving (admin/system only, awaitSpin only). */
+function doSkip(tx, action) {
+  const room = tx.room;
+  const turn = room.turn;
+  if (action.actor && !action.actor.admin && !action.actor.system) fail(403, '관리자만 턴을 넘길 수 있어요.');
+  if (turn.phase !== 'awaitSpin' || turn.pending) fail(409, '룰렛을 기다리는 중에만 턴을 넘길 수 있어요.');
+  const c = charById(room, currentCharId(room));
+  // Side bets on this turn are void (stakes are only settled when the roulette resolves them).
+  const voided = Object.keys(room.bets?.[turn.turnNo] ?? {}).length;
+  if (room.bets) delete room.bets[turn.turnNo];
+  turn.spinDeadlineAt = null;
+  addLog(tx, `⏭️ 관리자가 ${c?.name ?? '현재 캐릭터'}의 턴을 넘겼어요.${voided ? ' (훈수 베팅은 무효)' : ''}`, { tone: 'info', charId: c?.id ?? null });
+  endTurn(tx);
+}
+
+const HANDLERS = { spin: doSpin, choose: doChoose, bet: placeBet, timeout: doTimeout, skip: doSkip };
 
 /**
  * @param {object} room current room (not mutated)
- * @param {{type:string, characterId?, promptId?, optionId?, kind?, pick?, amount?, force?, actor?: {sessionId}|{admin:true}|{system:true}}} action
+ * @param {{type:string, characterId?, promptId?, optionId?, kind?, pick?, amount?, force?, auto?, actor?: {sessionId}|{admin:true}|{system:true}}} action
+ *   `skip` = admin/system only; `spin` with `auto: true` + system actor = turn-timeout auto spin (needs the
+ *   `turn.spinDeadlineAt` to have passed).
  *   `actor` omitted = trusted caller (tests/simulator): no ownership check.
  * @param {{rng?, now?, data?}} ctx
  * @returns {{room, events, logs}}

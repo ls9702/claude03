@@ -1,19 +1,26 @@
-// Side-effect layer around the pure engine: transactions + deadline timers.
-// When a pending prompt has `deadlineAt`, a timer dispatches a `timeout` action.
+// Side-effect layer around the pure engine: transactions + deadline timers + the start secret.
+// - A pending prompt with `deadlineAt` → a timer dispatches a `timeout` action (default answers).
+// - Host turn timer (room config `turnTimeoutSec` > 0): `turn.spinDeadlineAt` → a timer dispatches an
+//   automatic `spin` for the current character (actor system).
+import { randomBytes } from 'node:crypto';
 import { EngineError, applyAction, endGame, startGame } from '../game/engine.js';
 
+/** Random uint32 mixed into the RNG after the (public) board is built, so the board can't reveal spins. */
+export const randomSecret = () => randomBytes(4).readUInt32LE(0);
+
 export class GameRunner {
-  constructor(store, { log = () => {}, clock = () => Date.now() } = {}) {
+  constructor(store, { log = () => {}, clock = () => Date.now(), secret = randomSecret } = {}) {
     this.store = store;
     this.log = log;
     this.clock = clock;
-    this.timers = new Map(); // roomId -> { timer, promptId }
+    this.secret = secret;
+    this.timers = new Map(); // roomId -> { timer, key }
   }
 
   /** Admin start: build board + init characters. */
   start(roomId) {
     const now = this.clock();
-    const r = this.store.transact(roomId, (room) => startGame(room, { now }), now);
+    const r = this.store.transact(roomId, (room) => startGame(room, { now, secret: this.secret() }), now);
     if (r.ok) this.schedule(r.room);
     return r;
   }
@@ -48,25 +55,40 @@ export class GameRunner {
     return r;
   }
 
-  /** (Re)arm the deadline timer for a room's pending prompt. */
+  /** What the room is waiting on with a deadline: a prompt, or (turn timer) the current spin. */
+  static deadlineOf(room) {
+    if (room?.status !== 'playing' || !room.turn) return null;
+    const p = room.turn.pending;
+    if (p) return p.deadlineAt ? { kind: 'prompt', at: p.deadlineAt, key: `p:${p.promptId}:${p.deadlineAt}`, promptId: p.promptId } : null;
+    const t = room.turn;
+    if (t.phase === 'awaitSpin' && t.spinDeadlineAt) return { kind: 'spin', at: t.spinDeadlineAt, key: `s:${t.turnNo}:${t.spinDeadlineAt}`, turnNo: t.turnNo };
+    return null;
+  }
+
+  /** (Re)arm the deadline timer of a room. */
   schedule(room) {
-    const p = room?.status === 'playing' ? room.turn?.pending : null;
+    if (!room) return;
+    const d = GameRunner.deadlineOf(room);
     const cur = this.timers.get(room.id);
-    if (cur && p && cur.promptId === p.promptId && cur.deadlineAt === p.deadlineAt) return;
+    if (cur && d && cur.key === d.key) return;
     this.#clear(room.id);
-    if (!p?.deadlineAt) return;
-    const delay = Math.max(0, p.deadlineAt - this.clock()) + 2;
+    if (!d) return;
+    const delay = Math.max(0, d.at - this.clock()) + 2;
     const timer = setTimeout(() => {
       this.timers.delete(room.id);
       const live = this.store.getRoom(room.id);
-      if (live?.status !== 'playing' || live.turn?.pending?.promptId !== p.promptId) return;
-      // Node timers may fire a millisecond before the wall clock reaches deadlineAt → re-arm.
-      if (this.clock() < p.deadlineAt) return this.schedule(live);
-      const r = this.dispatch(room.id, { type: 'timeout', promptId: p.promptId, actor: { system: true } });
-      if (!r.ok) this.log(`타임아웃 처리 실패 (${room.id}): ${r.error}`);
+      if (GameRunner.deadlineOf(live)?.key !== d.key) return;
+      // Node timers may fire a millisecond before the wall clock reaches the deadline → re-arm.
+      if (this.clock() < d.at) return this.schedule(live);
+      const action =
+        d.kind === 'prompt'
+          ? { type: 'timeout', promptId: d.promptId, actor: { system: true } }
+          : { type: 'spin', characterId: live.turn.order[live.turn.currentIndex], auto: true, actor: { system: true } };
+      const r = this.dispatch(room.id, action);
+      if (!r.ok) this.log(`${d.kind === 'prompt' ? '타임아웃' : '자동 룰렛'} 처리 실패 (${room.id}): ${r.error}`);
     }, delay);
     timer.unref?.();
-    this.timers.set(room.id, { timer, promptId: p.promptId, deadlineAt: p.deadlineAt });
+    this.timers.set(room.id, { timer, key: d.key });
   }
 
   /** Re-arm timers for every restored room (boot). */

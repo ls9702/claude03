@@ -6,23 +6,41 @@ import { viewFor } from '../game/view.js';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 const ROOM_ID_RE = /^[a-f0-9]{8,32}$/;
+/** Player sessions unused for this long and not in any room are pruned (boot + hourly). */
+export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const SESSION_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+/** Open SSE streams per session per room; a new one closes the oldest beyond this. */
+export const MAX_STREAMS_PER_SESSION = 3;
+const TOUCH_SAVE_MS = 60 * 60 * 1000; // persist lastSeenAt at most hourly per session
 
 export function sseFrame(event, data) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
 export class RoomStore {
-  constructor({ dataDir, debounceMs = 300, log = () => {} } = {}) {
+  constructor({
+    dataDir,
+    debounceMs = 300,
+    log = () => {},
+    sessionTtlMs = SESSION_TTL_MS,
+    maxStreamsPerSession = MAX_STREAMS_PER_SESSION,
+    clock = () => Date.now(),
+  } = {}) {
     if (!dataDir) throw new Error('dataDir required');
     this.dataDir = dataDir;
     this.savesDir = path.join(dataDir, 'saves');
     this.debounceMs = debounceMs;
     this.log = log;
+    this.sessionTtlMs = sessionTtlMs;
+    this.maxStreamsPerSession = maxStreamsPerSession;
+    this.clock = clock;
     this.rooms = new Map();
-    this.sessions = new Map(); // token -> { createdAt }
-    this.subs = new Map(); // roomId -> Set<{ sessionId, res }>
+    this.sessions = new Map(); // token -> { createdAt, lastSeenAt }
+    this.subs = new Map(); // roomId -> Set<{ sessionId, res, at }>
     this.timers = new Map(); // roomId | '__sessions' -> Timeout
     this.pending = new Set(); // in-flight write promises
+    this.chains = new Map(); // file -> Promise (writes to one file are strictly ordered)
+    this.pruneTimer = null;
   }
 
   // ---------- boot / persistence ----------
@@ -45,13 +63,32 @@ export class RoomStore {
         this.log(`방 복원 실패 (${file}): ${err.message}`);
       }
     }
+    const pruned = this.pruneSessions();
+    if (pruned) this.log(`오래된 세션 ${pruned}개를 정리했습니다.`);
     return this;
   }
 
-  async #writeJson(file, data) {
-    const tmp = `${file}.${process.pid}.${randomBytes(3).toString('hex')}.tmp`;
-    await writeFile(tmp, JSON.stringify(data, null, 1));
-    await rename(tmp, file);
+  /**
+   * Atomic JSON write, chained per file: the snapshot is serialized NOW and written after every earlier
+   * write of the same file finished, so an older snapshot can never overwrite a newer one.
+   */
+  #writeJson(file, data) {
+    const body = JSON.stringify(data, null, 1);
+    const prev = this.chains.get(file) ?? Promise.resolve();
+    const run = prev
+      .catch(() => {})
+      .then(async () => {
+        await mkdir(path.dirname(file), { recursive: true });
+        const tmp = `${file}.${process.pid}.${randomBytes(3).toString('hex')}.tmp`;
+        await writeFile(tmp, body);
+        await rename(tmp, file);
+      });
+    const tail = run.catch(() => {});
+    this.chains.set(file, tail);
+    tail.then(() => {
+      if (this.chains.get(file) === tail) this.chains.delete(file);
+    });
+    return run;
   }
 
   #track(promise) {
@@ -61,6 +98,7 @@ export class RoomStore {
   }
 
   scheduleSave(roomId) {
+    if (this.closed) return; // shutdown: late presence updates (SSE closing) are not persisted
     clearTimeout(this.timers.get(roomId));
     this.timers.set(
       roomId,
@@ -74,14 +112,11 @@ export class RoomStore {
   saveNow(roomId) {
     const room = this.rooms.get(roomId);
     if (!room) return Promise.resolve();
-    return this.#track(
-      mkdir(this.savesDir, { recursive: true }).then(() =>
-        this.#writeJson(path.join(this.savesDir, `${roomId}.json`), room),
-      ),
-    );
+    return this.#track(this.#writeJson(path.join(this.savesDir, `${roomId}.json`), room));
   }
 
   #scheduleSessionsSave() {
+    if (this.closed) return;
     const key = '__sessions';
     clearTimeout(this.timers.get(key));
     this.timers.set(
@@ -94,11 +129,7 @@ export class RoomStore {
   }
 
   #saveSessions() {
-    return this.#track(
-      mkdir(this.dataDir, { recursive: true }).then(() =>
-        this.#writeJson(path.join(this.dataDir, 'sessions.json'), Object.fromEntries(this.sessions)),
-      ),
-    );
+    return this.#track(this.#writeJson(path.join(this.dataDir, 'sessions.json'), Object.fromEntries(this.sessions)));
   }
 
   /** Write everything that has a pending debounce timer, and wait for in-flight writes. */
@@ -113,15 +144,50 @@ export class RoomStore {
   }
 
   // ---------- sessions ----------
-  createSession(now = Date.now()) {
+  createSession(now = this.clock()) {
     const token = randomBytes(24).toString('base64url');
-    this.sessions.set(token, { createdAt: now });
+    this.sessions.set(token, { createdAt: now, lastSeenAt: now });
     this.#scheduleSessionsSave();
     return token;
   }
 
-  hasSession(token) {
-    return typeof token === 'string' && this.sessions.has(token);
+  /** Valid token? Also bumps its lastSeenAt (persisted at most hourly). */
+  hasSession(token, now = this.clock()) {
+    if (typeof token !== 'string') return false;
+    const s = this.sessions.get(token);
+    if (!s) return false;
+    const last = s.lastSeenAt ?? s.createdAt ?? 0;
+    if (now - last >= TOUCH_SAVE_MS) {
+      s.lastSeenAt = now;
+      this.#scheduleSessionsSave();
+    } else if (now > last) s.lastSeenAt = now;
+    return true;
+  }
+
+  /** Drop sessions unused for `sessionTtlMs` that are not a player of any room. Returns the count. */
+  pruneSessions(now = this.clock()) {
+    const members = new Set();
+    for (const r of this.rooms.values()) for (const p of r.players) members.add(p.sessionId);
+    let n = 0;
+    for (const [token, s] of this.sessions) {
+      const last = s?.lastSeenAt ?? s?.createdAt ?? 0;
+      if (now - last >= this.sessionTtlMs && !members.has(token)) {
+        this.sessions.delete(token);
+        n++;
+      }
+    }
+    if (n) this.#scheduleSessionsSave();
+    return n;
+  }
+
+  /** Prune sessions every `intervalMs` (unref'd; stopped by close()). */
+  startPruning(intervalMs = SESSION_PRUNE_INTERVAL_MS) {
+    clearInterval(this.pruneTimer);
+    this.pruneTimer = setInterval(() => {
+      const n = this.pruneSessions();
+      if (n) this.log(`오래된 세션 ${n}개를 정리했습니다.`);
+    }, intervalMs);
+    this.pruneTimer.unref?.();
   }
 
   // ---------- rooms ----------
@@ -229,8 +295,19 @@ export class RoomStore {
   // ---------- SSE ----------
   subscribe(roomId, sessionId, res) {
     if (!this.subs.has(roomId)) this.subs.set(roomId, new Set());
+    const set = this.subs.get(roomId);
+    // Cap streams per session per room: close the oldest (tabs left open, reconnect storms).
+    const mine = [...set].filter((s) => s.sessionId === sessionId);
+    for (const old of mine.slice(0, Math.max(0, mine.length - this.maxStreamsPerSession + 1))) {
+      set.delete(old);
+      try {
+        old.res.end();
+      } catch {
+        /* already closed */
+      }
+    }
     const sub = { sessionId, res };
-    this.subs.get(roomId).add(sub);
+    set.add(sub);
     return () => {
       const set = this.subs.get(roomId);
       if (!set) return;
@@ -261,6 +338,9 @@ export class RoomStore {
   }
 
   async close() {
+    this.closed = true;
+    clearInterval(this.pruneTimer);
+    this.pruneTimer = null;
     for (const set of this.subs.values()) for (const sub of set) sub.res.end();
     this.subs.clear();
     await this.flush();

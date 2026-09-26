@@ -3,8 +3,15 @@
 //   node scripts/simulate.js --games 200 --seed 1 [--verbose]
 // Random decisions, 2–8 characters owned by 1–4 sessions, random modes/eraTurns.
 // Exits non-zero on any exception or stuck game.
+//
+//   node scripts/simulate.js --bias --games 2000 --seed 1
+// Turn-order bias check: 8-character lifetime games (default eraTurns, index order, random decisions, no
+// bets) → share of final 1st places and average final rank per turn position. Also importable:
+// `simulateBias({games, seed})` (used by test/balance.test.js).
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { gameData } from '../server/data/index.js';
-import { validateRoomConfig } from '../server/game/config.js';
+import { minEraTurns, validateRoomConfig } from '../server/game/config.js';
 import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { createRng } from '../server/game/rng.js';
@@ -19,6 +26,7 @@ function arg(name, def) {
 const GAMES = Number(arg('games', 200));
 const SEED = Number(arg('seed', 1));
 const VERBOSE = !!arg('verbose', false);
+const BIAS = !!arg('bias', false);
 const MAX_ACTIONS = 20000;
 
 const data = gameData();
@@ -28,12 +36,13 @@ const BET_PICKS = { oddEven: ['odd', 'even'], range: Object.keys(data.balance.be
 
 function makeLobbyRoom(meta, gameNo) {
   const eraTurns = {};
+  const mode = meta.pick(MODES);
   for (const id of ERA_IDS) {
     const r = meta.next();
-    eraTurns[id] = r < 0.1 ? meta.int(1, 3) : r < 0.9 ? meta.int(3, 16) : meta.int(16, 40);
+    eraTurns[id] = Math.max(minEraTurns(id, mode), r < 0.1 ? meta.int(1, 3) : r < 0.9 ? meta.int(3, 16) : meta.int(16, 40));
   }
   const v = validateRoomConfig({
-    mode: meta.pick(MODES),
+    mode,
     eraTurns,
     maxCharacters: 8,
     startingMoney: meta.pick([0, 500, 1000, 3000]),
@@ -159,40 +168,107 @@ function playGame(g) {
   if (VERBOSE) console.log(`#${g} ${mode} chars=${room.characters.length} turns=${room.turn.turnNo} winner=${ranking[0].name} ${ranking[0].total}`);
 }
 
-const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
-const pct = (n, d) => `${d ? ((100 * n) / d).toFixed(1) : '0.0'}%`;
-
-const t0 = performance.now();
-let errors = 0;
-for (let g = 0; g < GAMES; g++) {
-  try {
-    playGame(g);
-  } catch (err) {
-    errors++;
-    console.error(`게임 #${g} 예외:`, err.stack || err);
+/**
+ * Turn-order bias: `games` 8-character lifetime games (default eraTurns, index turn order, 4 sessions × 2
+ * characters, random decisions, no bets).
+ * @returns {{games, winShare: number[], avgRank: number[], avgGoalPlace: number[]}} per turn position
+ */
+export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData } = {}) {
+  const wins = Array(characters).fill(0);
+  const rankSum = Array(characters).fill(0);
+  const placeSum = Array(characters).fill(0);
+  for (let g = 0; g < games; g++) {
+    const meta = createRng(seed * 7919 + g * 104729 + 1);
+    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index' });
+    let room = { id: `bias${g}`, code: 'BIASXX', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
+    for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
+    for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}` }, 0).room;
+    let now = 1_000_000;
+    const started = startGame(room, { now, ...(simData ? { data: simData } : {}) });
+    if (!started.ok) throw new Error(started.error);
+    room = started.room;
+    let n = 0;
+    while (room.status === 'playing') {
+      if (++n > MAX_ACTIONS) throw new Error(`bias game ${g} stuck`);
+      now += 1000;
+      const p = room.turn.pending;
+      let action;
+      if (p) {
+        const id = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
+        action = { type: 'choose', characterId: id, promptId: p.promptId, optionId: meta.pick(p.options).id };
+      } else action = { type: 'spin', characterId: room.turn.order[room.turn.currentIndex] };
+      room = applyAction(room, action, { now, ...(simData ? { data: simData } : {}) }).room;
+      room.log = []; // the engine clones the room per action; the log is irrelevant here (≈10× faster)
+    }
+    const pos = new Map(room.turn.order.map((id, i) => [id, i]));
+    for (const r of room.result.ranking) {
+      const i = pos.get(r.charId);
+      rankSum[i] += r.rank;
+      placeSum[i] += r.place ?? characters;
+      if (r.rank === 1) wins[i]++;
+    }
   }
+  return {
+    games,
+    winShare: wins.map((w) => w / games),
+    avgRank: rankSum.map((x) => x / games),
+    avgGoalPlace: placeSum.map((x) => x / games),
+  };
 }
-const ms = performance.now() - t0;
-const sortedMoney = [...stats.finalMoney].sort((a, b) => a - b);
-const routeTotal = stats.routes.love + stats.routes.career + stats.routes.money;
 
-console.log(`\n=== 시뮬레이션 ${stats.games}/${GAMES}판 (seed ${SEED}) · ${ms.toFixed(0)}ms · 예외 ${errors}건 ===`);
-console.log(`행동 수 ${stats.actions} · 평균 턴 ${avg(stats.turns).toFixed(1)} · 평균 라운드 ${avg(stats.rounds).toFixed(1)}`);
-console.log(
-  `최종 순자산(만원) 평균 ${avg(stats.finalMoney).toFixed(0)} · 중앙값 ${sortedMoney[sortedMoney.length >> 1] ?? 0} · 최소 ${sortedMoney[0] ?? 0} · 최대 ${sortedMoney.at(-1) ?? 0} · 빚 보유 ${pct(stats.debtors, stats.finalMoney.length)}`,
-);
-for (const [mode, m] of Object.entries(stats.byMode)) {
-  console.log(`  ${mode.padEnd(8)} ${String(m.games).padStart(4)}판 · 평균 턴 ${(m.turns / m.games).toFixed(1)} · 평균 순자산 ${(m.avgMoney / m.games).toFixed(0)}`);
+function mainBias() {
+  const t0 = performance.now();
+  const r = simulateBias({ games: GAMES, seed: SEED });
+  const spread = r.avgRank[0] - r.avgRank.at(-1);
+  console.log(`\n=== 턴 순서 편향 (8캐릭터 인생 전체, index 순서) ${r.games}판 · seed ${SEED} · ${(performance.now() - t0).toFixed(0)}ms ===`);
+  console.log(`최종 1위 비율: ${r.winShare.map((x, i) => `${i + 1}번째 ${(x * 100).toFixed(1)}%`).join(' · ')}`);
+  console.log(`평균 최종 순위: ${r.avgRank.map((x, i) => `${i + 1}번째 ${x.toFixed(2)}`).join(' · ')}`);
+  console.log(`평균 골인 등수: ${r.avgGoalPlace.map((x, i) => `${i + 1}번째 ${x.toFixed(2)}`).join(' · ')}`);
+  console.log(`1위 비율 범위 ${(Math.min(...r.winShare) * 100).toFixed(1)}~${(Math.max(...r.winShare) * 100).toFixed(1)}% · 첫째−마지막 평균 순위 차 ${spread.toFixed(2)}`);
 }
-console.log(
-  `루트 선택: 연애 ${pct(stats.routes.love, routeTotal)} / 커리어 ${pct(stats.routes.career, routeTotal)} / 금전 ${pct(stats.routes.money, routeTotal)} (총 ${routeTotal}, 완주 ${stats.routeCompleted})`,
-);
-console.log(`1등 골인자의 턴 순서 위치: ${JSON.stringify(stats.firstFinisherOrderIndex)} · 1등 골인자가 최종 1위 ${pct(stats.winnerWasFirstFinisher, stats.games)}`);
-console.log(
-  `골인 순서(턴 순서 위치별 평균 골인 등수): ${Object.entries(stats.placeByOrder)
-    .map(([i, [sum, n]]) => `${Number(i) + 1}번째 ${(sum / n).toFixed(2)}`)
-    .join(' · ')}`,
-);
-console.log(`훈수 베팅 ${stats.bets.placed}건, 적중 ${pct(stats.bets.won, stats.bets.placed)} · 기초연금 ${stats.pensions}회 · 보너스 룰렛 ${stats.bonusSpins}회`);
-console.log(`프롬프트 ${JSON.stringify(stats.prompts)} · 타임아웃 ${stats.timeouts}회`);
-if (errors) process.exit(1);
+
+function mainRandom() {
+  const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
+  const pct = (n, d) => `${d ? ((100 * n) / d).toFixed(1) : '0.0'}%`;
+
+  const t0 = performance.now();
+  let errors = 0;
+  for (let g = 0; g < GAMES; g++) {
+    try {
+      playGame(g);
+    } catch (err) {
+      errors++;
+      console.error(`게임 #${g} 예외:`, err.stack || err);
+    }
+  }
+  const ms = performance.now() - t0;
+  const sortedMoney = [...stats.finalMoney].sort((a, b) => a - b);
+  const routeTotal = stats.routes.love + stats.routes.career + stats.routes.money;
+
+  console.log(`\n=== 시뮬레이션 ${stats.games}/${GAMES}판 (seed ${SEED}) · ${ms.toFixed(0)}ms · 예외 ${errors}건 ===`);
+  console.log(`행동 수 ${stats.actions} · 평균 턴 ${avg(stats.turns).toFixed(1)} · 평균 라운드 ${avg(stats.rounds).toFixed(1)}`);
+  console.log(
+    `최종 순자산(만원) 평균 ${avg(stats.finalMoney).toFixed(0)} · 중앙값 ${sortedMoney[sortedMoney.length >> 1] ?? 0} · 최소 ${sortedMoney[0] ?? 0} · 최대 ${sortedMoney.at(-1) ?? 0} · 빚 보유 ${pct(stats.debtors, stats.finalMoney.length)}`,
+  );
+  for (const [mode, m] of Object.entries(stats.byMode)) {
+    console.log(`  ${mode.padEnd(8)} ${String(m.games).padStart(4)}판 · 평균 턴 ${(m.turns / m.games).toFixed(1)} · 평균 순자산 ${(m.avgMoney / m.games).toFixed(0)}`);
+  }
+  console.log(
+    `루트 선택: 연애 ${pct(stats.routes.love, routeTotal)} / 커리어 ${pct(stats.routes.career, routeTotal)} / 금전 ${pct(stats.routes.money, routeTotal)} (총 ${routeTotal}, 완주 ${stats.routeCompleted})`,
+  );
+  console.log(`1등 골인자의 턴 순서 위치: ${JSON.stringify(stats.firstFinisherOrderIndex)} · 1등 골인자가 최종 1위 ${pct(stats.winnerWasFirstFinisher, stats.games)}`);
+  console.log(
+    `골인 순서(턴 순서 위치별 평균 골인 등수): ${Object.entries(stats.placeByOrder)
+      .map(([i, [sum, n]]) => `${Number(i) + 1}번째 ${(sum / n).toFixed(2)}`)
+      .join(' · ')}`,
+  );
+  console.log(`훈수 베팅 ${stats.bets.placed}건, 적중 ${pct(stats.bets.won, stats.bets.placed)} · 기초연금 ${stats.pensions}회 · 보너스 룰렛 ${stats.bonusSpins}회`);
+  console.log(`프롬프트 ${JSON.stringify(stats.prompts)} · 타임아웃 ${stats.timeouts}회`);
+  if (errors) process.exit(1);
+}
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isMain) {
+  if (BIAS) mainBias();
+  else mainRandom();
+}

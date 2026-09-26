@@ -232,8 +232,8 @@ test('side bets: payout math, validation, masking until resolved', () => {
   assert.equal(betWins({ kind: 'oddEven', pick: 'odd' }, 7, bal), true);
   assert.equal(betWins({ kind: 'oddEven', pick: 'even' }, 7, bal), false);
   assert.equal(betWins({ kind: 'range', pick: '1-3' }, 3, bal), true);
-  assert.equal(betWins({ kind: 'range', pick: '4-7' }, 8, bal), false);
-  assert.equal(betWins({ kind: 'range', pick: '8-10' }, 10, bal), true);
+  assert.equal(betWins({ kind: 'range', pick: '4-6' }, 7, bal), false);
+  assert.equal(betWins({ kind: 'range', pick: '7-10' }, 10, bal), true);
 
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['B', 'B2'], ['A', 'A2']], startingMoney: 100 });
   const order = room.turn.order; // A1, A2, B1, B2
@@ -267,12 +267,12 @@ test('side bets: payout math, validation, masking until resolved', () => {
   assert.ok(types(r.events).indexOf('spun') < types(r.events).indexOf('betResolved'));
   assert.equal(viewFor(r.room, 'A').bets[room.turn.turnNo][b1].pick, 'odd'); // visible once resolved
 
-  // range pays ×3 (net +2×amount); can't bet more than you have; bets close once a prompt is open
+  // 7-10 pays ×2.5 (net +1.5×amount, rounded down); can't bet more than you have
   let room2 = r.room; // now A2's turn
   assert.equal(cur(room2), a2);
-  room2 = bet(room2, b1, 'range', '8-10', 20).room;
+  room2 = bet(room2, b1, 'range', '7-10', 15).room;
   const r2 = act(room2, { type: 'spin', characterId: a2 }, [9]);
-  assert.equal(r2.events.find((e) => e.type === 'betResolved').results[0].delta, 40);
+  assert.equal(r2.events.find((e) => e.type === 'betResolved').results[0].delta, 22);
   const poor = structuredClone(r.room);
   ch(poor, b1).money = 7;
   assert.throws(() => bet(poor, b1, 'oddEven', 'even', 10), { status: 409 });
@@ -316,7 +316,7 @@ test('goal → finished with prize → others continue while finished get bonus 
   const bonus = r.events.find((e) => e.type === 'bonusSpin');
   assert.deepEqual([bonus.charId, bonus.value, bonus.amount], [a, 6, 6 * gameData().balance.bonusSpinUnit]);
   assert.equal(cur(r.room), b);
-  assert.equal(ch(r.room, a).goalBonus, prize + 60);
+  assert.equal(ch(r.room, a).goalBonus, prize + 6 * gameData().balance.bonusSpinUnit);
   room = r.room;
   assert.throws(() => act(room, { type: 'spin', characterId: a }), { status: 409 });
   // b reaches the goal → game over

@@ -4,7 +4,7 @@
 //
 // Lines are picked with a sub-RNG seeded from the engine RNG state + event index, so every client shows the
 // same text without consuming the gameplay RNG stream (existing seeds keep their outcomes).
-import { getLines, getMc, getTones } from '../data/index.js';
+import { getBoardData, getLines, getMc, getTones } from '../data/index.js';
 import { createRng } from './rng.js';
 import { MC_FREQUENCIES } from './config.js';
 
@@ -354,7 +354,7 @@ export function mcFrequencyOf(room) {
 }
 
 /** Which MC situation an event is (null = MCs stay quiet). Pure; `state` is read, not written. */
-export function mcSituationFor(ev, { events, index, room, mc, state, eraName }) {
+export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {} }) {
   const chars = room?.characters ?? [];
   const c = ev.charId ? chars.find((x) => x.id === ev.charId) : null;
   const vars = { name: c?.name ?? '', era: '', amount: '', place: '' };
@@ -389,7 +389,9 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName }) 
     case 'landed': {
       const { list, next } = followersOf(events, index);
       if (next?.type === 'prompt' && next.charId === ev.charId) break; // the prompt takes the stage
-      const tileKey = mc?.tileSituations?.[ev.tileType];
+      // Placeholder tiles (board.json `placeholders`: heart/job/treasure… before their stage exists) only
+      // log a "coming soon" line → never a marriage / job / treasure celebration.
+      const tileKey = Object.hasOwn(placeholders ?? {}, ev.tileType) ? null : mc?.tileSituations?.[ev.tileType];
       const o = outcome(list, ev.charId);
       if (tileKey) {
         key = tileKey;
@@ -464,8 +466,9 @@ export function attachMc(events, { room, data = {}, seed = 0, lines = data.lines
   room.mcState = state;
   const turnNo = room.turn?.turnNo ?? 0;
   const eraName = (id) => room.board?.eras?.find((e) => e.id === id)?.name ?? data.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
+  const placeholders = (data.board ?? getBoardData()).placeholders ?? {};
   events.forEach((ev, index) => {
-    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName });
+    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders });
     if (!sit) return;
     const rng = createRng(hashSeed(seed, turnNo, index, ev.type, 'mc'));
     if (sit.weight !== 'big') {

@@ -4,7 +4,8 @@ import path from 'node:path';
 
 export async function tempDir() {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'jinsei-test-'));
-  return { dir, cleanup: () => rm(dir, { recursive: true, force: true }) };
+  // retries: a late background write (AI art step, presence save) can race the removal (ENOTEMPTY)
+  return { dir, cleanup: () => rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }) };
 }
 
 /** A bare lobby room object (no store) for pure rule tests. */

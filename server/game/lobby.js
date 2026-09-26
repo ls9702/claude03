@@ -28,7 +28,19 @@ export function findPlayer(room, sessionId) {
   return room.players.find((p) => p.sessionId === sessionId) || null;
 }
 
-export function joinRoom(room, sessionId, name, now = Date.now()) {
+/** Max spectators per room (they never count toward MAX_PLAYERS). */
+export const MAX_SPECTATORS = 20;
+
+export const isSpectator = (player) => player?.role === 'spectator';
+/** Players that play (have or may create characters); spectators excluded. */
+export const activePlayers = (room) => room.players.filter((p) => !isSpectator(p));
+
+/**
+ * Join (or rejoin) a room. `spectator: true` joins as a watcher (`role: 'spectator'`): allowed in lobby,
+ * playing and finished rooms, not counted toward MAX_PLAYERS, no characters / actions (reactions only).
+ * A session keeps the role it first joined with.
+ */
+export function joinRoom(room, sessionId, name, now = Date.now(), { spectator = false } = {}) {
   const clean = cleanName(name);
   if (!clean) return fail(400, `이름은 1~${NAME_MAX}자로 입력하세요.`);
   const next = structuredClone(room);
@@ -42,25 +54,35 @@ export function joinRoom(room, sessionId, name, now = Date.now()) {
     existing.lastSeen = now;
     return { ok: true, room: next, logs, player: existing, rejoined: true };
   }
-  if (next.status !== 'lobby') return fail(409, '이미 시작된 방에는 새로 들어갈 수 없습니다.');
-  if (next.players.length >= MAX_PLAYERS) return fail(409, `방이 가득 찼습니다. (최대 ${MAX_PLAYERS}명)`);
+  if (spectator) {
+    if (next.players.filter(isSpectator).length >= MAX_SPECTATORS) return fail(409, `관전자가 너무 많아요. (최대 ${MAX_SPECTATORS}명)`);
+  } else {
+    if (next.status !== 'lobby') return fail(409, '이미 시작된 방에는 새로 들어갈 수 없습니다. 관전으로 들어가 보세요.');
+    if (activePlayers(next).length >= MAX_PLAYERS) return fail(409, `방이 가득 찼습니다. (최대 ${MAX_PLAYERS}명) 관전으로 들어갈 수 있어요.`);
+  }
   next.nextPlayerSeq = (next.nextPlayerSeq || 0) + 1;
   const player = {
     id: `p${next.nextPlayerSeq}`,
     sessionId,
     name: clean,
+    role: spectator ? 'spectator' : 'player',
     connected: false,
     lastSeen: now,
     ready: false,
     joinedAt: now,
   };
   next.players.push(player);
-  const logs = [pushLog(next, `${clean} 님이 입장했습니다.`, now, 'join')];
+  const logs = [pushLog(next, spectator ? `${clean} 님이 관전하러 왔습니다.` : `${clean} 님이 입장했습니다.`, now, 'join')];
   return { ok: true, room: next, logs, player, rejoined: false };
 }
 
+const SPECTATOR_ERROR = '관전자는 캐릭터를 만들거나 게임에 참여할 수 없어요.';
+/** Fail result for spectators (routes use it for every game action). */
+export const spectatorFail = () => fail(403, SPECTATOR_ERROR);
+
 export function addCharacter(room, sessionId, { name, avatar } = {}, now = Date.now()) {
   if (!findPlayer(room, sessionId)) return fail(403, '이 방의 참가자가 아닙니다.');
+  if (isSpectator(findPlayer(room, sessionId))) return spectatorFail();
   if (room.status !== 'lobby') return fail(409, '로비에서만 캐릭터를 만들 수 있습니다.');
   if (room.characters.length >= room.config.maxCharacters) {
     return fail(409, `캐릭터는 최대 ${room.config.maxCharacters}명까지 만들 수 있습니다.`);
@@ -127,6 +149,7 @@ export function removeCharacter(room, sessionId, charId, now = Date.now()) {
 
 export function setReady(room, sessionId, ready) {
   if (!findPlayer(room, sessionId)) return fail(403, '이 방의 참가자가 아닙니다.');
+  if (isSpectator(findPlayer(room, sessionId))) return spectatorFail();
   if (typeof ready !== 'boolean') return fail(400, 'ready 값은 true/false여야 합니다.');
   if (room.status !== 'lobby') return fail(409, '로비에서만 준비 상태를 바꿀 수 있습니다.');
   const next = structuredClone(room);

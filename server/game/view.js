@@ -12,6 +12,7 @@ function publicPlayers(room, sessionId) {
     connected: !!p.connected,
     lastSeen: p.lastSeen,
     ready: !!p.ready,
+    role: p.role === 'spectator' ? 'spectator' : 'player',
     isMe: sessionId != null && p.sessionId === sessionId,
   }));
 }
@@ -83,7 +84,7 @@ export function viewFor(room, sessionId = null) {
     result: room.result ? structuredClone(room.result) : null,
     log: room.log.slice(-50),
     createdAt: room.createdAt,
-    me: me ? { id: me.id, name: me.name, ready: !!me.ready } : null,
+    me: me ? { id: me.id, name: me.name, ready: !!me.ready, role: me.role === 'spectator' ? 'spectator' : 'player' } : null,
   };
 }
 
@@ -99,7 +100,8 @@ export function adminSummary(room) {
     code: room.code,
     status: room.status,
     mode: room.config.mode,
-    players: room.players.length,
+    players: room.players.filter((p) => p.role !== 'spectator').length,
+    spectators: room.players.filter((p) => p.role === 'spectator').length,
     connected: room.players.filter((p) => p.connected).length,
     characters: room.characters.length,
     maxCharacters: room.config.maxCharacters,

@@ -1,13 +1,22 @@
 // Admin API under /admin/api — cookie auth with ADMIN_PASSWORD.
 import express from 'express';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { getEras } from '../data/index.js';
-import { validateRoomConfig, defaultRoomConfig } from '../game/config.js';
+import { TURN_TIMEOUTS, defaultRoomConfig, minEraTurns, validateRoomConfig } from '../game/config.js';
 import { adminSummary, adminView } from '../game/view.js';
-import { sendFail } from './common.js';
+import { clientIp, createRateLimiter, sendFail } from './common.js';
 
 export const ADMIN_COOKIE = 'jinsei_admin';
-const COOKIE_MAX_AGE_S = 60 * 60 * 12;
+/** Admin sessions last 7 days and survive restarts (DATA_DIR/admin-sessions.json, token hashes only). */
+export const ADMIN_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const COOKIE_MAX_AGE_S = ADMIN_SESSION_TTL_MS / 1000;
+/** Login attempts per IP per minute. */
+export const LOGIN_RATE = { windowMs: 60_000, max: 10 };
+/** Admin game interventions → engine actions. */
+export const ADMIN_ACTIONS = ['timeout', 'forceSpin', 'skipTurn'];
 
 function parseCookies(header = '') {
   const out = {};
@@ -31,20 +40,73 @@ function safeEqual(a, b) {
   return timingSafeEqual(ha, hb);
 }
 
-export function createAdminRouter({ store, runner, adminPassword, charArt = null }) {
-  const router = express.Router();
-  const tokens = new Map(); // token -> expiresAt
+const hashToken = (t) => createHash('sha256').update(String(t)).digest('hex');
 
-  const isAdmin = (req) => {
-    const t = parseCookies(req.get('cookie'))[ADMIN_COOKIE];
-    const exp = t && tokens.get(t);
-    if (!exp) return false;
-    if (exp < Date.now()) {
-      tokens.delete(t);
-      return false;
+/**
+ * Persistent admin sessions: Map<sha256(token), expiresAt> mirrored to `<dataDir>/admin-sessions.json`
+ * (mode 600, atomic, serialized writes). Expired entries are dropped on load and on every save.
+ */
+export function createAdminSessions({ dataDir = null, ttlMs = ADMIN_SESSION_TTL_MS, clock = () => Date.now(), log = () => {} } = {}) {
+  const file = dataDir ? path.join(dataDir, 'admin-sessions.json') : null;
+  const map = new Map();
+  if (file) {
+    try {
+      const raw = JSON.parse(readFileSync(file, 'utf8'));
+      const now = clock();
+      for (const [h, exp] of Object.entries(raw ?? {})) if (typeof exp === 'number' && exp > now) map.set(h, exp);
+    } catch (err) {
+      if (err.code !== 'ENOENT') log(`관리자 세션 복원 실패: ${err.message}`);
     }
-    return true;
+  }
+  let chain = Promise.resolve();
+  const save = () => {
+    if (!file) return chain;
+    const now = clock();
+    for (const [h, exp] of map) if (exp <= now) map.delete(h);
+    const body = JSON.stringify(Object.fromEntries(map));
+    chain = chain
+      .then(async () => {
+        await mkdir(dataDir, { recursive: true });
+        const tmp = `${file}.${process.pid}.${randomBytes(3).toString('hex')}.tmp`;
+        await writeFile(tmp, body, { mode: 0o600 });
+        await rename(tmp, file);
+      })
+      .catch((err) => log(`관리자 세션 저장 실패: ${err.message}`));
+    return chain;
   };
+  return {
+    create() {
+      const token = randomBytes(24).toString('base64url');
+      map.set(hashToken(token), clock() + ttlMs);
+      save();
+      return token;
+    },
+    valid(token) {
+      if (!token) return false;
+      const h = hashToken(token);
+      const exp = map.get(h);
+      if (!exp) return false;
+      if (exp <= clock()) {
+        map.delete(h);
+        save();
+        return false;
+      }
+      return true;
+    },
+    revoke(token) {
+      if (token && map.delete(hashToken(token))) save();
+    },
+    flush: () => chain,
+    size: () => map.size,
+  };
+}
+
+export function createAdminRouter({ store, runner, adminPassword, charArt = null, loginRate = LOGIN_RATE, sessions = null, log = () => {} }) {
+  const router = express.Router();
+  const tokens = sessions ?? createAdminSessions({ dataDir: store?.dataDir ?? null, log });
+  const loginLimiter = createRateLimiter(loginRate);
+
+  const isAdmin = (req) => tokens.valid(parseCookies(req.get('cookie'))[ADMIN_COOKIE]);
 
   const requireAdmin = (req, res, next) => {
     if (!isAdmin(req)) return res.status(401).json({ error: '관리자 로그인이 필요합니다.' });
@@ -52,12 +114,14 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
   };
 
   router.post('/login', (req, res) => {
+    if (!loginLimiter.hit(clientIp(req))) {
+      return res.status(429).json({ error: '로그인 시도가 너무 많아요. 1분 후에 다시 시도하세요.' });
+    }
     const password = req.body?.password;
     if (typeof password !== 'string' || !safeEqual(password, adminPassword)) {
       return res.status(401).json({ error: '비밀번호가 올바르지 않습니다.' });
     }
-    const token = randomBytes(24).toString('base64url');
-    tokens.set(token, Date.now() + COOKIE_MAX_AGE_S * 1000);
+    const token = tokens.create();
     res.setHeader(
       'Set-Cookie',
       `${ADMIN_COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=${COOKIE_MAX_AGE_S}`,
@@ -67,7 +131,7 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
 
   router.post('/logout', (req, res) => {
     const t = parseCookies(req.get('cookie'))[ADMIN_COOKIE];
-    if (t) tokens.delete(t);
+    tokens.revoke(t);
     res.setHeader('Set-Cookie', `${ADMIN_COOKIE}=; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=0`);
     res.json({ ok: true });
   });
@@ -75,7 +139,10 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
   router.get('/me', (req, res) => res.json({ admin: isAdmin(req) }));
 
   router.get('/meta', requireAdmin, (req, res) => {
-    res.json({ eras: getEras(), defaults: defaultRoomConfig() });
+    const eras = getEras();
+    // Form hints: minimum turns per era for each mode (route eras ≥ 3, kids 고등학생 ≥ 2) + turn timer choices.
+    const minTurns = Object.fromEntries(Object.entries(eras.modes).map(([mode, m]) => [mode, Object.fromEntries(m.eras.map((id) => [id, minEraTurns(id, mode)]))]));
+    res.json({ eras, defaults: defaultRoomConfig(), turnTimeouts: TURN_TIMEOUTS, minTurns });
   });
 
   router.get('/rooms', requireAdmin, (req, res) => {
@@ -112,11 +179,27 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
     res.json({ room: adminView(r.room) });
   });
 
-  // Admin interventions. Stage 2: force-timeout the pending prompt (default answers).
+  // Admin interventions (host tools): `timeout` force-resolves the pending prompt (default answers),
+  // `forceSpin` spins for the current character now, `skipTurn` ends the current turn without moving.
   router.post('/rooms/:id/actions', requireAdmin, withRoom, (req, res) => {
     const body = req.body ?? {};
-    if (body.type !== 'timeout') return res.status(400).json({ error: '관리자는 timeout만 실행할 수 있습니다.' });
-    const r = runner.dispatch(req.room.id, { type: 'timeout', promptId: body.promptId, force: true, actor: { admin: true } });
+    if (!ADMIN_ACTIONS.includes(body.type)) {
+      return res.status(400).json({ error: '관리자 행동은 timeout / forceSpin / skipTurn 중 하나여야 합니다.' });
+    }
+    const room = req.room;
+    if (room.status !== 'playing' || !room.turn) return res.status(409).json({ error: '게임이 진행 중이 아니에요.' });
+    let action;
+    if (body.type === 'timeout') {
+      action = { type: 'timeout', promptId: typeof body.promptId === 'string' ? body.promptId : undefined, force: true, actor: { admin: true } };
+    } else {
+      if (room.turn.phase !== 'awaitSpin' || room.turn.pending) {
+        const what = body.type === 'forceSpin' ? '대신 돌리기' : '턴 넘기기';
+        return res.status(409).json({ error: `룰렛을 기다리는 중에만 ${what}를 할 수 있어요.` });
+      }
+      const characterId = room.turn.order[room.turn.currentIndex];
+      action = body.type === 'forceSpin' ? { type: 'spin', characterId, actor: { admin: true } } : { type: 'skip', actor: { admin: true } };
+    }
+    const r = runner.dispatch(room.id, action);
     if (!r.ok) return sendFail(res, r);
     res.json({ room: adminView(r.room), events: r.events });
   });
@@ -141,5 +224,6 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
   });
 
   router.requireAdmin = requireAdmin; // reused by routes/adminAssets.js
+  router.adminSessions = tokens;
   return router;
 }

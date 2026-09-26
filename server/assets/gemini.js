@@ -145,15 +145,21 @@ export function createGeminiClient({
         signal: ctrl.signal,
       });
     } catch (e) {
-      throw new GeminiError(`네트워크 오류: ${scrub(e?.message, key)}`, { code: 'NETWORK', retryable: true });
-    } finally {
       clearTimeout(timer);
+      throw new GeminiError(`네트워크 오류: ${scrub(e?.message, key)}`, { code: 'NETWORK', retryable: true });
     }
+    // The abort timer stays armed until the body is fully read: a stalled body (large base64 image) must
+    // time out too, not hang the limiter slot forever.
     let json = null;
     try {
       json = await res.json();
     } catch {
-      /* non-JSON body */
+      /* non-JSON body (or aborted, handled below) */
+    } finally {
+      clearTimeout(timer);
+    }
+    if (ctrl.signal.aborted) {
+      throw new GeminiError('네트워크 오류: 응답 시간이 초과되었습니다.', { code: 'NETWORK', retryable: true });
     }
     if (!res.ok) {
       const retryable = res.status === 429 || res.status >= 500;

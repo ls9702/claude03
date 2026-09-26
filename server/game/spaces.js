@@ -1,6 +1,6 @@
 // Space (tile) resolution + prompt definitions. Called by the engine inside a tx.
 import { ROUTE_KEYS } from './board.js';
-import { addLog, changeMoney, charById, emit, josa, won } from './effects.js';
+import { addLog, changeMoney, charById, emit, josa, turnTimeoutMs, won } from './effects.js';
 
 const TONE_BY_ROUTE = { love: 'love', career: 'career', money: 'money' };
 
@@ -106,7 +106,8 @@ export function openPrompt(tx, kind, c, extra = {}) {
   room.promptSeq = (room.promptSeq ?? 0) + 1;
   const { multiTimeoutMs, decisionTimeoutMs } = tx.data.balance.prompts;
   const multi = spec.simultaneous || spec.forCharacterIds.length > 1;
-  const timeout = multi ? multiTimeoutMs : decisionTimeoutMs;
+  // Single-character decisions: balance default, else the room's host turn timer (0 = no deadline).
+  const timeout = multi ? multiTimeoutMs : decisionTimeoutMs || turnTimeoutMs(room) || null;
   const pending = {
     promptId: `pr${room.promptSeq}`,
     kind,

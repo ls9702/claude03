@@ -17,6 +17,9 @@ const REF_MAX_PX = 1024;
 const UPLOAD_MAX_PX = 4096;
 const PREVIEW_PX = 384;
 
+/** Same format as manifest item ids (manifest.js ID_RE). */
+export const ITEM_ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
 export class StudioError extends Error {
   constructor(message, { status = 400, code = 'STUDIO_ERROR' } = {}) {
     super(message);
@@ -56,12 +59,28 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
   let lock = Promise.resolve();
   const busy = new Set();
 
+  // Public index cache (GET /api/assets is hit by every client): invalidated by every manifest save /
+  // accept / upload here, and by the manifest file's mtime+size (scripts editing it while the server runs).
+  let indexCache = null; // { stamp, value }
+  const invalidateIndex = () => {
+    indexCache = null;
+  };
+  const manifestStamp = async () => {
+    try {
+      const st = await stat(manifestPath);
+      return `${st.mtimeMs}:${st.size}`;
+    } catch {
+      return 'missing';
+    }
+  };
+
   /** Serialize manifest read-modify-write. */
   function withManifest(mutate) {
     const run = lock.then(async () => {
       const m = await loadManifest(manifestPath);
       const result = await mutate(m);
       await saveManifest(m, manifestPath);
+      invalidateIndex();
       return result;
     });
     lock = run.catch(() => {});
@@ -75,7 +94,14 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     return { m, item };
   }
 
-  const candDir = (id) => path.join(candRoot, id);
+  // Every path built from a user-supplied item id goes through here: strict manifest id format + containment
+  // (route params are URL-decoded, so `..%2Foutside` arrives as `../outside`).
+  const candDir = (id) => {
+    if (typeof id !== 'string' || !ITEM_ID_RE.test(id)) throw new StudioError('에셋 항목 ID가 올바르지 않습니다.', { status: 400, code: 'BAD_ID' });
+    const dir = path.resolve(candRoot, id);
+    if (!dir.startsWith(path.resolve(candRoot) + path.sep)) throw new StudioError('에셋 항목 ID가 올바르지 않습니다.', { status: 400, code: 'BAD_ID' });
+    return dir;
+  };
   const outPath = (rel) => {
     const p = path.resolve(outputDir, rel);
     if (!p.startsWith(path.resolve(outputDir) + path.sep)) throw new StudioError('잘못된 출력 경로입니다.');
@@ -83,9 +109,10 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
   };
 
   async function listCandidates(id) {
+    const dir = candDir(id); // throws 400 on a bad id (before touching the disk)
     let files = [];
     try {
-      files = await readdir(candDir(id));
+      files = await readdir(dir);
     } catch {
       return [];
     }
@@ -360,6 +387,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     else if (item.kind === 'part') enc = img.webp({ quality: 90, alphaQuality: 100, effort: 5 }); // tinted in the browser
     else enc = img.webp({ quality: 88 });
     await enc.toFile(dest);
+    invalidateIndex();
     return dest;
   }
 
@@ -486,8 +514,17 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     return { item: summarize(m, item), candidates: await listCandidates(id) };
   }
 
-  /** Public index for the game client: accepted assets whose files exist, keyed by id. */
+  /** Public index for the game client (cached; see indexCache). */
   async function publicIndex() {
+    const stamp = await manifestStamp();
+    if (indexCache?.stamp === stamp) return indexCache.value;
+    const value = await buildPublicIndex();
+    indexCache = { stamp, value };
+    return value;
+  }
+
+  /** Accepted assets whose files exist, keyed by id. */
+  async function buildPublicIndex() {
     const m = await loadManifest(manifestPath);
     const assets = {};
     for (const item of m.items) {
@@ -537,6 +574,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     listItems,
     getItemDetail,
     publicIndex,
+    invalidateIndex,
     select,
     isBusy: (id) => busy.has(id),
   };

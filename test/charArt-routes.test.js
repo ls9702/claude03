@@ -207,14 +207,19 @@ test('402 → failed with the Korean credits reason; delete cancels a running jo
   const c = await waitArt(srv, A, c3, (a) => a?.status === 'failed');
   assert.equal(c.art.reason, MSG.credits);
   assert.equal(c.art.reason, 'AI 생성 크레딧이 부족합니다. 관리자에게 문의하세요.');
-  assert.ok(!c.artGenerations, 'a failed job does not use up the generation');
+  assert.ok(!c.artGenerations, 'a failed job is not a successful generation');
+  assert.equal(c.artRequests, 1, 'but the request is counted');
 
   // slow fake: start, then delete the character → the job stops after its current step
   ctl.mode = 'ok';
   ctl.delayMs = 60;
   const before = ok.calls.length;
-  const r2 = await call(srv, 'POST', `/api/rooms/${roomId}/characters/${c3}/art`, { token: A });
-  assert.equal(r2.status, 202, 'retry after a failure is allowed');
+  // a failed request still counts (requests, not successes, are limited) → only the admin can retry
+  const again = await call(srv, 'POST', `/api/rooms/${roomId}/characters/${c3}/art`, { token: A });
+  assert.equal(again.status, 409, 'a failed job used up the request');
+  assert.match(again.json.error, /한 번만/);
+  const r2 = await call(srv, 'POST', `/admin/api/rooms/${roomId}/characters/${c3}/art`, { cookie });
+  assert.equal(r2.status, 202, 'the admin may retry');
   await new Promise((res) => setTimeout(res, 90));
   const del = await call(srv, 'DELETE', `/api/rooms/${roomId}/characters/${c3}`, { token: A });
   assert.equal(del.status, 200);

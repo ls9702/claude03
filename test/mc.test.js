@@ -200,11 +200,37 @@ test('MC frequency: many ≥ normal ≥ few for optional appearances; cooldown s
   for (let k = 1; k < hits.length; k++) assert.ok(hits[k] - hits[k - 1] > 2, 'cooldown: never on consecutive minor events');
   for (const i of hits) assert.equal(events[i].mcKey, 'smallWin');
   // a big event right after is still hosted (cooldown only applies to optional ones)
-  const big = [{ type: 'landed', charId: c, tileType: 'treasure', tileId: 't' }];
+  const big = [
+    { type: 'landed', charId: c, tileType: 'money', tileId: 't' },
+    { type: 'moneyChanged', charId: c, delta: 500, reason: 'tile', money: 900, debt: 0 },
+  ];
   room.mcState.cool = 5;
   attachMc(big, { room, data: gameData(), seed: 1 });
-  assert.equal(big[0].mcKey, 'treasure');
-  assert.ok(big[0].mc.length >= 2);
+  assert.equal(big[0].mcKey, 'bigWin');
+  assert.ok(big[0].mc.length >= 1);
+});
+
+test('MC guard: placeholder tiles (heart/job/treasure/…) never produce marriage/job/treasure celebrations', () => {
+  const r = started({ mcFrequency: 'many' });
+  const placeholders = Object.keys(gameData().board.placeholders);
+  assert.ok(placeholders.includes('heart') && placeholders.includes('job') && placeholders.includes('treasure'));
+  const c = r.room.characters[0].id;
+  // even if tileSituations maps them again later, a tile type still listed as a placeholder stays quiet
+  const data = { ...gameData(), mc: { ...mc, tileSituations: { heart: 'marriage', job: 'job', treasure: 'treasure' } } };
+  for (const seed of [1, 2, 3, 4, 5]) {
+    for (const tileType of placeholders) {
+      const room = structuredClone(r.room);
+      room.mcState = { cool: 0, eras: ['baby'], firstSpin: true };
+      const events = [{ type: 'landed', charId: c, tileType, tileId: `x-${tileType}` }, { type: 'log', text: '준비 중', tone: 'info', charId: c }];
+      attachMc(events, { room, data, seed });
+      assert.ok(!['marriage', 'job', 'treasure', 'birth'].includes(events[0].mcKey), `${tileType} → ${events[0].mcKey}`);
+    }
+  }
+  // full games: no big life-event MC situation is ever produced while those systems are placeholders
+  for (const seed of [2, 4]) {
+    const keys = playAll({ seed, mode: 'adult', mcFrequency: 'many' }).events.map((e) => e.mcKey).filter(Boolean);
+    assert.ok(!keys.some((k) => ['marriage', 'job', 'treasure', 'birth'].includes(k)), keys.join(','));
+  }
 });
 
 test('pickMcLines: duo keeps speaker order; singles follow the lead; per-line expression overrides', () => {

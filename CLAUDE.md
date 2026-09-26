@@ -16,13 +16,25 @@
 - Do not run git commands; the orchestrator commits.
 
 ## Layout (Stage 1)
-- `server/index.js` — `createApp()` / `startServer({port, dataDir, adminPassword, heartbeatMs, debounceMs})`
-  (port 0 = ephemeral, used by tests). Runs as main when executed directly.
-- `server/config.js` — `PORT`, `ADMIN_PASSWORD`, `DATA_DIR` from env.
+- `server/index.js` — `createApp({store, runner, adminPassword, heartbeatMs, assets, log, rate})` /
+  `startServer({port, dataDir, adminPassword, heartbeatMs, debounceMs, log, assets, rate})` (port 0 = ephemeral,
+  used by tests; `rate = {session?, login?: {windowMs, max}}` overrides the limits). Runs as main when executed
+  directly; on Linux main first re-execs itself once (`process.execve`, Node ≥ 22.15) with `MALLOC_ENV`
+  (`MALLOC_ARENA_MAX=2`, `MALLOC_MMAP_THRESHOLD_=131072`; skipped under `--watch`, when already set or with
+  `JINSEI_NO_MALLOC_TUNING`) and `configureSharpForServer()` (`sharp.cache(false)`, concurrency 1) — RSS after 3 AI
+  art jobs 418 → ~158 MB.
+- `server/config.js` — `PORT`, `ADMIN_PASSWORD` (null when unset), `DATA_DIR` from env. `resolveAdminPassword(dataDir,
+  explicit)`: explicit/env wins, else `DATA_DIR/admin-password` (random 10 chars, mode 600, created on first boot and
+  printed once via `log` in Korean; later boots only say where the file is). There is no default "admin" password.
 - `server/store/roomStore.js` — in-memory rooms + sessions, debounced JSON snapshots to `DATA_DIR/saves/<id>.json`
   and `DATA_DIR/sessions.json`, restore on `load()`. SSE registry: `subscribe`, `broadcast(roomId, event, payload)`,
   `broadcastState(roomId)` (per-session `viewFor`). Mutations go through `store.commit(nextRoom, logs)`
-  (bump version, save, broadcast `state` + `log`); silent updates via `store.put(room)`.
+  (bump version, save, broadcast `state` + `log`); silent updates via `store.put(room)`. Snapshot writes are chained
+  per file (serialized at call time, written after the previous write of that file) → an older snapshot can never
+  overwrite a newer one; nothing is scheduled after `close()`. Sessions `{createdAt, lastSeenAt}` (`hasSession`
+  refreshes lastSeenAt, persisted at most hourly); `pruneSessions()` drops sessions unused for `SESSION_TTL_MS`
+  (7 days) that are not a player of any room — at `load()` and hourly (`startPruning()`, started by `startServer`).
+  `subscribe` caps SSE streams at `MAX_STREAMS_PER_SESSION` (3) per session per room: the oldest is ended.
 - `server/game/lobby.js` — pure lobby rules (join, characters, ready, presence, start, end). Each returns
   `{ok:true, room, logs}` or `{ok:false, status, error}` and never mutates its input.
 - `server/game/config.js` — room config validation. `server/game/order.js` — `buildTurnOrder`.
@@ -30,7 +42,11 @@
   Session tokens never leave the server: players are exposed as `p1..`, characters carry `ownerId`/`ownerName`/`isMe`.
   Add future secret-info masking (hands, bets, hidden jobs) here.
 - `server/routes/{api,sse,admin}.js` — HTTP layer. Player auth = `X-Session-Token` header (`?token=` for SSE).
-  Admin auth = HttpOnly cookie `jinsei_admin` (Path=/admin).
+  Admin auth = HttpOnly cookie `jinsei_admin` (Path=/admin, Max-Age 7 days); `createAdminSessions` keeps
+  sha256(token) → expiresAt in `DATA_DIR/admin-sessions.json` (mode 600) so a restart keeps the admin logged in.
+  Rate limits (`routes/common.js` `createRateLimiter`, sliding window, self-pruning, per `clientIp(req)`):
+  `POST /admin/api/login` `LOGIN_RATE` 10/min/IP → 429 "로그인 시도가 너무 많아요…", `POST /api/session`
+  `SESSION_RATE` 30/min/IP → 429, reactions 5 per 2 s per session.
 - `public/` — `index.html` + `js/app.js` (join → lobby → game → result), `js/api.js` (fetch/SSE),
   `js/ui/avatar2d.js` (`renderAvatar(parts, {size})` → SVG string), `js/ui/customize.js`, `admin.html` + `js/admin.js`.
 
@@ -49,27 +65,63 @@
   (gains repay debt first; losses beyond cash become debt), `netWorth`, `josa`, `won` (만원 units).
 - `server/game/result.js` — `computeRanking` (money − debt; later stages add assets/awards), `applyResult`.
 - `server/store/gameRunner.js` — side-effect layer: `start/end/dispatch` via `store.transact` (commit = `state` +
-  `log` + `events` SSE), deadline timers for `pending.deadlineAt` (re-armed on every commit and on boot).
-- `POST /api/rooms/:id/actions {type: spin|choose|bet|timeout, characterId, promptId, optionId, kind, pick, amount}`;
-  admin `POST /admin/api/rooms/:id/actions {type:'timeout'}` force-resolves the pending prompt.
+  `log` + `events` SSE), one deadline timer per room (`GameRunner.deadlineOf`: `pending.deadlineAt` → `timeout`, else
+  `turn.spinDeadlineAt` in awaitSpin → `{type:'spin', auto:true, actor:{system:true}}`), re-armed on every dispatch
+  and on boot. `start` passes `ctx.secret` = crypto random uint32 (option `secret` for tests).
+- RNG secrecy: the board is public and built from `room.seed`, so `startGame` mixes `ctx.secret` into the RNG after
+  `buildBoard` (`mixSecret(state, secret)`); tests/simulator omit it (or inject one) and stay deterministic. Note the
+  mulberry32 state is still 32-bit.
+- `POST /api/rooms/:id/actions {type: spin|choose|bet|timeout, characterId, promptId, optionId, kind, pick, amount}`
+  (spectators → 403 "관전자는 …"); admin `POST /admin/api/rooms/:id/actions {type}` — `timeout` (force-resolve the
+  pending prompt), `forceSpin` (spin for the current character now, admin log line), `skipTurn` (engine `skip`: the
+  current turn ends without moving, this turn's side bets are void). Not playing → 409 "게임이 진행 중이 아니에요.";
+  forceSpin/skipTurn outside awaitSpin (or with a prompt open) → 409 "룰렛을 기다리는 중에만 대신 돌리기/턴 넘기기를
+  할 수 있어요."; unknown type → 400. Response `{room: adminView, events}`.
 - `public/js/game2d.js` (`createGameUI(root, {getMeta, act, toast})` → `render/onEvents/renderResult`) +
   `public/css/game.css` — 2D simple board; Stage 4's 3D board replaces only the track part.
-- `scripts/simulate.js --games N --seed S` — headless random full games over the pure engine.
+- `scripts/simulate.js --games N --seed S` — headless random full games over the pure engine (random eraTurns are
+  clamped to `minEraTurns`). `--bias --games N --seed S` = turn-order bias check (8-character lifetime, index order):
+  final 1st-place share + average rank per turn position; `simulateBias({games, seed, data?})` is importable.
 
 ## Domain notes
 - Room: `{id, code, status: lobby|playing|finished, config, players[], characters[], turn, log[], seed, version,
-  nextPlayerSeq, nextCharSeq, createdAt, updatedAt}`.
+  nextPlayerSeq, nextCharSeq, createdAt, updatedAt}` (+ `artRequests {[sessionId]: n}`, `artRequestTotal` — never
+  sent to clients). Config: `mode, eraTurns, maxCharacters, startingMoney, allowCpu, turnOrder, mcFrequency,
+  turnTimeoutSec` (`TURN_TIMEOUTS` 0 = off (default) | 30 | 60 | 90 | 120). `minEraTurns(eraId, mode)`: route eras
+  (young/middle_age) ≥ 3 ("청년 턴 수는 갈림길·합류 칸이 있어 3 이상이어야 합니다."), the mode's last era ≥ its last fixed
+  stop index + 2 (kids 고등학생 ≥ 2 so 수능 and the goal never share a tile); checked on the merged config.
+- Player: `{id, sessionId, name, role: 'player'|'spectator', connected, lastSeen, ready, joinedAt}`. Spectators
+  (`POST /api/rooms/join {code, name, spectator: true}`, `joinRoom(..., {spectator})`) may join lobby/playing/finished
+  rooms (max `MAX_SPECTATORS` 20), do not count toward `MAX_PLAYERS` (4), cannot create characters / ready / spin /
+  bet / choose (403 `spectatorFail()`), can send reactions and open SSE. A session keeps its first role. `viewFor`
+  exposes `players[].role` and `me.role`; `adminSummary` has `spectators`.
 - Character ids `c<seq>` and player ids `p<seq>` are per-room counters; `seq` = creation order.
 - Playing room adds: `board {eras:[{id,name,turns,tiles[],routes?:{love|career|money:{tiles}}}]}`, `rngState`,
-  `bets {[turnNo]: {[charId]: {kind,pick,amount,target,resolved,won?,delta?}}}`, `promptSeq`, `result {ranking, forced}`.
+  `bets {[turnNo]: {[charId]: {kind,pick,amount,target,resolved,won?,delta?}}}`, `promptSeq`, `result {ranking, forced}`,
+  `pension {recipients[], decidedAt, turnNo} | null`.
+- Side bets (`balance.bets`): `ranges {"1-3":[1,3], "4-6":[4,6], "7-10":[7,10]}`, `payouts` per pick (stake
+  included) `{odd:2, even:2, "1-3":3, "4-6":3, "7-10":2.5}`; winnings `betWinDelta` = floor(amount × (payout − 1))
+  → no pick has a positive expected value (tested for every stake). `/api/meta.balance.bets` carries both.
+- 기초연금 (`balance.pension`): recipients are decided ONCE when the first character enters the pension era — bottom
+  `bottomN` by net worth (≥ `minCharacters`) → `room.pension`; each recipient is paid on their own entry (amount =
+  base + gap to the richest × gapRatio, ≤ max). Never more than `bottomN` payouts.
+- Turn-order balance (tuned with `--bias`, 2000 games × 4 seeds): `goalPrizes [200,150,120,90,60,40,20,10]`,
+  `bonusSpinUnit` 5 → 1st-place share 11–14 % per position, first→last average rank spread ≈ 0.2–0.35 (before:
+  500/300/…, unit 10 → 10.2–14.8 %, spread 0.5–0.6).
 - Board: tile ids `${eraId}:${main|love|career|money}:${index}` are stable. Route eras (young/middle_age) have
-  `tiles = [routeChoice stop, merge]` and three route tracks of equal length `turns − 2` (path length = turns).
+  `tiles = [routeChoice stop, merge]` and three route tracks of equal length `turns − 2` (path length = turns; config
+  validation keeps route eras ≥ 3 turns — `buildBoard` itself still clamps routes to ≥ 1 tile for direct callers).
   Fixed stops come from `board.json.fixedStops` (high:0 = 수능). Last tile of the last era = `goal`.
 - Character (in game): `money, debt, position {eraIndex, route:'main'|route, index (-1 = start)}, era, route,
   routeHistory[{era, route, completed}], finished, place, goalBonus, pensionGiven`.
 - Turn: `{order, currentIndex, phase: awaitSpin|resolveSpace|awaitDecision|endTurn|gameOver, pending, turnNo, round,
-  lastSpin}`. `pending = {promptId, kind, charId, title, text, forCharacterIds[], options[], defaultOptionId,
-  simultaneous, answers{}, deadlineAt|null, context}`. Multi-character prompts get `balance.prompts.multiTimeoutMs`.
+  lastSpin, spinDeadlineAt}`. `pending = {promptId, kind, charId, title, text, forCharacterIds[], options[],
+  defaultOptionId, simultaneous, answers{}, deadlineAt|null, context}`. Multi-character prompts get
+  `balance.prompts.multiTimeoutMs` (40000); single-character ones `decisionTimeoutMs` (null) else the room's turn
+  timer. Host turn timer (`config.turnTimeoutSec` > 0): every `turnStarted` sets `turn.spinDeadlineAt = now +
+  sec×1000` (ms epoch; null when off / after the spin); the runner auto-spins (log "⏰ 시간 초과! …자동으로 돌렸어요.",
+  `spun.auto: true`) and single prompts time out to their default. Engine `spin` with `auto` needs a system actor and a
+  passed deadline (409 "아직 시간이 남았어요.").
 - Events: `turnStarted, spun, moved{path,halted}, landed{tileId,tileType,route}, moneyChanged{delta,reason,money,debt}`,
   `prompt, chose` (optionId omitted for simultaneous prompts), `eraChanged, routeChosen, finished{place,prize},
   bonusSpin, betPlaced, betResolved, promptResolved{promptId,kind,charId} (exam/groupGift result anchor),
@@ -88,7 +140,9 @@
   `generateImage({prompt, refs:[{path|buffer}], aspectRatio, model})` → `{buffer, mimeType, text, model}` over plain
   REST (`x-goog-api-key` header). Key: env `GEMINI_API_KEY` → `DATA_DIR/secrets.json` (`setKey` writes mode 0600).
   The key is scrubbed from errors and must never appear in responses/logs (tests grep for it). Limiter 2, 3 retries
-  on 429/5xx/network, daily cap in `DATA_DIR/assets-usage.json` (env `ASSET_DAILY_CAP`, `GEMINI_MODEL`).
+  on 429/5xx/network, daily cap in `DATA_DIR/assets-usage.json` (env `ASSET_DAILY_CAP`, `GEMINI_MODEL`). The
+  `timeoutMs` (120 s) abort timer stays armed until the response body is fully read (stalled body → retryable
+  `NETWORK` "응답 시간이 초과되었습니다").
 - `server/assets/manifest.json` + `manifest.js` — items `{id, kind, label(KO), aspect, size?, prompt(EN template with
   {{style}}/{{sameStyle}}/{{magentaBg}}/{{whiteBg}}/{{keepCharacter}}/{{fullBody}}/{{seamless}}/{{noPeople}} + item
   vars), refs[], output (relative to public/assets/generated/), postprocess[], status todo|candidate|accepted,
@@ -100,8 +154,11 @@
   (bottom-center baseline + bbox height), `sheet` → `{buffer, meta}`, `animatedWebp`, `isSeamless`, `applySteps`.
 - `server/assets/studio.js` — `createStudio({dataDir, manifestPath, outputDir, client|fetchImpl, env})`:
   `generateCandidates` (→ `DATA_DIR/asset-candidates/<id>/<n>.png|.preview.webp|.json[|.anim.webp]`), `accept`,
-  `upload`, `regenerate` (force), `deleteCandidates`, `listItems`, `publicIndex`, `select` (CLI). Refs must be
-  accepted first (409 `REF_MISSING`); accepted items are only regenerated with `force`.
+  `upload`, `regenerate` (force), `deleteCandidates`, `listItems`, `publicIndex`, `invalidateIndex`, `select` (CLI).
+  Refs must be accepted first (409 `REF_MISSING`); accepted items are only regenerated with `force`. Every candidate
+  path goes through `candDir(id)` (`ITEM_ID_RE` + containment → 400 `BAD_ID`; `..%2Foutside` is decoded by Express).
+  `publicIndex()` is cached, keyed by the manifest file's mtime+size and invalidated by every manifest save /
+  `writeOutput` (accept, upload).
 - Routes (`server/routes/adminAssets.js`): `/admin/api/assets/*` behind the admin cookie (`GET /`, `/status`,
   `/items/:id`, `POST|DELETE /key`, `POST /generate/:id` → 202 job, `GET /jobs/:jobId`, `GET /candidates/:id[/:n]`
   (`?preview=1`, `?anim=1`), `DELETE /candidates/:id`, `POST /accept/:id {n}`, `POST /upload/:id` raw `image/*` or
@@ -169,8 +226,8 @@
   `/api/meta.presentation` = tones.json. `PROMPTS[kind].resultCutin` → `promptResolved` anchor.
 - Client pure module `public/js/ui/cutinMap.js` (node-tested): `planCutins(events)` (anchor + money/log follow-ups;
   prompts excluded — they are state-driven), `poseFor`, `expressionFor`, `layerPlan` (outfit > pose > expression >
-  base), `avatarPalette`/`recolorPixels` (blonde hair/navy uniform/skin of the shared layer set → avatar colors),
-  `tagLabel`, `autoAdvanceMs`, `sfxForEvent`.
+  base; kept for Stage 6 costume sets), `resolveCharacterArt` (see Stage 5.5-C), `tagLabel`, `autoAdvanceMs`,
+  `sfxForEvent`.
 - `public/js/ui/cutin2d.js` `createCutin(document.body, {getMeta, assets:{findAsset, assetUrl}, audio})` →
   `show(group|event|spec, {characters, room, onClose}) → Promise` (queued), `queue`, `showPrompt(pending, {characters,
   forMe, room, onChoose})` / `closePrompt(id)` / `promptId`, `hide`, `reaction({emoji,name})`, `busy/busyEvents/
@@ -178,13 +235,9 @@
   owners 7 s, prompts never (deadline). A spec is `{key, kind, tone, scene, tag, who, text[], line, speaker, chips[],
   cast[{char, pose, emotion}], bigWin, currentId, era, autoMs, characters, prompt?}` — later stages can build specs
   directly (e.g. wedding with spouse in `cast`, stat chips in `chips`).
-- `avatar2d.renderAvatarLayers(parts, {pose, emotion, expression, outfit, name, flip})` → `.av2` element with
-  `setState()`, `playSprite()`, `ready`, `layered`. Every avatar maps to the `schoolgirl` layer set for now
-  (`characterBaseFor` prefers a base whose meta matches body/hair once more bases are accepted), recolored on a canvas
-  (cropped to `LAYER_CROP` 160,300 704×1056 of the 1024×1536 canvas, 440 px, LRU of 28); SVG portrait fallback.
-  Figure box = layer bbox (y 371..1303): cropped layers are 113.3 % tall / −5.7 % bottom, raw full-canvas fallback
-  164.8 % / −25 %, sprite frames 176.1 % / −33 %. New layers must stay inside the crop (tests don't check pixels).
-  `preloadAvatarLayers` warms the cache.
+- `avatar2d.renderAvatarLayers(parts, {pose, emotion, name, flip, art})` → `.av2` element with `setState()`,
+  `playSprite()`, `ready`: AI art > composed paper-doll layers > SVG — the current contract is in "Layered avatars
+  (Stage 5.5-C)" (the old single schoolgirl recolor path is gone). `preloadAvatarLayers` warms the cache.
 - game2d: 3D → wraps animator handlers (`getHandler`/`setHandler`) for `landed, eraChanged, routeChosen, finished,
   promptResolved`: after the board animation it pauses the animator, shows the cut-in, resumes on close. 2D → cut-ins
   are queued straight from `onEvents`. Prompts: cut-in dialogue options when `promptCutins()` (3D, or 2D with
@@ -196,8 +249,8 @@
   `playEvent(e)` (tones.json sfx map), `setEra(era)` (BGM `bgm_<era>.mp3` drop-in else a generated pad loop),
   `setMuted/toggleMuted/setBgm/setVolume/onChange/state`; localStorage `jinsei.muted|bgm|volume`. Drop-ins are
   listed once by `GET /api/audio` (`public/assets/audio/(bgm|sfx)_*.mp3|ogg|m4a|wav`) — no 404 probes.
-- Stage 6 hooks: stat chips → `spec.chips` (`{text, kind}`); job/era costumes → `layerPlan({outfit})` (outfit layers
-  `char-<base>-outfit-<id>`, map job ids → outfit ids, e.g. doctor/suit); new scenes = new `bg-<scene>` items +
+- Stage 6 hooks: stat chips → `spec.chips` (`{text, kind}`); job/era costumes → paper-doll outfit option ids
+  (`avatars.json` `eraOutfits`, e.g. doctor/suit) via `layerPlan({outfit})`; new scenes = new `bg-<scene>` items +
   `tones.json.scenes` (+ `SCENES` in presentation.js); new line tags just need a pool in lines.json.
 
 ## Customization UI (Stage 5.5-A)
@@ -266,7 +319,7 @@
 - Optional per-character illustration set generated with Gemini that matches the customization exactly. Room state:
   `character.art = {key, status: 'pending'|'ready'|'failed', progress: 0..1, reason?, files?: {base, poses: {idle, wave,
   jump, cheer, cry, shock}, expressions: {joy, cry, shock, angry}}}` + `character.artGenerations` (successful player
-  requests). URLs `/api/char-art/<key>/<name>.webp` (`base`, `pose-<id>`, `expr-<id>`; `?v=<rev>` only after an admin
+  requests) + `character.artRequests` (player requests made). URLs `/api/char-art/<key>/<name>.webp` (`base`, `pose-<id>`, `expr-<id>`; `?v=<rev>` only after an admin
   force). Transparent WebP, 1024×1536, schoolgirl placement (bbox y 371..1303, feet on 1303, centred x 512).
   `viewFor` passes `art` to everyone (contract fields only).
 - `server/assets/charArt.js` — pure: `artKey(avatar)` (sha256 of stable JSON + `ART_VERSION`, 24 hex), `ART_STEPS`
@@ -281,14 +334,18 @@
   flat magenta. Each result → `chromaKey` → `placeFigure` (base) / `normalizeFrames([base, frame])` → WebP. Cache
   `DATA_DIR/char-art/<key>/{index.json, *.webp}`; index lists finished steps, so a failed/cancelled job resumes.
   Uses the studio's Gemini client (same limiter, retries and daily cap).
-- `server/store/charArtRunner.js` — `CharArtRunner(store, service, {throttleMs=1000})`: `request(roomId, charId,
-  {admin, force})` (409 without key / already pending / used up; cached look → ready at once), per-room queue (max 1
+- `server/store/charArtRunner.js` — `CharArtRunner(store, service, {throttleMs=1000, limits?})`: `request(roomId, charId,
+  {admin, force, sessionId})` (409 without key / already pending / limit; cached look → ready at once, not counted).
+  Limits (`balance.json` `charArt` → `artLimits()`: `perSession` 2, `perCharacter` 1, `perRoom` 8) count REQUESTS at
+  request time — a failed, cancelled (delete) or edited-away job still counts: `character.artRequests`,
+  `room.artRequests[sessionId]` (survives delete/recreate), `room.artRequestTotal`. Admin requests skip the
+  per-session/per-character limits but count toward and respect the room cap unless `force`. Per-room queue (max 1
   running job per room), progress committed ≤ 1/s per room + SSE `charArt {charId, status, progress, done?, total?,
   reason?}`, `syncCharacter(room, charId)` (called by add/edit routes: unchanged look keeps art, changed look → cached
   set or cleared; lobby `updateCharacter` itself drops `art` on an avatar change), `cancel` (delete), `restore()`
   (boot: pending → failed "서버 재시작"), `enabled()` (key present). `createApp` exposes it as `app.locals.charArt`.
 - Routes: `POST /api/rooms/:id/characters/:charId/art` (owner 403, lobby 409, feature off 409 "AI 일러스트 기능이 꺼져
-  있어요", 1 per character → 202 pending | 200 cached), admin `POST /admin/api/rooms/:id/characters/:charId/art?force=1`,
+  있어요", limits above → 409 Korean, → 202 pending | 200 cached), admin `POST /admin/api/rooms/:id/characters/:charId/art?force=1`,
   `GET /api/char-art/:key/:file` (key `/^[a-f0-9]{16,64}$/`, file `/^[a-z0-9-]+\.webp$/` → 400; `max-age=604800`),
   `GET /api/meta` → `features.charArt`.
 - Client: `public/js/ui/charArt.js` `mountArtSlot(slot, {initial, target, getAvatar})` renders into the customizer's
@@ -343,7 +400,9 @@
   sleepy), `poses` (idle wave clap mic), `profiles.<id>` {name, role, personality, speech, looks, colors}, `bigAmount`,
   `frequency.<many|normal|few|off>` {label, medium, minor (chances), cooldown, duoChance}, `situations.<key>` {weight
   big|medium|minor, lead hoya|bomi|any, duo true|false|'chance', vars[], hoya/bomi: {expression, pose}}, `eraSituations`,
-  `tileSituations` (heart→marriage, job, treasure). Pools: `lines.json` `mc.<key>.{hoya,bomi}` = string | {t, e?, p?},
+  `tileSituations` (tile type → situation; currently `{}`: heart/job/treasure are still placeholder tiles, and any tile
+  type listed in `board.json.placeholders` is skipped anyway — a test guards that placeholders never produce
+  marriage/job/treasure MC lines; Stage 6 adds the mapping when the systems exist). Pools: `lines.json` `mc.<key>.{hoya,bomi}` = string | {t, e?, p?},
   `mc.<key>.duo` = 2–3 line dialogues [{s, t, e?, p?}] (both MCs). Tests: ≥6 per speaker + ≥6 duos per situation,
   ≤48 chars, placeholders ⊂ situation `vars`, every 호야 line has 멍. `birth` is reserved (no engine event yet — Stage 6).
 - Engine: `presentation.js` `attachMc` (end of `decorateEvents`) → qualifying events get `mc: [{speaker, line, expression,
@@ -380,3 +439,14 @@
   JPEG refs, never published. `scripts/gen-mc-manifest.js` = idempotent upsert of the 22 items (prompts describe the
   markings). Generate: `node scripts/gen-assets.js --kind mc --accept-first --parallel 2` + `--only bg-studio`.
 - Tests: `test/mc.test.js`. E2E (session scratchpad `s56/e2e.cjs`, screenshots `s56-*.png`).
+
+## Host tools & hardening (post-5.6 fixes)
+- Contract for the client (details above in Stage 1/2 + Domain notes): room config `turnTimeoutSec` (0|30|60|90|120),
+  state `turn.spinDeadlineAt` (ms epoch | null) + `pending.deadlineAt`; admin actions `timeout | forceSpin | skipTurn`;
+  spectators via `POST /api/rooms/join {code, name, spectator: true}` → `players[].role`, `me.role`; bets
+  `balance.bets.payouts[pick]` with ranges 1-3 / 4-6 / 7-10; group prompts 40 s.
+- Tests: `test/fixes-engine.test.js` (pension, bet EV, turn timer, skip/force spin, RNG secret, era minimums,
+  spectators, small bias simulation), `test/fixes-server.test.js` (admin password file, persistent admin sessions,
+  rate limits, host tools + spectators over HTTP, SSE cap, session TTL, ordered writes, runner auto spin with mocked
+  timers), `test/fixes-assets.test.js` (candidate traversal, index cache, Gemini body timeout, AI art request limits).
+- sharp ≥ 0.35.4 (npm audit clean).
