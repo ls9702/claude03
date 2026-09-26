@@ -61,3 +61,4 @@ pre.json { max-width: 100%; }
   .kv { grid-template-columns: 1fr; gap: 0 8px; }
   .kv dt { margin-top: 4px; }
 }
+.growth-hint { margin: -8px 0 12px; }

@@ -24,8 +24,12 @@ export const CAST_PRELOAD_MS = 600;
 
 /** Tiles that will become marriage / job events (Stage 6) — always full cut-ins. */
 export const BIG_TILE_TYPES = ['heart', 'job'];
-const BIG_TYPES = new Set(['finished', 'eraChanged', 'gameOver']);
+const BIG_TYPES = new Set(['finished', 'eraChanged', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash']);
 const BIG_TAG = /marriage|wedding|job|promotion|birth/;
+/** Stage 6 minor tiles: never full cut-ins for other players (whatever their line tag says). */
+export const MINOR_TILE_TYPES = ['habit', 'salary'];
+/** Stage 6: always a small banner (also for my own characters): 전역. */
+export const BANNER_TYPES = ['militaryEnd'];
 
 /** Normalize a stored / URL value of the spectator cut-in mode. */
 export function normalizeCutinMode(v, fallback = DEFAULT_CUTIN_MODE) {
@@ -39,6 +43,7 @@ export function isBigGroup(g) {
   if (g.studio?.length || a.mcStudio) return true;
   if (BIG_TYPES.has(a.type)) return true;
   if (a.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType)) return true;
+  if (a.type === 'landed' && MINOR_TILE_TYPES.includes(a.tileType)) return false;
   if (BIG_TAG.test(String(a.mcKey ?? '')) || BIG_TAG.test(String(a.lineTag ?? ''))) return true;
   return false;
 }
@@ -65,6 +70,7 @@ export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptF
   if (globalOff) return 'skip';
   const own = isOwnGroup(g, mine);
   if (promptForMe) return own || mode !== 'off' ? 'banner' : 'skip';
+  if (BANNER_TYPES.includes(g.anchor.type) && !g.studio?.length) return own || normalizeCutinMode(mode) !== 'off' ? 'banner' : 'skip';
   if (own) return 'full';
   const m = normalizeCutinMode(mode);
   if (m === 'off') return 'skip';
@@ -73,7 +79,10 @@ export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptF
   return want;
 }
 
-const ANCHOR_RANK = { finished: 6, eraChanged: 5, routeChosen: 3, promptResolved: 2, landed: 1 };
+const ANCHOR_RANK = {
+  hiddenJobUnlocked: 9, jobChanged: 8, rankUp: 8, finished: 6, eraChanged: 5, militaryStart: 4, educationChanged: 4,
+  injured: 3, routeChosen: 3, promptResolved: 2, landed: 1, militaryEnd: 0,
+};
 const rankOf = (a) => (a?.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType) ? 4 : ANCHOR_RANK[a?.type] ?? 0);
 
 /**
@@ -102,6 +111,8 @@ export function mergeGroups(groups = [], { mine = [] } = {}) {
       anchors: [...prev.anchors, g.anchor],
       texts,
       money: [...prev.money, ...g.money],
+      stats: [...(prev.stats ?? []), ...(g.stats ?? [])],
+      salary: [...(prev.salary ?? []), ...(g.salary ?? [])],
       delta: prev.delta + g.delta,
       involved,
       mc: prev.mc ?? g.mc ?? null,

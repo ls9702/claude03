@@ -30,9 +30,14 @@ const TILE_SIZE = 1.64;
 const TILE_TOP = 0.27;
 const NARROW_TAGS_PX = 700; // canvas CSS width below which only current / mine / moving pawns show name tags
 /** Asset-studio icon ids (manifest meta.tile) per tile type. */
-const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal' };
-const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '정지', merge: '합류', goal: '골' };
-const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32' };
+const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal', habit: 'school', salary: 'money' };
+const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '정지', merge: '합류', goal: '골', habit: '습관', salary: '월급' };
+const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#3fae5a' };
+/** Stage 6 tile glyphs before board.json knows the type (meta icon wins). */
+const DEFAULT_TILE_GLYPH = { habit: '📚', salary: '💵', job: '💼' };
+/** Stage 6 board reactions over the pawn (the cut-in follows). */
+const STAGE6_POP = { jobChanged: '💼', rankUp: '⭐', hiddenJobUnlocked: '🌟', injured: '🤕', militaryStart: '🪖', militaryEnd: '🎖️', educationChanged: '🎓' };
+const STAT_FLOAT = { int: ['🧠', '#2446a8'], str: ['💪', '#a33a14'], charm: ['✨', '#a3276a'], luck: ['🍀', '#1d6b3b'] };
 
 /** tile id for a character position (same rule as server board.tileIdAt). */
 export function tileIdForPosition(board, pos) {
@@ -250,7 +255,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   }
 
   function iconKey(t) {
-    return t.icon || tileTypes()[t.type]?.icon || TEXT_ICON[t.type] || '?';
+    return t.icon || tileTypes()[t.type]?.icon || DEFAULT_TILE_GLYPH[t.type] || TEXT_ICON[t.type] || '?';
   }
 
   /** Atlas of tile icons (glyph or accepted asset image) → { texture, cellOf(key) → [u0,v0,u1,v1] }. */
@@ -275,6 +280,21 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       if (img) {
         const s = CELL * 0.7;
         ctx.drawImage(img, x + (CELL - s) / 2, y + (CELL - s) / 2, s, s);
+        if (type === 'salary') {
+          // pay day = the money icon in a green ring + a "월급" ribbon (same atlas cell, no extra draw call)
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = tileColor('salary');
+          ctx.beginPath();
+          ctx.arc(x + CELL / 2, y + CELL / 2, CELL * 0.4, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = tileColor('salary');
+          ctx.fillRect(x + CELL * 0.18, y + CELL * 0.7, CELL * 0.64, CELL * 0.22);
+          ctx.font = `900 ${Math.round(CELL * 0.17)}px ${FONT_STACK}`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#fff';
+          ctx.fillText('월급', x + CELL / 2, y + CELL * 0.815);
+        }
         return;
       }
       const glyph = emoji ? key : TEXT_ICON[type] ?? key;
@@ -812,6 +832,41 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     emotion: (e) => {
       if (emotionThrottle(`${e.charId}:${e.emotion}`)) emotion.pop(e.charId, e.emotion);
     },
+    // ---------- Stage 6 ----------
+    statChanged: (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant || !e.delta) return;
+      const [icon, color] = STAT_FLOAT[e.stat] ?? ['⭐', '#1f7a45'];
+      emotion.float(e.charId, `${icon}${e.delta > 0 ? '+' : ''}${e.delta}`, e.delta > 0 ? color : '#d6453f');
+      return ctx.sleep(120);
+    },
+    salary: (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      emotion.pop(e.charId, '💵', { dur: 1.4 });
+      return ctx.sleep(120);
+    },
+    newsFlash: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (e.title) banner(`📰 ${e.title}`, 2600);
+      if (!ctx.instant) await ctx.sleep(900);
+    },
+    ...Object.fromEntries(
+      Object.entries(STAGE6_POP).map(([type, glyph]) => [
+        type,
+        async (e, ctx) => {
+          hooks.onStep?.(e);
+          if (ctx.instant) return;
+          emotion.pop(e.charId, glyph, { dur: 1.6 });
+          const P = S.pawns.get(e.charId);
+          if (P && preset.particles > 0 && (type === 'rankUp' || type === 'hiddenJobUnlocked' || type === 'educationChanged')) {
+            const p = P.pawn.group.position;
+            particles.burst('confetti', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, 50), { up: 4, spread: 2, life: 1, size: 0.35 });
+          }
+          await ctx.sleep(450);
+        },
+      ]),
+    ),
   };
 
   const animator = createAnimator({
@@ -822,7 +877,21 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   animator.onIdle(() => {
     S.animSubtitle = '';
     applyCurrent();
+    applyOutfits();
   });
+  /** Costumes held back during the animation (Stage 6 growth outfits) → put on with a sparkle. */
+  function applyOutfits() {
+    if (S.disposed) return;
+    for (const c of S.chars ?? []) {
+      const P = S.pawns.get(c.id);
+      if (!P?.pendingAvatar) continue;
+      P.pendingAvatar = false;
+      P.pawn.update(c.avatar, c.name, !!c.isMe);
+      P.avatar = c.avatar;
+      P.avatarKey = JSON.stringify(c.avatar);
+      if (preset.particles > 0 && !document.hidden) emotion.pop(c.id, '✨', { dur: 1.1 });
+    }
+  }
 
   // ---------- render loop ----------
   let raf = 0;
@@ -987,11 +1056,21 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
           const pawn = createPawn({ avatar: c.avatar, defs: meta?.avatars, name: c.name, isMe: !!c.isMe });
           if (S.template) pawn.useTemplate(S.template);
           scene.add(pawn.group);
-          P = { pawn, tileId: 'start', moving: false, order, target: new THREE.Vector3(), yaw: 0, isMe: !!c.isMe, crowded: false };
+          P = { pawn, tileId: 'start', moving: false, order, target: new THREE.Vector3(), yaw: 0, isMe: !!c.isMe, crowded: false, avatar: c.avatar, avatarKey: JSON.stringify(c.avatar) };
           S.pawns.set(c.id, P);
           placeAt(P, tileIdForPosition(S.board, c.position), true);
         } else {
-          P.pawn.update(c.avatar, c.name, !!c.isMe);
+          // Stage 6 growth outfits: a new costume (era / job) waits until the board has played the events
+          // (state arrives before its events → wait out the sync grace, then for the animator to go idle)
+          const next = JSON.stringify(c.avatar);
+          if (P.avatarKey !== next) {
+            P.pawn.update(P.avatar, c.name, !!c.isMe);
+            P.pendingAvatar = true;
+            clearTimeout(S.outfitTimer);
+            S.outfitTimer = setTimeout(() => !animator.busy() && applyOutfits(), 420);
+          } else {
+            P.pawn.update(c.avatar, c.name, !!c.isMe);
+          }
           P.order = order;
           P.isMe = !!c.isMe;
         }
@@ -1053,6 +1132,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       return animator.push(events);
     },
     onIdle: (cb) => animator.onIdle(cb),
+    /** Board banner (era / route / news flash). */
+    showBanner: (text, ms) => banner(String(text ?? ''), ms),
     isBusy: () => animator.busy(),
     whenIdle: () => animator.whenIdle(),
 
@@ -1110,6 +1191,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       S.disposed = true;
       cancelAnimationFrame(raf);
       clearTimeout(S.syncTimer);
+      clearTimeout(S.outfitTimer);
       clearTimeout(bannerTimer);
       ro?.disconnect();
       controls.dispose();

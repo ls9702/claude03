@@ -339,3 +339,89 @@ body.cutin-open .ev-banner { display: none; }
   body.spin-docked[data-screen='game'] .mc-corner { bottom: calc(176px + env(safe-area-inset-bottom)); }
 }
 body:not([data-screen='game']) .ev-banner { display: none; }
+
+/* ---------- Stage 6: stats, jobs, growth (character panel, news badge, result rows) ---------- */
+.g-board { position: relative; }
+.g-era-line { min-width: 0; flex-wrap: wrap; }
+.g-top { position: relative; }
+.news-badge {
+  appearance: none; font: inherit; display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: min(52vw, 320px);
+  border: 1px solid #f3c4c4; background: #fff1f1; color: #9f1239; font-size: 0.8rem; font-weight: 800;
+  padding: 3px 10px; border-radius: 999px; cursor: pointer; min-height: 28px;
+}
+.news-badge[data-tone='good'], .news-badge[data-tone='treasure'] { background: #effbf1; border-color: #bfe8c9; color: #14532d; }
+.news-badge[data-tone='bad'] { background: #eef0ff; border-color: #c7cdfa; color: #312e81; }
+.news-badge .nb-ic { flex: none; }
+.news-badge .nb-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.news-pop {
+  position: absolute; z-index: 16; left: 12px; right: 12px; top: calc(100% - 6px); max-width: 460px;
+  background: var(--surface); border: 2px solid #f3c4c4; border-radius: 14px; padding: 10px 12px; box-shadow: var(--shadow);
+  font-size: 0.88rem; overflow-wrap: anywhere;
+}
+.news-pop p { margin: 4px 0; }
+.news-flash {
+  position: absolute; z-index: 5; left: 50%; top: 56px; transform: translateX(-50%); display: flex; max-width: calc(100% - 24px);
+  background: rgba(20, 18, 40, 0.92); color: #fff; border-radius: 12px; overflow: hidden; font-weight: 900; pointer-events: none;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+}
+.news-flash.show { animation: b3-banner 3.2s ease-out both; }
+.news-flash .nf-tag { flex: none; background: #e11d48; padding: 6px 10px; }
+.news-flash .nf-t { min-width: 0; padding: 6px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* side list rows: tap → detail card */
+.g-char { display: block; padding: 0; }
+.gc-row {
+  appearance: none; font: inherit; color: inherit; text-align: left; background: none; border: 0; width: 100%; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm); min-width: 0;
+}
+.gc-row:focus-visible { outline: 3px solid rgba(255, 122, 47, 0.45); outline-offset: -3px; }
+.g-char.open { border-color: #ffc9a6; }
+.gc-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; min-width: 0; }
+.gc-tag {
+  display: inline-flex; align-items: center; gap: 2px; font-size: 0.68rem; font-weight: 800; background: #f4efe8; color: #57534e;
+  border-radius: 999px; padding: 0 6px; line-height: 1.5; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.gc-tag.bad { background: #fee2e2; color: #7f1d1d; }
+.gc-tag.mil { background: #e7efe0; color: #3f5a2a; }
+.gc-tag.gold { background: linear-gradient(135deg, #fff8d6, #ffe38a); color: #7a4b00; }
+.job-badge {
+  display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 100%; font-size: 0.7rem; font-weight: 800;
+  background: #e5eeff; color: #1e3a8a; border-radius: 999px; padding: 0 7px 0 3px; line-height: 1.55; white-space: nowrap;
+}
+.job-badge.parttime { background: #f1efe9; color: #57534e; }
+.job-badge.hidden-job { background: linear-gradient(135deg, #fff8d6, #ffe38a); color: #7a4b00; }
+.job-badge .jb-ic { flex: none; }
+.job-badge .jb-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.job-badge .jb-stars { flex: none; color: #f5a300; letter-spacing: -0.02em; }
+.job-badge.big { font-size: 0.82rem; padding: 1px 9px 1px 4px; }
+.gc-mini { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin-top: 4px; max-width: 150px; }
+.gc-mini i { display: block; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--c) var(--p), #e9e2d8 var(--p)); }
+.gc-detail { padding: 4px 10px 10px; border-top: 1px dashed var(--line); margin: 0 6px; animation: sheet-up 0.18s ease-out; }
+.stat-bars { display: grid; gap: 5px; margin: 6px 0; }
+.stat-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 44px; align-items: center; gap: 8px; font-size: 0.82rem; }
+.st-l { font-weight: 800; white-space: nowrap; }
+.st-bar { display: block; height: 10px; border-radius: 6px; background: #eee6db; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08); }
+.st-bar i { display: block; height: 100%; background: var(--c); border-radius: 6px; transition: width 0.5s ease-out; }
+.st-v { text-align: right; font-variant-numeric: tabular-nums; }
+.st-v small { color: var(--muted); font-weight: 600; }
+.gd-facts { display: grid; gap: 4px; font-size: 0.82rem; }
+.gd-fact { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.gd-k { color: var(--muted); font-weight: 700; white-space: nowrap; }
+.gd-v { min-width: 0; overflow-wrap: anywhere; }
+.gd-hist { display: flex; flex-direction: column; gap: 2px; }
+.gd-h small { color: var(--muted); }
+.gc-float.stat { font-size: 0.8rem; }
+
+/* decision sheet (2D modal): jobOffer badges */
+.c-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.c-badge { font-size: 0.72rem; font-weight: 800; background: #f4efe8; color: #44403c; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+
+/* result rows: final job + education */
+.rk-career { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; min-width: 0; }
+.rk-career .job-badge { font-size: 0.78rem; }
+
+/* 2D tiles: Stage 6 types */
+.tile.t-salary .t-amt { color: #1f7a45; }
+@media (max-width: 480px) {
+  .rk { width: auto; min-width: 30px; white-space: nowrap; }
+}

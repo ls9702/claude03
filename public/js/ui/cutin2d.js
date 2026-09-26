@@ -14,8 +14,19 @@ import { renderAvatarLayers, portraitHtml, hydratePortraits, preloadAvatarLayers
 import { autoAdvanceMs, expressionFor, fallbackText, isBigWin, planCutins, poseFor, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
 import { CAST_PRELOAD_MS, PREEMPT_KEEP_MS, routeOptionInfo } from './cutinPolicy.js';
 import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from './mc.js';
+import { educationLabel, jobInfo, optionExtras, optionLabel, rankName, rankStars, salaryChip, statChip } from '../shared/growth.js';
 
-const REASON_ICON = { tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲' };
+const REASON_ICON = { tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', habit: '📚', tuition: '🎓', military: '🪖' };
+/** Stage 6 anchors → presentation defaults (the server's tone / scene / emotion win when set). */
+const STAGE6_LOOK = {
+  jobChanged: { tone: 'career', scene: 'office', pose: 'cheer', emotion: 'joy', sfx: 'fanfare' },
+  rankUp: { tone: 'career', scene: 'office', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', bigWin: true },
+  hiddenJobUnlocked: { tone: 'treasure', scene: null, pose: 'cheer', emotion: 'shock', sfx: 'fanfare', bigWin: true, fx: 'gold' },
+  injured: { tone: 'bad', scene: 'hospital', pose: 'cry', emotion: 'cry', sfx: 'thud', glyph: '🤕' },
+  militaryStart: { tone: 'neutral', scene: 'mountain-trail', pose: 'wave', emotion: 'sweat', sfx: 'whoosh', glyph: '🪖' },
+  militaryEnd: { tone: 'good', scene: null, pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🎖️' },
+  educationChanged: { tone: 'good', scene: 'school', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🎓' },
+};
 const SLOT_X = { 1: [34], 2: [27, 73], 3: [18, 50, 82] };
 
 /** Fallback SVG scenes (viewBox 1600×900) when a generated background is missing. */
@@ -113,41 +124,67 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   /** Engine group (planCutins) → display spec. */
   function specFromGroup(g, { characters = [], room = null } = {}) {
     const a = g.anchor;
+    if (a.type === 'newsFlash') return newsSpec(g, { characters });
+    const look = STAGE6_LOOK[a.type] ?? null;
     const main = characters.find((c) => c.id === g.charId) ?? null;
     const name = main?.name ?? '';
     const chips = [];
-    for (const m of g.money) {
+    // Stage 6: pay day replaces its own money chip; stat changes get coloured chips
+    const salary = g.salary ?? [];
+    const salaryHidden = new Set();
+    for (const s of salary) {
+      const i = g.money.findIndex((m, k) => !salaryHidden.has(k) && m.charId === s.charId && (m.reason === 'salary' || m.delta === s.amount));
+      if (i >= 0) salaryHidden.add(i);
+      const who = s.charId !== g.charId ? `${nameOf(characters, s.charId)} ` : '';
+      const c = salaryChip(s, won);
+      chips.push({ ...c, text: who ? c.text.replace('월급', `${who}월급`) : c.text });
+    }
+    g.money.forEach((m, k) => {
+      if (salaryHidden.has(k)) return;
       const who = m.charId !== g.charId ? `${nameOf(characters, m.charId)} ` : '';
       chips.push({ text: `${REASON_ICON[m.reason] ?? '💰'} ${who}${m.delta > 0 ? '+' : ''}${won(m.delta)}`, kind: m.delta > 0 ? 'plus' : 'minus' });
+    });
+    for (const st of g.stats ?? []) {
+      const c = statChip(st);
+      const who = st.charId && st.charId !== g.charId ? `${nameOf(characters, st.charId)} ` : '';
+      chips.push({ ...c, text: who ? `${who}${c.text}` : c.text });
     }
     if (a.type === 'finished') chips.unshift({ text: `🏁 ${a.place}등 골인`, kind: 'plus' });
+    const badge = jobBadgeFor(a);
+    if (a.type === 'educationChanged' && educationLabel(a.education)) chips.unshift({ text: `🎓 ${educationLabel(a.education)}`, kind: 'plus' });
+    if (a.type === 'militaryStart' && a.turns) chips.unshift({ text: `🪖 복무 ${a.turns}턴`, kind: '' });
+    if (a.type === 'injured' && a.turns) chips.unshift({ text: `🤕 ${a.turns}턴 부상`, kind: 'minus' });
     const cast = g.involved
       .map((id) => characters.find((c) => c.id === id))
       .filter(Boolean)
       .map((c, i) => {
         const isMain = c.id === g.charId;
         const delta = g.money.filter((m) => m.charId === c.id).reduce((s, m) => s + m.delta, 0);
-        let pose = isMain ? poseFor(a, { delta }) : delta > 0 ? 'jump' : delta < 0 ? 'idle' : 'wave';
-        let emotion = isMain ? a.emotion : delta > 0 ? 'joy' : delta < 0 ? 'love' : null;
+        let pose = isMain ? (look?.pose ?? poseFor(a, { delta })) : delta > 0 ? 'jump' : delta < 0 ? 'idle' : 'wave';
+        let emotion = isMain ? (a.emotion && a.emotion !== 'neutral' ? a.emotion : look?.emotion ?? a.emotion) : delta > 0 ? 'joy' : delta < 0 ? 'love' : null;
         if (a.type === 'gameOver') {
           pose = i === 0 ? 'cheer' : 'wave';
           emotion = i === 0 ? 'joy' : null;
         }
-        return { char: c, pose, emotion: emotion === 'neutral' ? null : emotion };
+        return { char: c, pose, emotion: emotion === 'neutral' ? null : emotion, glyph: isMain ? look?.glyph ?? null : null };
       });
     const ownerChar = characters.find((c) => c.id === g.charId);
+    const scene = a.scene && a.scene !== 'none' ? a.scene : look?.scene ?? a.scene ?? 'none';
     return {
-      key: `${a.type}:${a.charId ?? ''}:${a.tileId ?? a.era ?? a.route ?? a.promptId ?? ''}`,
-      tone: a.tone ?? 'neutral',
-      scene: a.scene ?? 'none',
+      key: `${a.type}:${a.charId ?? ''}:${a.tileId ?? a.era ?? a.route ?? a.promptId ?? a.jobId ?? ''}`,
+      tone: look && (!a.tone || a.tone === 'neutral') ? look.tone : a.tone ?? 'neutral',
+      scene,
       tag: tagLabel(a, { tones: pres().tones, tileTypes: getMeta()?.board?.tileTypes, routes: getMeta()?.board?.routes }),
-      who: name ? `${name}${sceneLabel(a.scene) ? ` · ${sceneLabel(a.scene)}` : ''}` : sceneLabel(a.scene),
+      who: name ? `${name}${sceneLabel(scene) ? ` · ${sceneLabel(scene)}` : ''}` : sceneLabel(scene),
       text: g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)],
       line: a.line ?? null,
       speaker: g.charId ?? cast[0]?.char.id ?? null,
       chips,
       cast,
-      bigWin: isBigWin(a, g.delta),
+      badge,
+      fx: look?.fx ?? null,
+      sfx: look?.sfx ?? null,
+      bigWin: isBigWin(a, g.delta) || !!look?.bigWin,
       currentId: g.charId,
       era: a.type === 'eraChanged' ? `${a.eraName ?? ''} 시대` : '', // board state may already be ahead → no turn/era spoilers
       autoMs: autoAdvanceMs({ owner: !!ownerChar?.isMe, reduced: isReduced() }),
@@ -156,11 +193,49 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     };
   }
 
+  /** Stage 6: job badge in the window for job / rank-up / hidden-job cut-ins ({icon, title, stars, sub}). */
+  function jobBadgeFor(a) {
+    if (!['jobChanged', 'rankUp', 'hiddenJobUnlocked'].includes(a?.type) || !a.jobId) return null;
+    const info = jobInfo(a.jobId, getMeta()?.jobs);
+    const rank = Number(a.rank) || 1;
+    const max = Math.max(info?.maxRank ?? 1, rank);
+    const title = info?.name ?? a.jobName ?? a.jobId;
+    const rn = a.rankName ?? rankName(info, rank);
+    if (a.type === 'hiddenJobUnlocked') return { icon: info?.icon ?? '🌟', title, stars: '', sub: '숨은 직업 해금!', kind: 'hiddenjob' };
+    return { icon: info?.icon ?? '💼', title, stars: info?.partTime && max <= 1 ? '' : rankStars(rank, max), sub: rn, kind: a.type === 'rankUp' ? 'rankup' : 'job' };
+  }
+
+  /** Stage 6: a news flash on its own (no MC studio in the batch / MCs off) → 📰 속보 cut-in in the studio. */
+  function newsSpec(g, { characters = [] } = {}) {
+    const a = g.anchor;
+    const news = g.news ?? { title: a.title, text: a.text, tone: a.tone };
+    return {
+      key: `news:${a.eraId ?? ''}:${a.newsId ?? ''}`,
+      kind: 'news',
+      tone: news.tone && news.tone !== 'neutral' ? news.tone : 'neutral',
+      scene: 'studio',
+      tag: '📰 뉴스 속보',
+      who: '📰 인생 뉴스',
+      text: [news.title, news.text].filter(Boolean),
+      line: null,
+      speaker: null,
+      chips: [],
+      cast: [],
+      news,
+      bigWin: false,
+      currentId: null,
+      era: '',
+      autoMs: autoAdvanceMs({ owner: false, reduced: isReduced() }) + 1500,
+      characters,
+      mc: g.mc ?? null,
+    };
+  }
+
   /**
    * Studio MC cut-in (Stage 5.6): 호야 & 봄이 center stage on the TV-studio background, dialogue in the box.
    * @param {object[]} lines  [{speaker, line, expression, pose}]
    */
-  function studioSpec(lines, { key = 'mc', tone = 'good', title = '', era = '', characters = [], currentId = null } = {}) {
+  function studioSpec(lines, { key = 'mc', tone = 'good', title = '', era = '', characters = [], currentId = null, news = null } = {}) {
     return {
       key: `mc:${key}`,
       kind: 'mc',
@@ -179,6 +254,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       autoMs: mcScriptMs(lines, { delay: 350, gap: 1500, hold: 1600 }) + 400,
       characters,
       mcScript: lines,
+      news, // Stage 6: the era's news flash (headline strip on the studio screen)
     };
   }
 
@@ -226,10 +302,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       // first pose is a neutral stand; the target pose cross-fades in (keypose + procedural motion)
       const av = renderAvatarLayers(m.char.avatar, { pose: 'idle', emotion: null, name: m.char.name, flip: n > 1 && xs[i] > 50, art: m.char.art ?? null });
       slot.appendChild(av);
-      if (m.emotion && EMOTION_GLYPH[m.emotion]) {
+      const glyph = m.glyph ?? EMOTION_GLYPH[m.emotion] ?? null;
+      if (glyph) {
         const g = document.createElement('span');
-        g.className = 'ci-emo';
-        g.textContent = EMOTION_GLYPH[m.emotion];
+        g.className = `ci-emo${m.glyph ? ' badge' : ''}`;
+        g.textContent = glyph;
         slot.appendChild(g);
       }
       $.cast.appendChild(slot);
@@ -250,6 +327,32 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     b.style.right = x > 50 ? `${Math.min(58, 100 - x + 9)}%` : '';
     b.textContent = spec.line;
     $.fx.appendChild(b);
+  }
+
+  // ---------- Stage 6: job badge, gold sparkle, news strip ----------
+  function renderStage6(spec) {
+    overlay.classList.toggle('gold', spec.fx === 'gold');
+    if (spec.badge) {
+      const b = spec.badge;
+      const el = document.createElement('div');
+      el.className = `ci-badge ${b.kind ?? ''}`;
+      el.innerHTML = `<span class="ci-badge-ic">${esc(b.icon)}</span><span class="ci-badge-body"><b class="ci-badge-t">${esc(b.title)}</b>${
+        b.stars ? `<span class="ci-badge-stars" aria-label="랭크">${esc(b.stars)}</span>` : ''
+      }${b.sub ? `<small class="ci-badge-sub">${esc(b.sub)}</small>` : ''}</span>`;
+      $.fx.appendChild(el);
+    }
+    if (spec.fx === 'gold') {
+      const g = document.createElement('div');
+      g.className = 'ci-goldfx';
+      g.innerHTML = Array.from({ length: 14 }, (_, i) => `<i style="--i:${i};--y:${12 + ((i * 37) % 70)}%">${i % 3 ? '✨' : '🌟'}</i>`).join('');
+      $.fx.appendChild(g);
+    }
+    if (spec.news?.title) {
+      const n = document.createElement('div');
+      n.className = 'ci-news';
+      n.innerHTML = `<span class="ci-news-tag">📰 속보</span><span class="ci-news-t">${esc(spec.news.title)}</span>`;
+      $.fx.appendChild(n);
+    }
   }
 
   // ---------- MCs (Stage 5.6) ----------
@@ -362,9 +465,10 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     overlay.classList.add('enter');
     const els = renderCast(spec);
     item.els = els;
+    renderStage6(spec);
     if (spec.kind === 'mc') renderStudio(item);
     else if (spec.mc?.length) renderSmallMc(item);
-    audio?.play(pres().tones?.[spec.tone]?.sfx ?? 'pop');
+    audio?.play(spec.sfx ?? pres().tones?.[spec.tone]?.sfx ?? 'pop');
     typeText(spec.text ?? [], null);
     // keyposes after the entry squash: cross-fade to the target pose, speech bubble pops, big win → jump sprite
     item.timers.push(
@@ -417,9 +521,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       }<div class="ci-opt-list">${p.options
         .map(
           (o) =>
-            `<button type="button" class="ci-opt${o.desc ? ' has-desc' : ''}" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"><span class="c-icon">${esc(o.icon ?? '')}</span><span class="ci-opt-l">${esc(o.label ?? o.id)}${
+            `<button type="button" class="ci-opt${o.desc || o.badges?.length ? ' has-desc' : ''}" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"><span class="c-icon">${esc(o.icon ?? '')}</span><span class="ci-opt-l">${esc(o.label ?? o.id)}${
               o.desc ? `<small class="ci-opt-desc">${esc(o.desc)}</small>` : ''
-            }</span></button>`,
+            }${o.badges?.length ? `<span class="ci-opt-badges">${o.badges.map((b) => `<span class="ci-opt-badge">${esc(b)}</span>`).join('')}</span>` : ''}</span></button>`,
         )
         .join('')}</div>`;
     }
@@ -607,7 +711,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         promptId: p.promptId,
         charId: p.charId,
         kind: p.kind,
-        options: (p.options ?? []).map((o) => ({ ...o, desc: routeOptionInfo(p, o) })),
+        options: (p.options ?? []).map((o) => {
+          const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
+          const desc = routeOptionInfo(p, o);
+          return { ...o, icon: o.icon || x.icon, label: optionLabel({ ...o, icon: o.icon || x.icon }), desc, badges: [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges] };
+        }),
         forMe,
         deadlineAt: p.deadlineAt,
         waitingNames: waitingIds.map((id) => characters.find((c) => c.id === id)?.name ?? id),

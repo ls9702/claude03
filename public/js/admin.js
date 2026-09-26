@@ -190,6 +190,8 @@ async function onCreate(ev) {
   };
   const timeout = Number(f.turnTimeoutSec?.value ?? 0);
   if (timeout > 0) body.turnTimeoutSec = timeout;
+  // Stage 6 「성장 의상」 (default on; only sent when turned off → older servers keep working)
+  if (f.growthOutfits && !f.growthOutfits.checked) body.growthOutfits = false;
   try {
     const { room } = await req('POST', '/admin/api/rooms', body);
     toast(`방을 만들었습니다. 코드: ${room.code}`);
@@ -264,6 +266,7 @@ async function renderDetail() {
       <dt>턴 순서</dt><dd>${room.config.turnOrder === 'family' ? '가문 순' : '캐릭터 번호 순'}</dd>
       <dt>MC 빈도</dt><dd>${MC_FREQ_LABEL[room.config.mcFrequency ?? 'normal'] ?? '보통'}</dd>
       <dt>턴 제한 시간</dt><dd>${room.config.turnTimeoutSec ? `${room.config.turnTimeoutSec}초` : '끄기'}</dd>
+      <dt>성장 의상</dt><dd>${room.config.growthOutfits === false ? '끄기 (로비에서 고른 옷 그대로)' : '켜기 (시대·직업 의상)'}</dd>
       ${room.turn ? `<dt>턴 순서(실제)</dt><dd>${room.turn.order.map((id) => esc(byId.get(id)?.name ?? id)).join(' → ')}</dd>` : ''}
     </dl>
     <h3>참가자 (${players.length}/4)${spectators.length ? ` <small class="muted">· 👀 관전 ${spectators.length}</small>` : ''}</h3>

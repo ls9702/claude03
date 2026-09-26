@@ -81,10 +81,13 @@ export function layerPlan(avail = {}, { pose = 'idle', emotion = null, outfit = 
 
 // ---------- cut-in groups ----------
 
+/** Stage 6 cut-in anchors (always anchors, even from a server that doesn't flag them `cutin`). */
+export const STAGE6_ANCHORS = new Set(['jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged']);
+
 /** Follow-ups stop at these (they start their own step / group). */
 const BOUNDARY = new Set([
   'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
-  'promptResolved', 'gameOver', 'betPlaced',
+  'promptResolved', 'gameOver', 'betPlaced', ...STAGE6_ANCHORS,
 ]);
 
 /**
@@ -96,15 +99,22 @@ const BOUNDARY = new Set([
  */
 export function planCutins(events = []) {
   const groups = [];
+  const news = events.find((e) => e?.type === 'newsFlash') ?? null;
+  const studioInBatch = events.some((e) => e?.mcStudio && e.mc?.length && e.type !== 'newsFlash');
   for (let i = 0; i < events.length; i++) {
     const a = events[i];
-    if (!a || !a.cutin || a.type === 'prompt') continue;
+    if (!a || a.type === 'prompt' || !(a.cutin || STAGE6_ANCHORS.has(a.type))) continue;
+    // Stage 6: the era's news flash is read in that era's MC studio cut-in (no separate cut-in)
+    if (a.type === 'newsFlash' && studioInBatch && !a.mcStudio) continue;
     const follow = [];
     for (let j = i + 1; j < events.length && !BOUNDARY.has(events[j].type); j++) follow.push(events[j]);
     const charId = a.charId ?? null;
     const texts = follow.filter((e) => e.type === 'log' && e.text).map((e) => e.text);
     const money = follow.filter((e) => e.type === 'moneyChanged' && e.delta).map((e) => ({ charId: e.charId, delta: e.delta, reason: e.reason }));
     const delta = money.filter((m) => m.charId === charId).reduce((s, m) => s + m.delta, 0);
+    // Stage 6 follow-ups → effect chips: stat changes ("지력 +1") and pay days ("월급 +320만원")
+    const stats = follow.filter((e) => e.type === 'statChanged' && e.delta).map((e) => ({ charId: e.charId, stat: e.stat, delta: e.delta, value: e.value, reason: e.reason }));
+    const salary = follow.filter((e) => e.type === 'salary').map((e) => ({ charId: e.charId, jobId: e.jobId, rank: e.rank, amount: e.amount }));
     const involved = [];
     const add = (id) => id && !involved.includes(id) && involved.push(id);
     add(charId);
@@ -115,7 +125,10 @@ export function planCutins(events = []) {
     const mcFollow = follow.find((e) => e.mc?.length);
     const mc = (!a.mcStudio && a.mc?.length ? a.mc : null) ?? mcFollow?.mc ?? null;
     const mcEvents = [a.mc?.length ? a : null, mcFollow ?? null].filter(Boolean);
-    groups.push({ anchor: a, charId, texts, money, delta, involved: involved.slice(0, 3), mc, studio: a.mcStudio && a.mc?.length ? a.mc : null, mcEvents });
+    const studio = a.mcStudio && a.mc?.length ? a.mc : null;
+    const g = { anchor: a, charId, texts, money, delta, involved: involved.slice(0, 3), mc, studio, mcEvents, stats, salary };
+    if (studio && news) g.news = { eraId: news.eraId, newsId: news.newsId, title: news.title, text: news.text, tone: news.tone };
+    groups.push(g);
   }
   return groups;
 }
@@ -131,6 +144,22 @@ export function fallbackText(anchor, name = '') {
       return `${name} ${anchor.place}등으로 골인!`;
     case 'gameOver':
       return '게임 종료! 결과 발표';
+    case 'rankUp':
+      return `${name} 승진!${anchor.rankName ? ` 이제 ${anchor.rankName}!` : ''}`;
+    case 'jobChanged':
+      return `${name}의 새 직업!`;
+    case 'hiddenJobUnlocked':
+      return `${name}, 숨은 직업의 문이 열렸다!`;
+    case 'injured':
+      return `${name} 부상…${anchor.turns ? ` ${anchor.turns}턴 동안 쉬어야 해요.` : ''}`;
+    case 'militaryStart':
+      return `${name} 입대! 충성!${anchor.turns ? ` (${anchor.turns}턴 복무)` : ''}`;
+    case 'militaryEnd':
+      return `${name} 전역! 수고했어요.`;
+    case 'educationChanged':
+      return `${name} 졸업 축하해요! 🎓`;
+    case 'newsFlash':
+      return anchor.title ?? '뉴스 속보';
     default:
       return anchor?.line ?? '';
   }
@@ -147,10 +176,23 @@ export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {
   else if ((anchor?.type === 'gameOver' || anchor?.type === 'result') && anchor?.tone !== 'result') place = '결과 발표';
   else if (anchor?.type === 'prompt') return promptTag(anchor, tone);
   else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티' }[anchor.kind] ?? '결과';
+  else if (STAGE6_TAGS[anchor?.type]) return STAGE6_TAGS[anchor.type](anchor);
   // the tone label repeats the route name for routes ("💕 연애·육아 · 연애·육아 루트") → keep just the place
   if (place && tone.label && place.startsWith(tone.label)) return `${tone.icon ?? ''} ${place}`.trim();
   return `${tone.icon ?? ''} ${tone.label ?? ''}${place ? ` · ${place}` : ''}`.trim();
 }
+
+/** Stage 6 anchors: own tag (the tone label would repeat / contradict it). */
+const STAGE6_TAGS = {
+  jobChanged: (a) => (a.fromJobId && a.fromJobId !== 'parttime' ? '💼 전직' : '💼 취업'),
+  rankUp: () => '🎉 승진',
+  hiddenJobUnlocked: () => '🌟 숨은 직업 해금',
+  injured: () => '🤕 부상',
+  newsFlash: () => '📰 뉴스 속보',
+  militaryStart: () => '🪖 입대',
+  militaryEnd: () => '🪖 전역',
+  educationChanged: () => '🎓 졸업',
+};
 
 /** Prompt tag = its title only (the tone label would repeat / contradict it: "💼 일·커리어 · 📝 수능 날"). */
 function promptTag(anchor, tone) {

@@ -323,3 +323,55 @@ body.cutin-open { overflow: hidden; }
   .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 330px) * 16 / 9)); }
   .cutin.prompt .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 390px) * 16 / 9)); }
 }
+
+/* ---------- Stage 6: stat / salary chips, job badge, hidden-job gold, news strip, jobOffer badges ---------- */
+.ci-chip.stat { border: 2px solid currentColor; }
+.ci-chip.stat-int { background: #e0e9ff; color: #2446a8; }
+.ci-chip.stat-str { background: #ffe6dc; color: #a33a14; }
+.ci-chip.stat-charm { background: #ffe1f0; color: #a3276a; }
+.ci-chip.stat-luck { background: #dcf5e4; color: #1d6b3b; }
+.ci-chip.stat.minus { opacity: 0.85; text-decoration: none; border-style: dashed; }
+.ci-chip.salary { background: #dcfce7; color: #14532d; border: 2px solid #22c55e; }
+.ci-emo.badge { font-size: 15cqh; }
+
+.ci-badge {
+  position: absolute; right: 3%; top: 9%; z-index: 4; display: flex; align-items: center; gap: 0.5em;
+  background: rgba(255, 255, 255, 0.96); color: #1f1a24; border: 3px solid var(--ci-tag); border-radius: 18px;
+  padding: 0.45em 0.9em 0.45em 0.55em; font-size: clamp(12px, 2cqw, 20px); max-width: 46%;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22); animation: ci-badge-in 0.55s 0.25s cubic-bezier(0.3, 1.7, 0.5, 1) both;
+}
+.ci-badge-ic { font-size: 2.1em; line-height: 1; flex: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.2)); }
+.ci-badge-body { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.ci-badge-t { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-badge-stars { color: #f5a300; letter-spacing: 0.06em; font-weight: 900; text-shadow: 0 1px 0 #7a4b00; }
+.ci-badge-sub { font-weight: 800; color: #57534e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-badge.rankup .ci-badge-stars { animation: ci-stars 0.9s 0.7s ease-out both; }
+.ci-badge.hiddenjob { border-color: #f5b400; background: linear-gradient(135deg, #fff8d6, #ffe38a); }
+@keyframes ci-badge-in { from { opacity: 0; transform: translateY(-20px) scale(0.6) rotate(-6deg); } }
+@keyframes ci-stars { 40% { transform: scale(1.35); filter: brightness(1.3); } }
+
+.cutin.gold .ci-win { box-shadow: 0 0 0 4px #fff, 0 0 0 8px #f5b400, 0 0 40px 10px rgba(255, 200, 40, 0.6), 0 18px 40px rgba(0, 0, 0, 0.35); }
+.ci-goldfx { position: absolute; inset: 0; z-index: 3; overflow: hidden; }
+.ci-goldfx::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 55%, rgba(255, 223, 90, 0.22), transparent 62%); mix-blend-mode: screen; animation: ci-gold-glow 2.4s ease-in-out infinite; }
+.ci-goldfx i {
+  position: absolute; font-style: normal; font-size: clamp(14px, 3.4cqw, 34px);
+  left: calc(6% + (var(--i) * 6.5%)); top: var(--y, 30%);
+  animation: ci-gold-tw 1.6s calc(var(--i) * 0.13s) ease-in-out infinite both;
+}
+@keyframes ci-gold-glow { 50% { opacity: 0.55; } }
+@keyframes ci-gold-tw { 0%, 100% { opacity: 0; transform: scale(0.4) rotate(0); } 50% { opacity: 1; transform: scale(1.2) rotate(40deg); } }
+
+.ci-news {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; align-items: stretch;
+  background: rgba(20, 18, 40, 0.88); color: #fff; font-weight: 900; font-size: clamp(12px, 2.1cqw, 22px);
+  animation: ci-news-in 0.4s 0.2s ease-out both;
+}
+.ci-news-tag { flex: none; background: #e11d48; padding: 0.35em 0.8em; letter-spacing: 0.04em; }
+.ci-news-t { flex: 1; min-width: 0; padding: 0.35em 0.8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes ci-news-in { from { transform: translateY(100%); } }
+
+.ci-opt-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.ci-opt-badge { font-size: 0.72rem; font-weight: 800; background: #f4efe8; color: #44403c; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+@media (max-width: 700px), (max-aspect-ratio: 4/5) {
+  .ci-badge { top: auto; bottom: 6%; right: 2%; max-width: 52%; border-width: 2px; }
+}

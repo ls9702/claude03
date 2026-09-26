@@ -25,6 +25,20 @@ import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
 import { won, esc, secondsLeft } from './format.js';
 import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
+import {
+  STAT_INFO,
+  characterEra,
+  displayCharacters,
+  educationLabel,
+  jobBadge,
+  jobInfo,
+  militaryLabel,
+  optionExtras,
+  optionLabel,
+  rankStars,
+  statCap,
+  statRows,
+} from './shared/growth.js';
 
 export { won };
 
@@ -32,9 +46,17 @@ const MODE_KEY = 'jinsei.boardMode'; // '2d' | '3d' (explicit choice); absent = 
 const QUALITY_KEY = 'jinsei.quality';
 const CUTIN_KEY = 'jinsei.cutins'; // legacy 'off' (→ spectator mode off); `?cutins=off` = every cut-in off
 const SPECTATOR_KEY = 'jinsei.spectatorCutins'; // 「관전 컷인」 full | compact | off (default compact)
-const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved'];
+/** Stage 6 cut-in anchors (3D: shown after their board step). */
+const STAGE6_CUTIN_TYPES = ['jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged'];
+const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES];
 /** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
-const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver'];
+const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged'];
+/** Stage 6 tile types the server may send before board.json knows them (meta wins). */
+const CLIENT_TILE_TYPES = {
+  habit: { name: '습관', icon: '📚', color: '#20a39e' },
+  salary: { name: '월급', icon: '💵', color: '#3fae5a' },
+  job: { name: '직업', icon: '💼', color: '#4f8ee0' },
+};
 const RESULT_LINES = ['두근두근… 인생 결산 시간!', '누가 제일 잘 살았을까?', '다들 수고했어, 멋진 인생이었어', '결과 발표 갑니다~!'];
 const FALLBACK_KEY = 'jinsei.board3dFallback'; // sessionStorage: auto-fallback happened this session
 const FPS_MIN = 15;
@@ -101,7 +123,9 @@ function tileIdAt(board, pos) {
 export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   root.innerHTML = `
     <div class="g-top card">
-      <div class="g-era-line"><span class="era-chip" data-el="era"></span><span class="muted small" data-el="turninfo"></span></div>
+      <div class="g-era-line"><span class="era-chip" data-el="era"></span><span class="muted small" data-el="turninfo"></span>
+        <button type="button" class="news-badge" data-el="news" hidden aria-expanded="false"></button></div>
+      <div class="news-pop" data-el="newspop" hidden role="note"></div>
       <div class="g-now" data-el="now"></div>
     </div>
     <div class="g-layout">
@@ -122,6 +146,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
               <button type="button" class="btn tiny ghost tool-toggle" data-el="soundbtn" aria-pressed="false" aria-label="소리 켜기/끄기">🔊</button>
             </div>
           </div>
+          <div class="news-flash" data-el="newsflash" hidden aria-live="polite"></div>
           <div class="board3d" data-el="wrap3d" hidden><canvas class="board3d-canvas" data-el="canvas3d" aria-label="3D 말판"></canvas></div>
           <div class="track-scroll" data-el="scroll"><div class="track" data-el="track"></div></div>
         </div>
@@ -184,6 +209,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     preloaded: new Set(),
     resultIntroFor: null,
     gameOverLine: null,
+    openChar: null, // Stage 6: character detail card open in the side list
+    newsSeen: {}, // Stage 6: eraId → {title, text, tone} from newsFlash events (before meta.news knows it)
+    newsOpen: false,
   };
 
   // ---------- Stage 5: cut-ins + sound ----------
@@ -217,7 +245,33 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   /** Prompts use the cut-in dialogue box in 3D, or in 2D once generated art exists; else the modal. */
   const promptCutins = () => cutinsOn() && (!!ui.b3 || hasCutinArt());
   const orderedChars = () => (ui.room?.turn?.order ?? []).map((id) => byId(id)).filter(Boolean);
-  const cutinOpts = () => ({ characters: orderedChars(), room: ui.room });
+  /**
+   * Cut-in characters. Stage 6: a job-change cut-in shows the character in the costume of the event's job (the
+   * state may already be further on); everyone else wears their current effective look.
+   */
+  const cutinOpts = (g = null) => {
+    const a = g?.anchor;
+    if (a?.type === 'jobChanged' && a.charId && a.jobId && ui.rawRoom) {
+      const overrides = { [a.charId]: { job: { id: a.jobId, rank: a.rank ?? 1 } } };
+      const list = displayCharacters(ui.rawRoom, { avatars: getMeta()?.avatars, jobs: getMeta()?.jobs, overrides });
+      const m = new Map(list.map((c) => [c.id, c]));
+      return { characters: (ui.room?.turn?.order ?? []).map((id) => m.get(id)).filter(Boolean), room: ui.room };
+    }
+    return { characters: orderedChars(), room: ui.room };
+  };
+  /** Stage 6 growth outfits: the room as drawn (characters' `avatar` = era / job costume, `chosenAvatar` = own look). */
+  function displayRoom(room) {
+    if (!Array.isArray(room?.characters)) return room;
+    const meta = getMeta();
+    const raw = rawOf.get(room) ?? room;
+    const characters = displayCharacters(raw, { avatars: meta?.avatars, jobs: meta?.jobs });
+    if (characters.every((c, i) => c === raw.characters[i])) return raw;
+    const out = { ...raw, characters };
+    rawOf.set(out, raw);
+    return out;
+  }
+  const rawOf = new WeakMap(); // display room → server room
+  const tileTypeMeta = (type) => getMeta()?.board?.tileTypes?.[type] ?? CLIENT_TILE_TYPES[type] ?? {};
 
   function applySoundUi() {
     const st = audio.state;
@@ -234,9 +288,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   /** Warm the compositor caches in the background: neutral + blink for everyone, common expressions after. */
   function preloadLayers() {
     if (!ui.assetsReady || !cutinsOn()) return;
-    const todo = chars().filter((c) => !ui.preloaded.has(`${c.id}|${c.art?.status ?? ''}`));
+    // the key includes the effective outfit (Stage 6 growth outfits): an era / job change warms the new look
+    const pk = (c) => `${c.id}|${c.art?.status ?? ''}|${c.avatar?.outfit ?? ''}`;
+    const todo = chars().filter((c) => !ui.preloaded.has(pk(c)));
     if (!todo.length) return;
-    for (const c of todo) ui.preloaded.add(`${c.id}|${c.art?.status ?? ''}`);
+    for (const c of todo) ui.preloaded.add(pk(c));
     const jobs = [
       ...todo.map((c) => [c, []]),
       ...todo.slice(0, 4).map((c) => [c, ['joy', 'cry']]), // the rest compose on demand (LRU-capped cache)
@@ -267,7 +323,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (kind === 'full') return showGroup(g);
     if (kind === 'banner') {
       try {
-        banner.show(cutin.specFromGroup(g, cutinOpts()));
+        banner.show(cutin.specFromGroup(g, cutinOpts(g)));
       } catch (err) {
         console.warn('[banner]', err);
       }
@@ -279,12 +335,15 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   /** A cut-in group, preceded by the MC studio cut-in when it opens an era (Stage 5.6). */
   function showGroup(g) {
     const jobs = [];
-    if (g.studio && mcOn()) jobs.push(cutin.show(studioSpecFor(g.studio, g.anchor)));
-    jobs.push(cutin.show(mcOn() ? g : { ...g, mc: null }, cutinOpts()));
+    if (g.news) noteNews(g.news);
+    if (g.studio && mcOn()) jobs.push(cutin.show(studioSpecFor(g.studio, g.anchor, g.news)));
+    else if (g.news && g.anchor?.type !== 'newsFlash') jobs.push(cutin.show({ anchor: { type: 'newsFlash', ...g.news, cutin: true }, charId: null, texts: [], money: [], delta: 0, involved: [], mc: null, studio: null, mcEvents: [], news: g.news }, cutinOpts()));
+    // a news flash that opened its own studio cut-in is not repeated as a news cut-in
+    if (!(g.anchor?.type === 'newsFlash' && g.studio && mcOn())) jobs.push(cutin.show(mcOn() ? g : { ...g, mc: null }, cutinOpts(g)));
     return Promise.all(jobs);
   }
 
-  function studioSpecFor(lines, anchor) {
+  function studioSpecFor(lines, anchor, news = null) {
     const era = anchor?.type === 'eraChanged' ? anchor.eraName ?? '' : '';
     return cutin.studioSpec(lines, {
       key: `${anchor?.type ?? 'mc'}:${anchor?.era ?? ''}:${anchor?.charId ?? ''}`,
@@ -293,6 +352,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       era: era ? `${era} 시대` : '',
       characters: orderedChars(),
       currentId: anchor?.charId ?? null,
+      news,
     });
   }
 
@@ -339,6 +399,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const era = room.board.eras[cur?.position?.eraIndex ?? 0];
     el.era.textContent = `${era?.name ?? ''} 시대`;
     el.turninfo.textContent = `턴 ${room.turn.turnNo} · ${room.turn.round}라운드`;
+    renderNews(room, era?.id);
     if (!cur) {
       el.now.textContent = '';
       return;
@@ -349,6 +410,53 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       <span class="now-text"><b>${esc(cur.name)}</b>의 차례 <span class="muted small">(${esc(cur.ownerName)}${cur.isMe ? ' · 나' : ''} · ${phase})</span></span>`;
     hydratePortraits(el.now);
     el.now.classList.toggle('mine', !!cur.isMe);
+  }
+
+  // ---------- Stage 6: era news badge ----------
+  /** News of an era: `room.news[eraId]` → `/api/meta.news`, else what a newsFlash event told us. */
+  function newsFor(room, eraId) {
+    if (!eraId) return null;
+    const id = room?.news?.[eraId];
+    const list = getMeta()?.news?.news ?? (Array.isArray(getMeta()?.news) ? getMeta().news : []);
+    const def = id ? list.find((n) => n?.id === id) : null;
+    if (def) return { title: def.title, text: def.text, tone: def.tone };
+    const seen = ui.newsSeen[eraId];
+    if (seen && (!id || seen.newsId === id || !seen.newsId)) return seen;
+    return id ? { title: '이번 시대 뉴스', text: '', tone: 'neutral' } : null;
+  }
+  function noteNews(n) {
+    if (n?.eraId && n.title) ui.newsSeen[n.eraId] = { newsId: n.newsId ?? null, title: n.title, text: n.text ?? '', tone: n.tone ?? 'neutral' };
+  }
+  function renderNews(room, eraId) {
+    const n = newsFor(room, eraId);
+    el.news.hidden = !n;
+    if (!n) {
+      el.newspop.hidden = true;
+      ui.newsOpen = false;
+      return;
+    }
+    const key = `${eraId}|${n.title}`;
+    if (el.news.dataset.key !== key) {
+      el.news.dataset.key = key;
+      el.news.innerHTML = `<span class="nb-ic" aria-hidden="true">📰</span><span class="nb-t">${esc(n.title)}</span>`;
+      el.news.title = `이번 시대 뉴스: ${n.title}`;
+      el.news.dataset.tone = n.tone ?? 'neutral';
+      el.newspop.innerHTML = `<b>📰 ${esc(n.title)}</b>${n.text ? `<p>${esc(n.text)}</p>` : ''}<small class="muted">이 시대 동안 모두에게 적용돼요.</small>`;
+    }
+    el.newspop.hidden = !ui.newsOpen;
+    el.news.setAttribute('aria-expanded', String(ui.newsOpen));
+  }
+  /** Board strip (2D) / 3D banner when an era's news breaks. */
+  function flashNews(n) {
+    if (!n?.title) return;
+    if (ui.b3?.showBanner) return; // the 3D board shows it in its own era banner
+    el.newsflash.innerHTML = `<span class="nf-tag">📰 속보</span><span class="nf-t">${esc(n.title)}</span>`;
+    el.newsflash.hidden = false;
+    el.newsflash.classList.remove('show');
+    void el.newsflash.offsetWidth;
+    el.newsflash.classList.add('show');
+    clearTimeout(ui.newsFlashTimer);
+    ui.newsFlashTimer = setTimeout(() => (el.newsflash.hidden = true), 3200);
   }
 
   // ---------- board ----------
@@ -379,9 +487,15 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   }
 
   function tileHtml(t, pawns, curId, style = '') {
-    const meta = getMeta()?.board?.tileTypes?.[t.type] ?? {};
+    const meta = tileTypeMeta(t.type);
     const amt =
-      t.type === 'money' ? `<span class="t-amt plus">+${won(t.amount)}</span>` : t.type === 'loss' ? `<span class="t-amt minus">-${won(t.amount)}</span>` : '';
+      t.type === 'money'
+        ? `<span class="t-amt plus">+${won(t.amount)}</span>`
+        : t.type === 'loss'
+          ? `<span class="t-amt minus">-${won(t.amount)}</span>`
+          : t.type === 'salary'
+            ? '<span class="t-amt plus">월급날</span>'
+            : '';
     return `<div class="tile t-${esc(t.type)}${t.route ? ` r-${esc(t.route)}` : ''}${pawns?.length ? ' occupied' : ''}" data-tile="${esc(t.id)}" style="--tc:${esc(meta.color ?? '#ccc')};${style}" title="${esc(t.label)}">
       <span class="t-icon">${esc(t.icon ?? meta.icon ?? '')}</span>
       <span class="t-label">${esc(t.label)}</span>${amt}${pawnsHtml(pawns, curId)}</div>`;
@@ -536,21 +650,105 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const cur = currentChar();
     const order = room.turn.order.map(byId).filter(Boolean);
     const eraName = (c) => room.board.eras[c.position?.eraIndex ?? 0]?.name ?? '';
+    const jobs = getMeta()?.jobs;
+    const cap = statCap(getMeta());
+    if (ui.openChar && !order.some((c) => c.id === ui.openChar)) ui.openChar = null;
     el.chars.innerHTML = order
       .map((c) => {
         const r = c.route ? routes()[c.route] : null;
         const status = c.finished ? `🏁 ${c.place}등 골인` : `${esc(eraName(c))}${r ? ` · ${esc(r.icon)} ${esc(r.name)}` : ''}`;
-        return `<li class="g-char${c.id === cur?.id ? ' cur' : ''}${c.isMe ? ' me' : ''}${c.finished ? ' done' : ''}" data-id="${esc(c.id)}">
+        const open = ui.openChar === c.id;
+        const stats = statRows(c, cap);
+        const tags = charTagsHtml(c, jobs);
+        return `<li class="g-char${c.id === cur?.id ? ' cur' : ''}${c.isMe ? ' me' : ''}${c.finished ? ' done' : ''}${open ? ' open' : ''}" data-id="${esc(c.id)}">
+          <button type="button" class="gc-row" data-char-detail="${esc(c.id)}" aria-expanded="${open}" aria-controls="gcd-${esc(c.id)}" title="능력치·직업 자세히 보기">
           <span class="gc-portrait">${portraitHtml(c, { size: 40 })}</span>
           <span class="gc-body">
             <span class="gc-name">${esc(c.name)} <small class="muted">${esc(c.ownerName)}${c.isMe ? ' · 나' : ''}</small></span>
             <span class="gc-status small">${status}</span>
+            ${tags ? `<span class="gc-tags">${tags}</span>` : ''}
+            ${stats.length ? `<span class="gc-mini" aria-hidden="true">${stats.map((st) => `<i style="--p:${st.pct}%;--c:${st.color}" title="${esc(st.label)} ${st.value}"></i>`).join('')}</span>` : ''}
           </span>
           <span class="gc-money"><b>${won(c.money)}</b>${c.debt > 0 ? `<small class="debt">빚 ${won(c.debt)}</small>` : ''}</span>
+          </button>
+          ${open ? charDetailHtml(c, { jobs, cap }) : ''}
         </li>`;
       })
       .join('');
     hydratePortraits(el.chars);
+  }
+
+  /** Compact tags of a side-list row: job badge (icon · name · ★), 부상, 학력, 군 복무. */
+  function charTagsHtml(c, jobs) {
+    const out = [];
+    const jb = jobBadge(c, jobs);
+    if (jb) {
+      out.push(
+        `<span class="job-badge${jb.partTime ? ' parttime' : ''}${jb.hidden ? ' hidden-job' : ''}" title="${esc(`${jb.name}${jb.rankName ? ` · ${jb.rankName}` : ''} (${jb.rank}/${jb.maxRank})`)}"><span class="jb-ic">${esc(jb.icon)}</span><span class="jb-n">${esc(jb.name)}</span>${
+          jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''
+        }</span>`,
+      );
+      if (jb.injured) out.push(`<span class="gc-tag bad" title="부상">🤕 ${jb.injured}턴</span>`);
+    }
+    const edu = educationLabel(c.education);
+    if (edu) out.push(`<span class="gc-tag">🎓 ${esc(edu)}</span>`);
+    const mil = militaryLabel(c.military);
+    if (mil && c.military?.status === 'serving') out.push(`<span class="gc-tag mil">🪖 ${esc(mil)}</span>`);
+    return out.join('');
+  }
+
+  /** Detail card (tap on a row): stat bars, job + history, education, military, unlocked hidden jobs. */
+  function charDetailHtml(c, { jobs, cap }) {
+    const stats = statRows(c, cap);
+    const jb = jobBadge(c, jobs);
+    const edu = educationLabel(c.education);
+    const mil = militaryLabel(c.military);
+    const hist = Array.isArray(c.jobHistory) ? c.jobHistory : [];
+    const hidden = Array.isArray(c.hiddenUnlocked) ? c.hiddenUnlocked : [];
+    const eraName = (id) => ui.room?.board?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
+    const rows = [];
+    if (stats.length) {
+      rows.push(
+        `<div class="stat-bars">${stats
+          .map(
+            (st) =>
+              `<div class="stat-row" style="--c:${st.color}"><span class="st-l">${st.icon} ${esc(st.label)}</span><span class="st-bar" role="meter" aria-label="${esc(st.label)}" aria-valuemin="0" aria-valuemax="${cap}" aria-valuenow="${st.value}"><i style="width:${st.pct}%"></i></span><b class="st-v">${st.value}<small>/${cap}</small></b></div>`,
+          )
+          .join('')}</div>`,
+      );
+    }
+    const facts = [];
+    if (jb) {
+      facts.push(
+        `<div class="gd-fact"><span class="gd-k">직업</span><span class="gd-v"><span class="job-badge big${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${esc(jb.icon)}</span><span class="jb-n">${esc(jb.name)}</span>${
+          jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''
+        }</span>${jb.rankName ? ` <small>${esc(jb.rankName)} (${jb.rank}/${jb.maxRank})</small>` : ''}${jb.injured ? ` <span class="gc-tag bad">🤕 부상 ${jb.injured}턴</span>` : ''}</span></div>`,
+      );
+    } else if ('job' in c) facts.push('<div class="gd-fact"><span class="gd-k">직업</span><span class="gd-v muted">아직 없음</span></div>');
+    if ('education' in c) facts.push(`<div class="gd-fact"><span class="gd-k">학력</span><span class="gd-v">${edu ? `🎓 ${esc(edu)}` : '<span class="muted">-</span>'}</span></div>`);
+    if (mil) facts.push(`<div class="gd-fact"><span class="gd-k">군 복무</span><span class="gd-v">🪖 ${esc(mil)}</span></div>`);
+    if (hist.length) {
+      facts.push(
+        `<div class="gd-fact"><span class="gd-k">직업 이력</span><span class="gd-v gd-hist">${hist
+          .map((h) => {
+            const info = jobInfo(h.id, jobs);
+            return `<span class="gd-h">${esc(info?.icon ?? '💼')} ${esc(info?.name ?? h.id)}${h.rank ? ` ${esc(rankStars(h.rank, Math.max(info?.maxRank ?? 1, h.rank)))}` : ''}${h.era ? ` <small>${esc(eraName(h.era))}</small>` : ''}</span>`;
+          })
+          .join('')}</span></div>`,
+      );
+    }
+    if (hidden.length) {
+      facts.push(
+        `<div class="gd-fact"><span class="gd-k">숨은 직업</span><span class="gd-v">${hidden
+          .map((id) => {
+            const info = jobInfo(id, jobs);
+            return `<span class="gc-tag gold">🌟 ${esc(info?.icon ?? '')} ${esc(info?.name ?? id)}</span>`;
+          })
+          .join(' ')}</span></div>`,
+      );
+    }
+    if (!rows.length && !facts.length) facts.push('<p class="muted small">능력치·직업 정보가 아직 없어요.</p>');
+    return `<div class="gc-detail" id="gcd-${esc(c.id)}">${rows.join('')}${facts.length ? `<div class="gd-facts">${facts.join('')}</div>` : ''}</div>`;
   }
 
   function renderLog(room) {
@@ -673,13 +871,14 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         <p>${esc(p.text ?? '')}</p>
         ${subject && subject.id !== who.id ? `<p class="small muted">대상: ${esc(subject.name)}</p>` : ''}
         <div class="choice-list">${p.options
-          .map(
-            (o) =>
-              `<button type="button" class="btn choice" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}">
-                <span class="c-icon">${esc(o.icon ?? '')}</span><span class="c-label">${esc(o.label ?? o.id)}${
+          .map((o) => {
+            const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
+            const badges = [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges];
+            return `<button type="button" class="btn choice" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}">
+                <span class="c-icon">${esc(o.icon || x.icon || '')}</span><span class="c-label">${esc(optionLabel({ ...o, icon: o.icon || x.icon }))}${
                   routeOptionInfo(p, o) ? `<small class="c-desc">${esc(routeOptionInfo(p, o))}</small>` : ''
-                }</span></button>`,
-          )
+                }${badges.length ? `<span class="c-badges">${badges.map((b) => `<span class="c-badge">${esc(b)}</span>`).join('')}</span>` : ''}</span></button>`;
+          })
           .join('')}</div>
         ${p.deadlineAt ? `<p class="small muted">남은 시간${deadlineHtml(p.deadlineAt)} — 시간이 지나면 기본 선택으로 처리돼요.</p>` : ''}
       </div>`;
@@ -707,6 +906,25 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   // ---------- interactions ----------
   root.addEventListener('click', (ev) => {
     const t = ev.target;
+    const detail = t.closest('[data-char-detail]');
+    if (detail) {
+      const id = detail.dataset.charDetail;
+      ui.openChar = ui.openChar === id ? null : id;
+      if (ui.room) renderChars(ui.room);
+      root.querySelector(`[data-char-detail="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+      return;
+    }
+    if (t.closest('[data-el="news"]')) {
+      ui.newsOpen = !ui.newsOpen;
+      el.newspop.hidden = !ui.newsOpen;
+      el.news.setAttribute('aria-expanded', String(ui.newsOpen));
+      return;
+    }
+    if (ui.newsOpen && !t.closest('[data-el="newspop"]')) {
+      ui.newsOpen = false;
+      el.newspop.hidden = true;
+      el.news.setAttribute('aria-expanded', 'false');
+    }
     const tab = t.closest('[data-era]');
     if (tab) {
       const i = Number(tab.dataset.era);
@@ -797,8 +1015,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   }
 
   // ---------- main render ----------
-  function render(room) {
-    if (!room?.board || !room.turn) return;
+  function render(input) {
+    if (!input?.board || !input.turn) return;
+    // Stage 6: everything below draws the effective look (era / job costume); `rawRoom` keeps the server view
+    const raw = rawOf.get(input) ?? input;
+    const room = raw === ui.rawRoom && ui.room ? ui.room : displayRoom(raw);
+    ui.rawRoom = raw;
     ui.room = room;
     const cur = currentChar();
     const followKey = `${room.turn.turnNo}`;
@@ -1162,12 +1384,59 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         case 'bonusSpin':
           floatOn(e.charId, `🎰 ${e.value}`, 'plus');
           break;
+        // ---------- Stage 6 ----------
+        case 'statChanged': {
+          const info = STAT_INFO[e.stat];
+          if (info && e.delta) floatOn(e.charId, `${info.icon}${info.label} ${e.delta > 0 ? '+' : ''}${e.delta}`, e.delta > 0 ? 'plus stat' : 'minus stat');
+          break;
+        }
+        case 'salary':
+          floatOn(e.charId, '💵 월급날!', 'plus');
+          break;
+        case 'newsFlash':
+          noteNews(e);
+          flashNews(e);
+          if (ui.room) renderNews(ui.room, characterEra(currentChar(), ui.room));
+          break;
+        case 'jobChanged':
+        case 'rankUp':
+        case 'hiddenJobUnlocked':
+        case 'injured':
+        case 'militaryStart':
+        case 'militaryEnd':
+        case 'educationChanged':
+          if (!cutinsOn() || (!c?.isMe && ui.cutinMode === 'off')) toast(stage6Toast(e, c));
+          break;
         case 'gameOver':
           if (!cutinsOn()) toast('🏆 게임 종료! 결과 발표'); // else the result intro cut-in announces it
           break;
         default:
           break;
       }
+    }
+  }
+
+  function stage6Toast(e, c) {
+    const name = c?.name ?? '';
+    const info = e.jobId ? jobInfo(e.jobId, getMeta()?.jobs) : null;
+    const job = info ? `${info.icon} ${info.name}` : '';
+    switch (e.type) {
+      case 'jobChanged':
+        return `💼 ${name} → ${job || '새 직업'}`;
+      case 'rankUp':
+        return `🎉 ${name} 승진! ${job}${e.rankName ? ` ${e.rankName}` : ''}`;
+      case 'hiddenJobUnlocked':
+        return `🌟 ${name}: 숨은 직업 ${job} 해금!`;
+      case 'injured':
+        return `🤕 ${name} 부상${e.turns ? ` (${e.turns}턴)` : ''}`;
+      case 'militaryStart':
+        return `🪖 ${name} 입대!${e.turns ? ` ${e.turns}턴 복무` : ''}`;
+      case 'militaryEnd':
+        return `🎖️ ${name} 전역!`;
+      case 'educationChanged':
+        return `🎓 ${name} ${educationLabel(e.education) || '졸업'}!`;
+      default:
+        return '';
     }
   }
 
@@ -1184,7 +1453,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   }
 
   // ---------- results ----------
-  function renderResult(room, host) {
+  function renderResult(input, host) {
+    const room = displayRoom(input);
     const ranking = room.result?.ranking ?? [];
     const cmap = new Map((room.characters ?? []).map((c) => [c.id, c]));
     if (!ranking.length) {
@@ -1198,10 +1468,17 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         .map((r) => {
           const c = cmap.get(r.charId);
           const routesTxt = (c?.routeHistory ?? []).map((h) => routes()[h.route]?.icon ?? '').join(' ');
+          const jb = c ? jobBadge(c, getMeta()?.jobs) : null;
+          const edu = educationLabel(c?.education);
+          const career = jb || edu
+            ? `<span class="rk-career">${jb ? `<span class="job-badge${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${esc(jb.icon)}</span><span class="jb-n">${esc(jb.name)}</span>${jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''}</span>` : ''}${
+                edu ? `<span class="gc-tag">🎓 ${esc(edu)}</span>` : ''
+              }</span>`
+            : '';
           return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}">
             <span class="rk">${MEDAL[r.rank - 1] ?? `${r.rank}위`}</span>
             <span class="rk-portrait">${c ? portraitHtml(c, { size: 52 }) : ''}</span>
-            <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${esc(c?.ownerName ?? '')}</small>
+            <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${esc(c?.ownerName ?? '')}</small>${career}
               <span class="small muted">현금 ${won(r.money)}${r.debt ? ` · 빚 ${won(r.debt)}` : ''} · 골인 보너스 ${won(r.goalBonus)}${
                 r.place ? ` · ${r.place}번째 골인` : ''
               }${routesTxt ? ` · 루트 ${routesTxt}` : ''}</span></span>
@@ -1260,9 +1537,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     Promise.all(jobs).finally(() => list?.classList.add('shown'));
   }
 
-  return {
+  const gameApi = {
     render,
     onEvents,
+    /** The room as drawn (Stage 6: characters wear their effective era / job costume). */
+    get room() {
+      return ui.room;
+    },
     onReaction,
     renderResult,
     /** True while the 3D board is still animating events (result screen waits for it). */
@@ -1300,4 +1581,6 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       disposeBoard3D();
     },
   };
+  if (params.has('debug')) window.__game = gameApi; // E2E: inject rooms / events (?debug=1 only)
+  return gameApi;
 }
