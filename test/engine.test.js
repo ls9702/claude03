@@ -129,6 +129,8 @@ test('stop tile halts movement and opens route choice; choose sets the route', (
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2']] });
   const id = cur(room);
   ch(room, id).position = { eraIndex: 3, route: 'main', index: 4 }; // last high tile
+  // Stage 6: 진로 / 군 복무 / 취업 are decided before the 갈림길 — this character has done them all
+  Object.assign(ch(room, id), { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'chef', rank: 1, exp: 0, injured: 0 } });
   let r = act(room, { type: 'spin', characterId: id }, [7]);
   const moved = r.events.find((e) => e.type === 'moved');
   assert.deepEqual(moved.path, ['young:main:0']);
@@ -181,8 +183,8 @@ test('ownership and turn validation', () => {
 
 test('simultaneous prompt (생일 파티) collects answers; timeout fills defaults', () => {
   const base = gameData();
-  const birthday = base.board.events.find((e) => e.kind === 'groupGift');
-  const data = { ...base, board: { ...base.board, events: [birthday] } };
+  const birthday = base.events.events.find((e) => e.kind === 'groupGift');
+  const data = { ...base, events: { events: [birthday] } };
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2'], ['B', 'B2']] });
   const [a1, b1, a2, b2] = room.turn.order; // turn positions; family order = A1, A2, B1, B2
   assert.deepEqual([a1, b1, a2, b2].map((id) => ch(room, id).name), ['A1', 'A2', 'B1', 'B2']);

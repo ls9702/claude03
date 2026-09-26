@@ -59,8 +59,9 @@
   {room, events, logs}`; ctx = `{rng?, now?, data?}` (rng defaults to `createRng(room.rngState)`). Throws
   `EngineError{status}` (400/403/404/409). `action.actor` = `{sessionId}` | `{admin:true}` | `{system:true}`;
   omitted = trusted (tests/simulator, no ownership check).
-- `server/game/spaces.js` — tile resolution (`resolveTile`) + `PROMPTS` registry (`routeChoice`, `exam`, `groupGift`):
-  each `{build(tx, c, extra) → spec, resolve(tx, pending)}`. Add new decisions/minigames here.
+- `server/game/spaces.js` — tile resolution (`resolveTile`) + the `routeChoice` / `groupGift` prompts; the `PROMPTS`
+  registry lives in `prompts.js` (`registerPrompts`, each kind `{build(tx, c, extra) → spec, resolve(tx, pending)}`; Stage 6
+  kinds in `growth.js` / `jobs.js`). Add new decisions/minigames by registering a kind.
 - `server/game/effects.js` — tx helpers: `emit`, `addLog` (room.log cap 500 + `log` event), `changeMoney`
   (gains repay debt first; losses beyond cash become debt), `netWorth`, `josa`, `won` (만원 units).
 - `server/game/result.js` — `computeRanking` (money − debt; later stages add assets/awards), `applyResult`.
@@ -128,7 +129,7 @@
   gameOver{ranking}, log{text,tone}`. Since Stage 5 every event also has `tone, emotion, scene, line, cutin, lineTag`
   (see Stage 5). Events are broadcast to everyone → never put secret info in them (masking lives in `viewFor`).
 - `viewFor` masks: other sessions' pending answers (exposes `pending.answered[]` instead) and unresolved bets.
-- Hooks for later stages: `heart/job/card/shop/treasure/house` tiles are log-only placeholders in `resolveTile`
+- Hooks for later stages: `heart/card/shop/treasure/house` tiles are log-only placeholders in `resolveTile`
   (text in `board.json.placeholders`); add jobs/cards/romance/submaps as new tile handlers + `PROMPTS` entries;
   extend `computeRanking` for assets/awards.
 - Avatar part ids in `server/data/avatars.json` are stable contracts (generated PNG layers will key off them);
@@ -400,9 +401,9 @@
   sleepy), `poses` (idle wave clap mic), `profiles.<id>` {name, role, personality, speech, looks, colors}, `bigAmount`,
   `frequency.<many|normal|few|off>` {label, medium, minor (chances), cooldown, duoChance}, `situations.<key>` {weight
   big|medium|minor, lead hoya|bomi|any, duo true|false|'chance', vars[], hoya/bomi: {expression, pose}}, `eraSituations`,
-  `tileSituations` (tile type → situation; currently `{}`: heart/job/treasure are still placeholder tiles, and any tile
-  type listed in `board.json.placeholders` is skipped anyway — a test guards that placeholders never produce
-  marriage/job/treasure MC lines; Stage 6 adds the mapping when the systems exist). Pools: `lines.json` `mc.<key>.{hoya,bomi}` = string | {t, e?, p?},
+  `tileSituations` (tile type → situation; `{}`: heart/treasure are still placeholder tiles, and any tile type listed in
+  `board.json.placeholders` is skipped anyway — a test guards that placeholders never produce marriage/treasure MC lines;
+  Stage 6 maps job outcomes (`jobChanged` hire → job, `rankUp` → promotion …) instead of the job tile). Pools: `lines.json` `mc.<key>.{hoya,bomi}` = string | {t, e?, p?},
   `mc.<key>.duo` = 2–3 line dialogues [{s, t, e?, p?}] (both MCs). Tests: ≥6 per speaker + ≥6 duos per situation,
   ≤48 chars, placeholders ⊂ situation `vars`, every 호야 line has 멍. `birth` is reserved (no engine event yet — Stage 6).
 - Engine: `presentation.js` `attachMc` (end of `decorateEvents`) → qualifying events get `mc: [{speaker, line, expression,
@@ -499,3 +500,117 @@
   cut-in/result), `game.cjs` (natural-pace 4-client game, `BOARDS=`, `SPECTATE=1`), `prompts.cjs` (API spin spam +
   reactions; prompt visibility per owner), `misc.cjs` (routes, admin host tools, TV spectator, CTA), `probe2.cjs`, `art.cjs`.
   Note: in SwiftShader the 3D board build blocks the main thread ≈ 8 s at game start (prompts in that window show late).
+
+## Stage 6 — stats, careers, jobs (server)
+- Data: `server/data/jobs.json` (`jobs[]` 17 regular + 6 hidden `{id, name, icon, hidden, desc, requires: {stats?, education?},
+  ranks: [{name, salary}], rankUp: {stat, base, perStat, expNeeded}, injuryRisk, outfit, scene, tone, unlock?}` + `partTime`
+  (id `parttime` 알바, 3 ranks)), `news.json` (29 era news `{id, eras?, title, text, tone, effects}`), `events.json` (79 life
+  events, replaces `board.json.events`: `{id, eras?, text {name}, money?{min,max}, scale?, stats?, tone, scene?, emotion,
+  lineTag?, conditions?{job: id|'any'|'parttime'|'none', education, route}, weight?, kind?: 'groupGift', gift?}`), all via
+  `gameData()` (`getJobs/getNews/getEvents`) and `/api/meta.jobs|news` (+ `balance.stats|military|career`).
+  `balance.json`: `stats` (cap 10, start 2 + 1 seeded point; adult mode +5), `habits`, `exam` (probability table), `career`
+  (tuition, collegeTurns, 재수), `military`, `jobs` (offer count/weights, salary era mult, rank-up/education/exam bonuses,
+  injury, overtime, max-rank 성과급). `avatars.json.eraOutfits` = contract table (client `effectiveAvatar`).
+- Board: new tile types `habit` (kids eras, weight 3), `salary` (routes: career 4 / love 3 / money 2, senior main 3),
+  `job` (career route 3, senior 1); `board.json.placeholders` no longer has `job`. tones.json `cutinTiles` + habit,
+  `tileTones` salary→career / habit→good, new `tagScenes` and `sfx` keys (rankUp, salary, newsFlash…).
+- Modules: `prompts.js` (registry `PROMPTS` + `registerPrompts`, `openPrompt`, `resolvePrompt`; `resultCutin: true` always
+  emits a `promptResolved` anchor, `'auto'` only when the resolution emitted no other anchor (`ANCHOR_TYPES`); a plain object
+  returned by `resolve` is merged into it, e.g. exam `{result}`, habit `{result, stat}`, jobTile `{result}`); `growth.js`
+  (`initLife`, `ensureLife` (pre-Stage-6 saves), `examChances/examOutcome`, habit/exam/career/military prompts,
+  `spinSteps`, `startMilitary/endMilitary/graduate`, **`lifeStep(tx, c)`**); `jobs.js` (`jobDef`, `eligibleJobs`,
+  `offerWeight/offerCandidates/offerJob`, `hire`, `salaryAmount/paySalary`, `rankUpChance/tryRankUp`, `rollInjury`,
+  `unlockMet/checkHiddenUnlocks`, `resolveJobTile`, jobOffer/jobTile/hiddenJobOffer prompts); `news.js` (`NEWS_DEFAULTS`,
+  `newsEffects/effectsFor`, `drawNews`, `applyEraNews`, `drawStartNews`); `spaces.js` keeps tiles + routeChoice/groupGift
+  (+ `eventConditionsMet/eventPool`). `effects.js`: `addStat/addStats` (clamp 0..cap, `statChanged` with the actual delta),
+  `addDebt` (loans), `round5`, `statName/statText`; `josa(word, '으로/로')` handles ㄹ.
+- Character (public): `stats {int,str,charm,luck}`, `education none|college|elite`, `examResult elite|college|fail|null`,
+  `military {status none|serving|done|exempt, turnsLeft, deferred?}`, `job {id, rank, exp, injured} | null`, `jobHistory
+  [{id, rank (highest), era (hired in)}]` (every job incl. the current one), `hiddenUnlocked [jobId]`; additive: `school
+  {tier, turnsLeft} | null` (enrolled), `careerDone`, `careerChoice college|job|retake`, `retook`, `skipTurns`, `badEvents`.
+  Room: `news {eraId: newsId}` (in `viewFor`), config `growthOutfits` (bool, default true).
+- Turn flow: `continueTurn` resolves prompts, then runs `lifeStep` for the current character until it opens nothing:
+  전역 (turnsLeft 0) → 졸업 (`educationChanged`, int +1) → 진로 prompt (lifetime, on the 청년 갈림길) → 군 복무 decision →
+  job offer (`jobOffer`, or 알바 at once when nothing is eligible) → automatic 입대 (mandatory body, not enrolled) →
+  `routeChoice` (the 갈림길 stop no longer opens it in `resolveTile`) → hidden-job unlocks (`hiddenJobUnlocked` +
+  `hiddenJobOffer`). Loop guard 64. `endTurn` skips characters with `skipTurns` (재수) with a log line.
+- Rules: habit prompt (4 options, stat +gain (+1 at `bonusChance`), money cost/roll × era scale × news). 수능: `r = rng.next()`
+  vs `examChances` (base + int×지력 + luck×운 + news `examBonus` (+ `retakeBonus`)), the better result is kept. 진로: college
+  (tuition as debt, `collegeTurns` of school, then graduation → job offer), 바로 취업, 재수 (not for elite, once: skip
+  `retakeSkipTurns`, retake exam → a pass enrolls, a fail goes to work — no second 진로 prompt). 군: mandatory bodies
+  (`boy`) — enrolled → prompt 지금/졸업 후 (once), otherwise automatic after hiring (job kept); volunteers (`girl`) with str ≥
+  `volunteerMinStr` → prompt; else exempt. Serving: spins move `ceil(value/2)` (`spun.steps`, `halved: true`), military pay
+  per spin and on salary tiles, str +2 at 전역; school is paused. Jobs: `eligibleJobs` = requirements + news
+  (`jobRequireDelta`, `jobDelta`) + education; offers weighted by `offerWeight` (1 + 0.5×(Σreq−3) + 1.5 with a degree), no
+  hidden jobs. Salary tile: `ranks[rank-1].salary × salaryEraMult × news salaryMult (× partTimeMult) × (injured ? 0.5)`,
+  jobless students = 알바 pay; exp +1 → passive rank-up at `expNeeded`. Rank-up chance = base + perStat×stat +
+  luckBonus×luck + educationBonus (+ examBonus on a promotion exam) + news `rankUpBonus`, clamped; success → `rankUp` + the
+  job's stat +1; injury blocks. Job tile: `jobTile` prompt 승진 시험 (or 성과급 at max rank) / 전직 (one eligible candidate,
+  `option.jobId`) / 야근 (60 % salary, exp +2, str −1); students / soldiers only look around; a pending unlocked hidden job
+  is offered instead. Injury: `injuryRisk × news injuryMult` after salary / promotion exams → `injured` = 2 turns
+  (decremented per spin). Hidden unlocks (data `unlock`, all must hold, job eras only): 우주비행사 int 9 & str 9; 국민 MC max
+  rank of 개그맨/배우/유튜버 (now or history) & charm 9; 재벌 총수 max 대기업 & net worth ≥ 3,000; 트로트 스타 senior & charm 8 &
+  luck 8; **interim until Stages 7/8**: 산신령 luck 9 & `badEvents` ≥ 3 (loss tiles, bad events, injuries), 건물주 middle_age
+  & cash ≥ 4,000. News: first entrant of an era (not baby; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
+  (global, no charId; MC studio `news`), `statBonus` for every entrant; effects via `effectsFor(tx, c)` (character's era).
+- Events: `statChanged {charId, stat, delta, value, reason}` (habit/event/news/military/graduation/rankUp/overtime),
+  `jobChanged {charId, jobId, fromJobId, rank, reason: hire|change|hidden|parttime}`, `rankUp {charId, jobId, rank, rankName}`,
+  `salary {charId, jobId, rank, amount}` (+ `moneyChanged` reason salary), `injured {charId, jobId, turns}`,
+  `hiddenJobUnlocked {charId, jobId}`, `newsFlash {eraId, newsId, title, text, tone}`, `militaryStart {charId, turns}`,
+  `militaryEnd {charId}`, `educationChanged {charId, education}`; moneyChanged reasons tuition (debt), military, habit,
+  overtime, bonus. Presentation: all in `EVENT_TYPES`; `CUTIN_TYPES` + jobChanged rankUp hiddenJobUnlocked injured newsFlash
+  militaryStart educationChanged (statChanged / salary / militaryEnd are follow-ups; militaryEnd is a boundary); job events
+  use the job's `scene`/`tone`; event tiles use events.json `lineTag`/`scene`/`tone` (eventId rides on the log event);
+  character-less logs use the `neutral` pool. New line tags (5–10 each) + placeholders `{job} {rank} {news} {stat}`.
+  MC situations `job` (hire only), `promotion`, `hiddenJob`, `injury`, `military`, `news` (studio) — never a job-tile landing.
+- Balance (`scripts/simulate.js` prints the Stage 6 block: spins per mode, lifetime decisions per character by kind, final
+  job distribution, 알바/무직/hidden %, final ranks, salary share of income, stats at era entry, exam / career / military
+  splits, net worth by education and by route per era, news counts). Seed 11 × 300: max job 12.5 %, 알바 0.2 %, hidden held
+  1.2 % (unlocked 3.5 %), salary 23.5 % of income, route gaps ≤ 14.2 % (≤ ±7.1 % of the mean), lifetime 78.8 spins
+  (was 76.8), ≈ 8.7 decisions per character (7.8 own + others' birthday gifts; random play retakes 36 %).
+- Tests: `test/stage6-life.test.js` (init, stat caps, habits, exam table, 진로 branches incl. 재수 once, 군 복무, news,
+  migration, restore mid-career), `test/stage6-jobs.test.js` (data schemas, offers, salary, rank-ups, injury, job tile, all
+  6 hidden unlocks, presentation/MC mapping, random lifetime games, growthOutfits, `/api/meta`).
+
+## Stage 6 — client (stats, jobs, growth outfits)
+- Pure `public/js/shared/growth.js` (no imports; node-tested in `test/client-growth.test.js`): `effectiveAvatar(character,
+  {room, avatars, jobs, job?})` = the look drawn in game — only in playing/finished rooms with `config.growthOutfits !==
+  false`: `eraOutfits[era][body] ?? .any`, `job: true` eras → jobs.json / partTime `outfit` of `character.job` (no job /
+  unknown → chosen outfit); unknown costume ids ignored; `outfitColor` kept (fixed-colour outfits ignore it in every
+  renderer). Table = `avatars.eraOutfits` when non-empty, else `DEFAULT_ERA_OUTFITS` (same contract). `characterEra` =
+  `character.era` else board position. `displayCharacters(room, {avatars, jobs, overrides: {[id]: {job}}})` → characters
+  with `avatar` = effective look + `chosenAvatar`. Also `STAT_KEYS/STAT_INFO` (지력 🧠 / 체력 💪 / 매력 ✨ / 운 🍀 + colours),
+  `statCap(meta)` (`balance.stats.cap`, else 10), `statPct`, `statRows`, `statChip`, `salaryChip`, `jobInfo`, `jobBadge`
+  (icon · name · ★ rank/max · rankName · injured · partTime · hidden), `rankStars`, `rankSalary`, `educationLabel`
+  (대졸/명문대졸), `militaryLabel` (복무 중 (n턴)/군필/면제), `requirementBadges` (`requires` {stats:{…}} / flat / education),
+  `optionExtras(pending, option, {jobs})` (job prompts: icon, rank-1 salary, requirement badges; `option.jobId` wins).
+- game2d draws a **display room**: `render(room)` → `displayRoom()` (WeakMap display → raw, so internal `render(ui.room)`
+  calls are safe); `ui.rawRoom` = server view. Everything that reads `c.avatar` (portraits, cut-in cast, banners, tabs,
+  2D pawns, 3D pawns, result) gets the costume; lobby / customizer keep using `state.room` (chosen look). Portrait /
+  compositor / pawn caches key off the avatar JSON, so an era / job change re-renders. AI art (`art.status === 'ready'`)
+  still wins in cut-ins/portraits. `cutinOpts(g)`: a `jobChanged` cut-in shows its character in the event's job costume.
+- Side list rows (`.gc-row` button, `data-char-detail`): job badge, 🤕 n턴, 🎓 학력, 🪖 복무 중, mini 4-stat strip; tap →
+  inline detail card `.gc-detail` (stat bars `role=meter`, 직업 + rank name, 학력, 군 복무, 직업 이력, 숨은 직업); one open at a
+  time (`ui.openChar`). Result rows: final job badge + 학력 (`.rk-career`). Everything hides when the fields are absent.
+- News: top-bar `data-el="news"` badge (📰 title of the shown character's era: `room.news[eraId]` → `/api/meta.news.news`,
+  else the last `newsFlash` payload; tap → `data-el="newspop"`). `newsFlash` → 2D strip `data-el="newsflash"` / 3D
+  `b3.showBanner('📰 …')`. `planCutins` attaches the batch's newsFlash to the era's studio group (`g.news`, no separate
+  cut-in); studio spec `news` → `.ci-news` 「📰 속보」 strip; a newsFlash alone (or MCs off) → `kind: 'news'` cut-in.
+- Cut-ins: `cutinMap.STAGE6_ANCHORS` (jobChanged rankUp hiddenJobUnlocked injured newsFlash militaryStart militaryEnd
+  educationChanged) are anchors even without `cutin: true` and are follow-up boundaries; `statChanged`/`salary` follow-ups →
+  `g.stats[]`/`g.salary[]` → chips (`ci-chip stat stat-<key>`, `salary`; a salary chip replaces its moneyChanged chip).
+  `tagLabel`: 💼 취업/전직, 🎉 승진, 🌟 숨은 직업 해금, 🤕 부상, 🪖 입대/전역, 🎓 졸업, 📰 뉴스 속보. `cutin2d` `STAGE6_LOOK`
+  (tone/scene/pose/emotion/sfx defaults; server values win), `spec.badge` → `.ci-badge` (job icon, name, ★, rank name),
+  `spec.fx: 'gold'` (hidden job: gold frame + sparkles), cast `glyph` (🤕 🪖 🎖️ 🎓), `spec.sfx` ('fanfare' for hire /
+  rank-up / graduation). Prompt options get `badges` (💵 첫 월급, requirement badges) in the cut-in and the 2D modal.
+- Policy: `isBigGroup` adds jobChanged/rankUp/hiddenJobUnlocked/newsFlash (full even in compact); `MINOR_TILE_TYPES`
+  habit/salary never count as big; `BANNER_TYPES` militaryEnd = banner (also mine). Merge ranks: hidden 9, job/rankUp 8.
+- 3D: animator `ANIMATED_EVENTS` + statChanged, salary and the Stage 6 anchors; board3d handlers float stat changes
+  (stat colour), 💵 over the pawn, pop 💼⭐🌟🤕🪖🎖️🎓 (+ confetti for rank-up / hidden / graduation), newsFlash banner.
+  Tile colours / glyphs for habit (📚, asset icon `tile: 'school'`) / salary (💵, money icon asset + green ring and 「월급」
+  ribbon in the same atlas cell). Pawn costume changes wait for the sync grace (420 ms) / animator idle, then ✨.
+  `CLIENT_TILE_TYPES` (game2d) / `DEFAULT_TILE_GLYPH` (board3d) cover habit/salary until board.json has them (meta wins).
+- Admin: 「성장 의상」 checkbox (`growthOutfits`, sent only when off) + hint; room detail shows it.
+- Debug (`?debug=1`): `window.__game` = the game UI (`render`, `onEvents`, `renderResult`, `room` = display room).
+- E2E: session scratchpad `s6b/` (`inject.cjs` injected Stage 6 state, `SHIM=1` fakes `/api/meta.jobs/news` for a server
+  without them; screenshots `s6b-*.png`).

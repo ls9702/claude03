@@ -103,11 +103,15 @@ test('actions endpoint: start → spin/choose loop → finished (HTTP + SSE)', a
 test('admin force-timeout and force-end keep a ranking', async () => {
   const { cookie, id, A, a1 } = await setupRoom({ mode: 'adult', eraTurns: { young: 5, middle_age: 5, senior: 3 } });
   await call('POST', `/admin/api/rooms/${id}/start`, { cookie });
-  // adult mode: first step lands on the routeChoice stop
+  // adult mode: first step lands on the 갈림길 stop → Stage 6: the job offer comes first, then routeChoice
   const r = await call('POST', `/api/rooms/${id}/actions`, { token: A, body: { type: 'spin', characterId: a1 } });
-  assert.equal(r.json.room.turn.pending.kind, 'routeChoice');
+  assert.equal(r.json.room.turn.pending.kind, 'jobOffer');
   // players can't time out a prompt without a deadline
   assert.equal((await call('POST', `/api/rooms/${id}/actions`, { token: A, body: { type: 'timeout' } })).status, 409);
+  const t0 = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
+  assert.equal(t0.status, 200, t0.text);
+  assert.equal(t0.json.room.turn.pending.kind, 'routeChoice');
+  assert.ok(t0.json.room.characters.find((c) => c.id === a1).job?.id, 'hired with the default offer');
   const t = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
   assert.equal(t.status, 200, t.text);
   assert.equal(t.json.room.turn.pending, null);

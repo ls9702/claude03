@@ -662,5 +662,13 @@
     "outfitColor": "blue",
     "accessory": "none"
   },
-  "eraOutfits": {}
+  "eraOutfits": {
+    "baby": { "any": "dino" },
+    "elem": { "any": "tracksuit" },
+    "middle": { "boy": "uniform", "girl": "sailor" },
+    "high": { "boy": "uniform", "girl": "sailor" },
+    "young": { "job": true },
+    "middle_age": { "job": true },
+    "senior": { "any": "hanbokTrad" }
+  }
 }

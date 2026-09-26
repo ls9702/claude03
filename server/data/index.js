@@ -54,8 +54,22 @@ export const getBalance = () => loadData('balance');
 export const getLines = () => loadData('lines');
 export const getTones = () => loadData('tones');
 export const getMc = () => loadData('mc');
+/** Stage 6: jobs (17 regular + 6 hidden + part-time), era news flashes, life events (event tiles). */
+export const getJobs = () => loadData('jobs');
+export const getNews = () => loadData('news');
+export const getEvents = () => loadData('events');
 
 /** Everything the engine reads, as one object (tests may pass overrides). */
 export function gameData() {
-  return { eras: getEras(), board: getBoardData(), balance: getBalance(), lines: getLines(), tones: getTones(), mc: getMc() };
+  return {
+    eras: getEras(),
+    board: getBoardData(),
+    balance: getBalance(),
+    lines: getLines(),
+    tones: getTones(),
+    mc: getMc(),
+    jobs: getJobs(),
+    news: getNews(),
+    events: getEvents(),
+  };
 }

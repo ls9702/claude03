@@ -23,14 +23,17 @@ export function emit(tx, type, payload = {}) {
   return ev;
 }
 
-/** Append a game log line to room.log (capped) and emit a `log` event. */
-export function addLog(tx, text, { tone = 'info', charId = null, emotion = null } = {}) {
+/**
+ * Append a game log line to room.log (capped) and emit a `log` event. `eventId` (event tiles) rides on the
+ * log event so the presentation pass can find the events.json entry (scene / lineTag) of stat-only events.
+ */
+export function addLog(tx, text, { tone = 'info', charId = null, emotion = null, eventId = null } = {}) {
   const entry = { at: tx.now, type: 'game', text, tone };
   if (charId) entry.charId = charId;
   tx.room.log.push(entry);
   if (tx.room.log.length > LOG_LIMIT) tx.room.log.splice(0, tx.room.log.length - LOG_LIMIT);
   tx.logs.push(entry);
-  emit(tx, 'log', { text, tone, charId, emotion });
+  emit(tx, 'log', { text, tone, charId, emotion, ...(eventId ? { eventId } : {}) });
   return entry;
 }
 
@@ -69,6 +72,61 @@ export function changeMoney(tx, c, delta, reason, extra = {}) {
   return c.debt - debtBefore;
 }
 
+/** Take a loan (학자금 등): debt grows, cash stays. Emits `moneyChanged` (delta = −amount). */
+export function addDebt(tx, c, amount, reason, extra = {}) {
+  if (!(amount > 0)) return 0;
+  c.debt = (c.debt ?? 0) + amount;
+  emit(tx, 'moneyChanged', { charId: c.id, delta: -amount, reason, money: c.money, debt: c.debt, ...extra });
+  return amount;
+}
+
+// ---------- stats (Stage 6) ----------
+
+/** The four stats: 지력 / 체력 / 매력 / 운. */
+export const STAT_KEYS = ['int', 'str', 'charm', 'luck'];
+const STAT_NAMES = { int: '지력', str: '체력', charm: '매력', luck: '운' };
+
+export const statCap = (data) => data?.balance?.stats?.cap ?? 10;
+export const statName = (data, stat) => data?.balance?.stats?.names?.[stat] ?? STAT_NAMES[stat] ?? stat;
+
+/**
+ * Change one stat, clamped to 0..cap. Emits `statChanged {charId, stat, delta, value, reason}` with the ACTUAL
+ * change (nothing when clamped away). @returns the actual delta
+ */
+export function addStat(tx, c, stat, delta, reason, extra = {}) {
+  if (!delta || !STAT_KEYS.includes(stat)) return 0;
+  c.stats ??= { int: 0, str: 0, charm: 0, luck: 0 };
+  const before = c.stats[stat] ?? 0;
+  const value = Math.max(0, Math.min(statCap(tx.data), before + delta));
+  const d = value - before;
+  if (!d) return 0;
+  c.stats[stat] = value;
+  emit(tx, 'statChanged', { charId: c.id, stat, delta: d, value, reason, tone: d > 0 ? 'good' : 'bad', emotion: d > 0 ? 'joy' : 'sweat', ...extra });
+  return d;
+}
+
+/** Apply a `{int?, str?, charm?, luck?}` delta map; returns [{stat, delta}] actually applied. */
+export function addStats(tx, c, deltas, reason, extra = {}) {
+  const out = [];
+  for (const k of STAT_KEYS) {
+    const d = addStat(tx, c, k, deltas?.[k] ?? 0, reason, extra);
+    if (d) out.push({ stat: k, delta: d });
+  }
+  return out;
+}
+
+/** "지력 +2, 운 −1" */
+export function statText(data, changes) {
+  return changes.map(({ stat, delta }) => `${statName(data, stat)} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`).join(', ');
+}
+
+/** Round money to 5만원 steps (≥ 5 for positive amounts). */
+export function round5(v) {
+  if (!v) return 0;
+  const r = Math.round(Math.abs(v) / 5) * 5;
+  return Math.sign(v) * Math.max(5, r);
+}
+
 // ---------- Korean text helpers ----------
 function hasBatchim(word) {
   const ch = String(word ?? '').trim().slice(-1);
@@ -78,9 +136,13 @@ function hasBatchim(word) {
   return null;
 }
 
-/** josa('철수', '이/가') → '철수가'. Unknown final → '철수이(가)'. */
+/** josa('철수', '이/가') → '철수가'. Unknown final → '철수이(가)'. '으로/로' after ㄹ → '로'. */
 export function josa(word, pair) {
   const [a, b] = pair.split('/');
+  if (a === '으로') {
+    const code = String(word ?? '').trim().slice(-1).charCodeAt(0);
+    if (code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 === 8) return `${word}${b}`;
+  }
   const f = hasBatchim(word);
   if (f === null) return `${word}${a}(${b})`;
   return `${word}${f ? a : b}`;

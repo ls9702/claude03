@@ -81,6 +81,7 @@ export function viewFor(room, sessionId = null) {
     turn: publicTurn(room, mine),
     board: room.board ? structuredClone(room.board) : null, // public; static per game
     bets: publicBets(room, mine),
+    news: structuredClone(room.news ?? {}), // Stage 6: {eraId: newsId} (public, news.json in /api/meta)
     result: room.result ? structuredClone(room.result) : null,
     log: room.log.slice(-50),
     createdAt: room.createdAt,

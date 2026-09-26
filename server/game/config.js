@@ -39,6 +39,7 @@ export function defaultRoomConfig() {
     turnOrder: 'family',
     mcFrequency: 'normal',
     turnTimeoutSec: 0,
+    growthOutfits: true, // Stage 6: era / job costumes in game (client `effectiveAvatar`)
   };
 }
 
@@ -120,6 +121,11 @@ export function validateRoomConfig(input = {}) {
           : `${name} 턴 수는 이 모드에서 ${min} 이상이어야 합니다. (수능 칸과 골인 칸이 겹치지 않게)`,
       );
     }
+  }
+
+  if (input.growthOutfits !== undefined) {
+    if (typeof input.growthOutfits !== 'boolean') errors.push('성장 의상 값은 true/false여야 합니다.');
+    else cfg.growthOutfits = input.growthOutfits;
   }
 
   if (input.mcFrequency !== undefined) {

@@ -210,26 +210,30 @@ test('MC frequency: many ≥ normal ≥ few for optional appearances; cooldown s
   assert.ok(big[0].mc.length >= 1);
 });
 
-test('MC guard: placeholder tiles (heart/job/treasure/…) never produce marriage/job/treasure celebrations', () => {
+test('MC guard: placeholder tiles (heart/treasure/…) never produce marriage/treasure celebrations; job MC only on real hires', () => {
   const r = started({ mcFrequency: 'many' });
   const placeholders = Object.keys(gameData().board.placeholders);
-  assert.ok(placeholders.includes('heart') && placeholders.includes('job') && placeholders.includes('treasure'));
+  assert.ok(placeholders.includes('heart') && placeholders.includes('treasure'));
+  assert.ok(!placeholders.includes('job'), 'Stage 6: job tiles are live');
   const c = r.room.characters[0].id;
   // even if tileSituations maps them again later, a tile type still listed as a placeholder stays quiet
-  const data = { ...gameData(), mc: { ...mc, tileSituations: { heart: 'marriage', job: 'job', treasure: 'treasure' } } };
+  const data = { ...gameData(), mc: { ...mc, tileSituations: { heart: 'marriage', treasure: 'treasure' } } };
   for (const seed of [1, 2, 3, 4, 5]) {
-    for (const tileType of placeholders) {
+    for (const tileType of [...placeholders, 'job']) {
       const room = structuredClone(r.room);
       room.mcState = { cool: 0, eras: ['baby'], firstSpin: true };
       const events = [{ type: 'landed', charId: c, tileType, tileId: `x-${tileType}` }, { type: 'log', text: '준비 중', tone: 'info', charId: c }];
-      attachMc(events, { room, data, seed });
-      assert.ok(!['marriage', 'job', 'treasure', 'birth'].includes(events[0].mcKey), `${tileType} → ${events[0].mcKey}`);
+      attachMc(events, { room, data: tileType === 'job' ? gameData() : data, seed });
+      assert.ok(!['marriage', 'job', 'treasure', 'birth', 'promotion'].includes(events[0].mcKey), `${tileType} → ${events[0].mcKey}`);
     }
   }
-  // full games: no big life-event MC situation is ever produced while those systems are placeholders
+  // full games: no marriage/treasure/birth while those systems are placeholders; 'job' only on a real hire
   for (const seed of [2, 4]) {
-    const keys = playAll({ seed, mode: 'adult', mcFrequency: 'many' }).events.map((e) => e.mcKey).filter(Boolean);
-    assert.ok(!keys.some((k) => ['marriage', 'job', 'treasure', 'birth'].includes(k)), keys.join(','));
+    const events = playAll({ seed, mode: 'adult', mcFrequency: 'many' }).events;
+    const keys = events.map((e) => e.mcKey).filter(Boolean);
+    assert.ok(!keys.some((k) => ['marriage', 'treasure', 'birth'].includes(k)), keys.join(','));
+    for (const e of events.filter((x) => x.mcKey === 'job')) assert.deepEqual([e.type, e.reason], ['jobChanged', 'hire']);
+    for (const e of events.filter((x) => x.mcKey === 'promotion')) assert.equal(e.type, 'rankUp');
   }
 });
 

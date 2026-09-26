@@ -20,7 +20,10 @@ import { endGame as lobbyEndGame, startGame as lobbyStartGame } from './lobby.js
 import { applyResult } from './result.js';
 import { createRng } from './rng.js';
 import { decorateEvents } from './presentation.js';
-import { openPrompt, promptComplete, resolvePrompt, resolveTile } from './spaces.js';
+import { promptComplete, resolvePrompt, resolveTile } from './spaces.js';
+import { ensureLife, initLife, lifeStep, spinSteps } from './growth.js';
+import { militaryPay } from './jobs.js';
+import { applyEraNews, drawNews, drawStartNews } from './news.js';
 
 export { EngineError, turnTimeoutMs };
 export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout', 'skip'];
@@ -52,11 +55,10 @@ export function startGame(room, ctx = {}) {
   if (!r.ok) return r;
   const next = r.room;
   next.board = buildBoard(next.config, boardRng, data);
-  // The board is public; without a secret, its tiles would reveal the seed and so every future spin.
-  // The side-effect layer (GameRunner) passes `ctx.secret` = crypto random uint32; tests/simulator omit it
-  // (or inject a fixed one) and stay deterministic. The game continues from `rngState` either way.
-  const rng = ctx.secret != null ? createRng(mixSecret(boardRng.state, ctx.secret)) : boardRng;
   const firstEra = next.board.eras[0].id;
+  // Stage 6 life records (stats, education, military, job…). Starting stats are public like the board, so they
+  // come from the board RNG before the secret is mixed in. A game without 수능 (adult mode) starts grown up.
+  const adult = !next.board.eras.some((e) => (data.board.fixedStops?.[e.id] ?? []).some((st) => st.promptId === 'exam'));
   next.characters = next.characters.map((c) => ({
     ...c,
     money: next.config.startingMoney ?? 0,
@@ -69,14 +71,21 @@ export function startGame(room, ctx = {}) {
     place: null,
     goalBonus: 0,
     pensionGiven: false,
+    ...initLife(c, { rng: boardRng, data, adult }),
   }));
+  // The board is public; without a secret, its tiles would reveal the seed and so every future spin.
+  // The side-effect layer (GameRunner) passes `ctx.secret` = crypto random uint32; tests/simulator omit it
+  // (or inject a fixed one) and stay deterministic. The game continues from `rngState` either way.
+  const rng = ctx.secret != null ? createRng(mixSecret(boardRng.state, ctx.secret)) : boardRng;
   next.turn = { ...next.turn, turnNo: 1, round: 1, lastSpin: null, spinDeadlineAt: null };
   next.pension = null;
   next.bets = {};
   next.promptSeq = 0;
   next.result = null;
+  next.news = {};
   const tx = createTx(next, { rng, now, data });
   emit(tx, 'gameStarted', { eras: next.board.eras.map((e) => e.id) });
+  drawStartNews(tx);
   announceTurn(tx);
   next.rngState = rng.state;
   decorateEvents(tx.events, { room: next, data, seed: rng.state });
@@ -122,6 +131,8 @@ function enterEra(tx, c, eraIndex) {
   c.route = null;
   emit(tx, 'eraChanged', { charId: c.id, era: era.id, from, eraName: era.name, tone: 'good', emotion: 'joy' });
   addLog(tx, `🌱 ${josa(c.name, '이/가')} ${era.name} 시대에 들어섰다!`, { tone: 'good', charId: c.id });
+  drawNews(tx, era.id); // first character entering the era → 뉴스 속보
+  applyEraNews(tx, c, era.id);
   if (era.id === tx.data.balance.pension.era) catchUpBonus(tx, c);
 }
 
@@ -188,7 +199,10 @@ function gameOver(tx) {
   addLog(tx, `🏆 게임 종료! 1등은 ${ranking[0]?.name} (${won(ranking[0]?.total ?? 0)})`, { tone: 'result' });
 }
 
-/** Advance to the next unfinished character; finished ones auto-take a bonus spin. */
+/**
+ * Advance to the next unfinished character; finished ones auto-take a bonus spin, characters with
+ * `skipTurns` (재수) sit this turn out.
+ */
 function endTurn(tx) {
   const room = tx.room;
   const turn = room.turn;
@@ -196,13 +210,18 @@ function endTurn(tx) {
   turn.phase = 'endTurn';
   if (room.characters.every((c) => c.finished)) return gameOver(tx);
   const n = turn.order.length;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < n * 3; i++) {
     turn.currentIndex = (turn.currentIndex + 1) % n;
     if (turn.currentIndex === 0) turn.round += 1;
     const c = charById(room, turn.order[turn.currentIndex]);
     if (!c) continue;
     if (c.finished) {
       bonusSpin(tx, c);
+      continue;
+    }
+    if (c.skipTurns > 0) {
+      c.skipTurns -= 1;
+      addLog(tx, `📖 ${josa(c.name, '은/는')} 재수 중… 이번 턴은 쉬어요`, { tone: 'info', charId: c.id, emotion: 'sweat' });
       continue;
     }
     turn.turnNo += 1;
@@ -220,17 +239,24 @@ function pruneBets(tx) {
   for (const k of Object.keys(bets)) if (Number(k) <= tx.room.turn.turnNo - keep) delete bets[k];
 }
 
-/** After a space resolves (or a prompt resolves): wait for a decision, or end the turn. */
+/**
+ * After a space resolves (or a prompt resolves): wait for a decision, run the current character's life
+ * step (discharge / graduation → 진로 → 군 복무 → 취업 → 갈림길 → 숨은 직업), or end the turn.
+ */
 function continueTurn(tx) {
-  if (tx.room.status !== 'playing') return;
-  if (tx.room.turn.pending) {
-    if (promptComplete(tx.room.turn.pending)) {
+  for (let guard = 0; guard < 64; guard++) {
+    if (tx.room.status !== 'playing') return;
+    const pending = tx.room.turn.pending;
+    if (pending) {
+      if (!promptComplete(pending)) return;
       resolvePrompt(tx);
-      return continueTurn(tx);
+      continue;
     }
-    return;
+    const c = charById(tx.room, currentCharId(tx.room));
+    if (c && !c.finished && lifeStep(tx, c)) continue;
+    return endTurn(tx);
   }
-  endTurn(tx);
+  throw new Error('continueTurn: too many chained prompts');
 }
 
 // ---------- bets (훈수 베팅) ----------
@@ -320,14 +346,17 @@ function doSpin(tx, action) {
   if (action.auto && actor?.system && (turn.spinDeadlineAt == null || tx.now < turn.spinDeadlineAt)) fail(409, '아직 시간이 남았어요.');
   const { min, max } = tx.data.balance.spin;
   const value = tx.rng.int(min, max);
-  turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo };
+  const serving = c.military?.status === 'serving';
+  const steps = spinSteps(tx, c, value); // 군 복무: half the move (rounded up)
+  turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo, ...(steps !== value ? { steps } : {}) };
   turn.phase = 'resolveSpace';
   turn.spinDeadlineAt = null;
   if (action.auto && actor?.system) addLog(tx, `⏰ 시간 초과! ${c.name}의 룰렛을 자동으로 돌렸어요.`, { tone: 'info', charId: c.id });
   else if (actor?.admin) addLog(tx, `🛠️ 관리자가 ${c.name}의 룰렛을 대신 돌렸어요.`, { tone: 'info', charId: c.id });
-  emit(tx, 'spun', { charId: c.id, value, ...(action.auto && actor?.system ? { auto: true } : {}) });
-  addLog(tx, `🎡 ${c.name}의 룰렛: ${value}`, { charId: c.id });
+  emit(tx, 'spun', { charId: c.id, value, ...(steps !== value ? { steps, halved: true } : {}), ...(action.auto && actor?.system ? { auto: true } : {}) });
+  addLog(tx, `🎡 ${c.name}의 룰렛: ${value}${steps !== value ? ` (복무 중이라 ${steps}칸만 이동)` : ''}`, { charId: c.id });
   resolveBets(tx, value);
+  if (serving) militaryPay(tx, c);
 
   // move tile by tile
   const board = room.board;
@@ -336,7 +365,7 @@ function doSpin(tx, action) {
   const path = [];
   const eraSteps = [];
   let halted = null;
-  for (let s = 0; s < value; s++) {
+  for (let s = 0; s < steps; s++) {
     const np = nextPosition(board, pos, c.route);
     if (!np) break;
     if (np.eraIndex !== pos.eraIndex) eraSteps.push(np.eraIndex);
@@ -429,6 +458,8 @@ export function applyAction(room, action, ctx = {}) {
   if (room.status !== 'playing' || !room.board) fail(409, '게임이 진행 중이 아니에요.');
   const c = makeCtx(room, ctx);
   const next = structuredClone(room);
+  for (const ch of next.characters) ensureLife(ch, c.data); // games saved before Stage 6
+  next.news ??= {};
   const tx = createTx(next, c);
   handler(tx, action);
   next.rngState = c.rng.state;

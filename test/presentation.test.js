@@ -118,6 +118,16 @@ test('presentationFor: every event type maps to a tone, scene and emotion (synth
     promptResolved: { charId: c.id, kind: 'exam', promptId: 'pr9' },
     gameOver: { ranking: [{ charId: c.id, name: c.name }] },
     log: { text: 'x', tone: 'bad', charId: c.id },
+    statChanged: { charId: c.id, stat: 'int', delta: 2, value: 5, reason: 'habit' },
+    jobChanged: { charId: c.id, jobId: 'doctor', fromJobId: null, rank: 1, reason: 'hire' },
+    rankUp: { charId: c.id, jobId: 'doctor', rank: 2, rankName: '레지던트' },
+    salary: { charId: c.id, jobId: 'doctor', rank: 2, amount: 300 },
+    injured: { charId: c.id, jobId: 'soccer', turns: 2 },
+    hiddenJobUnlocked: { charId: c.id, jobId: 'astronaut' },
+    newsFlash: { eraId: 'young', newsId: 'job_freeze', title: '취업 한파', text: '…', tone: 'bad' },
+    militaryStart: { charId: c.id, turns: 2 },
+    militaryEnd: { charId: c.id },
+    educationChanged: { charId: c.id, education: 'college' },
   };
   assert.deepEqual(Object.keys(samples).sort(), [...EVENT_TYPES].sort());
   for (const type of EVENT_TYPES) {
@@ -173,9 +183,13 @@ test('prompt presentation is copied onto turn.pending (reload-safe) and survives
   let room = started({ mode: 'kids', seed: 9, eraTurns: { baby: 1, elem: 1, middle: 1, high: 3 } }).room;
   let prompt = null;
   for (let i = 0; i < 60 && !prompt; i++) {
-    const res = applyAction(room, { type: 'spin', characterId: room.turn.order[room.turn.currentIndex] }, { now: i });
+    const pend = room.turn.pending; // Stage 6: habit tiles open prompts on the way — answer them
+    const action = pend
+      ? { type: 'choose', characterId: pend.charId, promptId: pend.promptId, optionId: pend.options[0].id }
+      : { type: 'spin', characterId: room.turn.order[room.turn.currentIndex] };
+    const res = applyAction(room, action, { now: i });
     room = res.room;
-    prompt = res.events.find((e) => e.type === 'prompt');
+    prompt = res.events.find((e) => e.type === 'prompt' && e.kind === 'exam');
   }
   assert.ok(prompt, 'the 수능 stop opens a prompt');
   const p = room.turn.pending;
@@ -190,7 +204,8 @@ test('prompt presentation is copied onto turn.pending (reload-safe) and survives
   assert.ok(pr);
   assert.equal(pr.cutin, true);
   assert.ok(['good', 'bad'].includes(pr.tone));
-  assert.ok(['exam_pass', 'exam_fail'].includes(pr.lineTag));
+  assert.ok(['exam_elite', 'exam_college', 'exam_fail'].includes(pr.lineTag), pr.lineTag);
+  assert.ok(['elite', 'college', 'fail'].includes(pr.result), 'exam result rides on promptResolved');
 });
 
 test('lines.json schema: 5–10 반말 lines per tag, valid placeholders, era tags for every era', () => {
@@ -240,7 +255,7 @@ test('tones.json: 8 tones, frames/backgrounds are accepted manifest assets (or C
   }
   for (const era of loadData('eras').eras) assert.ok(tones.eraScenes[era.id], `eraScenes.${era.id}`);
   for (const k of Object.keys(tones.tagScenes)) assert.ok(lines.tags[k], `tagScenes key ${k} is a line tag`);
-  const eventIds = new Set(loadData('board').events.map((e) => e.id));
+  const eventIds = new Set(loadData('events').events.map((e) => e.id));
   for (const k of Object.keys(tones.eventScenes)) assert.ok(eventIds.has(k), `eventScenes.${k}`);
   for (const v of Object.values(tones.sfx)) assert.ok(SFX_NAMES.includes(v), `sfx ${v}`);
   for (const v of Object.values(tones.tileTones)) assert.ok(TONES.includes(v));

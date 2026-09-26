@@ -25,14 +25,20 @@
     "exam": "school", "exam_pass": "school", "exam_fail": "school",
     "route_love": "wedding-hall", "route_career": "office", "route_money": "mountain-trail",
     "heart": "wedding-hall", "job": "office", "treasure": "mountain-trail", "pension": "hospital",
+    "hire": "office", "job_offer": "office", "job_change": "office", "promotion": "office", "salary": "office", "overtime": "office",
+    "hoesik": "office", "parttime": "office", "injury": "hospital", "military": "mountain-trail", "military_end": "mountain-trail",
+    "graduation": "school", "career": "school", "exam_elite": "school", "exam_college": "school",
+    "habit": "school", "habit_int": "school", "habit_str": "school", "habit_charm": "school", "habit_luck": "school",
     "goal": "mountain-trail", "goal_first": "mountain-trail", "game_over": "mountain-trail", "era_baby": "hospital"
   },
   "eventScenes": { "rain": "mountain-trail", "phone": "school", "lucky": "mountain-trail", "found_money": "school" },
-  "cutinTiles": ["event", "heart", "job", "card", "shop", "treasure", "house", "stop"],
-  "tileTones": { "money": "good", "loss": "bad", "heart": "love", "job": "career", "card": "neutral", "shop": "treasure", "treasure": "treasure", "house": "treasure", "stop": "neutral", "merge": "neutral", "goal": "result", "event": "neutral" },
+  "cutinTiles": ["event", "heart", "job", "habit", "card", "shop", "treasure", "house", "stop"],
+  "tileTones": { "money": "good", "loss": "bad", "heart": "love", "job": "career", "salary": "career", "habit": "good", "card": "neutral", "shop": "treasure", "treasure": "treasure", "house": "treasure", "stop": "neutral", "merge": "neutral", "goal": "result", "event": "neutral" },
   "sfx": {
     "spun": "tick", "moved": "whoosh", "landed": "pop", "moneyGain": "coin", "moneyLoss": "thud", "eraChanged": "whoosh",
     "routeChosen": "fanfare", "finished": "fanfare", "gameOver": "fanfare", "bonusSpin": "coin", "betWin": "coin", "betLose": "thud",
-    "prompt": "pop", "cry": "tears", "love": "heart", "reaction": "pop"
+    "prompt": "pop", "cry": "tears", "love": "heart", "reaction": "pop",
+    "jobChanged": "fanfare", "rankUp": "fanfare", "salary": "coin", "injured": "thud", "hiddenJobUnlocked": "fanfare", "newsFlash": "whoosh",
+    "militaryStart": "thud", "militaryEnd": "fanfare", "educationChanged": "fanfare", "statUp": "pop", "statDown": "thud"
   }
 }

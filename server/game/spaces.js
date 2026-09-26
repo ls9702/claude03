@@ -1,17 +1,20 @@
-// Space (tile) resolution + prompt definitions. Called by the engine inside a tx.
+// Space (tile) resolution + the routeChoice / groupGift prompts. Called by the engine inside a tx.
+// Stage 6 tiles: habit (kids eras → habit prompt), salary (job pay), job (job-tile decision); event tiles draw
+// from events.json (conditions on job / education / route; money and stat effects).
 import { ROUTE_KEYS } from './board.js';
-import { addLog, changeMoney, charById, emit, josa, turnTimeoutMs, won } from './effects.js';
+import { addLog, addStats, changeMoney, charById, emit, josa, round5, statText, won } from './effects.js';
+import { resolveHabitTile } from './growth.js';
+import { PART_TIME_ID, paySalary, resolveJobTile } from './jobs.js';
+import { effectsFor } from './news.js';
+import { PROMPTS, openPrompt, promptComplete, registerPrompts, resolvePrompt } from './prompts.js';
+
+export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
 const TONE_BY_ROUTE = { love: 'love', career: 'career', money: 'money' };
 
 // ---------- prompts (single- and multi-character decisions) ----------
 
-/**
- * Prompt kinds. `build` returns the prompt spec, `resolve` applies the answers.
- * Multi-character prompts (forCharacterIds.length > 1) get a deadline; on
- * timeout missing answers take `defaultOptionId`.
- */
-export const PROMPTS = {
+registerPrompts({
   routeChoice: {
     build(tx, c) {
       const routes = tx.data.board.routes;
@@ -32,34 +35,6 @@ export const PROMPTS = {
       c.routeHistory.push({ era: era.id, route: key, completed: false });
       emit(tx, 'routeChosen', { charId: c.id, era: era.id, route: key, tone: r.tone, emotion: 'joy' });
       addLog(tx, `${r.icon} ${josa(c.name, '은/는')} ${era.name} 시대에 「${r.name}」 루트를 선택!`, { tone: r.tone, charId: c.id });
-    },
-  },
-
-  exam: {
-    resultCutin: true, // promptResolved → result cut-in (pass/fail)
-    build(tx, c) {
-      return {
-        forCharacterIds: [c.id],
-        title: '📝 수능 날',
-        text: `${josa(c.name, '이/가')} 수능 시험장에 들어섰다. 어떻게 풀까?`,
-        options: [
-          { id: 'study', label: '차근차근 푼다', icon: '✏️' },
-          { id: 'guess', label: '감으로 찍는다', icon: '🎯' },
-        ],
-        defaultOptionId: 'study',
-      };
-    },
-    resolve(tx, p) {
-      const c = charById(tx.room, p.charId);
-      const choice = p.answers[c.id];
-      const cfg = tx.data.balance.exam[choice];
-      const roll = tx.rng.int(1, 10);
-      if (roll >= cfg.threshold) {
-        changeMoney(tx, c, cfg.reward, 'exam', { emotion: 'joy', tone: 'good' });
-        addLog(tx, `🎉 ${c.name} 수능 대박! 장학금 ${won(cfg.reward)}`, { tone: 'good', charId: c.id, emotion: 'joy' });
-      } else {
-        addLog(tx, `😵 ${c.name}, 수능이 생각보다 어려웠다… (장학금 없음)`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
-      }
     },
   },
 
@@ -96,81 +71,62 @@ export const PROMPTS = {
       if (!count) addLog(tx, `🥲 아무도 ${target.name}에게 선물을 주지 않았다…`, { tone: 'bad', charId: target.id, emotion: 'cry' });
     },
   },
-};
+});
 
-/** Open a prompt → turn.pending, phase awaitDecision; CPU characters answer the default at once. */
-export function openPrompt(tx, kind, c, extra = {}) {
-  const def = PROMPTS[kind];
-  const spec = def.build(tx, c, extra);
-  const room = tx.room;
-  room.promptSeq = (room.promptSeq ?? 0) + 1;
-  const { multiTimeoutMs, decisionTimeoutMs } = tx.data.balance.prompts;
-  const multi = spec.simultaneous || spec.forCharacterIds.length > 1;
-  // Single-character decisions: balance default, else the room's host turn timer (0 = no deadline).
-  const timeout = multi ? multiTimeoutMs : decisionTimeoutMs || turnTimeoutMs(room) || null;
-  const pending = {
-    promptId: `pr${room.promptSeq}`,
-    kind,
-    charId: c.id,
-    title: spec.title,
-    text: spec.text,
-    forCharacterIds: spec.forCharacterIds,
-    options: spec.options,
-    defaultOptionId: spec.defaultOptionId,
-    simultaneous: multi,
-    answers: {},
-    deadlineAt: timeout ? tx.now + timeout : null,
-    context: spec.context ?? {},
-  };
-  for (const id of pending.forCharacterIds) {
-    if (charById(room, id)?.ownerSessionId === 'cpu') pending.answers[id] = pending.defaultOptionId;
+// ---------- event tiles (events.json) ----------
+
+const asList = (v) => (v == null ? null : Array.isArray(v) ? v : [v]);
+
+/** Does an events.json entry's `conditions` hold for a character? */
+export function eventConditionsMet(ev, c) {
+  const cond = ev.conditions;
+  if (!cond) return true;
+  const jobs = asList(cond.job);
+  if (jobs) {
+    const id = c.job?.id ?? null;
+    const ok = jobs.some((j) => (j === 'any' ? id && id !== PART_TIME_ID : j === 'none' ? !id : j === 'parttime' ? id === PART_TIME_ID : id === j));
+    if (!ok) return false;
   }
-  room.turn.pending = pending;
-  room.turn.phase = 'awaitDecision';
-  emit(tx, 'prompt', {
-    promptId: pending.promptId,
-    kind,
-    charId: c.id,
-    forCharacterIds: pending.forCharacterIds,
-    options: pending.options,
-    title: pending.title,
-    deadlineAt: pending.deadlineAt,
-    tone: multi ? 'holiday' : 'info',
-  });
-  return pending;
+  const edu = asList(cond.education);
+  if (edu && !edu.includes(c.education ?? 'none')) return false;
+  const routes = asList(cond.route);
+  if (routes && !routes.includes(c.route)) return false;
+  return true;
 }
 
-export const promptComplete = (p) => p.forCharacterIds.every((id) => Object.hasOwn(p.answers, id));
+/** Events that may happen to a character in an era (era filter + conditions). */
+export function eventPool(data, eraId, c) {
+  const list = data.events?.events ?? [];
+  return list.filter((e) => (!e.eras || e.eras.includes(eraId)) && eventConditionsMet(e, c));
+}
 
-/** Apply a completed prompt and clear it. */
-export function resolvePrompt(tx) {
-  const p = tx.room.turn.pending;
-  tx.room.turn.pending = null;
-  tx.room.turn.phase = 'resolveSpace';
-  const def = PROMPTS[p.kind];
-  // Result cut-in anchor (answers stay out of it: simultaneous prompts were secret until now).
-  if (def.resultCutin) emit(tx, 'promptResolved', { promptId: p.promptId, kind: p.kind, charId: p.charId });
-  def.resolve(tx, p);
+function runEvent(tx, c, era) {
+  const pool = eventPool(tx.data, era.id, c);
+  const ev = tx.rng.weighted(pool);
+  if (ev.kind === 'groupGift') return openPrompt(tx, 'groupGift', c, { event: ev });
+  let delta = 0;
+  if (ev.money) {
+    const scale = ev.scale ? (tx.data.balance.eventScale[era.id] ?? 1) : 1;
+    delta = tx.rng.int(ev.money.min, ev.money.max) * scale * effectsFor(tx, c).eventMoneyMult;
+    delta = Math.abs(delta) < 5 ? Math.round(delta) : round5(delta);
+  }
+  const text = ev.text.replaceAll('{name}', c.name);
+  const tone = ev.tone && ev.tone !== 'neutral' ? ev.tone : delta > 0 ? 'good' : delta < 0 ? 'bad' : 'info';
+  const emotion = ev.emotion ?? (delta > 0 ? 'joy' : delta < 0 ? 'cry' : null);
+  if (delta) changeMoney(tx, c, delta, 'event', { emotion, tone: delta > 0 ? (tone === 'bad' ? 'good' : tone) : 'bad', eventId: ev.id });
+  const changes = ev.stats ? addStats(tx, c, ev.stats, 'event', { eventId: ev.id }) : [];
+  if (delta < 0 || tone === 'bad') c.badEvents = (c.badEvents ?? 0) + 1;
+  const extras = [delta ? `${delta > 0 ? '+' : ''}${won(delta)}` : '', changes.length ? statText(tx.data, changes) : ''].filter(Boolean);
+  addLog(tx, `❗ ${text}${extras.length ? ` (${extras.join(', ')})` : ''}`, { tone, charId: c.id, emotion, eventId: ev.id });
+  return null;
 }
 
 // ---------- tiles ----------
 
-function runEvent(tx, c, era) {
-  const pool = tx.data.board.events.filter((e) => !e.eras || e.eras.includes(era.id));
-  const ev = tx.rng.weighted(pool);
-  if (ev.kind === 'groupGift') return openPrompt(tx, 'groupGift', c, { event: ev });
-  const scale = ev.scale ? (tx.data.balance.eventScale[era.id] ?? 1) : 1;
-  const delta = Math.round(tx.rng.int(ev.min, ev.max) * scale);
-  const text = ev.text.replaceAll('{name}', c.name);
-  const tone = delta > 0 ? 'good' : delta < 0 ? 'bad' : 'info';
-  const emotion = ev.emotion ?? (delta > 0 ? 'joy' : delta < 0 ? 'cry' : null);
-  if (delta) changeMoney(tx, c, delta, 'event', { emotion, tone, eventId: ev.id });
-  addLog(tx, `❗ ${text}${delta ? ` (${delta > 0 ? '+' : ''}${won(delta)})` : ''}`, { tone, charId: c.id, emotion });
-  return null;
-}
-
 /**
  * Resolve landing on `tile`. May open a prompt (turn.pending); may finish the character.
+ * The 인생 갈림길 (routeChoice stop) is opened by the turn epilogue (growth.lifeStep) so 진로 / 취업
+ * decisions come first.
  * @returns {'goal'|'prompt'|null}
  */
 export function resolveTile(tx, c, tile, { onGoal } = {}) {
@@ -179,13 +135,16 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
   switch (tile.type) {
     case 'money': {
       const tone = routeTone ?? 'good';
-      changeMoney(tx, c, tile.amount, 'tile', { tileId: tile.id, emotion: 'joy', tone });
-      addLog(tx, `💰 ${c.name}: ${tile.label}! +${won(tile.amount)}`, { tone, charId: c.id, emotion: 'joy' });
+      const amount = round5(tile.amount * effectsFor(tx, c).moneyTileMult);
+      changeMoney(tx, c, amount, 'tile', { tileId: tile.id, emotion: 'joy', tone });
+      addLog(tx, `💰 ${c.name}: ${tile.label}! +${won(amount)}`, { tone, charId: c.id, emotion: 'joy' });
       return null;
     }
     case 'loss': {
-      const newDebt = changeMoney(tx, c, -tile.amount, 'tile', { tileId: tile.id, emotion: 'cry', tone: 'bad' });
-      addLog(tx, `💸 ${c.name}: ${tile.label}… -${won(tile.amount)}${newDebt > 0 ? ` (빚 ${won(newDebt)} 발생)` : ''}`, {
+      const amount = round5(tile.amount * effectsFor(tx, c).lossMult);
+      const newDebt = changeMoney(tx, c, -amount, 'tile', { tileId: tile.id, emotion: 'cry', tone: 'bad' });
+      c.badEvents = (c.badEvents ?? 0) + 1;
+      addLog(tx, `💸 ${c.name}: ${tile.label}… -${won(amount)}${newDebt > 0 ? ` (빚 ${won(newDebt)} 발생)` : ''}`, {
         tone: 'bad',
         charId: c.id,
         emotion: newDebt > 0 ? 'shock' : 'cry',
@@ -194,7 +153,16 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
     }
     case 'event':
       return runEvent(tx, c, era) ? 'prompt' : null;
+    case 'habit':
+      resolveHabitTile(tx, c);
+      return 'prompt';
+    case 'salary':
+      paySalary(tx, c);
+      return null;
+    case 'job':
+      return resolveJobTile(tx, c) ? 'prompt' : null;
     case 'stop':
+      if (tile.promptId === 'routeChoice') return null; // opened by the turn epilogue after life decisions
       if (PROMPTS[tile.promptId]) {
         openPrompt(tx, tile.promptId, c, { tile });
         return 'prompt';
@@ -208,7 +176,7 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       onGoal?.(c);
       return 'goal';
     default: {
-      // heart/job/card/shop/treasure/house: Stage 2 placeholders (hooks for later stages).
+      // heart/card/shop/treasure/house: placeholders (hooks for later stages).
       const text = tx.data.board.placeholders?.[tile.type] ?? tile.label;
       addLog(tx, `${tile.icon ?? ''} ${c.name}: ${text}`.trim(), { tone: routeTone ?? 'info', charId: c.id });
       return null;

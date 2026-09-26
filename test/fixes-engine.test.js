@@ -103,17 +103,22 @@ test('host turn timer: spinDeadlineAt, auto spin only after it, single-character
   const r = act(room, auto, [1], t * 1000);
   assert.ok(r.events.some((e) => e.type === 'log' && /자동/.test(e.text)));
   assert.equal(r.events.find((e) => e.type === 'spun').auto, true);
-  // young:0 is the 갈림길 stop → single-character prompt gets the turn timer as deadline
-  assert.equal(r.room.turn.pending.kind, 'routeChoice');
+  // young:0 is the 갈림길 stop (adult mode: the job offer first) → single-character prompts get the turn timer
+  assert.equal(r.room.turn.pending.kind, 'jobOffer');
   assert.equal(r.room.turn.pending.deadlineAt, t * 1000 + t * 1000);
   assert.equal(r.room.turn.spinDeadlineAt, null);
-  // after the decision the next turn gets a fresh spin deadline
-  const r2 = act(r.room, { type: 'choose', characterId: c, promptId: r.room.turn.pending.promptId, optionId: 'love' }, [], 50_000);
+  const offer = r.room.turn.pending;
+  const r1 = act(r.room, { type: 'choose', characterId: c, promptId: offer.promptId, optionId: offer.options[0].id }, [], 40_000);
+  assert.equal(r1.room.turn.pending.kind, 'routeChoice');
+  assert.equal(r1.room.turn.pending.deadlineAt, 40_000 + t * 1000);
+  // after the decisions the next turn gets a fresh spin deadline
+  const r2 = act(r1.room, { type: 'choose', characterId: c, promptId: r1.room.turn.pending.promptId, optionId: 'love' }, [], 50_000);
   assert.equal(r2.room.turn.spinDeadlineAt, 50_000 + t * 1000);
   // off (default): no deadlines
   room = started({ config: { mode: 'adult', eraTurns: { young: 5, middle_age: 5, senior: 3 } } });
   assert.equal(room.turn.spinDeadlineAt, null);
   const r3 = act(room, { type: 'spin', characterId: cur(room) }, [1]);
+  assert.equal(r3.room.turn.pending.kind, 'jobOffer');
   assert.equal(r3.room.turn.pending.deadlineAt, null);
   assert.throws(() => act(room, { ...auto, characterId: cur(room) }, [1], 10 ** 9), { status: 409 });
   // group prompts keep the (raised) multi timeout

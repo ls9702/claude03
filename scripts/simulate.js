@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Headless full-game simulation over the pure engine.
 //   node scripts/simulate.js --games 200 --seed 1 [--verbose]
-// Random decisions, 2–8 characters owned by 1–4 sessions, random modes/eraTurns.
-// Exits non-zero on any exception or stuck game.
+// Random decisions, 2–8 characters (random body) owned by 1–4 sessions, random modes/eraTurns.
+// Exits non-zero on any exception or stuck game. Stage 6 report: job distribution, 알바 %, hidden-job unlocks,
+// salary share of income, stats by era, final net worth by education / route, prompts per character, spins.
 //
 //   node scripts/simulate.js --bias --games 2000 --seed 1
 // Turn-order bias check: 8-character lifetime games (default eraTurns, index order, random decisions, no
@@ -68,7 +69,8 @@ function makeLobbyRoom(meta, gameNo) {
   for (let s = 0; s < sessions; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
   const chars = meta.int(2, 8);
   for (let i = 0; i < chars; i++) {
-    room = addCharacter(room, `sess${meta.int(0, sessions - 1)}`, { name: `C${i + 1}` }, 0).room;
+    const avatar = { body: meta.next() < 0.5 ? 'boy' : 'girl' };
+    room = addCharacter(room, `sess${meta.int(0, sessions - 1)}`, { name: `C${i + 1}`, avatar }, 0).room;
   }
   return room;
 }
@@ -91,7 +93,27 @@ const stats = {
   bonusSpins: 0,
   winnerWasFirstFinisher: 0,
   placeByOrder: {}, // turn-order position → [sum of goal places, count]
+  // Stage 6
+  spins: {}, // mode → [spins, games]
+  lifePrompts: { chars: 0, total: 0, own: 0, byKind: {} }, // lifetime: decisions per character (own = single-character prompts)
+  finalJobs: {}, // jobId|none → count (lifetime + adult)
+  jobChars: 0,
+  hiddenUnlocked: 0,
+  hiddenHeld: 0,
+  income: { salary: 0, all: 0 },
+  statsAtEra: {}, // era → [sum int, str, charm, luck, n]
+  finalStats: [0, 0, 0, 0, 0],
+  byEducation: {}, // education → [sum net worth, n] (lifetime + adult)
+  byRoute: {}, // `${era}:${route}` → [sum net worth, n] (lifetime + adult)
+  examResults: {},
+  careerChoice: {},
+  military: {},
+  finalRank: {},
+  news: {},
+  rankUps: 0,
+  injuries: 0,
 };
+const STAT_ORDER = ['int', 'str', 'charm', 'luck'];
 
 function playGame(g) {
   const meta = createRng(SEED * 100003 + g);
@@ -101,12 +123,33 @@ function playGame(g) {
   if (!started.ok) throw new Error(started.error);
   let room = started.room;
   let actions = 0;
+  let spins = 0;
   const apply = (action) => {
     now += 1000;
     const r = applyAction(room, action, { now });
     room = r.room;
     actions++;
     for (const ev of r.events) {
+      if (ev.type === 'spun') spins++;
+      if (ev.type === 'prompt' && room.config.mode === 'lifetime') {
+        const n = ev.forCharacterIds.length;
+        stats.lifePrompts.total += n;
+        if (!ev.simultaneous && n === 1) stats.lifePrompts.own++;
+        stats.lifePrompts.byKind[ev.kind] = (stats.lifePrompts.byKind[ev.kind] ?? 0) + n;
+      }
+      if (ev.type === 'moneyChanged' && ev.delta > 0 && room.config.mode !== 'kids') {
+        stats.income.all += ev.delta;
+        if (ev.reason === 'salary') stats.income.salary += ev.delta;
+      }
+      if (ev.type === 'eraChanged') {
+        const c = room.characters.find((x) => x.id === ev.charId);
+        const slot = (stats.statsAtEra[ev.era] ??= [0, 0, 0, 0, 0]);
+        STAT_ORDER.forEach((k, i) => (slot[i] += c.stats[k]));
+        slot[4]++;
+      }
+      if (ev.type === 'newsFlash') stats.news[ev.newsId] = (stats.news[ev.newsId] ?? 0) + 1;
+      if (ev.type === 'rankUp') stats.rankUps++;
+      if (ev.type === 'injured') stats.injuries++;
       if (ev.type === 'routeChosen') stats.routes[ev.route]++;
       if (ev.type === 'betResolved') for (const x of ev.results) stats.bets.won += x.won ? 1 : 0;
       if (ev.type === 'moneyChanged' && ev.reason === 'pension') stats.pensions++;
@@ -144,6 +187,41 @@ function playGame(g) {
     apply({ type: 'spin', characterId: cur.id });
   }
   const mode = room.config.mode;
+  const sp = (stats.spins[mode] ??= [0, 0]);
+  sp[0] += spins;
+  sp[1]++;
+  if (mode === 'lifetime') stats.lifePrompts.chars += room.characters.length;
+  const total = new Map(room.result.ranking.map((r) => [r.charId, r.total]));
+  for (const c of room.characters) {
+    for (let i = 0; i < 4; i++) stats.finalStats[i] += c.stats[STAT_ORDER[i]];
+    stats.finalStats[4]++;
+    if (mode === 'kids') {
+      stats.examResults[c.examResult ?? 'none'] = (stats.examResults[c.examResult ?? 'none'] ?? 0) + 1;
+      continue;
+    }
+    if (mode === 'lifetime') {
+      stats.examResults[c.examResult ?? 'none'] = (stats.examResults[c.examResult ?? 'none'] ?? 0) + 1;
+      stats.careerChoice[c.careerChoice ?? 'none'] = (stats.careerChoice[c.careerChoice ?? 'none'] ?? 0) + 1;
+      const ms = `${c.avatar.body}:${c.military.status}`;
+      stats.military[ms] = (stats.military[ms] ?? 0) + 1;
+    }
+    stats.jobChars++;
+    const jid = c.job?.id ?? 'none';
+    stats.finalJobs[jid] = (stats.finalJobs[jid] ?? 0) + 1;
+    if (c.job) stats.finalRank[c.job.rank] = (stats.finalRank[c.job.rank] ?? 0) + 1;
+    if (c.hiddenUnlocked.length) stats.hiddenUnlocked++;
+    if (c.jobHistory.some((h) => data.jobs.jobs.find((j) => j.id === h.id)?.hidden)) stats.hiddenHeld++;
+    const nw = total.get(c.id);
+    const e = (stats.byEducation[c.education] ??= [0, 0]);
+    e[0] += nw;
+    e[1]++;
+    for (const h of c.routeHistory) {
+      const k = `${h.era}:${h.route}`;
+      const b = (stats.byRoute[k] ??= [0, 0]);
+      b[0] += nw;
+      b[1]++;
+    }
+  }
   const m = (stats.byMode[mode] ??= { games: 0, turns: 0, avgMoney: 0 });
   m.games++;
   m.turns += room.turn.turnNo;
@@ -264,6 +342,39 @@ function mainRandom() {
   );
   console.log(`훈수 베팅 ${stats.bets.placed}건, 적중 ${pct(stats.bets.won, stats.bets.placed)} · 기초연금 ${stats.pensions}회 · 보너스 룰렛 ${stats.bonusSpins}회`);
   console.log(`프롬프트 ${JSON.stringify(stats.prompts)} · 타임아웃 ${stats.timeouts}회`);
+
+  // ---------- Stage 6 ----------
+  console.log(`\n--- 6단계: 능력치·직업·성장 ---`);
+  console.log(`평균 룰렛 횟수: ${Object.entries(stats.spins).map(([m, [s, n]]) => `${m} ${(s / n).toFixed(1)}`).join(' · ')}`);
+  const lp = stats.lifePrompts;
+  console.log(
+    `인생 전체 캐릭터당 선택 ${(lp.total / Math.max(1, lp.chars)).toFixed(2)}회 (자기 선택 ${(lp.own / Math.max(1, lp.chars)).toFixed(2)} + 남의 생일 등 동시 선택): ${Object.entries(lp.byKind)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, n]) => `${k} ${(n / lp.chars).toFixed(2)}`)
+      .join(' · ')}`,
+  );
+  const jobRows = Object.entries(stats.finalJobs).sort((a, b) => b[1] - a[1]);
+  const nameOf = (id) => (id === 'none' ? '무직' : id === 'parttime' ? '알바' : data.jobs.jobs.find((j) => j.id === id)?.name ?? id);
+  console.log(`최종 직업 분포 (청년 이후 모드 ${stats.jobChars}명): ${jobRows.map(([id, n]) => `${nameOf(id)} ${pct(n, stats.jobChars)}`).join(' · ')}`);
+  const regular = jobRows.filter(([id]) => id !== 'parttime' && id !== 'none');
+  console.log(
+    `최다 직업 ${nameOf(regular[0]?.[0])} ${pct(regular[0]?.[1] ?? 0, stats.jobChars)} · 알바 ${pct(stats.finalJobs.parttime ?? 0, stats.jobChars)} · 무직 ${pct(stats.finalJobs.none ?? 0, stats.jobChars)} · 숨은 직업 해금 ${pct(stats.hiddenUnlocked, stats.jobChars)} / 취임 ${pct(stats.hiddenHeld, stats.jobChars)}`,
+  );
+  console.log(`최종 직급: ${JSON.stringify(stats.finalRank)} · 승진 ${stats.rankUps}회 · 부상 ${stats.injuries}회`);
+  console.log(`수입 중 급여 비중 (청년 이후 모드): ${pct(stats.income.salary, stats.income.all)}`);
+  const statRow = (slot) => STAT_ORDER.map((k, i) => `${k} ${(slot[i] / Math.max(1, slot[4])).toFixed(1)}`).join('/');
+  console.log(`시대 진입 시 평균 능력치: ${ERA_IDS.filter((e) => stats.statsAtEra[e]).map((e) => `${e} ${statRow(stats.statsAtEra[e])}`).join(' · ')} · 최종 ${statRow(stats.finalStats)}`);
+  console.log(`수능 결과: ${JSON.stringify(stats.examResults)} · 진로: ${JSON.stringify(stats.careerChoice)} · 군 복무: ${JSON.stringify(stats.military)}`);
+  const avgOf = ([s, n]) => (n ? s / n : 0);
+  console.log(`학력별 최종 순자산: ${Object.entries(stats.byEducation).map(([k, v]) => `${k} ${avgOf(v).toFixed(0)} (${v[1]}명)`).join(' · ')}`);
+  for (const era of ['young', 'middle_age']) {
+    const rows = ['love', 'career', 'money'].map((r) => [r, stats.byRoute[`${era}:${r}`] ?? [0, 0]]);
+    const avgs = rows.map(([, v]) => avgOf(v));
+    const mean = avgs.reduce((a, b) => a + b, 0) / avgs.length;
+    const gap = mean ? ((Math.max(...avgs) - Math.min(...avgs)) / mean) * 100 : 0;
+    console.log(`${era} 루트별 최종 순자산: ${rows.map(([r, v]) => `${r} ${avgOf(v).toFixed(0)} (${v[1]})`).join(' · ')} · 격차 ${gap.toFixed(1)}% (평균 대비 ±${(gap / 2).toFixed(1)}%)`);
+  }
+  console.log(`뉴스: ${Object.entries(stats.news).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
   if (errors) process.exit(1);
 }
 

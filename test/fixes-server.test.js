@@ -156,17 +156,20 @@ test('host tools over HTTP: forceSpin / skipTurn / timeout phases; spectators jo
     assert.equal(skip.status, 200, skip.text);
     assert.notEqual(skip.json.room.turn.order[skip.json.room.turn.currentIndex], cur);
     assert.deepEqual(skip.json.room.characters.find((c) => c.id === cur).position, { eraIndex: 0, route: 'main', index: -1 });
-    // forceSpin: spins for the current character → lands on the 갈림길 stop (routeChoice prompt)
+    // forceSpin: spins for the current character → lands on the 갈림길 stop (adult mode: job offer, then routeChoice)
     const fs = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'forceSpin' } });
     assert.equal(fs.status, 200, fs.text);
     assert.ok(fs.json.events.some((e) => e.type === 'spun'));
-    assert.equal(fs.json.room.turn.pending.kind, 'routeChoice');
+    assert.equal(fs.json.room.turn.pending.kind, 'jobOffer');
     assert.equal(typeof fs.json.room.turn.pending.deadlineAt, 'number', 'single prompt gets the 60 s turn timer');
     for (const type of ['forceSpin', 'skipTurn']) {
       const r = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type } });
       assert.equal(r.status, 409, type);
       assert.match(r.json.error, /룰렛을 기다리는 중에만/);
     }
+    const to1 = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
+    assert.equal(to1.status, 200);
+    assert.equal(to1.json.room.turn.pending.kind, 'routeChoice');
     const to = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
     assert.equal(to.status, 200);
     assert.equal(to.json.room.turn.phase, 'awaitSpin');
@@ -294,9 +297,14 @@ test('turn timer: the runner auto-spins after turnTimeoutSec and defaults a sing
     const spun = store.getRoom(room.id);
     assert.equal(spun.turn.lastSpin?.charId, first.turn.order[0], 'auto spin for the current character');
     assert.ok(spun.log.some((l) => /자동으로 돌렸어요/.test(l.text)));
-    // landed on the 갈림길 stop → single prompt with the same timer → default answer on timeout
-    assert.equal(spun.turn.pending?.kind, 'routeChoice');
+    // landed on the 갈림길 stop → single prompts with the same timer (adult mode: job offer, then the route)
+    // → default answers on timeout
+    assert.equal(spun.turn.pending?.kind, 'jobOffer');
     assert.equal(spun.turn.pending.deadlineAt, spun.updatedAt + 30_000);
+    t.mock.timers.tick(30_100);
+    const routed = store.getRoom(room.id);
+    assert.equal(routed.turn.pending?.kind, 'routeChoice');
+    assert.equal(routed.turn.pending.deadlineAt, routed.updatedAt + 30_000);
     t.mock.timers.tick(30_100);
     const after = store.getRoom(room.id);
     assert.equal(after.turn.pending, null);

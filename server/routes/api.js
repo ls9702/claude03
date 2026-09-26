@@ -1,6 +1,6 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getBalance, getBoardData, getEras, getLines, getMc, getTones } from '../data/index.js';
+import { getAvatars, getBalance, getBoardData, getEras, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
 import {
   addCharacter,
   findPlayer,
@@ -44,17 +44,19 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit } = getBalance();
+    const { bets, spin, bonusSpinUnit, stats, military, career } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
       avatars: getAvatars(),
       reactions: REACTIONS,
       board: { tileTypes: board.tileTypes, routes: board.routes },
-      balance: { bets, spin, bonusSpinUnit },
+      balance: { bets, spin, bonusSpinUnit, stats, military, career },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
       mc: { ...getMc(), lines: getLines().mc ?? {} }, // Stage 5.6: MC NPC profiles + line pools (lobby greeting, result fallback)
+      jobs: getJobs(), // Stage 6: jobs.json (17 regular + 6 hidden + partTime)
+      news: getNews(), // Stage 6: news.json (era news flashes; room.news = {eraId: newsId})
     });
   });
 
