@@ -483,7 +483,7 @@ export const DIFF_REGIONS = ['hair', 'face', 'eyes', 'mouth', 'cheek', 'expressi
  * head-ish parts use the head box (padded); hair extends up/sideways and down to the knees (long hair);
  * body (outfits) spans neck → below the feet, wider than the silhouette.
  */
-export function regionBox(fig, region, w, h) {
+export function regionBox(fig, region, w, h, { headwear = false } = {}) {
   const H = fig.head;
   const B = fig.bbox;
   const hw = H.width;
@@ -509,7 +509,8 @@ export function regionBox(fig, region, w, h) {
       box = pad(0.4, 0.5, 0.4, 0.35);
       break;
     case 'body':
-      box = { left: B.left - B.width * 0.18, top: H.bottom - hh * 0.25, right: B.right + B.width * 0.18, bottom: B.bottom + B.height * 0.05 };
+      // Outfits with headwear (chef hat, police cap, onesie hood) also own the head area above the skull.
+      box = { left: B.left - B.width * 0.18, top: headwear ? H.top - hh * 0.45 : H.bottom - hh * 0.25, right: B.right + B.width * 0.18, bottom: B.bottom + B.height * 0.05 };
       break;
     default:
       throw new Error(`unknown diff region: ${region}`);
@@ -567,17 +568,21 @@ export function estimateShift(base, edited, w, h, exclude, { maxShift = 16, thr 
   const y0 = Math.max(band, bb.top - band);
   const y1 = Math.min(h - band - 1, bb.bottom + band);
   const inA = (x, y) => base[(y * w + x) * 4 + 3] > thr;
-  for (let y = y0; y <= y1; y += 2) {
-    for (let x = x0; x <= x1; x += 2) {
+  const fine = [];
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
       if (exclude && x >= exclude.left && x <= exclude.right && y >= exclude.top && y <= exclude.bottom) continue;
       const a = inA(x, y);
-      if (a !== inA(x + 6, y) || a !== inA(x - 6, y) || a !== inA(x, y + 6) || a !== inA(x, y - 6)) pts.push(y * w + x);
+      if (a !== inA(x + 6, y) || a !== inA(x - 6, y) || a !== inA(x, y + 6) || a !== inA(x, y - 6)) {
+        fine.push(y * w + x);
+        if (!(x & 1) && !(y & 1)) pts.push(y * w + x); // coarse search samples every 2nd pixel
+      }
     }
   }
   if (pts.length < 200) return { dx: 0, dy: 0, cost: 0, baseCost: 0, samples: pts.length };
-  const cost = (dx, dy) => {
+  const cost = (dx, dy, list = pts) => {
     let c = 0;
-    for (const p of pts) {
+    for (const p of list) {
       const x = (p % w) + dx;
       const y = ((p - (p % w)) / w) + dy;
       const ea = x >= 0 && y >= 0 && x < w && y < h ? edited[(y * w + x) * 4 + 3] > thr : false;
@@ -594,13 +599,14 @@ export function estimateShift(base, edited, w, h, exclude, { maxShift = 16, thr 
     }
   }
   const c0 = best;
-  for (let dy = c0.dy - 1; dy <= c0.dy + 1; dy++) {
-    for (let dx = c0.dx - 1; dx <= c0.dx + 1; dx++) {
-      const c = cost(dx, dy);
+  best = { ...c0, cost: cost(c0.dx, c0.dy, fine) };
+  for (let dy = c0.dy - 2; dy <= c0.dy + 2; dy++) {
+    for (let dx = c0.dx - 2; dx <= c0.dx + 2; dx++) {
+      const c = cost(dx, dy, fine);
       if (c < best.cost) best = { dx, dy, cost: c };
     }
   }
-  return { ...best, baseCost, samples: pts.length };
+  return { ...best, baseCost: cost(0, 0, fine), samples: fine.length };
 }
 
 /** Binary max (dilate) / min (erode) filter with a (2r+1)² square kernel, separable. */
@@ -677,7 +683,7 @@ export function diffExtractPixels(base, edited, w, h, opts = {}) {
   const minComponent = d.minComponent ?? 120;
   const fig = detectFigure(base, w, h);
   if (!fig) throw new Error('diffExtract: the base image has no figure');
-  const box = opts.box ?? regionBox(fig, region, w, h);
+  const box = opts.box ?? regionBox(fig, region, w, h, d);
   const shift = register ? estimateShift(base, edited, w, h, box, { maxShift }) : { dx: 0, dy: 0 };
   const { dx, dy } = shift;
   const bw = box.right - box.left + 1;
@@ -824,7 +830,7 @@ export function diffExtractPixels(base, edited, w, h, opts = {}) {
   };
 }
 
-/** Pale-cyan underwear of the mannequin (hue 150..215°, clearly chromatic, light). */
+/** Pale-cyan underwear of the mannequin (hue 150..215°, chromatic — some build edits paint it quite pale —, light). */
 export function underwearMask(data, w, h) {
   const m = new Uint8Array(w * h);
   for (let p = 0; p < w * h; p++) {
@@ -835,7 +841,7 @@ export function underwearMask(data, w, h) {
     const b = data[i + 2];
     const [hue, sat] = hueSat(r, g, b);
     const chroma = Math.max(r, g, b) - Math.min(r, g, b);
-    if (hue >= 150 && hue <= 215 && chroma > 28 && sat > 0.15 && 0.299 * r + 0.587 * g + 0.114 * b > 110) m[p] = 1;
+    if (hue >= 150 && hue <= 215 && chroma > 14 && sat > 0.07 && 0.299 * r + 0.587 * g + 0.114 * b > 110) m[p] = 1;
   }
   return m;
 }
@@ -1043,10 +1049,11 @@ export async function diffExtract(baseBuf, editedBuf, opts = {}) {
 
 /**
  * Split a hair layer into front/back: pixels over the (slightly grown) mannequin silhouette are drawn
- * in front of the body/outfit, the rest (volume around the skull, long hair beside the torso) behind it.
+ * in front of the body/outfit; the back layer is the whole hair (volume around the skull, long hair beside
+ * the torso) drawn behind the mannequin. info.front/back count front pixels vs. back-only pixels.
  * @returns {Promise<{front: Buffer, back: Buffer, info: {front: number, back: number}}>}
  */
-export async function splitFrontBack(layerBuf, baseBuf, { grow = 2, thr = 128 } = {}) {
+export async function splitFrontBack(layerBuf, baseBuf, { grow = 4, thr = 128, islandMax = 4000 } = {}) {
   const layer = await toRaw(layerBuf);
   const base = await sameSizeRaw(baseBuf, layer.w, layer.h);
   const { w, h } = layer;
@@ -1059,19 +1066,53 @@ export async function splitFrontBack(layerBuf, baseBuf, { grow = 2, thr = 128 } 
   let nb = 0;
   for (let p = 0; p < w * h; p++) {
     if (!layer.data[p * 4 + 3]) continue;
-    // Cleared pixels also get RGB 0 so the transparent area compresses away.
+    // The back layer keeps the WHOLE hair (drawn under the mannequin it only shows outside the body), so
+    // there is no seam where front and back meet along the silhouette. Cleared pixels get RGB 0 too.
     if (sil[p]) {
-      back.fill(0, p * 4, p * 4 + 4);
       nf++;
     } else {
       front.fill(0, p * 4, p * 4 + 4);
       nb++;
     }
   }
+  // Small front islands below the chin (hair tips resting on the shoulders, cut off from the rest of the front
+  // hair by the neck) would float on top of a wide outfit as dark marks: send them to the back.
+  const fig = detectFigure(base.data, w, h);
+  let moved = 0;
+  if (fig) {
+    const seen = new Uint8Array(w * h);
+    const stack = new Int32Array(w * h);
+    const members = [];
+    for (let s = 0; s < w * h; s++) {
+      if (seen[s] || !front[s * 4 + 3]) continue;
+      members.length = 0;
+      let sp = 0;
+      let top = h;
+      stack[sp++] = s;
+      seen[s] = 1;
+      while (sp) {
+        const p = stack[--sp];
+        members.push(p);
+        const x = p % w;
+        const y = (p - x) / w;
+        if (y < top) top = y;
+        for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
+          if (q >= 0 && q < w * h && !seen[q] && front[q * 4 + 3]) {
+            seen[q] = 1;
+            stack[sp++] = q;
+          }
+        }
+      }
+      if (top > fig.head.bottom && members.length < islandMax) {
+        for (const p of members) front.fill(0, p * 4, p * 4 + 4);
+        moved += members.length;
+      }
+    }
+  }
   return {
     front: await fromRaw(front, w, h).png().toBuffer(),
     back: await fromRaw(back, w, h).png().toBuffer(),
-    info: { front: nf, back: nb },
+    info: { front: nf - moved, back: nb + moved, moved },
   };
 }
 

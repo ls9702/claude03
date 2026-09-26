@@ -69,6 +69,9 @@ export const SNIPPETS = {
   neutralHair:
     'drawn in a single neutral dark gray-brown color (#4a4440) with simple darker cel shading and a soft highlight; ' +
     'any hair ties in the same gray-brown, no other colors',
+  fullyDressed:
+    'Fully dressed: the tank top and shorts must be completely hidden. If a jacket, coat or cardigan is open at the ' +
+    'front, draw an inner shirt under it, and always draw full bottoms (trousers, shorts or a skirt) over the shorts.',
   neutralOutfit:
     'All clothes and shoes are in a neutral light gray (#c8c8c8) with darker gray details, seams and shading; ' +
     'no other colors, no patterns in other colors, no logos, no text',

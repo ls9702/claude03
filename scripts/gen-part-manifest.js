@@ -221,7 +221,8 @@ export function buildPartItems(avatars) {
         refs,
         output: partOutput.cheek(c),
         postprocess: STEPS(['diffExtract:cheek']),
-        meta: { category: 'cheek', option: c, slot: 'cheek', tint: null, base },
+        // Freckle edits also repaint a little cheek skin: tint the layer like skin (dots become darker skin shades).
+        meta: { category: 'cheek', option: c, slot: 'cheek', ...(c === 'freckles' ? { tint: 'skin', tintMode: 'selective', neutral: NEUTRALS.skin } : { tint: null }), base },
       }),
     );
   }
@@ -269,12 +270,11 @@ export function buildPartItems(avatars) {
     const design = partId.outfit(o.id, body, refBuild);
     const first = build === refBuild;
     const prompt = first
-      ? `{{style}} {{keepMannequin}} ONLY dress the character in: ${o.promptDesc || o.id}, with matching shoes, covering the tank top and
-         shorts completely. ${colours}. Keep the head, face, hands and body shape unchanged (still bald). {{blankFace}} Portrait 2:3.`
+      ? `{{style}} {{keepMannequin}} ONLY dress the character in: ${o.promptDesc || o.id}, with matching shoes. {{fullyDressed}} ${colours}. Keep the head, face, hands and body shape unchanged (still bald). {{blankFace}} Portrait 2:3.`
       : `{{style}} Edit the FIRST reference image (the bald mannequin): keep its head, face, body build, pose, position, size and scale on the
          canvas pixel-identical and keep the flat magenta background. ONLY dress it in exactly the same outfit as shown in the SECOND
          reference image (${o.promptDesc || o.id}): same design, same details, same colors, fitted naturally to this ${descOf(avatars, 'build', build)},
-         with matching shoes, covering the tank top and shorts completely. ${colours}. Still bald. {{blankFace}} Portrait 2:3.`;
+         with matching shoes. {{fullyDressed}} ${colours}. Still bald. {{blankFace}} Portrait 2:3.`;
     return item({
       id: partId.outfit(o.id, body, build),
       label: `파츠 · 의상 ${o.name ?? o.id} (${bodyName(body)}·${buildName(build)})`,
@@ -291,6 +291,7 @@ export function buildPartItems(avatars) {
         tint: tintable ? 'outfit' : null,
         ...(tintable ? { neutral: NEUTRALS.outfit } : {}),
         base: mannequin,
+        ...(/\b(hat|cap|hood)\b/i.test(o.promptDesc ?? '') ? { diff: { headwear: true } } : {}),
       },
     });
   };

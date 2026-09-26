@@ -109,7 +109,7 @@ export async function run(argv, { studio, out = console.log, err = console.error
     } catch (e) {
       failed++;
       err(`✘ ${it.id}: ${e.message}`);
-      if (e.code === 'DAILY_CAP' || e.code === 'NO_KEY') stop = true;
+      if (e.code === 'DAILY_CAP' || e.code === 'NO_KEY' || /HTTP 402/.test(e.message)) stop = true; // cap / billing exhausted
       return false;
     }
   };

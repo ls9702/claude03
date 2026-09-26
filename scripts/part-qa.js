@@ -192,7 +192,9 @@ export async function run(argv = [], { out = console.log } = {}) {
       for (const id of failing) {
         const it = m.items.find((i) => i.id === id);
         try {
-          const r = await studio.regenerate(id, { count: 1 });
+          // Outfit edits that failed usually returned the mannequin (nearly) unchanged: insist on the change.
+          const prompt = it.meta.slot === 'outfit' ? `${it.prompt} IMPORTANT: the result must show the character fully dressed in the new outfit; never return the tank top and shorts unchanged.` : undefined;
+          const r = await studio.regenerate(id, { count: 1, prompt });
           const n = r.candidates[0].n;
           const q = await check(m, it, n);
           if (q.ok || q.issues.length < report[id].issues.length) {
@@ -204,7 +206,8 @@ export async function run(argv = [], { out = console.log } = {}) {
         } catch (e) {
           out(`  ✘ [${round}] ${id}: ${e.message}`);
           still.push(id);
-          if (e.code === 'DAILY_CAP') return { report, failing: still };
+          // Daily cap / exhausted billing (HTTP 402): every further call would fail too.
+          if (e.code === 'DAILY_CAP' || e.code === 'NO_KEY' || /HTTP 402/.test(e.message)) return { report, failing: [...new Set([...still, ...failing])] };
         }
       }
       failing.splice(0, failing.length, ...still);

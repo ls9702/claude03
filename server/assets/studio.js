@@ -233,7 +233,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
         const pp = await applySteps(
           results.map((r) => r.buffer),
           item.postprocess,
-          { ref: normalizeRef, delays: item.frameDelays, anchor: item.anchor, base },
+          { ref: normalizeRef, delays: item.frameDelays, anchor: item.anchor, base, diffOptions: item.meta?.diff },
         );
         const dir = candDir(id);
         const image = pp.sheet ? pp.sheet.buffer : pp.frames[0];
@@ -303,7 +303,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     if (!(await exists(srcFile))) throw new StudioError('원본(src) 파일이 없습니다.', { status: 404, code: 'NOT_FOUND' });
     const steps = item.postprocess.filter((st) => st.startsWith('diffExtract:') || st === 'mannequin');
     const base = isMannequin ? null : await resolveBase(m, item);
-    const pp = await applySteps([await readFile(srcFile)], steps, { base });
+    const pp = await applySteps([await readFile(srcFile)], steps, { base, diffOptions: item.meta?.diff });
     const image = pp.frames[0];
     await writeFile(path.join(dir, `${n}.png`), await sharp(image).png().toBuffer());
     await sharp(image).resize(PREVIEW_PX, PREVIEW_PX, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toFile(path.join(dir, `${n}.preview.webp`));

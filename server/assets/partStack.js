@@ -6,12 +6,18 @@
 // drawing the stack at (0,0) in order.
 
 export const CANVAS = { w: 1024, h: 1536 };
+/**
+ * Crop of the canvas that contains every accepted layer (afro, ribbon, chef hat … feet), for display.
+ * Landmarks (all 6 mannequins agree within ±2 px): head box x 266..777, y 242..~712 (chin), feet y ≈ 1320..1360.
+ */
+export const CROP = { x: 96, y: 24, w: 848, h: 1376 };
 
 /**
  * Draw order, bottom → top. `eyes` is taken by eyesClosed (blink) or expression; an expression also
  * suppresses `mouth` (it contains eyes + mouth + effects). `hat` = headwear split off an outfit (chef hat,
- * police cap, onesie hood) so it sits above the front hair. The mannequin is drawn with the hair's and the
- * outfit's `erase` masks cut out (destination-out): ears hidden by hair, underwear beside narrow trousers.
+ * police cap, onesie hood) so it sits above the front hair. The back hair and the mannequin are drawn with the
+ * hair's and the outfit's `erase` masks cut out (destination-out): ears hidden by hair, underwear beside
+ * narrow trousers.
  */
 export const Z_ORDER = ['backHair', 'mannequin', 'face', 'outfit', 'cheek', 'eyes', 'mouth', 'frontHair', 'hat', 'accessory'];
 
@@ -97,21 +103,38 @@ export function layerStack(avatar, { lookup, avatars, expression = null, blink =
   const has = (cat) => a[cat] && !(NO_LAYER[cat] ?? []).includes(a[cat]);
   const expr = expression && EXPRESSIONS.includes(expression) ? expression : null;
   const hair = lookup(partId.hair(a.hair));
-  const outfit = lookup(partId.outfit(a.outfit, a.body, a.build));
+  // Outfit for this body × build; falls back to the reference build (the layer may then not hug the body
+  // exactly, but it beats showing the bare mannequin) while a variant is missing.
+  let outfitId = partId.outfit(a.outfit, a.body, a.build);
+  let outfit = lookup(outfitId);
+  const outfitFallback = !outfit;
+  if (!outfit) {
+    outfitId = partId.outfit(a.outfit, a.body, 'normal');
+    outfit = lookup(outfitId);
+  }
   const out = [];
   const push = (slot, id, item, src) => {
     if (item && src) out.push({ slot, id, src, tint: tintFor(item.meta) });
   };
   const one = (slot, id) => push(slot, id, lookup(id), lookup(id)?.url);
+  // Erase masks = pixels an edit removed from the mannequin (ears hidden by hair, underwear beside narrow
+  // trousers). They cut both layers below the face: the mannequin AND the back hair (which is the whole hair).
+  const erase = [hair?.files?.erase, outfitFallback ? null : outfit?.files?.erase].filter(Boolean);
+  const withErase = () => {
+    const l = out.at(-1);
+    if (erase.length && l) l.erase = erase;
+  };
   for (const slot of Z_ORDER) {
-    if (slot === 'backHair') push(slot, partId.hair(a.hair), hair, hair?.files?.back);
-    else if (slot === 'mannequin') {
-      const id = partId.mannequin(a.body, a.build);
-      one(slot, id);
-      const erase = [hair?.files?.erase, outfit?.files?.erase].filter(Boolean);
-      if (out.at(-1)?.slot === 'mannequin' && erase.length) out.at(-1).erase = erase;
+    if (slot === 'backHair') {
+      const n = out.length;
+      push(slot, partId.hair(a.hair), hair, hair?.files?.back);
+      if (out.length > n) withErase();
+    } else if (slot === 'mannequin') {
+      const n = out.length;
+      one(slot, partId.mannequin(a.body, a.build));
+      if (out.length > n) withErase();
     } else if (slot === 'face' && has('face')) one(slot, partId.face(a.face));
-    else if (slot === 'outfit') push(slot, partId.outfit(a.outfit, a.body, a.build), outfit, outfit?.url);
+    else if (slot === 'outfit') push(slot, outfitId, outfit, outfit?.url);
     else if (slot === 'cheek' && has('cheek')) one(slot, partId.cheek(a.cheek));
     else if (slot === 'eyes') {
       if (expr) one('expression', partId.expression(expr));
@@ -119,7 +142,7 @@ export function layerStack(avatar, { lookup, avatars, expression = null, blink =
       else one('eyes', partId.eyes(a.eyes));
     } else if (slot === 'mouth' && !expr) one(slot, partId.mouth(a.mouth));
     else if (slot === 'frontHair') push(slot, partId.hair(a.hair), hair, hair?.files?.front);
-    else if (slot === 'hat') push(slot, partId.outfit(a.outfit, a.body, a.build), outfit, outfit?.files?.hat);
+    else if (slot === 'hat') push(slot, outfitId, outfit, outfit?.files?.hat);
     else if (slot === 'accessory' && has('accessory')) one(slot, partId.accessory(a.accessory));
   }
   return out;

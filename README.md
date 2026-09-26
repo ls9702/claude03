@@ -138,3 +138,22 @@ node scripts/gen-assets.js --all --accept-first --dry-run        # 호출 수만
 - 큰 미리보기: 2D 초상화(표정 칩 기본·기쁨·울음·놀람) ↔ 3D 말 토글(2D 보드 모드이거나 WebGL이 없으면 숨김).
 - 의사 가운·경찰 제복·요리사복·태권도 도복은 고유 색이라 의상 색 선택이 잠깁니다.
 - 🎲 전체 랜덤 / 🎲 이 탭만 랜덤, 이름 입력, 저장·취소. 예전에 만든 캐릭터는 새 항목이 기본값으로 채워집니다.
+
+## Paper-doll layers (Stage 5.5-B)
+
+캐릭터 커스터마이징의 2D 레이어(종이 인형) 에셋입니다. 모든 옵션이 같은 1024×1536 캔버스·같은 정면 포즈의 투명 레이어라서 순서대로 겹치기만 하면 됩니다.
+
+- 만드는 법: 대머리·민얼굴 마네킹(체형 2 × 체격 3)을 Gemini로 한 번 그린 뒤, "다른 건 그대로 두고 X만 추가" 편집을 하고
+  마네킹과의 **차이만 추출**(`diffExtract`)합니다. 머리카락·의상은 중립 회색으로 생성해 브라우저에서 색을 입힙니다(`tintMath`).
+- 레이어 순서: 뒷머리 → 마네킹(피부색) → 얼굴형 → 의상(의상 색) → 볼 → 눈(깜빡임/표정) → 입 → 앞머리(머리색) → 모자류 → 액세서리.
+- 파일: `public/assets/generated/parts/…` (WebP, 약 11MB). 목록·메타는 `server/assets/manifest.json`의 `kind: "part"` 항목,
+  게임은 `GET /api/assets`로 받습니다.
+- 새 옵션 추가:
+  ```bash
+  # 1) server/data/avatars.json 에 옵션 추가 (promptDesc 포함)
+  node scripts/gen-part-manifest.js                                  # 매니페스트에 part 항목 추가(채택된 항목은 유지)
+  node scripts/gen-assets.js --kind part --accept-first --parallel 2 # 생성·채택 (마네킹 → 부위 순서 자동)
+  node scripts/part-qa.js --fix                                       # 자동 검수, 이상한 레이어 재생성(최대 2회)
+  node scripts/part-sheets.js --out /tmp/sheets                       # 콘택트 시트로 눈으로 확인
+  ```
+- 추출 알고리즘을 고친 뒤에는 `node scripts/part-qa.js --reprocess`로 API 호출 없이 전부 다시 추출할 수 있습니다.

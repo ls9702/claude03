@@ -4,7 +4,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const STATUS_LABEL = { todo: '미생성', candidate: '후보 있음', accepted: '채택됨', missing: '없음' };
-const KIND_ORDER = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'texture', 'frame', 'ui'];
+const KIND_ORDER = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'texture', 'frame', 'ui', 'part'];
 
 const state = { items: [], kind: '', status: '', selected: null, detail: null, job: null, flipTimer: null };
 

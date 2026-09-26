@@ -9,14 +9,14 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 import { loadManifest } from '../server/assets/manifest.js';
-import { EXPRESSIONS, layerStack } from '../server/assets/partStack.js';
+import { CROP, EXPRESSIONS, layerStack } from '../server/assets/partStack.js';
 import { composeLayers } from '../server/assets/postprocess.js';
 import { createRng } from '../server/game/rng.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GENERATED = path.join(ROOT, 'public', 'assets', 'generated');
 /** Figure crop of the 1024×1536 canvas used for tiles (all mannequins + big hair fit inside). */
-export const TILE_CROP = { left: 80, top: 40, width: 864, height: 1392 };
+export const TILE_CROP = { left: CROP.x, top: CROP.y, width: CROP.w, height: CROP.h };
 const SCALE = 0.5; // compose at 512×768 for speed
 
 /** Lookup over accepted part items → {url (local path), files, meta}. */
