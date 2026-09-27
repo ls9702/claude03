@@ -1,0 +1,15 @@
+{
+  "_comment": "결과 발표 특별상(Stage 9): 게임이 끝날 때 metric(코드 레지스트리 awards.js AWARD_METRICS)으로 계산해 상금(bonus, 만원)을 준다(총자산에 합산, 현금에는 더하지 않음). 최고값 수상(metric 값 ≥ min인 캐릭터 중 최대). tie: all = 공동 수상자 모두 전액, split = 상금을 나눠 가짐(내림), place = 먼저 골인한 캐릭터 한 명, qualify = 조건(값 ≥ min)을 채운 모두가 전액(메달). route = routeMedal의 루트.",
+  "awards": [
+    { "id": "dabok", "name": "다복상", "icon": "👨‍👩‍👧‍👦", "desc": "자녀가 가장 많은 캐릭터", "metric": "children", "min": 1, "bonus": 150, "tie": "all" },
+    { "id": "genius_parent", "name": "영재 부모상", "icon": "🌟", "desc": "천재 자녀를 가장 많이 키운 캐릭터", "metric": "geniusChildren", "min": 1, "bonus": 100, "tie": "all" },
+    { "id": "career", "name": "커리어상", "icon": "💼", "desc": "가장 높은 직급(숨은 직업 우대)에 오른 캐릭터", "metric": "careerScore", "min": 20, "bonus": 150, "tie": "place" },
+    { "id": "treasure_king", "name": "보물왕", "icon": "🏺", "desc": "보물 감정가 합계가 가장 높은 캐릭터", "metric": "treasureValue", "min": 1, "bonus": 150, "tie": "place" },
+    { "id": "landlord", "name": "건물주상", "icon": "🏙️", "desc": "집 자산가치가 가장 높은 캐릭터", "metric": "houseValue", "min": 1, "bonus": 150, "tie": "place" },
+    { "id": "love_medal", "name": "연애 루트 메달", "icon": "💕", "desc": "청년·중년 모두 연애·육아 루트를 완주", "metric": "routeMedal", "route": "love", "min": 1, "bonus": 80, "tie": "qualify" },
+    { "id": "career_medal", "name": "커리어 메달", "icon": "🥇", "desc": "청년·중년 모두 일·커리어 루트를 완주", "metric": "routeMedal", "route": "career", "min": 1, "bonus": 80, "tie": "qualify" },
+    { "id": "money_medal", "name": "금전 메달", "icon": "💰", "desc": "청년·중년 모두 보물·부동산·금전 루트를 완주", "metric": "routeMedal", "route": "money", "min": 1, "bonus": 80, "tie": "qualify" },
+    { "id": "max_level", "name": "인생 만렙", "icon": "🎖️", "desc": "연애(루트·결혼)·커리어(루트·승진)·금전(루트·집·보물)을 모두 경험", "metric": "allRoutes", "min": 3, "bonus": 100, "tie": "qualify" },
+    { "id": "lucky", "name": "행운상", "icon": "🍀", "desc": "로또·인생역전으로 가장 많이 번 캐릭터", "metric": "luckWinnings", "min": 1, "bonus": 100, "tie": "place" }
+  ]
+}

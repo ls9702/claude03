@@ -18,7 +18,7 @@ import {
   won,
 } from './effects.js';
 import { endGame as lobbyEndGame, startGame as lobbyStartGame } from './lobby.js';
-import { applyResult } from './result.js';
+import { applyResult, castVote, closeVote, emitMvpDecided } from './result.js';
 import { createRng } from './rng.js';
 import { decorateEvents } from './presentation.js';
 import { promptComplete, resolvePrompt, resolveTile } from './spaces.js';
@@ -40,9 +40,14 @@ import {
 import { queueEraOpening, runEraOpenings } from './holidays.js';
 import { ensureFamily, ensureRoomFamily, growChildrenOnEra, growChildrenOnSpin, initFamily, schoolMeet } from './family.js';
 import { drawHousingMarket, syncHouseOwners } from './houses.js';
+import { ensureRoomTreasures, ensureTreasures } from './treasures.js';
+import { ensureRecord, initRecord, recordHighlights, topHighlights, trackRecords } from './highlights.js';
+import './submaps.js'; // Stage 9: registers the hometown / temple / jeju / reversal prompts
 
 export { EngineError, turnTimeoutMs };
-export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout', 'skip', 'useCard', 'offerTrade', 'respondTrade', 'cancelTrade', 'gift', 'expireTrades'];
+export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout', 'skip', 'useCard', 'offerTrade', 'respondTrade', 'cancelTrade', 'gift', 'expireTrades', 'vote', 'closeVote'];
+/** Stage 9: actions of a finished game (MVP vote). */
+export const RESULT_ACTIONS = ['vote', 'closeVote'];
 export const BET_KINDS = ['oddEven', 'range'];
 
 function makeCtx(room, ctx = {}) {
@@ -95,7 +100,11 @@ export function startGame(room, ctx = {}) {
     lastTargetedBy: {},
     // Stage 8: love {candidates, partner, affection, dates}, spouse, children, house, houseSwaps (all public)
     ...initFamily(),
+    // Stage 9: treasures [{uid, id}] (values hidden in room.treasureValues), 사찰 소원 성취 횟수, life record counters
+    treasures: [],
+    wishes: 0,
   }));
+  for (const c of next.characters) c.record = initRecord(c);
   // The board is public; without a secret, its tiles would reveal the seed and so every future spin.
   // The side-effect layer (GameRunner) passes `ctx.secret` = crypto random uint32; tests/simulator omit it
   // (or inject a fixed one) and stay deterministic. The game continues from `rngState` either way.
@@ -110,6 +119,8 @@ export function startGame(room, ctx = {}) {
   Object.assign(next, { nextCardSeq: 0, nextTradeSeq: 0, trades: [], holidayCount: 0, holidays: {}, lotto: { draws: [] }, erasOpened: [firstEra], eraQueue: [] });
   // Stage 8: partner / child ids, 고교 전원 만남 (once), house owners, 노년 시세
   Object.assign(next, { nextPartnerSeq: 0, nextChildSeq: 0, schoolMeetDone: false, houseOwners: {}, housingMarket: null });
+  // Stage 9: treasure uids + hidden appraisal values, highlights per character
+  Object.assign(next, { nextTreasureSeq: 0, treasureValues: {}, treasureFakes: {}, highlights: {}, highlightSeq: 0 });
   const tx = createTx(next, { rng, now, data });
   emit(tx, 'gameStarted', { eras: next.board.eras.map((e) => e.id) });
   drawStartNews(tx);
@@ -126,7 +137,9 @@ export function endGame(room, ctx = {}) {
   if (!r.ok) return r;
   if (r.room.trades) r.room.trades = []; // Stage 7: open offers die with the game
   if (r.room.board && r.room.characters.every((c) => typeof c.money === 'number')) {
-    applyResult(r.room, now, { forced: true });
+    for (const c of r.room.characters) ensureTreasures(ensureRecord(c));
+    ensureRoomTreasures(r.room);
+    applyResult(r.room, now, { forced: true, ...(ctx.data ? { data: ctx.data } : {}) });
   }
   return r;
 }
@@ -223,10 +236,28 @@ function bonusSpin(tx, c) {
 function gameOver(tx) {
   tx.room.trades = [];
   tx.room.eraQueue = [];
+  tx.tracked = trackRecords(tx.room, tx.events, tx.tracked ?? 0); // the titles read the life records
   const ranking = applyResult(tx.room, tx.now, { data: tx.data });
-  emit(tx, 'gameOver', { ranking, tone: 'result' });
+  const res = tx.room.result;
+  // Stage 9: the treasure values are revealed now; awards / titles ride on the event for the result show
+  emit(tx, 'gameOver', {
+    ranking,
+    awards: structuredClone(res.awards),
+    titles: structuredClone(res.titles),
+    treasures: structuredClone(res.treasures),
+    mvpClosesAt: res.mvp.closed ? null : res.mvp.closesAt,
+    tone: 'result',
+  });
   addLog(tx, `🏆 게임 종료! 1등은 ${ranking[0]?.name} (${won(ranking[0]?.total ?? 0)})`, { tone: 'result' });
+  if (res.mvp.closed) emitMvpDecided(tx, res.mvp); // no voters (CPU-only / spectators only)
 }
+
+/** Log line of a skipped turn by `character.skipReason` (재수 / Stage 9 고향 휴식 / 사찰 수련). */
+const SKIP_LINES = {
+  retake: (c) => `📖 ${josa(c.name, '은/는')} 재수 중… 이번 턴은 쉬어요`,
+  hometown: (c) => `😴 ${josa(c.name, '은/는')} 고향에서 푹 쉬는 중… 이번 턴은 쉬어요`,
+  temple: (c) => `🧘 ${josa(c.name, '은/는')} 템플스테이 수련 중… 이번 턴은 쉬어요`,
+};
 
 /**
  * Advance to the next unfinished character; finished ones auto-take a bonus spin, characters with
@@ -250,7 +281,8 @@ function endTurn(tx) {
     }
     if (c.skipTurns > 0) {
       c.skipTurns -= 1;
-      addLog(tx, `📖 ${josa(c.name, '은/는')} 재수 중… 이번 턴은 쉬어요`, { tone: 'info', charId: c.id, emotion: 'sweat' });
+      addLog(tx, SKIP_LINES[c.skipReason]?.(c) ?? SKIP_LINES.retake(c), { tone: 'info', charId: c.id, emotion: c.skipReason && c.skipReason !== 'retake' ? 'joy' : 'sweat' });
+      if (!c.skipTurns) delete c.skipReason;
       continue;
     }
     turn.turnNo += 1;
@@ -525,6 +557,7 @@ const HANDLERS = {
  */
 export function applyAction(room, action, ctx = {}) {
   if (!action || typeof action !== 'object') fail(400, '잘못된 요청입니다.');
+  if (RESULT_ACTIONS.includes(action.type)) return applyResultAction(room, action, ctx);
   const handler = HANDLERS[action.type];
   if (!handler) fail(400, '알 수 없는 행동입니다.');
   if (room.status !== 'playing' || !room.board) fail(409, '게임이 진행 중이 아니에요.');
@@ -534,7 +567,11 @@ export function applyAction(room, action, ctx = {}) {
     ensureLife(ch, c.data); // games saved before Stage 6
     ensureCards(ch); // … and Stage 7
     ensureFamily(ch); // … and Stage 8
+    ensureTreasures(ch); // … and Stage 9
+    if (!ch.record) ensureRecord(ch);
   }
+  ensureRoomTreasures(next);
+  next.highlights ??= {};
   next.news ??= {};
   ensureRoomCards(next);
   ensureRoomFamily(next);
@@ -544,9 +581,30 @@ export function applyAction(room, action, ctx = {}) {
   expireTrades(tx); // pure: offers past `expiresAt` (ctx.now) are dropped before anything else
   handler(tx, action);
   next.rngState = c.rng.state;
+  trackRecords(next, tx.events, tx.tracked ?? 0); // Stage 9: life record counters (titles)
   decorateEvents(tx.events, { room: next, data: c.data, seed: c.rng.state });
+  recordHighlights(next, tx.events, { data: c.data }); // Stage 9: dramatic moments (after tone / scene)
+  if (next.status === 'finished' && next.result) next.result.highlights = topHighlights(next.highlights, c.data.balance.result?.highlights?.show ?? 5);
   return { room: next, events: tx.events, logs: tx.logs };
 }
+
+/**
+ * Stage 9: actions of a finished game — `vote {targetId}` (a player; actor {sessionId}, or `voterId` for trusted
+ * callers) and `closeVote` (runner timer once `result.mvp.closesAt` passed, or the admin any time).
+ */
+function applyResultAction(room, action, ctx) {
+  if (room.status !== 'finished' || !room.result?.mvp) fail(409, '결과 발표 중이 아니에요.');
+  const c = makeCtx(room, ctx);
+  const next = structuredClone(room);
+  const tx = createTx(next, c);
+  if (action.type === 'vote') castVote(tx, action);
+  else closeVote(tx, action);
+  decorateEvents(tx.events, { room: next, data: c.data, seed: hashVote(next) });
+  return { room: next, events: tx.events, logs: tx.logs };
+}
+
+/** Line seed of result actions (the game RNG is finished; any stable number works). */
+const hashVote = (room) => ((room.rngState ?? 0) ^ Object.keys(room.result?.mvp?.votes ?? {}).length * 0x9e3779b1) >>> 0;
 
 // Re-exported for UIs/tests that need board lookups.
 export { findTile };

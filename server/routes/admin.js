@@ -17,7 +17,7 @@ const COOKIE_MAX_AGE_S = ADMIN_SESSION_TTL_MS / 1000;
 /** Login attempts per IP per minute. */
 export const LOGIN_RATE = { windowMs: 60_000, max: 10 };
 /** Admin game interventions → engine actions. */
-export const ADMIN_ACTIONS = ['timeout', 'forceSpin', 'skipTurn'];
+export const ADMIN_ACTIONS = ['timeout', 'forceSpin', 'skipTurn', 'closeVote'];
 
 function parseCookies(header = '') {
   const out = {};
@@ -181,13 +181,20 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
   });
 
   // Admin interventions (host tools): `timeout` force-resolves the pending prompt (default answers),
-  // `forceSpin` spins for the current character now, `skipTurn` ends the current turn without moving.
+  // `forceSpin` spins for the current character now, `skipTurn` ends the current turn without moving; Stage 9:
+  // `closeVote` closes the MVP vote of a finished game at once.
   router.post('/rooms/:id/actions', requireAdmin, withRoom, (req, res) => {
     const body = req.body ?? {};
     if (!ADMIN_ACTIONS.includes(body.type)) {
-      return res.status(400).json({ error: '관리자 행동은 timeout / forceSpin / skipTurn 중 하나여야 합니다.' });
+      return res.status(400).json({ error: '관리자 행동은 timeout / forceSpin / skipTurn / closeVote 중 하나여야 합니다.' });
     }
     const room = req.room;
+    if (body.type === 'closeVote') {
+      // Stage 9: close the MVP vote of a finished game now
+      const r = runner.dispatch(room.id, { type: 'closeVote', actor: { admin: true } });
+      if (!r.ok) return sendFail(res, r);
+      return res.json({ room: adminView(r.room), events: r.events });
+    }
     if (room.status !== 'playing' || !room.turn) return res.status(409).json({ error: '게임이 진행 중이 아니에요.' });
     let action;
     if (body.type === 'timeout') {

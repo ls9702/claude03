@@ -85,6 +85,7 @@ function leaveRoom(message) {
   state.closeEvents?.();
   state.closeEvents = null;
   closeCustomizer();
+  state.game?.result?.reset(); // Stage 9: stop the result show, drop the podium
   state.room = null;
   setSavedRoomId(null);
   showScreen('join');

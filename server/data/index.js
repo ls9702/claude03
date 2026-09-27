@@ -65,6 +65,10 @@ export const getHolidays = () => loadData('holidays');
 /** Stage 8: partners / spouses / children (연애·가족) and houses (부동산). */
 export const getPartners = () => loadData('partners');
 export const getHouses = () => loadData('houses');
+/** Stage 9: treasures (보물 감정), special awards (특별상) and ending titles (칭호). */
+export const getTreasures = () => loadData('treasures');
+export const getAwards = () => loadData('awards');
+export const getTitles = () => loadData('titles');
 
 /** Everything the engine reads, as one object (tests may pass overrides). */
 export function gameData() {
@@ -84,5 +88,8 @@ export function gameData() {
     partners: getPartners(),
     houses: getHouses(),
     avatars: getAvatars(),
+    treasures: getTreasures(),
+    awards: getAwards(),
+    titles: getTitles(),
   };
 }

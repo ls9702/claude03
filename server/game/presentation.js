@@ -4,7 +4,7 @@
 //
 // Lines are picked with a sub-RNG seeded from the engine RNG state + event index, so every client shows the
 // same text without consuming the gameplay RNG stream (existing seeds keep their outcomes).
-import { getBoardData, getCards, getEvents, getHouses, getItems, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
+import { getAwards, getBoardData, getCards, getEvents, getHouses, getItems, getJobs, getLines, getMc, getNews, getTones, getTreasures } from '../data/index.js';
 import { createRng } from './rng.js';
 import { MC_FREQUENCIES } from './config.js';
 
@@ -15,6 +15,8 @@ export const SCENES = [
   'stage', 'stadium', 'gym', 'army', 'campus', 'kitchen', 'police', 'lab', 'space', 'shop', 'holiday',
   // Stage 8 (bg todo → tones.json sceneFallbacks: park → mountain-trail, house → office)
   'park', 'house',
+  // Stage 9 submaps (bg todo → sceneFallbacks: hometown / temple / jeju → mountain-trail, casino → office)
+  'hometown', 'temple', 'jeju', 'casino',
   'none',
 ];
 export const EMOTIONS = ['joy', 'cry', 'angry', 'sweat', 'love', 'shock', 'neutral'];
@@ -32,6 +34,8 @@ export const EVENT_TYPES = [
   // Stage 8 — romance, family, real estate
   'met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'allowance', 'houseBought', 'houseSold',
   'houseValueChanged',
+  // Stage 9 — submaps, treasures, result show
+  'submapEntered', 'submapResult', 'treasureFound', 'mvpVoted', 'mvpDecided',
 ];
 
 /** Types that always get a full cut-in (landed only for `tones.cutinTiles`). statChanged / salary / militaryEnd are chips. */
@@ -42,6 +46,8 @@ export const CUTIN_TYPES = new Set([
   'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw',
   // Stage 8 (childGrew only for 돌잔치 / 수능 / 취업 — see isCutinChildGrew; dated / allowance / houseSold are chips)
   'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged',
+  // Stage 9 (submapEntered = a follow-up of the landing, mvpVoted = a toast)
+  'submapResult', 'treasureFound', 'mvpDecided',
 ]);
 
 /** Stage 8: child growth steps with a full cut-in (입학 = a cost chip). */
@@ -57,6 +63,7 @@ const BOUNDARY = new Set([
   'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged',
   'cardBlocked', 'itemBought', 'tradeOffered', 'tradeResolved', 'gift', 'holidayStarted', 'holidayResult', 'lottoDraw',
   'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged',
+  'submapResult', 'treasureFound', 'mvpVoted', 'mvpDecided',
 ]);
 /**
  * Boundary test (Stage 7: an anchored card use is a boundary, a passive trigger / self card is a follow-up;
@@ -64,24 +71,40 @@ const BOUNDARY = new Set([
  */
 export const isBoundary = (ev) => BOUNDARY.has(ev.type) || isCutinCardUse(ev) || isCutinChildGrew(ev);
 /** Stage 8 anchors that take over a heart / house landing (the landing itself then stays on the board). */
-const STAGE8_TAKEOVER = new Set(['met', 'proposed', 'married', 'childBorn', 'houseBought']);
+const STAGE8_TAKEOVER = new Set(['met', 'proposed', 'married', 'childBorn', 'houseBought', 'treasureFound']);
 
 const PROMPT_TONES = {
   routeChoice: 'good', exam: 'career', groupGift: 'holiday', habit: 'good', career: 'career', military: 'neutral',
   jobOffer: 'career', jobTile: 'career', hiddenJobOffer: 'result', shop: 'treasure', holiday: 'holiday',
   meet: 'love', date: 'love', propose: 'love', house: 'treasure',
+  hometown: 'good', temple: 'good', jeju: 'love', reversal: 'treasure',
 };
 const PROMPT_TAGS = {
   routeChoice: 'route_choice', exam: 'exam', groupGift: 'gift', habit: 'habit', career: 'career', military: 'military',
   jobOffer: 'job_offer', jobTile: 'job', hiddenJobOffer: 'hidden_job', shop: 'shop', holiday: 'holiday',
   meet: 'heart', date: 'date', propose: 'propose', house: 'house',
+  hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'reversal',
 };
 const PROMPT_EMOTIONS = {
   exam: 'sweat', groupGift: 'love', routeChoice: 'joy', habit: 'joy', career: 'sweat', military: 'sweat', jobOffer: 'joy',
   jobTile: 'neutral', hiddenJobOffer: 'shock', shop: 'joy', holiday: 'joy', meet: 'love', date: 'love', propose: 'love',
-  house: 'joy',
+  house: 'joy', hometown: 'love', temple: 'neutral', jeju: 'joy', reversal: 'shock',
 };
-const PROMPT_SCENES = { shop: 'shop', holiday: 'holiday', meet: 'park', date: 'park', propose: 'park', house: 'house' };
+const PROMPT_SCENES = {
+  shop: 'shop', holiday: 'holiday', meet: 'park', date: 'park', propose: 'park', house: 'house',
+  hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino',
+};
+/** Stage 9: submap → cut-in scene; submapResult result → line tag. */
+export const SUBMAP_SCENES = { hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino' };
+const SUBMAP_TAGS = {
+  'hometown:rest': 'hometown_rest', 'hometown:visit': 'hometown_visit',
+  'temple:train': 'temple_train', 'temple:wishOk': 'temple_wish_ok', 'temple:wishFail': 'temple_wish_fail', 'temple:leave': 'temple_leave',
+  'jeju:trip': 'jeju_trip', 'jeju:skip': 'jeju_skip',
+  'reversal:jackpot': 'reversal_jackpot', 'reversal:lottoWin': 'reversal_win', 'reversal:horseWin': 'reversal_win',
+  'reversal:lottoLose': 'reversal_lose', 'reversal:horseLose': 'reversal_lose', 'reversal:skip': 'reversal_skip',
+};
+const treasureOf = (data, id) => (id ? (data?.treasures ?? getTreasures()).treasures?.find((t) => t.id === id) ?? null : null);
+const awardName = (data, id) => (id ? (data?.awards ?? getAwards()).awards?.find((a) => a.id === id)?.name ?? '' : '');
 const GROW_TAGS = { dol: 'dol', school: 'child_school', exam: 'child_exam', job: 'child_job' };
 const GROW_SCENES = { dol: 'wedding-hall', school: 'school', exam: 'school', job: 'office' };
 const JOB_TAGS = { hire: 'hire', change: 'job_change', hidden: 'hidden_job', parttime: 'parttime' };
@@ -205,7 +228,7 @@ export function presentationFor(ev, ctx) {
   const c = charId ? chars.find((x) => x.id === charId) : null;
   const era = ev.type === 'eraChanged' ? ev.era : charId ? ctx.eraOf?.(charId) ?? c?.era ?? null : null;
   const eraName = (id) => room?.board?.eras?.find((e) => e.id === id)?.name ?? ctx.data?.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
-  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '', ...familyVars(ev, c), house: houseName(ctx.data, ev.houseId ?? c?.house?.id) };
+  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '', ...familyVars(ev, c), house: houseName(ctx.data, ev.houseId ?? c?.house?.id), treasure: treasureOf(ctx.data, ev.treasureId)?.name ?? '', award: '' };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.targetId || ev.toId) vars.target = nameOf(ev.targetId ?? ev.toId);
   if (ev.cardId) vars.card = cardName(ctx.data, ev.cardId);
@@ -257,7 +280,8 @@ export function presentationFor(ev, ctx) {
         tag = o.delta > 0 ? 'salary' : 'neutral';
         tone ??= 'career';
       } else {
-        tag = ['heart', 'job', 'card', 'shop', 'treasure', 'house', 'stop', 'merge', 'goal'].includes(tt) ? tt : 'neutral';
+        tag = ['heart', 'job', 'card', 'shop', 'treasure', 'house', 'stop', 'merge', 'goal', 'hometown', 'temple', 'jeju', 'reversal'].includes(tt) ? tt : 'neutral';
+        if (SUBMAP_SCENES[tt]) scene = SUBMAP_SCENES[tt];
         tone ??= (tt !== 'goal' && tt !== 'merge' ? routeTone(route, tones) : null) ?? normalizeTone(tones.tileTones?.[tt], tones) ?? 'neutral';
       }
       emotion ??= o.emotion && EMOTIONS.includes(o.emotion) ? o.emotion : null;
@@ -591,6 +615,43 @@ export function presentationFor(ev, ctx) {
       emotion ??= (ev.mult ?? 1) >= 1 ? 'joy' : 'shock';
       scene = 'house';
       break;
+    // ---------- Stage 9 ----------
+    case 'submapEntered':
+      tag = ev.submap;
+      tone ??= PROMPT_TONES[ev.submap] ?? 'good';
+      scene = SUBMAP_SCENES[ev.submap] ?? null;
+      route = null;
+      break;
+    case 'submapResult': {
+      tag = SUBMAP_TAGS[`${ev.submap}:${ev.result}`] ?? ev.submap;
+      const amt = ev.amount ?? 0;
+      if (ev.submap === 'reversal') tone = amt > 0 ? 'treasure' : amt < 0 ? 'bad' : 'neutral';
+      else tone ??= PROMPT_TONES[ev.submap] ?? 'good';
+      emotion ??= amt > 0 ? 'joy' : amt < 0 ? 'sweat' : 'neutral';
+      scene = SUBMAP_SCENES[ev.submap] ?? null;
+      vars.stat = STAT_LABELS[ev.stat] ?? '';
+      if (amt) vars.amount = wonText(amt);
+      cutin = !['skip', 'leave'].includes(ev.result); // a pass is a banner, not a cut-in
+      route = null;
+      break;
+    }
+    case 'treasureFound':
+      tag = 'treasure';
+      tone ??= 'treasure';
+      emotion ??= 'shock';
+      scene = ev.source === 'jeju' ? 'jeju' : 'mountain-trail';
+      break;
+    case 'mvpVoted':
+      tag = 'mvp_vote';
+      tone ??= 'result';
+      cutin = false;
+      break;
+    case 'mvpDecided':
+      tag = 'mvp';
+      tone = 'result';
+      emotion ??= 'joy';
+      scene = 'stage';
+      break;
     case 'gameOver': {
       tag = 'game_over';
       tone ??= 'result';
@@ -693,6 +754,25 @@ function decorateRows(ev, { lines, room, data, seed, vars }) {
       ch.line = pickLine(lines, tag, hashSeed(seed, ch.charId), { ...vars, name: nameOf(ch.charId), amount: wonText(ch.after - ch.before), house: houseName(data, ch.houseId) });
     }
   }
+  // Stage 9: the result show — one line per appraised treasure (real / fake) and per award; copied onto
+  // room.result so a reloaded result screen shows the same lines
+  if (ev.type === 'gameOver') {
+    const tname = (id) => (data?.treasures ?? getTreasures()).treasures?.find((t) => t.id === id)?.name ?? '';
+    (ev.treasures ?? []).forEach((t, i) => {
+      const tag = t.fake ? 'appraisal_fake' : 'appraisal_real';
+      t.lineTag = tag;
+      t.line = pickLine(lines, tag, hashSeed(seed, t.uid), { ...vars, name: nameOf(t.charId), treasure: tname(t.treasureId), amount: wonText(t.value) });
+      const row = room?.result?.treasures?.[i];
+      if (row?.uid === t.uid) Object.assign(row, { line: t.line, lineTag: tag });
+    });
+    (ev.awards ?? []).forEach((a, i) => {
+      a.lineTag = 'award';
+      a.line = pickLine(lines, 'award', hashSeed(seed, a.id), { ...vars, name: nameOf(a.charIds?.[0]), award: a.name ?? awardName(data, a.id), amount: wonText(a.bonus) });
+      const row = room?.result?.awards?.[i];
+      if (row?.id === a.id) Object.assign(row, { line: a.line, lineTag: 'award' });
+    });
+  }
+  if (ev.type === 'mvpDecided' && room?.result?.mvp) room.result.mvp.line = ev.line ?? null;
   if (ev.type === 'lottoDraw') {
     for (const e of ev.entries ?? []) {
       const tag = e.prize > 0 ? 'lotto_win' : 'lotto_lose';
@@ -757,7 +837,7 @@ export function mcFrequencyOf(room) {
 export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {}, jobs = getJobs(), cards = getCards(), items = getItems() }) {
   const chars = room?.characters ?? [];
   const c = ev.charId ? chars.find((x) => x.id === ev.charId) : null;
-  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '', partner: '', child: '', house: '' };
+  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '', partner: '', child: '', house: '', treasure: '', award: '' };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.jobId) vars.job = (ev.jobId === jobs.partTime?.id ? jobs.partTime : jobs.jobs?.find((j) => j.id === ev.jobId))?.name ?? '';
   const big = mc?.bigAmount ?? BIG_GAIN;
@@ -912,6 +992,23 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       key = 'market';
       studio = true;
       break;
+    // Stage 9: submap outcomes (never the landing itself), treasures, the MVP
+    case 'submapResult': {
+      const amt = ev.amount ?? 0;
+      if (amt) vars.amount = wonText(amt);
+      if (ev.submap === 'temple' && ev.result !== 'leave') key = 'temple';
+      else if (ev.submap === 'jeju' && ev.result === 'trip') key = 'jeju';
+      else if (ev.submap === 'reversal' && ev.result !== 'skip') key = amt > 0 ? 'reversalWin' : 'reversalLose';
+      break;
+    }
+    case 'treasureFound':
+      key = 'treasure';
+      vars.treasure = (getTreasures().treasures ?? []).find((t) => t.id === ev.treasureId)?.name ?? '';
+      break;
+    case 'mvpDecided':
+      key = 'mvp';
+      studio = true;
+      break;
     default:
       break;
   }
@@ -919,12 +1016,25 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
   return { key, weight: mc.situations[key].weight, studio, vars };
 }
 
-/** The result show (gameOver): intro duo → winner duo → last place → penalty. */
-function resultMc(ev, data, rng) {
+/**
+ * The result show (gameOver): intro duo → 보물 감정 (appraisal) → 특별상 (awards) → winner duo → last place → penalty →
+ * MVP 투표 안내 (mvp; only while the vote is open).
+ */
+function resultMc(ev, data, rng, { room } = {}) {
   const ranking = ev.ranking ?? [];
   const out = [];
   const add = (part, list) => out.push(...list.map((l) => ({ ...l, part })));
+  const nameOf = (id) => room?.characters?.find((c) => c.id === id)?.name ?? ranking.find((r) => r.charId === id)?.name ?? '';
   add('intro', pickMcLines(data, 'resultIntro', rng, { duo: true }));
+  // Stage 9: the most valuable treasure (or, without real ones, a fake) gets the appraisal comment
+  const treasures = [...(ev.treasures ?? [])].sort((a, b) => b.value - a.value);
+  const star = treasures.find((t) => !t.fake) ?? treasures[0];
+  if (star) {
+    const name = (getTreasures().treasures ?? []).find((t) => t.id === star.treasureId)?.name ?? '';
+    add('appraisal', pickMcLines(data, 'appraisal', rng, { duo: rng.next() < 0.5, vars: { name: nameOf(star.charId), treasure: name, amount: wonText(star.value) } }));
+  }
+  const award = [...(ev.awards ?? [])].sort((a, b) => b.bonus - a.bonus)[0];
+  if (award) add('awards', pickMcLines(data, 'award', rng, { duo: rng.next() < 0.5, vars: { name: nameOf(award.charIds[0]), award: award.name, amount: wonText(award.bonus) } }));
   const first = ranking[0];
   if (first) add('winner', pickMcLines(data, 'resultWinner', rng, { duo: true, vars: { name: first.name, amount: wonText(first.total) } }));
   const last = ranking.length > 1 ? ranking.at(-1) : null;
@@ -932,6 +1042,7 @@ function resultMc(ev, data, rng) {
     add('last', pickMcLines(data, 'resultLast', rng, { vars: { name: last.name } }));
     add('penalty', pickMcLines(data, 'penalty', rng, { speaker: 'bomi', vars: { name: last.name } }));
   }
+  if (ev.mvpClosesAt != null) add('mvp', pickMcLines(data, 'mvpVote', rng, { duo: false }));
   return out;
 }
 
@@ -966,7 +1077,7 @@ export function attachMc(events, { room, data = {}, seed = 0, lines = data.lines
     }
     const meta = mc.situations[sit.key];
     let list;
-    if (ev.type === 'gameOver') list = resultMc(ev, src, rng);
+    if (ev.type === 'gameOver') list = resultMc(ev, src, rng, { room });
     else {
       const duo = meta.duo === true || (meta.duo === 'chance' && rng.next() < (freq.duoChance ?? 0));
       list = pickMcLines(src, sit.key, rng, { duo, vars: sit.vars });

@@ -151,6 +151,12 @@ test('presentationFor: every event type maps to a tone, scene and emotion (synth
     houseBought: { charId: c.id, houseId: 'villa', price: 700, tradeIn: 0 },
     houseSold: { charId: c.id, houseId: 'oneroom', value: 300, amount: 210 },
     houseValueChanged: { eraId: 'senior', mult: 1.2, changes: [] },
+    // Stage 9
+    submapEntered: { charId: c.id, submap: 'temple', tileId: 'senior:main:2' },
+    submapResult: { charId: c.id, submap: 'reversal', optionId: 'horse:5', result: 'horseWin', amount: 400 },
+    treasureFound: { charId: c.id, uid: 'tr1', treasureId: 'celadon', source: 'tile' },
+    mvpVoted: { playerId: 'p1', charId: c.id, changed: false, count: 1 },
+    mvpDecided: { charId: c.id, votes: { [c.id]: 2 } },
   };
   assert.deepEqual(Object.keys(samples).sort(), [...EVENT_TYPES].sort());
   for (const type of EVENT_TYPES) {

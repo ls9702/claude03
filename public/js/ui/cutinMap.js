@@ -102,13 +102,20 @@ export const STAGE8_ANCHORS = new Set(['met', 'dated', 'proposed', 'married', 's
 /** childGrew kinds that open a cut-in. */
 export const CHILD_GROW_ANCHORS = new Set(['dol', 'exam', 'job']);
 export const isFamilyAnchor = (e) => STAGE8_ANCHORS.has(e?.type) || (e?.type === 'childGrew' && CHILD_GROW_ANCHORS.has(e.kind));
-const isAnchor = (e) => !!e && e.type !== 'prompt' && (e.cutin || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind));
+/**
+ * Stage 9 cut-in anchors (always anchors): 서브맵 결과 (경마 / 로또 / 소원 / 수련 / 여행…), 보물 발견. `submapEntered` is never an
+ * anchor (the submap prompt cut-in follows it) but a boundary + a board pop.
+ */
+export const STAGE9_ANCHORS = new Set(['submapResult', 'treasureFound']);
+const NEVER_ANCHOR = new Set(['prompt', 'submapEntered', 'mvpDecided']);
+const isAnchor = (e) =>
+  !!e && !NEVER_ANCHOR.has(e.type) && (e.cutin || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || STAGE9_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind));
 
 /** Follow-ups stop at these (they start their own step / group). */
 const BOUNDARY = new Set([
   'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
   'promptResolved', 'gameOver', 'betPlaced', ...STAGE6_ANCHORS, ...STAGE7_ANCHORS, 'tradeOffered', 'tradeResolved',
-  ...STAGE8_ANCHORS,
+  ...STAGE8_ANCHORS, ...STAGE9_ANCHORS, 'submapEntered',
 ]);
 /** Stage 8: childGrew dol / exam / job are boundaries (their own cut-in); 입학 is a chip of the anchor before it. */
 const isBoundary = (e) => BOUNDARY.has(e?.type) || (e?.type === 'childGrew' && CHILD_GROW_ANCHORS.has(e.kind));
@@ -269,6 +276,11 @@ export function fallbackText(anchor, name = '') {
       const m = Number(anchor.mult) || 1;
       return m >= 1 ? `부동산 시세 급등! 집값이 ${Math.round((m - 1) * 100)}% 올랐어요 📈` : `부동산 시세 폭락… 집값이 ${Math.round((1 - m) * 100)}% 내렸어요 📉`;
     }
+    // Stage 9
+    case 'treasureFound':
+      return `${name} 보물 발견! 💎 감정은 게임이 끝나면…`;
+    case 'submapResult':
+      return submapResultText(anchor, name);
     default:
       return anchor?.line ?? '';
   }
@@ -284,10 +296,11 @@ export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {
   else if (anchor?.type === 'finished') place = '골인';
   else if ((anchor?.type === 'gameOver' || anchor?.type === 'result') && anchor?.tone !== 'result') place = '결과 발표';
   else if (anchor?.type === 'prompt') return promptTag(anchor, tone);
-  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '만남', date: '데이트', propose: '프러포즈', house: '부동산' }[anchor.kind] ?? '결과';
+  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '만남', date: '데이트', propose: '프러포즈', house: '부동산', hometown: '고향 시골집', temple: '산사', jeju: '제주도', reversal: '인생역전' }[anchor.kind] ?? '결과';
   else if (STAGE6_TAGS[anchor?.type]) return STAGE6_TAGS[anchor.type](anchor);
   else if (STAGE7_TAGS[anchor?.type]) return STAGE7_TAGS[anchor.type](anchor);
   else if (STAGE8_TAGS[anchor?.type]) return STAGE8_TAGS[anchor.type](anchor);
+  else if (STAGE9_TAGS[anchor?.type]) return STAGE9_TAGS[anchor.type](anchor);
   // the tone label repeats the route name for routes ("💕 연애·육아 · 연애·육아 루트") → keep just the place
   if (place && tone.label && place.startsWith(tone.label)) return `${tone.icon ?? ''} ${place}`.trim();
   return `${tone.icon ?? ''} ${tone.label ?? ''}${place ? ` · ${place}` : ''}`.trim();
@@ -331,6 +344,44 @@ const STAGE8_TAGS = {
   houseBought: (a) => (Number(a.tradeIn) > 0 ? '🏠 집 갈아타기' : '🏠 내 집 마련'),
   houseValueChanged: (a) => ((Number(a.mult) || 1) >= 1 ? '📈 부동산 시세 급등' : '📉 부동산 시세 폭락'),
 };
+
+/** Stage 9 anchors: own tag. */
+const SUBMAP_TAG = { hometown: '🏡 고향 시골집', temple: '🛕 산사', jeju: '🌴 제주도', reversal: '🎰 인생역전', casino: '🎰 인생역전' };
+const STAGE9_TAGS = {
+  submapResult: (a) => {
+    const kind = String(a.optionId ?? '').split(':')[0];
+    const base = SUBMAP_TAG[a.submap] ?? '🗺️ 서브맵';
+    const what = { horse: '경마', lotto: '로또', wish: '소원', train: '수련', rest: '휴식', visit: '효도', trip: '여행' }[kind];
+    return what ? `${base} · ${what}` : base;
+  },
+  treasureFound: () => '💎 보물 발견',
+};
+
+/** Dialogue fallback of a submap result (the server's log line wins). */
+function submapResultText(a, name) {
+  const kind = String(a.optionId ?? '').split(':')[0];
+  const amt = Number(a.amount);
+  const r = String(a.result ?? '').toLowerCase();
+  const ok = ['win', 'won', 'success', 'jackpot', 'bigwin', 'hit', 'granted', 'unlock', 'unlocked'].includes(r) || (r === '' && amt > 0);
+  switch (kind) {
+    case 'horse':
+      return ok ? `${name}의 말이 1등! 인생역전 대성공 🏆` : `${name}의 말이 뒤처졌다… 💸`;
+    case 'lotto':
+      return ok ? `${name} 로또 당첨! 🎱` : `${name}의 로또는 꽝… 🎱`;
+    case 'wish':
+      return ok ? `${name}의 소원이 하늘에 닿았다! ✨` : `${name}의 소원… 다음 기회에 🙏`;
+    case 'train':
+      return `${name} 산사에서 수련 완료! 🧘`;
+    case 'rest':
+      return `${name} 고향에서 푹 쉬었어요 😴`;
+    case 'visit':
+      return `${name} 부모님께 효도했어요 👵`;
+    case 'trip':
+      return `${name} 제주도 여행! 🌴`;
+    default:
+      return `${name}의 ${SUBMAP_TAG[a.submap]?.slice(3) ?? '서브맵'} 결과!`;
+  }
+}
 
 /** Prompt tag = its title only (the tone label would repeat / contradict it: "💼 일·커리어 · 📝 수능 날"). */
 function promptTag(anchor, tone) {
@@ -426,13 +477,18 @@ export function resolveSceneBg(scene, { presentation = {}, assetUrl = () => null
     const bgId = scenes[s]?.bg;
     const url = (bgId && assetUrl(bgId)) || findBg(s) || null;
     if (url) return { scene: s, url, svgScene: s, via };
+    if (s === scene && PREFER_SVG_SCENES.has(scene)) return { scene, url: null, svgScene: scene, via };
   }
   return { scene, url: null, svgScene: via.find((x) => SVG_SCENES.has(x)) ?? scene, via };
 }
+/** Stage 9 submap scenes: their own SVG (시골집 · 산사 · 제주도 · 경마장) beats a fallback chain's generic background. */
+export const PREFER_SVG_SCENES = new Set(['hometown', 'temple', 'jeju', 'casino']);
 /** Contract default of tones.json `sceneFallbacks` (used when the server doesn't send it). */
 export const DEFAULT_SCENE_FALLBACKS = Object.freeze({
   stage: 'wedding-hall', stadium: 'mountain-trail', gym: 'mountain-trail', army: 'mountain-trail', space: 'mountain-trail',
   campus: 'school', kitchen: 'office', police: 'office', shop: 'office', lab: 'hospital', holiday: 'wedding-hall',
+  // Stage 9 submaps (drawn as SVG here anyway, see PREFER_SVG_SCENES)
+  hometown: 'mountain-trail', temple: 'mountain-trail', jeju: 'mountain-trail', casino: 'studio',
 });
 /** Scenes the cut-in can draw as SVG without a generated background. */
-export const SVG_SCENES = new Set(['school', 'office', 'hospital', 'wedding-hall', 'mountain-trail', 'studio', 'shop', 'holiday']);
+export const SVG_SCENES = new Set(['school', 'office', 'hospital', 'wedding-hall', 'mountain-trail', 'studio', 'shop', 'holiday', 'hometown', 'temple', 'jeju', 'casino']);

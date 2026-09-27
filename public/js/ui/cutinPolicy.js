@@ -11,7 +11,10 @@
 // or sabotage are minor; lone card / gift / trade events are banners; a lotto draw that arrives while my prompt waits
 // is deferred ('defer') until I have answered.
 // Stage 8: 결혼식 / 출산 / 고교 첫 만남 / 부동산 시세 are big, a date is minor, 용돈 / 보상판매 / 입학 are chips.
+// Stage 9: a submap result is big for jackpots / big 인생역전 wins / a wish that opens 산신령 (else minor → a banner for
+// others in 「간단히」); a treasure find is minor unless it's mine.
 import { isCardAnchor } from './cutinMap.js';
+import { isSubmapBig, isSubmapPass } from '../shared/submaps.js';
 
 /** 「관전 컷인」 setting: full cut-ins for everything / small banners for other players' minor events / none. */
 export const CUTIN_MODES = ['full', 'compact', 'off'];
@@ -34,7 +37,7 @@ const BIG_TYPES = new Set(['finished', 'eraChanged', 'gameOver', 'jobChanged', '
   // Stage 8: 결혼식, 출산, 고교 첫 만남, 부동산 시세 (full even in 「간단히」)
   'married', 'childBorn', 'schoolMeet', 'houseValueChanged']);
 /** Stage 8 minor anchors: never full for other players in 「간단히」 (whatever their line tag says). */
-export const MINOR_TYPES = ['dated'];
+export const MINOR_TYPES = ['dated', 'treasureFound'];
 const BIG_TAG = /marriage|wedding|job|promotion|birth/;
 /** Stage 6 minor tiles: never full cut-ins for other players (whatever their line tag says). */
 export const MINOR_TILE_TYPES = ['habit', 'salary', 'card', 'shop'];
@@ -47,6 +50,7 @@ export const DEFER_TYPES = ['lottoDraw', 'holidayResult'];
 export function isBannerGroup(g) {
   const a = g?.anchor;
   if (!a) return false;
+  if (isSubmapPass(a)) return true; // Stage 9: 지나가기 / 그냥 나가기 at a submap
   if (a.type === 'cardUsed') return !isCardAnchor(a);
   return BANNER_TYPES.includes(a.type);
 }
@@ -63,6 +67,7 @@ export function isBigGroup(g) {
   if (g.studio?.length || a.mcStudio) return true;
   if (BIG_TYPES.has(a.type)) return true;
   if (MINOR_TYPES.includes(a.type)) return false;
+  if (a.type === 'submapResult') return isSubmapBig(a);
   if (a.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType)) return true;
   if (a.type === 'landed' && MINOR_TILE_TYPES.includes(a.tileType)) return false;
   if (BIG_TAG.test(String(a.mcKey ?? '')) || BIG_TAG.test(String(a.lineTag ?? ''))) return true;
@@ -121,6 +126,8 @@ const ANCHOR_RANK = {
   cardBlocked: 6, cardUsed: 5, itemBought: 3, gift: 0, cardGained: 0, tradeResolved: 0,
   // Stage 8
   married: 9, childBorn: 8, proposed: 7, schoolMeet: 7, houseValueChanged: 6, childGrew: 5, houseBought: 5, met: 4, dated: 2,
+  // Stage 9
+  submapResult: 6, treasureFound: 5,
 };
 const rankOf = (a) => (a?.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType) ? 4 : ANCHOR_RANK[a?.type] ?? 0);
 

@@ -228,6 +228,7 @@ export function unlockMet(tx, c, def) {
   if (u.money != null && (c.money ?? 0) < u.money) return false;
   if (u.netWorth != null && netWorth(c) < u.netWorth) return false;
   if (u.badEvents != null && (c.badEvents ?? 0) < u.badEvents) return false;
+  if (u.wishes != null && (c.wishes ?? 0) < u.wishes) return false; // Stage 9: 산신령 = 사찰 소원 성공 횟수
   if (u.maxRankOf && !u.maxRankOf.some((id) => reachedMaxRank(tx, c, id))) return false;
   // Stage 8: real estate (건물주) — houseSwaps ≥ n, owning one of `house`; `anyOf` = at least one sub-condition
   if (u.houseSwaps != null && (c.houseSwaps ?? 0) < u.houseSwaps) return false;

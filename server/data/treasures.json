@@ -1,0 +1,28 @@
+{
+  "_comment": "보물(Stage 9): 보물 칸·제주도 여행에서 얻는다. 얻는 순간 감정가(만원)를 min..max에서 뽑고(5 단위), fakeChance 확률로 가짜(fake.min..fake.max). 감정가는 room.treasureValues에만 있고 게임이 끝날 때(결과 발표) 공개된다. weight = 발견 가중치, eras = 발견 가능 시대(없으면 전부).",
+  "fake": { "min": 0, "max": 5 },
+  "treasures": [
+    { "id": "celadon", "name": "고려청자", "icon": "🏺", "desc": "비취색 빛깔이 은은한 천 년 전 청자", "min": 300, "max": 900, "fakeChance": 0.25, "weight": 3 },
+    { "id": "white_porcelain", "name": "조선백자", "icon": "🫖", "desc": "눈처럼 흰 달항아리", "min": 250, "max": 800, "fakeChance": 0.25, "weight": 3 },
+    { "id": "old_coin", "name": "옛날 동전", "icon": "🪙", "desc": "상평통보? 아니면 그냥 녹슨 동전?", "min": 20, "max": 150, "fakeChance": 0.15, "weight": 5 },
+    { "id": "idol_goods", "name": "아이돌 굿즈", "icon": "💿", "desc": "데뷔 앨범 사인 포토카드", "min": 30, "max": 250, "fakeChance": 0.1, "weight": 5 },
+    { "id": "dino_fossil", "name": "공룡 화석", "icon": "🦴", "desc": "뒷산에서 파낸 거대한 뼈", "min": 200, "max": 1000, "fakeChance": 0.3, "weight": 2 },
+    { "id": "gold_toad", "name": "금두꺼비", "icon": "🐸", "desc": "복을 부르는 순금 두꺼비", "min": 150, "max": 500, "fakeChance": 0.2, "weight": 3 },
+    { "id": "stamp", "name": "희귀 우표", "icon": "📮", "desc": "인쇄 실수로 거꾸로 찍힌 우표", "min": 20, "max": 200, "fakeChance": 0.15, "weight": 5 },
+    { "id": "lp_record", "name": "LP판", "icon": "💽", "desc": "전설의 가수 데뷔 초판 LP", "min": 30, "max": 220, "fakeChance": 0.1, "weight": 5 },
+    { "id": "sneakers", "name": "한정판 운동화", "icon": "👟", "desc": "새벽 줄 서서 산 한정판", "min": 50, "max": 300, "fakeChance": 0.2, "weight": 4 },
+    { "id": "fake_painting", "name": "가짜 명화", "icon": "🖼️", "desc": "누가 봐도 가짜… 인데 혹시?", "min": 800, "max": 2000, "fakeChance": 0.8, "weight": 2 },
+    { "id": "antique_clock", "name": "골동품 괘종시계", "icon": "🕰️", "desc": "할아버지 댁 다락방의 시계", "min": 60, "max": 300, "fakeChance": 0.2, "weight": 4 },
+    { "id": "calligraphy", "name": "명필 서예 족자", "icon": "📜", "desc": "추사체를 닮은 힘찬 붓글씨", "min": 200, "max": 700, "fakeChance": 0.35, "weight": 2 },
+    { "id": "meteorite", "name": "운석 조각", "icon": "☄️", "desc": "밤하늘에서 떨어진 돌멩이", "min": 100, "max": 600, "fakeChance": 0.3, "weight": 2 },
+    { "id": "ginseng", "name": "백년 산삼", "icon": "🌿", "desc": "심봤다! 뿌리가 굵직한 산삼", "min": 150, "max": 600, "fakeChance": 0.3, "weight": 3 },
+    { "id": "retro_console", "name": "레트로 게임기", "icon": "🕹️", "desc": "박스까지 멀쩡한 추억의 게임기", "min": 40, "max": 250, "fakeChance": 0.1, "weight": 4 },
+    { "id": "first_edition", "name": "초판 만화책", "icon": "📚", "desc": "전설의 만화 1권 초판본", "min": 30, "max": 200, "fakeChance": 0.1, "weight": 4 },
+    { "id": "black_pearl", "name": "흑진주 목걸이", "icon": "📿", "desc": "은은하게 빛나는 흑진주", "min": 100, "max": 450, "fakeChance": 0.25, "weight": 3 },
+    { "id": "vintage_camera", "name": "빈티지 필름 카메라", "icon": "📷", "desc": "찰칵 소리가 경쾌한 필름 카메라", "min": 50, "max": 250, "fakeChance": 0.1, "weight": 4 },
+    { "id": "signed_ball", "name": "홈런 사인볼", "icon": "⚾", "desc": "전설의 타자 은퇴 경기 홈런볼", "min": 40, "max": 300, "fakeChance": 0.2, "weight": 4 },
+    { "id": "amber", "name": "호박 속 모기", "icon": "🟠", "desc": "모기가 갇힌 호박 보석", "min": 100, "max": 500, "fakeChance": 0.25, "weight": 2 },
+    { "id": "gold_crown", "name": "신라 금관 조각", "icon": "👑", "desc": "반짝이는 금관 장식 한 조각", "min": 400, "max": 1200, "fakeChance": 0.5, "weight": 1 },
+    { "id": "treasure_map", "name": "보물 지도", "icon": "🗺️", "desc": "X 표시가 된 낡은 지도", "min": 10, "max": 80, "fakeChance": 0.3, "weight": 3 }
+  ]
+}

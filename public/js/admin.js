@@ -263,6 +263,7 @@ async function renderDetail() {
       <button class="btn small ghost" data-act="copy">입장 링크 복사</button>
     </div>
     ${hostTools(room, byId)}
+    ${mvpTools(room, byId)}
     <dl class="kv">
       <dt>모드</dt><dd>${esc(eras.modes[room.config.mode].name)}</dd>
       <dt>시대별 턴</dt><dd>${esc(eraText)}</dd>
@@ -326,7 +327,29 @@ function hostTools(room, byId) {
     </div>`;
 }
 
-const HOST_DONE = { timeout: '선택을 기본값으로 처리했어요.', forceSpin: '대신 룰렛을 돌렸어요.', skipTurn: '이번 턴을 건너뛰었어요.' };
+/** Stage 9: the MVP vote of a finished game (live counts, 「투표 마감」 → mvpDecided at once). */
+function mvpTools(room, byId) {
+  const mvp = room.status === 'finished' ? room.result?.mvp : null;
+  if (!mvp) return '';
+  const counts = {};
+  for (const id of Object.values(mvp.votes ?? {})) counts[id] = (counts[id] ?? 0) + 1;
+  const list = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => `${esc(byId.get(id)?.name ?? id)} ${n}표`)
+    .join(' · ');
+  const left = mvp.closesAt ? Math.max(0, Math.ceil((mvp.closesAt - Date.now()) / 1000)) : null;
+  const winner = mvp.winner ? byId.get(mvp.winner)?.name ?? mvp.winner : null;
+  return `
+    <div class="host-box">
+      <h3>👑 MVP 투표</h3>
+      <p class="host-now">${winner ? `MVP: <b>${esc(winner)}</b>` : `진행 중${left != null ? ` · 남은 ${left}초` : ''}`} · ${list || '아직 표가 없어요'}</p>
+      <div class="host-actions">
+        <button class="btn small" data-host="closeVote" ${mvp.closed || mvp.winner ? 'disabled' : ''} title="지금까지의 표로 MVP를 정해요">🗳️ 투표 마감</button>
+      </div>
+    </div>`;
+}
+
+const HOST_DONE = { timeout: '선택을 기본값으로 처리했어요.', forceSpin: '대신 룰렛을 돌렸어요.', skipTurn: '이번 턴을 건너뛰었어요.', closeVote: 'MVP 투표를 마감했어요.' };
 
 async function onDetailClick(ev) {
   const host = ev.target.closest('[data-host]')?.dataset.host;

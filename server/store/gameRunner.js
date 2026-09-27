@@ -3,6 +3,7 @@
 // - Host turn timer (room config `turnTimeoutSec` > 0): `turn.spinDeadlineAt` → a timer dispatches an
 //   automatic `spin` for the current character (actor system).
 // - Stage 7: the earliest open trade offer's `expiresAt` → `expireTrades` (when it comes before the above).
+// - Stage 9: a finished game's MVP vote → `closeVote` at `result.mvp.closesAt` (also after an admin force end).
 // - Stage 9-C: a sibling timer per room plays CPU characters (`ownerSessionId === 'cpu'`): whatever `cpuDue` says
 //   the room waits on (an offer to a CPU, a prompt answer owed by a CPU, a CPU's spin) is acted on after
 //   `cpuDelayMs` (spin / prompt / trade) with `cpuDecide` and actor `{system: true, cpu: true}`.
@@ -51,6 +52,7 @@ export class GameRunner {
     if (r.ok) {
       this.#clear(roomId);
       this.#clearCpu(roomId);
+      this.schedule(r.room); // Stage 9: the MVP vote of the forced result closes on its timer
     }
     return r;
   }
@@ -82,6 +84,9 @@ export class GameRunner {
    * the first open trade offer to expire (Stage 7).
    */
   static deadlineOf(room) {
+    // Stage 9: a finished game waits on its MVP vote (closesAt → `closeVote`)
+    const mvp = room?.status === 'finished' ? room.result?.mvp : null;
+    if (mvp && !mvp.closed && mvp.closesAt) return { kind: 'vote', at: mvp.closesAt, key: `v:${mvp.closesAt}` };
     if (room?.status !== 'playing' || !room.turn) return null;
     let d = null;
     const p = room.turn.pending;
@@ -112,11 +117,13 @@ export class GameRunner {
       const action =
         d.kind === 'prompt'
           ? { type: 'timeout', promptId: d.promptId, actor: { system: true } }
-          : d.kind === 'trades'
-            ? { type: 'expireTrades', actor: { system: true } }
-            : { type: 'spin', characterId: live.turn.order[live.turn.currentIndex], auto: true, actor: { system: true } };
+          : d.kind === 'vote'
+            ? { type: 'closeVote', actor: { system: true } }
+            : d.kind === 'trades'
+              ? { type: 'expireTrades', actor: { system: true } }
+              : { type: 'spin', characterId: live.turn.order[live.turn.currentIndex], auto: true, actor: { system: true } };
       const r = this.dispatch(room.id, action);
-      if (!r.ok) this.log(`${{ prompt: '타임아웃', trades: '거래 만료', spin: '자동 룰렛' }[d.kind]} 처리 실패 (${room.id}): ${r.error}`);
+      if (!r.ok) this.log(`${{ prompt: '타임아웃', trades: '거래 만료', spin: '자동 룰렛', vote: 'MVP 투표 마감' }[d.kind]} 처리 실패 (${room.id}): ${r.error}`);
     }, delay);
     timer.unref?.();
     this.timers.set(room.id, { timer, key: d.key });

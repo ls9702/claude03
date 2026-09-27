@@ -171,7 +171,7 @@
       "ranks": [{ "name": "동네 도사", "salary": 600 }, { "name": "산신령", "salary": 980 }, { "name": "백두산 산신령", "salary": 1350 }],
       "rankUp": { "stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
       "injuryRisk": 0, "outfit": "hanbokTrad", "scene": "mountain-trail", "tone": "treasure",
-      "unlock": { "stats": { "luck": 9 }, "badEvents": 3, "desc": "운 9 이상 + 나쁜 일 3번 이상 극복 (사찰 소원 단계 전 임시 조건)" }
+      "unlock": { "wishes": 3, "desc": "사찰에서 소원을 3번 이상 이루기" }
     },
     {
       "id": "chaebol", "name": "재벌 총수", "icon": "👑", "hidden": true,

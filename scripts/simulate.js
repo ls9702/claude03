@@ -13,6 +13,10 @@
 // swaps, 청약 / lucky, the 노년 시세 draw and its effect, 건물주. `--family default` answers 만남 / 데이트 / 프로포즈 with
 // the prompt default (best candidate, matched date, propose) instead of randomly.
 //
+// Stage 9 report: submap visits / choices, treasures (count, appraisal values, fakes), special awards (share of
+// lifetime games, bonus vs the average winner total), titles (every one reached?), 산신령 unlocks, the composition
+// of the final totals (cash / house / items / treasures / awards), highlights per character and a random MVP vote.
+//
 // Stage 9-C: `--policy cpu` plays every character with the CPU heuristics (server/game/cpu.js `cpuDecide`), `--policy
 // mixed` only the odd-numbered ones (the rest stay random) and prints the 1st-place share per policy. CPU-policy
 // characters never bet, offer trades or gift (they still answer offers). `scripts/cpu-game.js` has the fixed
@@ -160,6 +164,29 @@ const stats = {
   military: {},
   finalRank: {},
   policyWins: { cpu: 0, random: 0, games: 0, chars: { cpu: 0, random: 0 } }, // Stage 9-C (--policy mixed)
+  // Stage 9
+  s9: {
+    submaps: {}, // `${submap}:${choice}` → n
+    visits: {}, // submap → prompts
+    treasures: { tile: 0, jeju: 0 },
+    values: [], // appraisal values (all modes)
+    fakes: 0,
+    treasureByRoute: {}, // `${era}:${route}` → [treasures, n]
+    spiritUnlocked: 0,
+    wishes: {}, // final c.wishes → characters (lifetime + adult)
+    spiritGames: 0,
+    lifeGames: 0,
+    lifeChars: 0,
+    awardGames: {}, // awardId → lifetime games where it was given
+    awardBonus: {}, // awardId → [Σ bonus per winner, winners]
+    winnerTotal: 0,
+    composition: { money: 0, debt: 0, house: 0, items: 0, treasures: 0, awards: 0, total: 0 },
+    titles: {}, // titleId → characters (all modes)
+    titleChars: 0,
+    highlights: 0,
+    highlightChars: 0,
+    mvp: { games: 0, first: 0, noVotes: 0 },
+  },
   news: {},
   rankUps: 0,
   injuries: 0,
@@ -337,6 +364,15 @@ function playGame(g) {
         }
       }
       if (ev.type === 'tradeOffered') s7.offers++;
+      // Stage 9
+      const s9 = stats.s9;
+      if (ev.type === 'prompt' && ['hometown', 'temple', 'jeju', 'reversal'].includes(ev.kind)) s9.visits[ev.kind] = (s9.visits[ev.kind] ?? 0) + 1;
+      if (ev.type === 'submapResult') {
+        const k = `${ev.submap}:${String(ev.optionId).startsWith('train:') ? 'train' : ev.optionId}`;
+        s9.submaps[k] = (s9.submaps[k] ?? 0) + 1;
+      }
+      if (ev.type === 'treasureFound') s9.treasures[ev.source] = (s9.treasures[ev.source] ?? 0) + 1;
+      if (ev.type === 'hiddenJobUnlocked' && ev.jobId === 'mountain_spirit') s9.spiritUnlocked++;
       if (ev.type === 'tradeResolved') s7.trades[ev.status] = (s7.trades[ev.status] ?? 0) + 1;
       if (ev.type === 'finished' && ev.place === 1) {
         const idx = room.turn.order.indexOf(ev.charId);
@@ -387,6 +423,63 @@ function playGame(g) {
     apply({ type: 'spin', characterId: cur.id });
   }
   const mode = room.config.mode;
+  // Stage 9: result (treasures, awards, titles, composition) + a random MVP vote closed at once
+  {
+    const s9 = stats.s9;
+    const res = room.result;
+    for (const t of res.treasures) {
+      s9.values.push(t.value);
+      if (t.fake) s9.fakes++;
+    }
+    for (const ids of Object.values(res.titles)) for (const id of ids) s9.titles[id] = (s9.titles[id] ?? 0) + 1;
+    s9.titleChars += room.characters.length;
+    for (const list of Object.values(room.highlights ?? {})) s9.highlights += list.length;
+    s9.highlightChars += room.characters.length;
+    if (mode !== 'kids') {
+      if (room.characters.some((c) => c.hiddenUnlocked.includes('mountain_spirit'))) s9.spiritGames++;
+      for (const c of room.characters) {
+        s9.wishes[c.wishes ?? 0] = (s9.wishes[c.wishes ?? 0] ?? 0) + 1;
+        for (const h of c.routeHistory) {
+          const b = (s9.treasureByRoute[`${h.era}:${h.route}`] ??= [0, 0]);
+          b[0] += c.treasures.length;
+          b[1]++;
+        }
+      }
+    }
+    if (mode === 'lifetime') {
+      s9.lifeGames++;
+      s9.lifeChars += room.characters.length;
+      for (const a of res.awards) {
+        s9.awardGames[a.id] = (s9.awardGames[a.id] ?? 0) + 1;
+        const b = (s9.awardBonus[a.id] ??= [0, 0]);
+        b[0] += a.bonus * a.charIds.length;
+        b[1] += a.charIds.length;
+      }
+      s9.winnerTotal += res.ranking[0].total;
+      const cmp = s9.composition;
+      for (const r of res.ranking) {
+        cmp.money += r.money;
+        cmp.debt += r.debt;
+        cmp.house += r.house;
+        cmp.items += r.items;
+        cmp.treasures += r.treasures;
+        cmp.awards += r.awards;
+        cmp.total += r.total;
+      }
+    }
+    if (res.mvp && !res.mvp.closed) {
+      for (const p of room.players) {
+        if (meta.next() < 0.2) continue; // some players never vote
+        const targets = room.characters.filter((c) => c.ownerSessionId !== p.sessionId);
+        const pick = targets.length ? meta.pick(targets) : meta.pick(room.characters);
+        room = applyAction(room, { type: 'vote', voterId: p.id, targetId: pick.id }, { now: now + 1000 }).room;
+      }
+      room = applyAction(room, { type: 'closeVote' }, { now: now + 2000 }).room;
+    }
+    s9.mvp.games++;
+    if (room.result.mvp.winner === res.ranking[0].charId) s9.mvp.first++;
+    if (room.result.mvp.note) s9.mvp.noVotes++;
+  }
   stats.s7.chars += room.characters.length;
   for (const c of room.characters) {
     stats.s7.itemsPerChar += c.items.length;
@@ -704,6 +797,33 @@ function mainRandom() {
   console.log(
     `[인생 전체 ${L.chars}명] 결혼 ${pct(L.married, L.chars)} · 연애 루트 선택자 결혼 ${pct(L.loveMarried, L.loveTakers)} (${L.loveTakers}명) · 기혼자당 자녀 ${(L.children / Math.max(1, L.married)).toFixed(2)} (최대 ${L.maxKids}) · 천재 ${pct(L.genius, L.children)} · 부모 수입 중 용돈 ${pct(L.parentInc.allowance, L.parentInc.all)} · 기혼자 수입 중 맞벌이 ${pct(L.marriedInc.spouse, L.marriedInc.all)} · 집 보유 ${pct(L.houses, L.chars)}`,
   );
+  // ---------- Stage 9 ----------
+  const s9 = stats.s9;
+  console.log(`\n--- 9단계: 서브맵·보물·결과발표 ---`);
+  const lpc = (n) => (n / Math.max(1, stats.lifePrompts.chars)).toFixed(2);
+  console.log(`서브맵 방문(인생 전체 캐릭터당): ${['hometown', 'temple', 'jeju', 'reversal'].map((k) => `${k} ${lpc(stats.lifePrompts.byKind[k] ?? 0)}`).join(' · ')} · 전체 방문 ${JSON.stringify(s9.visits)}`);
+  const choiceRows = ['hometown', 'temple', 'jeju', 'reversal'].map((sm) => {
+    const rows = Object.entries(s9.submaps).filter(([k]) => k.startsWith(`${sm}:`));
+    const tot = rows.reduce((a, [, n]) => a + n, 0);
+    return `${sm} ${rows.map(([k, n]) => `${k.split(':')[1]} ${pct(n, tot)}`).join('/')}`;
+  });
+  console.log(`서브맵 선택: ${choiceRows.join(' · ')}`);
+  const vals = [...s9.values].sort((a, b) => a - b);
+  const vmean = vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length);
+  console.log(`보물 ${vals.length}개 (보물 칸 ${s9.treasures.tile} · 제주 ${s9.treasures.jeju}) · 청년 이후 캐릭터당 ${(vals.length / Math.max(1, s8.chars)).toFixed(2)}개 · 감정가 평균 ${vmean.toFixed(0)} · 중앙값 ${vals[vals.length >> 1] ?? 0} · 최대 ${vals.at(-1) ?? 0} · 가짜 ${pct(s9.fakes, vals.length)}`);
+  for (const era of ['young', 'middle_age']) {
+    console.log(`${era} 루트별 보유 보물(캐릭터당): ${['love', 'career', 'money'].map((r) => { const [t, n] = s9.treasureByRoute[`${era}:${r}`] ?? [0, 0]; return `${r} ${(t / Math.max(1, n)).toFixed(2)}`; }).join(' · ')}`);
+  }
+  const avgWin = s9.winnerTotal / Math.max(1, s9.lifeGames);
+  console.log(`특별상 (인생 전체 ${s9.lifeGames}판, 평균 1위 총자산 ${avgWin.toFixed(0)}): ${data.awards.awards.map((a) => { const [b, w] = s9.awardBonus[a.id] ?? [0, 0]; return `${a.name} ${pct(s9.awardGames[a.id] ?? 0, s9.lifeGames)} (상금 ${w ? (b / w).toFixed(0) : 0} = 1위의 ${((100 * (w ? b / w : 0)) / Math.max(1, avgWin)).toFixed(1)}%)`; }).join(' · ')}`);
+  const cmp = s9.composition;
+  console.log(`총자산 구성(인생 전체): 현금−빚 ${pct(cmp.money - cmp.debt, cmp.total)} · 집 ${pct(cmp.house, cmp.total)} · 아이템 ${pct(cmp.items, cmp.total)} · 보물 ${pct(cmp.treasures, cmp.total)} · 특별상 ${pct(cmp.awards, cmp.total)}`);
+  const titleRows = data.titles.titles.map((t) => [t, s9.titles[t.id] ?? 0]);
+  console.log(`칭호 (${s9.titleChars}명): ${titleRows.map(([t, n]) => `${t.name} ${pct(n, s9.titleChars)}`).join(' · ')}`);
+  const missing = titleRows.filter(([, n]) => !n).map(([t]) => t.name);
+  console.log(`못 받은 칭호: ${missing.length ? missing.join(', ') : '없음 (전부 등장)'} · 하이라이트 캐릭터당 ${(s9.highlights / Math.max(1, s9.highlightChars)).toFixed(2)}개`);
+  console.log(`사찰 소원 성취 횟수 분포(청년 이후 캐릭터): ${JSON.stringify(s9.wishes)}`);
+  console.log(`산신령 해금: 청년 이후 캐릭터 ${pct(s9.spiritUnlocked, s8.chars)} · 게임 ${pct(s9.spiritGames, stats.games - (stats.byMode.kids?.games ?? 0))} · MVP = 최종 1위 ${pct(s9.mvp.first, s9.mvp.games)} (무투표 ${s9.mvp.noVotes}판)`);
   console.log(`뉴스: ${Object.entries(stats.news).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
   if (errors) process.exit(1);
 }

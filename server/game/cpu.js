@@ -390,6 +390,89 @@ function answerHouse(ctx, c, p) {
   return opts.find((o) => !hasField(o, 'houseId'))?.id ?? null;
 }
 
+// Stage 9 submaps: skipping a spin costs roughly one landing (never near the goal); bold CPUs gamble more.
+
+/** Rough worth (만원) of one landing for a character — what a skipped spin gives up. */
+function spinWorth(ctx, c) {
+  try {
+    return Math.max(40, expectedLanding(ctx, c, 'plain'));
+  } catch {
+    return 60;
+  }
+}
+
+/** 고향: rest (skip a spin, 체력 + a bigger 용돈) only when 체력 helps and the goal is far; else a visit. */
+function answerHometown(ctx, c, p) {
+  const opts = enabled(p);
+  const rest = opts.find((o) => o.id === 'rest');
+  const visit = opts.find((o) => o.id === 'visit');
+  if (!rest || !visit) return null;
+  if (cpuPersonality(c, ctx.room) === 'bold' || stepsToGoal(ctx.room, c) <= 12) return 'visit';
+  const statGain = (o) => Object.entries(o.stats ?? {}).reduce((s, [k, v]) => s + (v > 0 ? (statUseful(ctx, c, k) ? 60 : 15) * v : 0), 0);
+  const restScore = num(rest.money) + statGain(rest) - spinWorth(ctx, c) * num(rest.skipTurns, 1);
+  const visitScore = num(visit.money) + statGain(visit);
+  return restScore > visitScore ? 'rest' : 'visit';
+}
+
+/**
+ * 사찰: a wish when the CPU is on its way to 산신령 (a wish already granted) or the odds are good for a bold one;
+ * else training a useful stat (not near the goal, not bold); else a wish at ≥ 50 % within the reserve; else leave.
+ */
+function answerTemple(ctx, c, p) {
+  const k = knobs(c, ctx.room);
+  const opts = enabled(p);
+  const wish = opts.find((o) => o.id === 'wish');
+  const wishOk = wish && (c.money ?? 0) - priceOf(wish) >= k.reserve * 0.3;
+  const bold = cpuPersonality(c, ctx.room) === 'bold';
+  if (wishOk && ((c.wishes ?? 0) >= 1 || (bold && num(wish.chance) >= 0.4))) return 'wish';
+  if (!bold && stepsToGoal(ctx.room, c) > 12) {
+    const trains = opts.filter((o) => o.id.startsWith('train:') && o.stat && statUseful(ctx, c, o.stat));
+    const best = byMax(trains, (o) => (o.stat === keyStat(ctx, c) ? 2 : 1) - statOf(c, o.stat) * 0.01);
+    if (best) return best.id;
+  }
+  if (wishOk && num(wish.chance) >= 0.5) return 'wish';
+  return opts.find((o) => o.id === 'leave')?.id ?? null;
+}
+
+/** 제주도: a trip within the reserve (bold: always when affordable; others when 매력 / 운 help or cash is ample). */
+function answerJeju(ctx, c, p) {
+  const k = knobs(c, ctx.room);
+  const trip = enabled(p).find((o) => o.id === 'trip');
+  if (!trip) return 'skip';
+  const left = (c.money ?? 0) - priceOf(trip);
+  if (cpuPersonality(c, ctx.room) === 'bold' && left >= k.reserve * 0.5) return 'trip';
+  const useful = Object.keys(trip.stats ?? {}).some((st) => statUseful(ctx, c, st));
+  if (left >= k.reserve * (useful ? 1 : 2)) return 'trip';
+  return 'skip';
+}
+
+/**
+ * 인생역전: cautious CPUs pass; normal ones buy a lotto ticket only when trailing the leader with cash to spare;
+ * bold ones bet on horses — 10배 when far behind the leader (a catch-up gamble), else 2배 with ample cash, else
+ * the lotto.
+ */
+function answerReversal(ctx, c, p) {
+  const k = knobs(c, ctx.room);
+  const opts = enabled(p);
+  const has = (id) => opts.some((o) => o.id === id);
+  const persona = cpuPersonality(c, ctx.room);
+  if (persona === 'cautious') return 'skip';
+  const tot = totals(ctx.room, ctx.data);
+  const mine = tot.get(c.id) ?? 0;
+  const leader = Math.max(...ctx.room.characters.map((x) => tot.get(x.id) ?? 0));
+  const gap = leader - mine;
+  const cash = c.money ?? 0;
+  if (persona === 'bold') {
+    const h10 = opts.find((o) => o.id === 'horse:10');
+    if (h10 && gap > num(h10.stake) * 4) return 'horse:10';
+    if (has('horse:2') && cash >= k.reserve * 2) return 'horse:2';
+    if (has('lotto')) return 'lotto';
+    return 'skip';
+  }
+  if (has('lotto') && gap > 0 && cash >= k.reserve) return 'lotto';
+  return 'skip';
+}
+
 /** kind → (ctx, c, pending) → optionId | null (null = the prompt's default). Unknown kinds use the default. */
 export const CPU_ANSWERS = {
   routeChoice: answerRoute,
@@ -407,6 +490,11 @@ export const CPU_ANSWERS = {
   date: answerDate,
   propose: answerPropose,
   house: answerHouse,
+  // Stage 9 submaps
+  hometown: answerHometown,
+  temple: answerTemple,
+  jeju: answerJeju,
+  reversal: answerReversal,
 };
 
 /** The option a CPU character picks for the pending prompt (always an enabled option id). */
@@ -456,6 +544,11 @@ function tileWorth(ctx, c, tile) {
       return c.job ? 60 : 10;
     case 'card':
       return 40;
+    case 'treasure': // Stage 9: an average appraisal (hidden)
+      return 120;
+    case 'hometown':
+    case 'temple':
+      return 30;
     case 'goal':
       return 150;
     case 'event':

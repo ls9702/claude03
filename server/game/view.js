@@ -89,6 +89,10 @@ export function viewFor(room, sessionId = null) {
     // Stage 8: love / spouse / children / house are on the characters (public); owners per house + 노년 시세
     houseOwners: structuredClone(room.houseOwners ?? {}),
     housingMarket: structuredClone(room.housingMarket ?? null),
+    // Stage 9: highlights (public; texts never name a hidden value). Treasure appraisal values stay on the
+    // server until the game is finished (room.treasureFakes only ever goes out through result.treasures).
+    highlights: structuredClone(room.highlights ?? {}),
+    treasureValues: room.status === 'finished' ? structuredClone(room.treasureValues ?? {}) : null,
     result: room.result ? structuredClone(room.result) : null,
     log: room.log.slice(-50),
     createdAt: room.createdAt,

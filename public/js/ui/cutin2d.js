@@ -20,6 +20,8 @@ import { HOLIDAY_OPTION_ICON, hwatuFlipHtml, hwatuSvg, lottoBallHtml, shopOption
 import { CHILD_GROW, childInfo, familyCast, houseInfo, marketInfo, npcCharacter, partnerInfo, schoolMeetPairs, weddingGifts } from '../shared/family.js';
 import { dolTableSvg, houseArtHtml, houseOptionsHtml, marketChartSvg } from './houseArt.js';
 import { familyOptionsHtml } from './familyArt.js';
+import { isSubmapBig, parseOptionId, racePlan, submapInfo, submapOf, submapSuccess, treasureInfo } from '../shared/submaps.js';
+import { raceGateHtml, raceHtml, submapOptionsHtml, submapSceneBody, treasureArtHtml, treasureChestSvg } from './submapArt.js';
 
 const REASON_ICON = {
   tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', habit: '📚', tuition: '🎓', military: '🪖',
@@ -105,6 +107,30 @@ function stage8Look(a) {
 }
 
 /**
+ * Stage 9 anchors → presentation defaults (server tone / scene / emotion win): submap results (success → the submap's
+ * tone, a loss → bad), treasure finds (treasure tone, 💎). `fx9`: race (경마 animation) / wish (✨ rising) / wishfail /
+ * lotto; the submap scene (시골집 · 산사 · 제주도 · 경마장) is the default background.
+ */
+function stage9Look(a) {
+  if (a?.type === 'treasureFound') return { tone: 'treasure', scene: null, pose: 'jump', emotion: 'joy', sfx: 'fanfare', glyph: '💎', bigWin: true };
+  if (a?.type !== 'submapResult') return null;
+  const info = submapInfo(submapOf(a));
+  const ok = submapSuccess(a);
+  const kind = parseOptionId(a.optionId).kind;
+  const fx9 = kind === 'horse' ? 'race' : kind === 'wish' ? (ok === false ? 'wishfail' : 'wish') : kind === 'lotto' ? 'lotto' : null;
+  return {
+    tone: ok === false ? 'bad' : ok && (kind === 'horse' || kind === 'lotto') ? 'treasure' : info.tone,
+    scene: info.scene,
+    pose: ok === false ? 'cry' : ok ? (kind === 'horse' || kind === 'lotto' ? 'jump' : 'cheer') : 'wave',
+    emotion: ok === false ? 'cry' : 'joy',
+    sfx: ok === false ? 'thud' : ok ? 'fanfare' : 'pop',
+    glyph: ok === false ? null : kind === 'wish' ? '🙏' : kind === 'train' ? '🧘' : null,
+    fx9,
+    bigWin: isSubmapBig(a),
+  };
+}
+
+/**
  * Horizontal slot centres (%) for a cast: the classic 1–3 slots for full-size figures, else spread by figure width
  * (children are narrower) between 13 % and 87 %.
  */
@@ -185,7 +211,7 @@ function sceneSvg(scene, tone) {
       break;
     }
     default:
-      body = `<g fill="#fff" opacity=".7"><ellipse cx="300" cy="180" rx="140" ry="44"/><ellipse cx="1200" cy="140" rx="120" ry="38"/></g><rect y="700" width="1600" height="200" fill="#8ccf7e"/>`;
+      body = submapSceneBody(scene) ?? `<g fill="#fff" opacity=".7"><ellipse cx="300" cy="180" rx="140" ry="44"/><ellipse cx="1200" cy="140" rx="120" ry="38"/></g><rect y="700" width="1600" height="200" fill="#8ccf7e"/>`;
   }
   return `<svg class="ci-bg-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${base}${body}</svg>`;
 }
@@ -251,7 +277,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (a.type === 'newsFlash') return newsSpec(g, { characters });
     if (a.type === 'lottoDraw') return lottoSpec(g, { characters });
     if (a.type === 'houseValueChanged') return marketSpec(g, { characters });
-    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? stage8Look(a) ?? null;
+    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? stage8Look(a) ?? stage9Look(a) ?? null;
     const meta = getMeta();
     const main = characters.find((c) => c.id === g.charId) ?? null;
     const name = main?.name ?? '';
@@ -305,7 +331,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (a.type === 'holidayStarted') chips.push({ text: '🧧 세배 룰렛', kind: '' }, { text: '🗣️ 잔소리 룰렛', kind: '' }, { text: '🎴 고스톱 한 판', kind: '' });
     if (a.type === 'finished') chips.unshift({ text: `🏁 ${a.place}등 골인`, kind: 'plus' });
     const fam = stage8Extras(g, { characters, chips, meta });
-    const badge = jobBadgeFor(a) ?? stage7Badge(a, meta) ?? stage8Badge(a, g, { characters, meta });
+    const s9 = stage9Extras(g, { chips, meta });
+    const badge = jobBadgeFor(a) ?? stage7Badge(a, meta) ?? stage8Badge(a, g, { characters, meta }) ?? s9.badge;
     if (a.type === 'educationChanged' && educationLabel(a.education)) chips.unshift({ text: `🎓 ${educationLabel(a.education)}`, kind: 'plus' });
     if (a.type === 'militaryStart' && a.turns) chips.unshift({ text: `🪖 복무 ${a.turns}턴`, kind: '' });
     if (a.type === 'injured' && a.turns) chips.unshift({ text: `🤕 ${a.turns}턴 부상`, kind: 'minus' });
@@ -362,6 +389,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const mineInvolved = characters.some((c) => c.isMe && (c.id === g.charId || c.id === g.targetId || holiday?.rows.some((r) => r.charId === c.id)));
     let autoMs = autoAdvanceMs({ owner: !!ownerChar?.isMe || mineInvolved, reduced: isReduced() });
     if (holiday) autoMs = Math.max(autoMs, 5200 + holiday.rows.length * 450);
+    if (s9.race) autoMs = Math.max(autoMs, s9.race.durationMs + 2600);
+    if (s9.treasure) autoMs = Math.max(autoMs, 4600);
     const texts = g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)];
     // sabotage: the victim's reaction line (server `targetLine`, pool `sabotaged`)
     if (a.type === 'cardUsed' && a.targetId && a.targetLine) texts.splice(2, texts.length, `${nameOf(characters, a.targetId)}: “${a.targetLine}”`);
@@ -396,6 +425,13 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       pairs: fam.pairs, // 고교 첫 만남: every pair in the box
       gifts: fam.gifts, // 💌 축의금 list
       fx8: look?.fx && ['wedding', 'hearts', 'heartbreak'].includes(look.fx) ? look.fx : null,
+      fx9: look?.fx9 ?? null, // Stage 9: race / wish / wishfail / lotto
+      race: s9.race, // 경마: deterministic race panel
+      treasure: s9.treasure, // 보물: chest → item
+      lottoNums: s9.lottoNums,
+      ticket: s9.ticket, // 인생역전 로또 긁기
+
+      submap: a.type === 'submapResult' ? submapOf(a) : null,
       characters,
       mc: g.mc ?? null, // Stage 5.6: small MC corner lines
     };
@@ -539,6 +575,40 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       if (k) return { icon: '👶', img: null, title: k.name, stars: '', sub: `${k.genius ? '🌟 천재 · ' : ''}${k.traitName || '건강하게 태어났어요'}`, kind: `baby${k.genius ? ' genius' : ''}` };
     }
     return null;
+  }
+
+  /**
+   * Stage 9 chips / panels (mutates `chips`): the submap outcome (💰 amount when no money follow-up names it, 🎟️ odds,
+   * stat), the treasure badge + chest panel. → {badge, race, treasure, lottoNums}
+   */
+  function stage9Extras(g, { chips, meta }) {
+    const a = g.anchor;
+    const out = { badge: null, race: null, treasure: null, lottoNums: null, ticket: null };
+    if (a.type === 'treasureFound') {
+      const info = treasureInfo(a.treasureId ?? a.id, meta);
+      const art = artFor('treasure', info.id);
+      out.treasure = { id: info.id, name: info.name, icon: info.icon, art };
+      out.badge = { icon: info.icon, img: art, title: info.name, stars: '', sub: '💎 감정은 게임이 끝나면!', kind: 'treasure' };
+      chips.unshift({ text: `💎 ${info.name} 획득`, kind: 'plus' });
+      return out;
+    }
+    if (a.type !== 'submapResult') return out;
+    const opt = parseOptionId(a.optionId);
+    const ok = submapSuccess(a);
+    if (opt.kind === 'horse') {
+      out.race = racePlan(a);
+      chips.unshift({ text: `🐎 ×${out.race.chosen ?? '?'} ${ok ? '적중!' : '꽝'}`, kind: ok ? 'plus' : 'minus' });
+    }
+    if (opt.kind === 'lotto' && Array.isArray(a.numbers)) out.lottoNums = a.numbers.slice(0, 6);
+    if (opt.kind === 'lotto') out.ticket = { rank: a.rank ?? null, prize: Number(a.prize) || 0, win: ok === true, jackpot: String(a.result) === 'jackpot' || a.rank === 'jackpot' };
+    if (opt.kind === 'wish') chips.unshift(ok === false ? { text: '🙏 소원… 다음 기회에', kind: '' } : { text: '✨ 소원 성취!', kind: 'plus' });
+    const amt = Number(a.amount);
+    if (amt && !g.money.some((m) => m.charId === g.charId)) chips.push({ text: `${amt > 0 ? '💰 +' : '💸 '}${won(amt)}`, kind: amt > 0 ? 'plus' : 'minus' });
+    if (a.stat && !(g.stats ?? []).some((st) => st.charId === g.charId && st.stat === a.stat)) {
+      const c = statChip({ stat: a.stat, delta: Number(a.delta ?? a.gain) || 1 });
+      chips.push(c);
+    }
+    return out;
   }
 
   /**
@@ -933,6 +1003,56 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     }
   }
 
+  // ---------- Stage 9: horse race, wish sparkles, treasure chest, submap prompt props ----------
+  function renderStage9(item) {
+    const { spec } = item;
+    overlay.dataset.submap = spec.submap ?? spec.prompt?.kind ?? '';
+    if (spec.race) {
+      const panel = document.createElement('div');
+      panel.className = 'ci-race';
+      panel.innerHTML = raceHtml(spec.race, { still: isReduced() });
+      $.fx.appendChild(panel);
+      // start after the entry squash; the plan decides who wins (same for every viewer)
+      item.timers.push(setTimeout(() => cur === item && panel.firstElementChild?.classList.add('go'), isReduced() ? 0 : 450));
+    }
+    if (spec.fx9 === 'wish' || spec.fx9 === 'wishfail') {
+      const fx = document.createElement('div');
+      fx.className = `ci-wishfx ${spec.fx9}`;
+      const glyphs = spec.fx9 === 'wish' ? ['✨', '🌟', '✨', '💫'] : ['🍂', '💧'];
+      fx.innerHTML = Array.from({ length: spec.fx9 === 'wish' ? 14 : 5 }, (_, i) => `<i style="--i:${i};--x:${(i * 53) % 100}%">${glyphs[i % glyphs.length]}</i>`).join('');
+      $.fx.appendChild(fx);
+    }
+    if (spec.lottoNums?.length) {
+      const panel = document.createElement('div');
+      panel.className = 'ci-lotto small9';
+      panel.innerHTML = `<div class="ci-lotto-balls">${spec.lottoNums.map((n, i) => lottoBallHtml(n, { delay: 500 + i * 500 })).join('')}</div>`;
+      $.fx.appendChild(panel);
+    }
+    if (spec.ticket) {
+      const tk = spec.ticket;
+      const rankText = { jackpot: '1등', second: '2등', third: '3등' }[tk.rank] ?? (tk.win ? '당첨' : '');
+      const panel = document.createElement('div');
+      panel.className = `ci-ticket${tk.win ? ' win' : ''}${tk.jackpot ? ' jackpot' : ''}`;
+      panel.innerHTML = `<span class="ci-tk-head">🎟️ 인생역전 로또</span><span class="ci-tk-scratch" aria-hidden="true"></span><b class="ci-tk-res">${tk.win ? `🎉 ${esc(rankText)} ${tk.prize ? esc(won(tk.prize)) : ''}` : '꽝… 다음 기회에'}</b>`;
+      $.fx.appendChild(panel);
+      item.timers.push(setTimeout(() => cur === item && panel.classList.add('scratched'), isReduced() ? 0 : 900));
+    }
+    if (spec.treasure) {
+      const t = spec.treasure;
+      const panel = document.createElement('div');
+      panel.className = 'ci-treasure';
+      panel.innerHTML = `<span class="ci-chest">${treasureChestSvg()}</span><span class="ci-chest open">${treasureChestSvg({ open: true })}</span>${treasureArtHtml(t.id, { art: t.art, meta: getMeta(), cls: 'ci-tr-item' })}<b class="ci-tr-name">${esc(t.name)}</b>`;
+      $.fx.appendChild(panel);
+      item.timers.push(setTimeout(() => cur === item && panel.classList.add('opened'), isReduced() ? 0 : 900));
+    }
+    if (spec.prompt?.kind === 'reversal' && (spec.prompt.options ?? []).some((o) => String(o.id).startsWith('horse:'))) {
+      const gate = document.createElement('div');
+      gate.className = 'ci-race gate';
+      gate.innerHTML = raceGateHtml();
+      $.fx.appendChild(gate);
+    }
+  }
+
   // ---------- MCs (Stage 5.6) ----------
   const mcSound = (l) => audio?.play('bark', { mc: l.speaker, force: true });
 
@@ -1051,6 +1171,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     renderStage6(spec);
     renderStage7(item);
     renderStage8(item);
+    renderStage9(item);
     if (spec.kind === 'mc') renderStudio(item);
     else if (spec.mc?.length) renderSmallMc(item);
     audio?.play(spec.sfx ?? pres().tones?.[spec.tone]?.sfx ?? 'pop');
@@ -1075,7 +1196,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     $.progress.classList.remove('run');
     if (spec.autoMs && spec.kind !== 'mc' && spec.mc?.length) spec.autoMs = Math.max(spec.autoMs, (spec.line ? 1100 : 500) + mcScriptMs(spec.mc, { gap: 1200, hold: 1500 }));
     if (spec.autoMs) {
-      item.timers.push(setTimeout(() => cur === item && close(), spec.autoMs));
+      item.timers.push(setTimeout(() => cur === item && close('auto'), spec.autoMs)); // 'auto' → onClose tells auto from tap
       $.progress.style.setProperty('--ci-auto', `${spec.autoMs}ms`);
       void $.progress.offsetWidth;
       $.progress.classList.add('run');
@@ -1131,6 +1252,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   /** Stage 8 prompts: 만남 candidate cards, 데이트 cost / ❤️, 프러포즈 chance meter, 매물 listing cards. */
   function stage8OptionsHtml(p) {
     const who = p.forMe[0];
+    const sm = submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt', won }); // Stage 9 submaps
+    if (sm != null) return sm;
     const head = p.forMe.length > 1 || who.id !== p.charId ? `<p class="ci-opt-who">${esc(who.name)}의 선택</p>` : '';
     if (p.kind === 'house') return `${head}${houseOptionsHtml(p, who, { meta: getMeta(), room: p.room ?? null, artFor, btnClass: 'ci-opt' })}`;
     const html = familyOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt' });
@@ -1303,6 +1426,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         date: { tone: 'love', scene: 'none' },
         propose: { tone: 'love', scene: 'wedding-hall' },
         house: { tone: 'treasure', scene: 'none' },
+        // Stage 9 submaps
+        hometown: { tone: 'good', scene: 'hometown' },
+        temple: { tone: 'good', scene: 'temple' },
+        jeju: { tone: 'holiday', scene: 'jeju' },
+        reversal: { tone: 'treasure', scene: 'casino' },
       }[p.kind] ?? null;
     // Stage 8: the partner (date / propose) or the candidates (meet) stand next to the character
     if (subject && cast.length && ['meet', 'date', 'propose'].includes(p.kind)) {

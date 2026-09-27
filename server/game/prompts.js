@@ -26,6 +26,8 @@ export const ANCHOR_TYPES = new Set([
   'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw',
   // Stage 8
   'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'houseBought', 'houseValueChanged',
+  // Stage 9
+  'submapResult', 'treasureFound', 'mvpDecided',
 ]);
 
 /** Open a prompt → turn.pending, phase awaitDecision (CPU characters answer via the runner: cpu.js). */

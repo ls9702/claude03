@@ -545,7 +545,7 @@ test('presentation + MC: Stage 8 types registered; anchors vs chips; lines fille
 test('full random lifetime games: family + house events, known types, filled lines; love-route marriages happen', () => {
   const seen = new Set();
   let married = 0;
-  for (const seed of [3, 12]) {
+  for (const seed of [6, 8]) { // (Stage 9 board pools: seeds re-picked so a date still happens)
     let room = started({ seed, chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2'], ['B', 'B2']] });
     const rng = createRng(seed);
     for (let i = 0; i < 3000 && room.status === 'playing'; i++) {
@@ -573,7 +573,7 @@ test('full random lifetime games: family + house events, known types, filled lin
     for (const r of room.result.ranking) {
       const c = ch(room, r.charId);
       assert.equal(r.house, c.house?.value ?? 0);
-      assert.equal(r.total, r.money - r.debt + r.items + r.house);
+      assert.equal(r.total, r.money - r.debt + r.items + r.house + r.treasures + r.awards); // Stage 9 adds treasures + awards
     }
     assert.deepEqual(room.houseOwners, Object.fromEntries(Object.entries(room.houseOwners)));
   }

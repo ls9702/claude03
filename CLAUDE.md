@@ -999,3 +999,91 @@
   legality, trade answers, CPU-only games in 3 modes with no bets / offers / gifts), `test/cpu-server.test.js` (delays,
   mocked-timer pacing incl. the cut-in extra and a trade answer, a CPU-only runner game to the end, admin / host routes,
   admin start of a CPU-only room watched by a spectator). E2E: session scratchpad `s9c/e2e.cjs` (`s9c-*.png`).
+
+## Stage 9 — submaps, treasures, awards, result show (server)
+- Data (`gameData().treasures|awards|titles`, `/api/meta.treasures|awards|titles`, `/api/meta.balance.submaps|result`):
+  `server/data/treasures.json` (22 `{id, name, icon, desc, min, max, fakeChance, weight, eras?}` + `fake {min 0, max 5}`),
+  `awards.json` (10 `{id, name, icon, desc, metric, route?, min, bonus, tie: all|split|place|qualify}`), `titles.json`
+  (`perCharacter` 2, 25 titles `{id, name, icon, desc, priority, when}` + the `fallback` 평범한 인생), `balance.json` `submaps`
+  (era `scale`, hometown / temple / jeju / reversal numbers) and `result` (`mvpVoteMs` 60000, `mvpSettleMs` 5000, `highlights
+  {keep 8, show 5, bigMoney 300}`). jobs.json 산신령 `unlock {wishes: 3}` (`unlockMet` knows `wishes`; the Stage 6 interim rule is
+  gone). board.json: tile types `hometown 🏡 / temple 🛕 / jeju 🏝️ / reversal 🎰`, pools: hometown elem/middle/high/senior main +
+  love route, temple middle 2 / high 2 / senior 4 + money route 3, jeju love / money routes, reversal senior 5, treasure money route
+  4 + senior 2; `placeholders` is `{}` (resolveTile's default branch stays for future types).
+- Submaps (`server/game/submaps.js`, single-tile detours; `resolveTile` → `resolveSubmapTile`): landing emits `submapEntered
+  {charId, submap, tileId}` (a follow-up: the prompt takes the stage, `landed.cutin` false) and opens prompt `<submap>` (single):
+  - `hometown` options `rest {money, stats {str:1}, skipTurns 1}` / `visit {money, stats {charm:1}}` (default visit); rest = the next
+    turn is skipped (`skipTurns` + `skipReason: 'hometown'`, endTurn logs by reason: retake / hometown / temple).
+  - `temple` options `train:<stat> {stat, gain 2, skipTurns 1}` for the weakest and the strongest stat below the cap
+    (`trainStats`), `wish {chance, cost = price = offering, money}` (disabled without the 시주), `leave` (default). Wish: offering
+    paid, `rng.next() < wishChance` (base 0.5 + 0.05 × 운, [0.1, 0.9]) → 운 +1 + money, `character.wishes` += 1 (public).
+  - `jeju` options `trip {cost, price, stats {charm, luck}, treasureChance}` (disabled without cash; default trip when affordable) /
+    `skip`; a trip finds a treasure with `jejuTreasureChance` (0.3 + 0.02 × 운 ≤ 0.6) → `treasureFound {source: 'jeju'}`.
+  - `reversal` options `lotto {cost 35, prizes [{id jackpot|second|third, chance, amount}], ev}` (EV 30 < 35), `horse:2|5|10 {odds,
+    chance 0.47/0.188/0.094, stake = 20 % of cash (10..1500, 5 단위), ev < 1}` (disabled without cash), `skip` (default).
+  - Resolution → `submapResult {charId, submap, optionId, result, amount?, ...}` (anchor, emitted BEFORE its moneyChanged
+    (reasons hometown / temple / jeju / reversal) / statChanged (reason = submap) follow-ups). `result`: hometown rest|visit ·
+    temple train (+stat, gain) | wishOk | wishFail (+chance, wishes) | leave · jeju trip (+treasure bool) | skip · reversal jackpot |
+    lottoWin | lottoLose (+prize, rank) | horseWin | horseLose (+odds, stake, chance) | skip. skip / leave results have `cutin: false`.
+- Treasures (`server/game/treasures.js`): `treasure` tile → `findTreasure` (weighted pool of the era, `appraise` = fake with
+  `fakeChance` → 0..5, else min..max rounded to 5) → character `treasures [{uid 'tr<n>', id}]` (public), `room.treasureValues {uid:
+  value}` + `room.treasureFakes {uid: true}` (hidden), `room.nextTreasureSeq`; `treasureFound {charId, uid, treasureId, source:
+  tile|jeju}` (anchor; takes over the landing's cut-in like Stage 8 outcomes). `viewFor`: `treasureValues` only when the room is
+  finished (else null), `treasureFakes` never (the fake flag goes out in `result.treasures`). Mid-game `computeRanking` never counts
+  treasure values (`reveal: false`, so CPU heuristics can't peek).
+- Life records + highlights (`server/game/highlights.js`, pure post-passes in `applyAction`): `trackRecords` (before decoration; the
+  gameOver path runs it first so titles see the whole batch) keeps `character.record {minNet, maxDebt, bankruptcies, inDebt,
+  worstRankPct (net-worth rank at adult era entries, 1 = poorest), luckWin (lotto + reversal gains), gambles, gambleNet, sabotage,
+  sabotaged, rankUps, overtime, proposeFails, partners, submaps {hometown, temple, jeju, reversal} (non-pass visits)}` and flags a
+  loss that pushed a character into debt with `moneyChanged.bankrupt: true` (학자금 loans never count). `recordHighlights` (after
+  `decorateEvents`) → `room.highlights {charId: [{seq, turnNo, type, text (Korean), tone, scene, emotion, era, amount?, score,
+  eventRef}]}` (public; top `keep` by score, chronological; `eventRef` = scalar fields of the event + partner/spouse/child names).
+  Scores: jackpot 10+, hidden job 9, wedding / 1st goal 8, genius birth 8, max rank / bankruptcy 7, birth 6, sabotaged 5, house 5–7,
+  exam elite 5, big money swings 3 + |Δ|/300, …; `topHighlights(n)`. `room.highlightSeq`.
+- Result (`result.js` `applyResult`, also on the admin force end): `computeAwards` (awards.js metrics children, geniusChildren,
+  careerScore (hidden +100, rank × 10, +5 at max; 알바 0), treasureValue, houseValue, routeMedal (route completed in young AND
+  middle_age), allRoutes (love route|married, career route|rank ≥ 2, money route|house|treasure), luckWinnings) → `computeRanking(room,
+  {reveal: true, awards})` rows `{rank, charId, name, money, debt, goalBonus, items, house, treasures, awards, total, place}` (total =
+  money − debt + items + house + treasures + awards; award bonuses are NOT added to cash) → `computeTitles` (`titleFacts` +
+  `conditionMet`) → `room.result = {ranking, treasures [{charId, uid, treasureId, value, fake, line, lineTag}], awards [{id, name,
+  icon, desc, charIds, bonus (per winner), value, line, lineTag}], titles {charId: [titleId]}, highlights (top 5 per character),
+  mvp {votes {playerId: charId}, winner, closesAt, closed, counts?, closedAt?, note?, line?}, finishedAt, forced, mc?}`. `gameOver`
+  event: `{ranking, awards, titles, treasures, mvpClosesAt (null when already decided)}`.
+- MVP vote (engine `RESULT_ACTIONS`, status finished only, else 409 "결과 발표 중이 아니에요."): `vote {targetId}` — actor
+  `{sessionId}` of a room player (spectators 403 "관전자는 투표할 수 없어요.", admin/system 403, trusted callers pass `voterId`),
+  one vote per player (changeable, `mvpVoted {playerId, charId, changed, count}`), own characters 409 unless the voter owns every
+  character; when every eligible player voted, `closesAt` = min(closesAt, now + mvpSettleMs). `closeVote` — system only once
+  `closesAt` passed (409 "아직 투표 시간이 남았어요."), admin any time → `decideMvp` (most votes; ties → higher final rank; no votes
+  → 1st place + `note: 'noVotes'`) → `mvpDecided {charId, votes {charId: n}, note?}`. No eligible voters (CPU-only / spectators) →
+  decided inside applyResult (`note: 'noVoters'`) and `mvpDecided` follows `gameOver` in the same batch. CPUs never vote.
+  `GameRunner.deadlineOf` returns `{kind: 'vote', at: closesAt}` for a finished room with an open vote → `closeVote` (system);
+  `runner.end` re-schedules so a forced result closes too; `restore()` re-arms it. Routes: player `POST /api/rooms/:id/actions
+  {type: 'vote', targetId}`; admin `POST /admin/api/rooms/:id/actions {type: 'closeVote'}` (finished rooms).
+- Presentation: `EVENT_TYPES` + submapEntered submapResult treasureFound mvpVoted mvpDecided; `CUTIN_TYPES` / prompts.js
+  `ANCHOR_TYPES` + submapResult treasureFound mvpDecided (boundaries also mvpVoted); scenes `hometown temple jeju casino`
+  (`SUBMAP_SCENES`; tones.json scenes + `sceneFallbacks` → mountain-trail ×3 / office; manifest `bg-hometown bg-temple bg-jeju
+  bg-casino` todo), mvpDecided scene stage. Prompt tone / tag / emotion / scene per kind (tags hometown temple jeju reversal).
+  Line tags: hometown hometown_rest hometown_visit temple temple_train temple_wish_ok temple_wish_fail temple_leave jeju jeju_trip
+  jeju_skip reversal reversal_jackpot reversal_win reversal_lose reversal_skip appraisal_real appraisal_fake award mvp mvp_vote
+  (+ placeholders `{treasure} {award}`); `treasureFound` uses tag treasure. gameOver rows: every revealed treasure / award gets a
+  `line` (copied onto `room.result`). MC (mc.json + lines.json pools): `temple` (medium; a wish / training), `jeju` (medium; a trip),
+  `reversalWin` (big) / `reversalLose` (medium), `treasure` (big, on treasureFound only; vars + treasure), `mvp` (big, studio, on
+  mvpDecided), and the result show parts: intro → `appraisal` (best real treasure, else a fake) → `awards` (biggest award) → winner →
+  last → penalty → `mvp` (situation `mvpVote`, only while the vote is open). Manifest kind `treasure` (meta.treasure required, icon
+  pipeline) with 22 todo items `treasure-<id with _→->` → `treasures/<…>.png`.
+- CPU (`cpu.js`): hometown = rest only when 체력 helps, the goal is > 12 tiles away and the gift beats a lost landing (bold: visit);
+  temple = wish when already granted one (or bold with ≥ 40 %), else train a useful stat (not bold, goal far), else wish at ≥ 50 %
+  within the reserve, else leave; jeju = trip within the reserve (bold looser); reversal = cautious skip, normal lotto only when
+  trailing, bold horse:10 when far behind the leader, else horse:2 with ample cash, else lotto. `tileWorth` knows treasure / submaps.
+- Balance (`scripts/simulate.js` 9단계 block; seed 11 × 300): lifetime 78.1 spins (Stage 8 79.0), 15.75 decisions per lifetime character
+  (temple 0.78, hometown 0.38, reversal 0.22, jeju 0.09); route net worth ±1.1 % (young) / ±4.8 % (middle_age); treasures 0.29 per
+  adult character (money route 0.44 vs 0.2), mean value 180 (median 110, 24 % fakes); awards per lifetime game 22.7 % (행운상) …
+  84 % (다복상), every bonus ≤ 6.2 % of the average winner total (2421); total composition cash 73.6 % · house 13.9 % · items 0.3 % ·
+  treasures 3.2 % · awards 8.9 %; all 26 titles reached (평범한 인생 31 %); 산신령 0 % random (wishes ≥ 2: 0.4 %) — `--policy cpu`
+  0.5 % of adult characters / 2.6 % of games, mixed 1.6 % of games; bias 2000 × seed 1: 11.3–13.8 %, spread −0.05; cpu-game 4 CPU +
+  4 random × 300 (seed 1): CPU 56.7 % of wins.
+- Tests: `test/stage9-submaps.test.js` (data, appraisal, every submap option, skip turns, temple train stats / wish / 산신령 via
+  wishes, jeju treasure, reversal EV + outcomes, treasure masking before / after the end, presentation / MC, CPU answers, restore +
+  migration, random lifetime games), `test/stage9-result.test.js` (award / title schemas, award ties, metrics, title conditions,
+  records, highlight capture + cap, ranking composition + gameOver payload, MVP rules, no-voter games, forced end + runner timer +
+  restore, HTTP vote / closeVote / meta).

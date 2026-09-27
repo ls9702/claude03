@@ -11,6 +11,8 @@ import { PROMPTS, openPrompt, promptComplete, registerPrompts, resolvePrompt } f
 import { applyLoss, cardDef, gainCard, guardStats, resolveCardTile, resolveShopTile, tryAmulet } from './cards.js';
 import { loveRouteChosen, resolveHeartTile } from './family.js';
 import { resolveHouseTile } from './houses.js';
+import { SUBMAPS, resolveSubmapTile } from './submaps.js';
+import { resolveTreasureTile } from './treasures.js';
 
 export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
@@ -182,6 +184,13 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       return resolveHeartTile(tx, c) ? 'prompt' : null;
     case 'house': // Stage 8: 부동산 매물 prompt
       return resolveHouseTile(tx, c, tile) ? 'prompt' : null;
+    case 'treasure': // Stage 9: a treasure with a hidden appraisal value
+      return resolveTreasureTile(tx, c);
+    case 'hometown': // Stage 9: submaps (고향 / 사찰 / 제주도 / 인생역전)
+    case 'temple':
+    case 'jeju':
+    case 'reversal':
+      return resolveSubmapTile(tx, c, tile) ? 'prompt' : null;
     case 'stop':
       if (tile.promptId === 'routeChoice') return null; // opened by the turn epilogue after life decisions
       if (PROMPTS[tile.promptId]) {
@@ -197,7 +206,8 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       onGoal?.(c);
       return 'goal';
     default: {
-      // treasure: placeholder (hook for Stage 9).
+      // a tile type listed in board.json `placeholders` (none since Stage 9) only logs its text
+      if (SUBMAPS.includes(tile.type)) return null;
       const text = tx.data.board.placeholders?.[tile.type] ?? tile.label;
       addLog(tx, `${tile.icon ?? ''} ${c.name}: ${text}`.trim(), { tone: routeTone ?? 'info', charId: c.id });
       return null;

@@ -21,6 +21,8 @@ export const ANIMATED_EVENTS = new Set([
   'cardGained', 'cardUsed', 'cardBlocked', 'itemBought', 'gift', 'tradeResolved', 'holidayStarted', 'holidayResult', 'lottoDraw',
   // Stage 8: romance / family / real estate (pops over the pawn; anchors open their cut-in after the step)
   'met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'allowance', 'houseBought', 'houseSold', 'houseValueChanged',
+  // Stage 9: submaps / treasures (pops over the pawn; anchors open their cut-in after the step)
+  'submapEntered', 'submapResult', 'treasureFound',
 ]);
 
 /**

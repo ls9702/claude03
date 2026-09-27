@@ -32,10 +32,12 @@ const TILE_TOP = 0.27;
 const NARROW_TAGS_PX = 700; // canvas CSS width below which only current / mine / moving pawns show name tags
 /** Asset-studio icon ids (manifest meta.tile) per tile type. */
 const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal', habit: 'school', salary: 'money' };
-const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '정지', merge: '합류', goal: '골', habit: '습관', salary: '월급' };
-const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#3fae5a' };
+const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '정지', merge: '합류', goal: '골', habit: '습관', salary: '월급', hometown: '고향', temple: '산사', jeju: '제주', reversal: '역전' };
+const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#3fae5a', hometown: '#7cb342', temple: '#8d6e63', jeju: '#26a69a', reversal: '#d4a017' };
 /** Stage 6 tile glyphs before board.json knows the type (meta icon wins). */
-const DEFAULT_TILE_GLYPH = { habit: '📚', salary: '💵', job: '💼', card: '🃏', shop: '🛍️' };
+const DEFAULT_TILE_GLYPH = { habit: '📚', salary: '💵', job: '💼', card: '🃏', shop: '🛍️', hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', treasure: '💎' };
+/** Stage 9 board reactions: submap arrival / outcome, treasure find. */
+const SUBMAP_POP = { hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', casino: '🎰' };
 /** Stage 6 board reactions over the pawn (the cut-in follows). */
 const STAGE6_POP = { jobChanged: '💼', rankUp: '⭐', hiddenJobUnlocked: '🌟', injured: '🤕', militaryStart: '🪖', militaryEnd: '🎖️', educationChanged: '🎓' };
 const STAT_FLOAT = { int: ['🧠', '#2446a8'], str: ['💪', '#a33a14'], charm: ['✨', '#a3276a'], luck: ['🍀', '#1d6b3b'] };
@@ -929,6 +931,38 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         },
       ]),
     ),
+    // ---------- Stage 9 ----------
+    submapEntered: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      emotion.pop(e.charId, SUBMAP_POP[e.submap] ?? '🗺️', { dur: 1.5 });
+      await ctx.sleep(350);
+    },
+    submapResult: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      const amt = Number(e.amount) || 0;
+      const r = String(e.result ?? '').toLowerCase();
+      const lost = ['lose', 'lost', 'fail', 'failed', 'miss', 'none'].includes(r) || amt < 0;
+      emotion.pop(e.charId, lost ? '💸' : amt > 0 ? `💰+${won(amt)}` : '✨', { dur: 1.7 });
+      const P = S.pawns.get(e.charId);
+      if (P && !lost && amt > 0 && preset.particles > 0) {
+        const p = P.pawn.group.position;
+        particles.burst('coin', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, 30), { up: 4, spread: 1.6, life: 1 });
+      }
+      await ctx.sleep(420);
+    },
+    treasureFound: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      emotion.pop(e.charId, '💎', { dur: 1.8 });
+      const P = S.pawns.get(e.charId);
+      if (P && preset.particles > 0) {
+        const p = P.pawn.group.position;
+        particles.burst('star', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, 28), { up: 4, spread: 1.4, life: 1 });
+      }
+      await ctx.sleep(420);
+    },
     proposed: async (e, ctx) => {
       hooks.onStep?.(e);
       if (ctx.instant) return;

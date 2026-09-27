@@ -149,7 +149,7 @@ test('MC lines: valid shape, no unfilled placeholders; big moments always hosted
     for (const f of ['few', 'normal', 'many']) {
       const { events, room } = playAll({ seed, mode, mcFrequency: f });
       for (const e of events.filter((x) => x.mc)) {
-        assert.ok(e.mc.length >= 1 && e.mc.length <= 8, `${e.type} mc length`);
+        assert.ok(e.mc.length >= 1 && e.mc.length <= (e.type === 'gameOver' ? 16 : 8), `${e.type} mc length`); // Stage 9: the result show has up to 7 parts
         assert.ok(['big', 'medium', 'minor'].includes(e.mcWeight));
         for (const l of e.mc) {
           assert.ok(MC_IDS.includes(l.speaker));
@@ -166,7 +166,10 @@ test('MC lines: valid shape, no unfilled placeholders; big moments always hosted
       const studios = events.filter((e) => e.type === 'eraChanged' && e.mcStudio).map((e) => e.era);
       assert.deepEqual(studios, room.board.eras.slice(1).map((x) => x.id));
       const go = events.find((e) => e.type === 'gameOver');
-      assert.deepEqual([...new Set(go.mc.map((l) => l.part))], ['intro', 'winner', 'last', 'penalty']);
+      // Stage 9: 보물 감정 / 특별상 parts when there is something to show, the MVP call while the vote is open
+      const parts = [...new Set(go.mc.map((l) => l.part))];
+      const want = ['intro', ...(go.treasures?.length ? ['appraisal'] : []), ...(go.awards?.length ? ['awards'] : []), 'winner', 'last', 'penalty', ...(go.mvpClosesAt != null ? ['mvp'] : [])];
+      assert.deepEqual(parts, want);
       assert.deepEqual(room.result.mc, go.mc, 'result show is reload-safe');
     }
     const off = playAll({ seed, mode, mcFrequency: 'off' });
@@ -210,17 +213,17 @@ test('MC frequency: many ≥ normal ≥ few for optional appearances; cooldown s
   assert.ok(big[0].mc.length >= 1);
 });
 
-test('MC guard: placeholder tiles (heart/treasure/…) never produce marriage/treasure celebrations; job MC only on real hires', () => {
+test('MC guard: placeholder tiles never produce marriage/treasure celebrations; job MC only on real hires', () => {
   const r = started({ mcFrequency: 'many' });
   const placeholders = Object.keys(gameData().board.placeholders);
-  assert.ok(placeholders.includes('treasure'));
+  assert.ok(!placeholders.includes('treasure'), 'Stage 9: treasure tiles are live');
   assert.ok(!placeholders.includes('job'), 'Stage 6: job tiles are live');
   assert.ok(!placeholders.includes('heart') && !placeholders.includes('house'), 'Stage 8: heart / house tiles are live');
   const c = r.room.characters[0].id;
   // even if tileSituations maps them again later, a tile type still listed as a placeholder stays quiet
   const data = { ...gameData(), mc: { ...mc, tileSituations: { heart: 'marriage', treasure: 'treasure' } } };
   for (const seed of [1, 2, 3, 4, 5]) {
-    for (const tileType of [...placeholders, 'job', 'heart', 'house']) {
+    for (const tileType of [...placeholders, 'treasure', 'job', 'heart', 'house']) {
       const room = structuredClone(r.room);
       room.mcState = { cool: 0, eras: ['baby'], firstSpin: true };
       const events = [{ type: 'landed', charId: c, tileType, tileId: `x-${tileType}` }, { type: 'log', text: '준비 중', tone: 'info', charId: c }];
@@ -228,12 +231,13 @@ test('MC guard: placeholder tiles (heart/treasure/…) never produce marriage/tr
       assert.ok(!['marriage', 'job', 'treasure', 'birth', 'promotion', 'house', 'market'].includes(events[0].mcKey), `${tileType} → ${events[0].mcKey}`);
     }
   }
-  // full games: no treasure while it is a placeholder; 'job' only on a real hire; Stage 8 MC only on real outcomes
+  // full games: treasure MC only on a real find (Stage 9); 'job' only on a real hire; Stage 8 MC only on real outcomes
   for (const seed of [2, 4]) {
     const events = playAll({ seed, mode: 'adult', mcFrequency: 'many' }).events;
-    const keys = events.map((e) => e.mcKey).filter(Boolean);
-    assert.ok(!keys.includes('treasure'), keys.join(','));
-    const origin = { marriage: 'married', birth: 'childBorn', house: 'houseBought', market: 'houseValueChanged', proposeFail: 'proposed', schoolMeet: 'schoolMeet' };
+    const origin = {
+      marriage: 'married', birth: 'childBorn', house: 'houseBought', market: 'houseValueChanged', proposeFail: 'proposed', schoolMeet: 'schoolMeet',
+      treasure: 'treasureFound', temple: 'submapResult', jeju: 'submapResult', reversalWin: 'submapResult', reversalLose: 'submapResult', mvp: 'mvpDecided',
+    };
     for (const e of events.filter((x) => origin[x.mcKey])) assert.equal(e.type, origin[e.mcKey], e.mcKey);
     for (const e of events.filter((x) => x.mcKey === 'job')) assert.deepEqual([e.type, e.reason], ['jobChanged', 'hire']);
     for (const e of events.filter((x) => x.mcKey === 'promotion')) assert.equal(e.type, 'rankUp');

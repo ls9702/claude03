@@ -1,6 +1,6 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getBalance, getBoardData, getCards, getEras, getHolidays, getHouses, getItems, getJobs, getLines, getMc, getNews, getPartners, getTones } from '../data/index.js';
+import { getAvatars, getAwards, getBalance, getBoardData, getCards, getEras, getHolidays, getHouses, getItems, getJobs, getLines, getMc, getNews, getPartners, getTitles, getTones, getTreasures } from '../data/index.js';
 import {
   addCharacter,
   addCpuCharacter,
@@ -21,7 +21,8 @@ import { clientIp, createRateLimiter, sendFail, sessionMiddleware } from './comm
 export const REACTIONS = ['ㅋㅋㅋ', '헐', '오~', '화이팅', '🐔', '👏', '😂', '😱', '❤️', '🎉'];
 const RATE_WINDOW_MS = 2000;
 // `timeout` is allowed for players too, but the engine only accepts it once the deadline passed.
-const PLAYER_ACTIONS = ['spin', 'choose', 'bet', 'timeout', 'useCard', 'offerTrade', 'respondTrade', 'cancelTrade', 'gift'];
+// Stage 9: `vote {targetId}` = the MVP vote of a finished game (players only).
+const PLAYER_ACTIONS = ['spin', 'choose', 'bet', 'timeout', 'useCard', 'offerTrade', 'respondTrade', 'cancelTrade', 'gift', 'vote'];
 const str = (v) => (typeof v === 'string' ? v : undefined);
 /** A trade side `{money?|cardUid?}` from the request body (the engine validates it). */
 const side = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? { money: v.money, cardUid: str(v.cardUid) } : v);
@@ -50,14 +51,14 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades } = getBalance();
+    const { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades, submaps, result } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
       avatars: getAvatars(),
       reactions: REACTIONS,
       board: { tileTypes: board.tileTypes, routes: board.routes },
-      balance: { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades },
+      balance: { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades, submaps, result },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
       mc: { ...getMc(), lines: getLines().mc ?? {} }, // Stage 5.6: MC NPC profiles + line pools (lobby greeting, result fallback)
@@ -68,6 +69,11 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       holidays: getHolidays(), // Stage 7: holidays.json (명절 대잔치)
       partners: getPartners(), // Stage 8: partners.json (traits, ★ grades, dates, children; character.love / spouse / children)
       houses: getHouses(), // Stage 8: houses.json (6 fixed ids; character.house, room.houseOwners / housingMarket)
+      // Stage 9: treasures.json (names / icons / ranges — the drawn values stay hidden until the result), awards.json,
+      // titles.json (ending titles; conditions are informational)
+      treasures: getTreasures(),
+      awards: getAwards(),
+      titles: getTitles(),
     });
   });
 

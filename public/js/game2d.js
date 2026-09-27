@@ -7,7 +7,7 @@
 import { renderAvatar, preloadAvatarLayers, portraitHtml, hydratePortraits } from './ui/avatar2d.js';
 import { createCutin } from './ui/cutin2d.js';
 import { createBanner } from './ui/banner.js';
-import { planCutins, tagLabel } from './ui/cutinMap.js';
+import { planCutins } from './ui/cutinMap.js';
 import {
   CUTIN_MODES,
   CUTIN_MODE_LABEL,
@@ -43,7 +43,10 @@ import { HOLIDAY_OPTION_ICON, cardHtml, itemIconHtml, shopOptionsHtml } from './
 import { familyIcons, familySummary, familyTagBadge, houseInfo, houseOf, marketInfo } from './shared/family.js';
 import { houseArtHtml, houseOptionsHtml } from './ui/houseArt.js';
 import { familyDetailHtml, familyOptionsHtml } from './ui/familyArt.js';
-import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
+import { createMcCorner } from './ui/mc.js';
+import { SUBMAP_TILE_TYPES, submapInfo, submapOf, submapSuccess, treasureCount, treasureInfo, treasuresOf } from './shared/submaps.js';
+import { submapOptionsHtml, treasureListHtml } from './ui/submapArt.js';
+import { createResultScreen } from './ui/resultShow.js';
 import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
 import { won, esc, secondsLeft, ownerHtml } from './format.js';
@@ -75,9 +78,11 @@ const STAGE6_CUTIN_TYPES = ['jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injure
 const STAGE7_CUTIN_TYPES = ['cardUsed', 'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw', 'cardGained', 'gift', 'tradeResolved'];
 /** Stage 8 cut-in anchors (3D: shown after their board step). */
 const STAGE8_CUTIN_TYPES = ['met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'houseBought', 'houseValueChanged'];
-const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES];
+/** Stage 9 cut-in anchors (3D: shown after their board step). */
+const STAGE9_CUTIN_TYPES = ['submapResult', 'treasureFound'];
+const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, ...STAGE9_CUTIN_TYPES];
 /** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
-const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold'];
+const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold', ...STAGE9_CUTIN_TYPES, 'submapEntered'];
 /** Stage 6 tile types the server may send before board.json knows them (meta wins). */
 const CLIENT_TILE_TYPES = {
   habit: { name: '습관', icon: '📚', color: '#20a39e' },
@@ -85,8 +90,8 @@ const CLIENT_TILE_TYPES = {
   job: { name: '직업', icon: '💼', color: '#4f8ee0' },
   card: { name: '카드', icon: '🃏', color: '#9a6ad6' },
   shop: { name: '상점', icon: '🛍️', color: '#f39a3d' },
+  ...SUBMAP_TILE_TYPES, // Stage 9: 고향 · 산사 · 제주도 · 인생역전 · 보물
 };
-const RESULT_LINES = ['두근두근… 인생 결산 시간!', '누가 제일 잘 살았을까?', '다들 수고했어, 멋진 인생이었어', '결과 발표 갑니다~!'];
 const FALLBACK_KEY = 'jinsei.board3dFallback'; // sessionStorage: auto-fallback happened this session
 const FPS_MIN = 15;
 const FPS_PROBE_MS = 3000;
@@ -135,7 +140,6 @@ const EMOTION = { joy: '😆', cry: '😭', angry: '😡', sweat: '😅', love: 
 const MAX_TILE_PAWNS = 4;
 const FINISH_BOARD_MS = 4000; // 3D at game over: the board may animate this long before the result screen
 const TURN_GRACE_MS = 700; // new turn → spin/bet controls wait for the previous turn's events (cut-ins) // 2D tile: more pawns overlap + "+N"
-const MEDAL = ['🥇', '🥈', '🥉'];
 
 function tileIdAt(board, pos) {
   if (!pos || pos.index < 0) return 'start';
@@ -240,7 +244,6 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     promptTimer: null,
     assetsReady: false,
     preloaded: new Set(),
-    resultIntroFor: null,
     gameOverLine: null,
     openChar: null, // Stage 6: character detail card open in the side list
     newsSeen: {}, // Stage 6: eraId → {title, text, tone} from newsFlash events (before meta.news knows it)
@@ -1031,6 +1034,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (fam) out.push(`<span class="gc-tag fam" title="${esc(familySummary(c, getMeta()) || '연애 중')}">${esc(fam)}</span>`);
     const house = houseOf(c, getMeta());
     if (house) out.push(`<span class="gc-tag house" title="${esc(`${house.name} · ${won(house.value ?? 0)}`)}">${esc(house.icon)} ${esc(won(house.value ?? 0))}</span>`);
+    // Stage 9: 💎 treasures (values stay hidden until the appraisal)
+    const nTr = treasureCount(c);
+    if (nTr) out.push(`<span class="gc-tag treasure" title="${esc(`보물 ${nTr}개 · ${treasuresOf(c, getMeta()).map((t) => t.info.name).join(', ')}`)}">💎 ${nTr}</span>`);
     // Stage 7: roulette modifiers (⚡+2 / ✂️−3 …), hand size, item icons
     for (const b of spinModBadges(c.spinMods)) out.push(`<span class="gc-tag mod ${b.kind}" title="${esc(b.title)}">${esc(b.text)}</span>`);
     if (Array.isArray(c.cards)) out.push(`<span class="gc-tag hand-n" title="손패 ${c.cards.length}장">🃏 ${c.cards.length}</span>`);
@@ -1113,6 +1119,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           .map((i) => `<span class="gd-item">${itemIconHtml(i.id, { art: artFor('item', i.id), meta })} ${esc(i.info.name)}</span>`)
           .join('')}</span></div>`,
       );
+    }
+    // Stage 9: treasures (감정 전 ??? until the result appraisal)
+    const trs = treasuresOf(c, meta);
+    if (trs.length) {
+      const values = new Map((ui.room?.result?.treasures ?? []).filter((t) => t.charId === c.id).map((t) => [t.uid, { value: Number(t.value) || 0, fake: !!t.fake, text: '' }]));
+      facts.push(`<div class="gd-fact"><span class="gd-k">보물</span><span class="gd-v">${treasureListHtml(trs, { values, won, artFor })}</span></div>`);
     }
     // Stage 8: love (❤️ bar), spouse, children, house
     const famHtml = familyDetailHtml(c, { meta, room: ui.room, avatars: meta?.avatars, artFor, won });
@@ -1250,7 +1262,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         <p>${esc(p.text ?? '')}</p>
         ${subject && subject.id !== who.id ? `<p class="small muted">대상: ${esc(subject.name)}</p>` : ''}
         ${
-          p.kind === 'shop'
+          submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won }) != null
+            ? `<div class="choice-list sm-choices">${submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won })}</div>`
+            : p.kind === 'shop'
             ? `<div class="choice-list shop-choices">${shopOptionsHtml(p, who, { meta: getMeta(), artFor, btnClass: 'btn choice' })}</div>`
             : p.kind === 'house'
               ? `<div class="choice-list house-choices">${houseOptionsHtml(p, who, { meta: getMeta(), room, artFor, btnClass: 'btn choice' })}</div>`
@@ -1804,6 +1818,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
 
   function onEvents(payload) {
     const events = payload?.events ?? [];
+    // Stage 9: 👑 MVP decided (finished room → the result screen)
+    if (events.some((e) => e.type === 'mvpDecided')) resultScreen.onEvents(events);
     // Stage 7: trade offers are not board events → notify the receiver right away (the inbox has the buttons)
     for (const e of events) {
       if (e.type !== 'tradeOffered') continue;
@@ -2017,6 +2033,27 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           for (const pr of e.pairs ?? []) floatOn(pr.charId, `💘 ${pr.partner?.name ?? ''}`, 'plus');
           if (!cutinsOn()) toast('🏫 고등학교에서 운명의 첫 만남!');
           break;
+        // ---------- Stage 9 ----------
+        case 'submapEntered': {
+          const info = submapInfo(submapOf(e), getMeta());
+          floatOn(e.charId, `${info.icon} ${info.name}`, 'plus');
+          if (c?.isMe && !cutinsOn()) toast(`${info.icon} ${c.name}: ${info.name} 도착!`);
+          break;
+        }
+        case 'submapResult': {
+          const info = submapInfo(submapOf(e), getMeta());
+          const ok = submapSuccess(e);
+          const amt = Number(e.amount);
+          floatOn(e.charId, `${info.icon} ${amt ? `${amt > 0 ? '+' : ''}${won(amt)}` : ok === false ? '꽝' : ok ? '성공!' : info.name}`, ok === false || amt < 0 ? 'minus' : 'plus');
+          if (c?.isMe && !cutinsOn()) toast(`${info.icon} ${c.name}: ${info.name} ${ok === false ? '결과는 꽝…' : ok ? '대성공!' : '다녀왔어요'}`);
+          break;
+        }
+        case 'treasureFound': {
+          const t = treasureInfo(e.treasureId, getMeta());
+          floatOn(e.charId, `💎 ${t.name}`, 'plus');
+          if (c?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(`💎 ${c.name}: ${t.icon} ${t.name} 발견! 감정은 게임이 끝나면…`);
+          break;
+        }
         case 'houseValueChanged': {
           const mk = marketInfo(e);
           if (mk && (!cutinsOn() || ui.cutinMode === 'off')) toast(`🏠 부동산 ${mk.text}`, mk.dir === 'down' ? 'error' : 'info');
@@ -2108,42 +2145,34 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     return ids.length > 0;
   }
 
-  // ---------- results ----------
+  // ---------- results (Stage 9: 인생 결산 방송 + podium + MVP + 단체 사진 — ui/resultShow.js) ----------
+  const resultScreen = createResultScreen({
+    getMeta,
+    cutin,
+    act,
+    toast,
+    artFor,
+    findAsset,
+    mcOn,
+    want3D: () => wants3D(),
+    now: () => Date.now() + clockOffset(),
+    // ranking-row extras: final job + education, items, house / family
+    rowExtras: (r, c) => {
+      const jb = c ? jobBadge(c, getMeta()?.jobs) : null;
+      const edu = educationLabel(c?.education);
+      const career = jb || edu
+        ? `<span class="rk-career">${jb ? `<span class="job-badge${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${jbIcon(jb)}</span><span class="jb-n">${esc(jb.name)}</span>${jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''}</span>` : ''}${
+            edu ? `<span class="gc-tag">🎓 ${esc(edu)}</span>` : ''
+          }</span>`
+        : '';
+      return `${career}${itemsLine(r, c)}${familyLine(r, c)}`;
+    },
+  });
+  if (params.has('debug')) window.__result = resultScreen;
+
   function renderResult(input, host) {
     const room = displayRoom(input);
-    const ranking = room.result?.ranking ?? [];
-    const cmap = new Map((room.characters ?? []).map((c) => [c.id, c]));
-    if (!ranking.length) {
-      host.innerHTML = '<p class="muted">순위 정보가 없어요.</p>';
-      return;
-    }
-    const intro = ui.resultIntroFor !== room.id && cutinsOn();
-    host.innerHTML = `
-      ${room.result.forced ? '<p class="small muted">관리자가 게임을 종료했어요. 현재 자산 기준 순위입니다.</p>' : ''}
-      <ol class="ranking${intro ? ' reveal' : ''}">${ranking
-        .map((r) => {
-          const c = cmap.get(r.charId);
-          const routesTxt = (c?.routeHistory ?? []).map((h) => routes()[h.route]?.icon ?? '').join(' ');
-          const jb = c ? jobBadge(c, getMeta()?.jobs) : null;
-          const edu = educationLabel(c?.education);
-          const career = jb || edu
-            ? `<span class="rk-career">${jb ? `<span class="job-badge${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${jbIcon(jb)}</span><span class="jb-n">${esc(jb.name)}</span>${jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''}</span>` : ''}${
-                edu ? `<span class="gc-tag">🎓 ${esc(edu)}</span>` : ''
-              }</span>`
-            : '';
-          return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}">
-            <span class="rk">${MEDAL[r.rank - 1] ?? `${r.rank}위`}</span>
-            <span class="rk-portrait">${c ? portraitHtml(c, { size: 52 }) : ''}</span>
-            <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${c ? ownerHtml(c) : ''}</small>${career}
-              ${itemsLine(r, c)}${familyLine(r, c)}<span class="small muted">현금 ${won(r.money)}${r.debt ? ` · 빚 ${won(r.debt)}` : ''}${Number(r.items) > 0 ? ` · 아이템 ${won(r.items)}` : ''}${Number(r.house) > 0 ? ` · 집 ${won(r.house)}` : ''} · 골인 보너스 ${won(r.goalBonus)}${
-                r.place ? ` · ${r.place}번째 골인` : ''
-              }${routesTxt ? ` · 루트 ${routesTxt}` : ''}</span></span>
-            <span class="rk-total">${won(r.total)}</span>
-          </li>`;
-        })
-        .join('')}</ol>`;
-    hydratePortraits(host);
-    if (intro) showResultIntro(room, ranking, cmap);
+    resultScreen.render(room, host, { autoplay: cutinsOn() });
   }
 
   /** Stage 7 result row: item icons (resale value is in the money line). */
@@ -2168,53 +2197,6 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     }${icons ? `<span class="rk-kids" title="${esc(fam)}"><span class="rk-ic">${esc(icons)}</span>${fam ? `<small>${esc(fam)}</small>` : ''}</span>` : ''}</span>`;
   }
 
-  /** Cut-in style 「결과 발표」 intro (tone result) before the ranking list. */
-  function showResultIntro(room, ranking, cmap) {
-    ui.resultIntroFor = room.id;
-    cutin.closePrompt();
-    const top = ranking.slice(0, 3).map((r) => cmap.get(r.charId)).filter(Boolean);
-    const first = ranking[0];
-    const order = (room.turn?.order ?? []).map((id) => cmap.get(id)).filter(Boolean);
-    const line = ui.gameOverLine ?? RESULT_LINES[(room.id.charCodeAt(0) + ranking.length) % RESULT_LINES.length];
-    const spec = {
-      key: `result:${room.id}`,
-      kind: 'result',
-      tone: 'result',
-      scene: 'mountain-trail',
-      tag: tagLabel({ type: 'result', tone: 'result' }, { tones: getMeta()?.presentation?.tones }),
-      who: '결과 발표',
-      text: [
-        `🏆 1등은 ${first?.name ?? ''}! 총자산 ${won(first?.total ?? 0)}`,
-        ranking
-          .slice(1, 3)
-          .map((r) => `${MEDAL[r.rank - 1] ?? `${r.rank}위`} ${r.name} ${won(r.total)}`)
-          .join(' · '),
-      ].filter(Boolean),
-      line,
-      speaker: first?.charId ?? null,
-      chips: ranking.slice(0, 3).map((r) => ({ text: `${MEDAL[r.rank - 1] ?? ''} ${r.name}`, kind: r.rank === 1 ? 'plus' : '' })),
-      cast: top.map((c, i) => ({ char: c, pose: i === 0 ? 'cheer' : 'wave', emotion: i === 0 ? 'joy' : null })),
-      bigWin: true,
-      currentId: first?.charId ?? null,
-      era: '',
-      autoMs: 6500,
-      characters: order.length ? order : [...cmap.values()],
-    };
-    const list = document.querySelector('.ranking.reveal');
-    // Stage 5.6: MC-hosted — studio intro (봄이 announces, 호야 reacts), then the podium with winner/last lines
-    const mc = mcOn() ? room.result?.mc ?? resultMcFrom(getMeta()?.mc, ranking, { seed: mcHash(room.id, 'result'), won }) : [];
-    const intro = mc.filter((l) => l.part === 'intro');
-    const rest = mc.filter((l) => l.part !== 'intro');
-    const jobs = [];
-    if (intro.length) jobs.push(cutin.show(cutin.studioSpec(intro, { key: `result:${room.id}`, tone: 'result', title: '🏆 결과 발표', characters: spec.characters })));
-    if (rest.length) {
-      spec.mc = rest;
-      spec.line = null; // the MCs host the podium
-    }
-    jobs.push(cutin.show(spec));
-    Promise.all(jobs).finally(() => list?.classList.add('shown'));
-  }
-
   const gameApi = {
     render,
     onEvents,
@@ -2224,6 +2206,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     },
     onReaction,
     renderResult,
+    /** Stage 9: the result screen / show (play, skip, reset on leave). */
+    result: resultScreen,
     /** True while the 3D board is still animating events (result screen waits for it). */
     isBusy: () => !!ui.b3?.isBusy() || cutin.busyEvents(),
     /** Resolves once the board animation and the event cut-ins have finished (prompt cut-ins are closed). */
@@ -2256,6 +2240,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       clearTimeout(ui.finishTimer);
       clearTimeout(ui.turnTimer);
       banner.destroy();
+      resultScreen.destroy();
       disposeBoard3D();
     },
   };

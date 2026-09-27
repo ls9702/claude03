@@ -30,13 +30,18 @@
     "holiday":        { "label": "명절",   "bg": "bg-holiday" },
     "park":           { "label": "공원 데이트", "bg": "bg-park" },
     "house":          { "label": "우리 집", "bg": "bg-house" },
+    "hometown":       { "label": "고향 시골집", "bg": "bg-hometown" },
+    "temple":         { "label": "산사",   "bg": "bg-temple" },
+    "jeju":           { "label": "제주도", "bg": "bg-jeju" },
+    "casino":         { "label": "인생역전 경마장", "bg": "bg-casino" },
     "none":           { "label": "",       "bg": null }
   },
   "_sceneFallbacksComment": "Stage 7: scenes whose bg asset is not accepted yet are drawn with the fallback scene's bg (client resolves; chains end at the 5 original scenes).",
   "sceneFallbacks": {
     "stage": "wedding-hall", "stadium": "mountain-trail", "gym": "mountain-trail", "army": "mountain-trail", "space": "mountain-trail",
     "campus": "school", "kitchen": "office", "police": "office", "shop": "office", "lab": "hospital", "holiday": "wedding-hall",
-    "park": "mountain-trail", "house": "office"
+    "park": "mountain-trail", "house": "office",
+    "hometown": "mountain-trail", "temple": "mountain-trail", "jeju": "mountain-trail", "casino": "office"
   },
   "eraScenes": { "baby": "hospital", "elem": "school", "middle": "school", "high": "school", "young": "office", "middle_age": "office", "senior": "mountain-trail" },
   "routeScenes": { "love": "wedding-hall", "career": "office", "money": "mountain-trail" },
@@ -54,11 +59,16 @@
     "meet": "park", "school_meet": "school", "date": "park", "propose": "park", "propose_ok": "park", "propose_fail": "park",
     "wedding": "wedding-hall", "birth": "hospital", "dol": "wedding-hall", "child_school": "school", "child_exam": "school",
     "child_exam_fail": "school", "child_job": "office", "house": "house", "house_buy": "house", "house_sell": "house",
-    "market_up": "house", "market_down": "house"
+    "market_up": "house", "market_down": "house",
+    "hometown": "hometown", "hometown_rest": "hometown", "hometown_visit": "hometown",
+    "temple": "temple", "temple_train": "temple", "temple_wish_ok": "temple", "temple_wish_fail": "temple", "temple_leave": "temple",
+    "jeju": "jeju", "jeju_trip": "jeju", "jeju_skip": "jeju",
+    "reversal": "casino", "reversal_jackpot": "casino", "reversal_win": "casino", "reversal_lose": "casino", "reversal_skip": "casino",
+    "mvp": "stage"
   },
   "eventScenes": { "rain": "mountain-trail", "phone": "school", "lucky": "mountain-trail", "found_money": "school" },
-  "cutinTiles": ["event", "heart", "job", "habit", "card", "shop", "treasure", "house", "stop"],
-  "tileTones": { "money": "good", "loss": "bad", "heart": "love", "job": "career", "salary": "career", "habit": "good", "card": "neutral", "shop": "treasure", "treasure": "treasure", "house": "treasure", "stop": "neutral", "merge": "neutral", "goal": "result", "event": "neutral" },
+  "cutinTiles": ["event", "heart", "job", "habit", "card", "shop", "treasure", "house", "stop", "hometown", "temple", "jeju", "reversal"],
+  "tileTones": { "money": "good", "loss": "bad", "heart": "love", "job": "career", "salary": "career", "habit": "good", "card": "neutral", "shop": "treasure", "treasure": "treasure", "house": "treasure", "stop": "neutral", "merge": "neutral", "goal": "result", "event": "neutral", "hometown": "good", "temple": "good", "jeju": "love", "reversal": "treasure" },
   "sfx": {
     "spun": "tick", "moved": "whoosh", "landed": "pop", "moneyGain": "coin", "moneyLoss": "thud", "eraChanged": "whoosh",
     "routeChosen": "fanfare", "finished": "fanfare", "gameOver": "fanfare", "bonusSpin": "coin", "betWin": "coin", "betLose": "thud",
@@ -69,6 +79,8 @@
     "tradeResolved": "coin", "gift": "heart", "holidayStarted": "fanfare", "holidayResult": "coin", "lottoDraw": "fanfare",
     "met": "heart", "dated": "heart", "proposed": "heart", "proposeFail": "tears", "married": "fanfare", "schoolMeet": "heart",
     "childBorn": "fanfare", "childGrew": "pop", "allowance": "coin", "houseBought": "coin", "houseSold": "coin",
-    "houseValueChanged": "whoosh"
+    "houseValueChanged": "whoosh",
+    "submapEntered": "whoosh", "submapResult": "pop", "treasureFound": "fanfare", "jackpot": "fanfare", "reversalLose": "thud",
+    "mvpVoted": "pop", "mvpDecided": "fanfare"
   }
 }

@@ -15385,6 +15385,626 @@
       "meta": {
         "job": "national_mc"
       }
+    },
+    {
+      "id": "bg-hometown",
+      "kind": "bg",
+      "label": "컷인 배경 · 고향 시골집",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a cozy Korean countryside grandparents' house (hanok-style tiled roof, wooden porch maru, clay jars jangdokdae in the yard, a persimmon tree with orange fruit, drying red peppers on straw mats), green rice paddies and low hills behind, warm late-afternoon light. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/hometown.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "hometown"
+      }
+    },
+    {
+      "id": "bg-temple",
+      "kind": "bg",
+      "label": "컷인 배경 · 사찰 템플스테이",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a peaceful Korean Buddhist mountain temple: colorful dancheong painted eaves, a stone pagoda and lanterns, a big bronze bell pavilion, pine trees and misty blue mountains, soft morning light. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/temple.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "temple"
+      }
+    },
+    {
+      "id": "bg-jeju",
+      "kind": "bg",
+      "label": "컷인 배경 · 제주도 여행",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: Jeju Island in Korea on a sunny day: turquoise sea and a white sand beach, black volcanic basalt rocks, tangerine trees, a dol hareubang stone statue, and Hallasan mountain in the distance under a blue sky. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/jeju.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "jeju"
+      }
+    },
+    {
+      "id": "bg-casino",
+      "kind": "bg",
+      "label": "컷인 배경 · 인생역전 경마장",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: an exciting cartoon horse racing track and lottery booth for a last big bet: a green race track with a white rail, a finish post, colorful flags, a festive grandstand with balloons, golden confetti and sparkling lights, dramatic sunset sky. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/casino.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "casino"
+      }
+    },
+    {
+      "id": "treasure-celadon",
+      "kind": "treasure",
+      "label": "보물 · 고려청자",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: an elegant jade-green Goryeo celadon vase with inlaid white cranes and clouds. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/celadon.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "celadon"
+      }
+    },
+    {
+      "id": "treasure-white-porcelain",
+      "kind": "treasure",
+      "label": "보물 · 조선백자",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a round snow-white Joseon moon jar porcelain. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/white-porcelain.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "white_porcelain"
+      }
+    },
+    {
+      "id": "treasure-old-coin",
+      "kind": "treasure",
+      "label": "보물 · 옛날 동전",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a few old round Korean brass coins with square holes, slightly rusty. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/old-coin.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "old_coin"
+      }
+    },
+    {
+      "id": "treasure-idol-goods",
+      "kind": "treasure",
+      "label": "보물 · 아이돌 굿즈",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a K-pop idol fan goods set: a signed photocard and a lightstick. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/idol-goods.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "idol_goods"
+      }
+    },
+    {
+      "id": "treasure-dino-fossil",
+      "kind": "treasure",
+      "label": "보물 · 공룡 화석",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a big dinosaur fossil bone and a fossil skull on sand. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/dino-fossil.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "dino_fossil"
+      }
+    },
+    {
+      "id": "treasure-gold-toad",
+      "kind": "treasure",
+      "label": "보물 · 금두꺼비",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a shiny solid gold toad figurine holding a coin in its mouth. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/gold-toad.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "gold_toad"
+      }
+    },
+    {
+      "id": "treasure-stamp",
+      "kind": "treasure",
+      "label": "보물 · 희귀 우표",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a rare vintage postage stamp with a printing error, with a magnifying glass. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/stamp.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "stamp"
+      }
+    },
+    {
+      "id": "treasure-lp-record",
+      "kind": "treasure",
+      "label": "보물 · LP판",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a vintage vinyl LP record sliding out of a retro album sleeve. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/lp-record.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "lp_record"
+      }
+    },
+    {
+      "id": "treasure-sneakers",
+      "kind": "treasure",
+      "label": "보물 · 한정판 운동화",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a pair of colorful limited edition sneakers in a box. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/sneakers.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "sneakers"
+      }
+    },
+    {
+      "id": "treasure-fake-painting",
+      "kind": "treasure",
+      "label": "보물 · 가짜 명화",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a famous-looking framed oil painting of a smiling woman with a suspicious crooked frame. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/fake-painting.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "fake_painting"
+      }
+    },
+    {
+      "id": "treasure-antique-clock",
+      "kind": "treasure",
+      "label": "보물 · 골동품 괘종시계",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: an antique wooden pendulum wall clock. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/antique-clock.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "antique_clock"
+      }
+    },
+    {
+      "id": "treasure-calligraphy",
+      "kind": "treasure",
+      "label": "보물 · 명필 서예 족자",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a hanging scroll of bold black brush calligraphy with a red seal stamp (abstract strokes, not real letters). Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/calligraphy.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "calligraphy"
+      }
+    },
+    {
+      "id": "treasure-meteorite",
+      "kind": "treasure",
+      "label": "보물 · 운석 조각",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a dark glittering meteorite rock with a small glowing trail. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/meteorite.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "meteorite"
+      }
+    },
+    {
+      "id": "treasure-ginseng",
+      "kind": "treasure",
+      "label": "보물 · 백년 산삼",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a large wild mountain ginseng root with red berries. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/ginseng.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "ginseng"
+      }
+    },
+    {
+      "id": "treasure-retro-console",
+      "kind": "treasure",
+      "label": "보물 · 레트로 게임기",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a retro handheld game console and a cartridge. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/retro-console.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "retro_console"
+      }
+    },
+    {
+      "id": "treasure-first-edition",
+      "kind": "treasure",
+      "label": "보물 · 초판 만화책",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a stack of old first edition comic books. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/first-edition.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "first_edition"
+      }
+    },
+    {
+      "id": "treasure-black-pearl",
+      "kind": "treasure",
+      "label": "보물 · 흑진주 목걸이",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a black pearl necklace in an open velvet box. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/black-pearl.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "black_pearl"
+      }
+    },
+    {
+      "id": "treasure-vintage-camera",
+      "kind": "treasure",
+      "label": "보물 · 빈티지 필름 카메라",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a vintage film camera with a leather strap. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/vintage-camera.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "vintage_camera"
+      }
+    },
+    {
+      "id": "treasure-signed-ball",
+      "kind": "treasure",
+      "label": "보물 · 홈런 사인볼",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a signed home run baseball on a small stand. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/signed-ball.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "signed_ball"
+      }
+    },
+    {
+      "id": "treasure-amber",
+      "kind": "treasure",
+      "label": "보물 · 호박 속 모기",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a golden amber gem with a tiny mosquito trapped inside. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/amber.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "amber"
+      }
+    },
+    {
+      "id": "treasure-gold-crown",
+      "kind": "treasure",
+      "label": "보물 · 신라 금관 조각",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a golden Silla crown ornament piece with jade comma-shaped gogok beads. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/gold-crown.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "gold_crown"
+      }
+    },
+    {
+      "id": "treasure-treasure-map",
+      "kind": "treasure",
+      "label": "보물 · 보물 지도",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: an old rolled treasure map with a red X mark. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight, a tiny sparkle. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/treasure-map.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "treasure_map"
+      }
     }
   ]
 }
