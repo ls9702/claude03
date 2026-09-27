@@ -25,6 +25,13 @@
 // characters never bet, offer trades or gift (they still answer offers). `scripts/cpu-game.js` has the fixed
 // 4 CPU + 4 random comparison.
 //
+// 룰렛 실력 모드: `--roulette skill` plays skill-mode rooms (random-policy characters aim at a uniformly random target
+// = an average human, CPU-policy ones use `cpuSkillTarget`; no side bets) and prints the 룰렛 block (hit / ±1 / ±2
+// shares, landings by tile type per policy). `--bias --roulette skill [--aim random|cpu]` = the turn-order bias with
+// aimed spins. `--aim-duel --games N --seed S` = 8-character lifetime games (CPU decisions for everyone) where each
+// seat aims with a strategy (cpu / random / max 10 / min 1 / none = a plain random roulette), rotated over the seats:
+// 1st-place share, rank, total, goal place and landings per strategy (`simulateAim` is importable).
+//
 //   node scripts/simulate.js --bias --games 2000 --seed 1
 // Turn-order bias check: 8-character lifetime games (default eraTurns, index order, random decisions, no
 // bets) → share of final 1st places and average final rank per turn position. Also importable:
@@ -37,7 +44,8 @@ import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { createRng } from '../server/game/rng.js';
 import { lottoExpectedValue } from '../server/game/holidays.js';
-import { cpuDecide, cpuTradeAccept } from '../server/game/cpu.js';
+import { cpuDecide, cpuSkillTarget, cpuTradeAccept } from '../server/game/cpu.js';
+import { ROULETTE_MODES } from '../server/game/roulette.js';
 
 function arg(name, def) {
   const i = process.argv.indexOf(`--${name}`);
@@ -54,6 +62,10 @@ const POLICY = String(arg('policy', 'random')); // random | cpu | mixed (Stage 9
 if (!['random', 'cpu', 'mixed'].includes(POLICY)) throw new Error(`--policy random|cpu|mixed (got ${POLICY})`);
 /** Does this character play by the CPU heuristics? */
 const cpuPolicy = (c) => POLICY === 'cpu' || (POLICY === 'mixed' && (c?.seq ?? 0) % 2 === 1);
+const ROULETTE = String(arg('roulette', 'random')); // random | skill (룰렛 실력 모드)
+if (!ROULETTE_MODES.includes(ROULETTE)) throw new Error(`--roulette random|skill (got ${ROULETTE})`);
+const AIM = String(arg('aim', 'random')); // --bias --roulette skill: random | cpu target per spin
+const AIM_DUEL = !!arg('aim-duel', false);
 const MAX_ACTIONS = 20000;
 
 const data = gameData();
@@ -105,6 +117,7 @@ function makeLobbyRoom(meta, gameNo) {
     maxCharacters: 8,
     startingMoney: meta.pick([0, 500, 1000, 3000]),
     turnOrder: meta.pick(['family', 'index']),
+    rouletteMode: ROULETTE,
   });
   if (!v.ok) throw new Error(v.errors.join(' '));
   let room = {
@@ -168,6 +181,8 @@ const stats = {
   military: {},
   finalRank: {},
   policyWins: { cpu: 0, random: 0, games: 0, chars: { cpu: 0, random: 0 } }, // Stage 9-C (--policy mixed)
+  // 룰렛 실력 모드 (--roulette skill): |value − target| → n, landings by policy → tileType → n
+  aim: { spins: 0, off: {}, landings: { cpu: {}, random: {} } },
   // Stage 9
   s9: {
     submaps: {}, // `${submap}:${choice}` → n
@@ -275,7 +290,18 @@ function playGame(g) {
         if (ev.reason === 'allowance') ci.allowance += ev.delta;
         charIncome.set(ev.charId, ci);
       }
-      if (ev.type === 'spun') spins++;
+      if (ev.type === 'spun') {
+        spins++;
+        if (ev.skill) {
+          stats.aim.spins++;
+          const off = Math.abs((ev.rolls?.[0] ?? ev.value) - ev.target);
+          stats.aim.off[off] = (stats.aim.off[off] ?? 0) + 1;
+        }
+      }
+      if (ev.type === 'landed' && ROULETTE === 'skill') {
+        const who = cpuPolicy(room.characters.find((x) => x.id === ev.charId)) ? 'cpu' : 'random';
+        stats.aim.landings[who][ev.tileType] = (stats.aim.landings[who][ev.tileType] ?? 0) + 1;
+      }
       if (ev.type === 'prompt' && room.config.mode === 'lifetime') {
         const n = ev.forCharacterIds.length;
         stats.lifePrompts.total += n;
@@ -418,13 +444,15 @@ function playGame(g) {
     const cardAction = randomCardAction(room, room.characters.find((c) => c.id === cur.id), meta);
     if (cardAction) apply(cardAction);
     for (const c of room.characters) {
+      if (ROULETTE === 'skill') break; // no side bets in skill mode (the server refuses them)
       if (cpuPolicy(c) || c.finished) continue; // CPU-policy / finished characters never bet
       if (c.ownerSessionId === cur.ownerSessionId || c.money < 5 || meta.next() > 0.3) continue;
       const kind = meta.pick(['oddEven', 'range']);
       apply({ type: 'bet', characterId: c.id, kind, pick: meta.pick(BET_PICKS[kind]), amount: meta.int(5, Math.min(20, c.money)) });
       stats.bets.placed++;
     }
-    apply({ type: 'spin', characterId: cur.id });
+    // skill mode: a random-policy player aims at a uniformly random number (an average human)
+    apply({ type: 'spin', characterId: cur.id, ...(ROULETTE === 'skill' ? { target: meta.int(1, 10), input: 'gauge' } : {}) });
   }
   const mode = room.config.mode;
   // Stage 9: result (treasures, awards, titles, composition) + a random MVP vote closed at once
@@ -651,13 +679,13 @@ function interactAnswers(live, rng, apply) {
  * characters, random decisions, no bets; Stage 7: random card plays unless `cards: false`, holidays on).
  * @returns {{games, winShare: number[], avgRank: number[], avgGoalPlace: number[]}} per turn position
  */
-export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true, onGame = null } = {}) {
+export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true, onGame = null, roulette = 'random', aim = 'random' } = {}) {
   const wins = Array(characters).fill(0);
   const rankSum = Array(characters).fill(0);
   const placeSum = Array(characters).fill(0);
   for (let g = 0; g < games; g++) {
     const meta = createRng(seed * 7919 + g * 104729 + 1);
-    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index' });
+    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', rouletteMode: roulette });
     let room = { id: `bias${g}`, code: 'BIASXX', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
     for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
     for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}` }, 0).room;
@@ -677,6 +705,7 @@ export function simulateBias({ games = 500, seed = 1, characters = 8, data: simD
       } else {
         const c = room.characters.find((x) => x.id === room.turn.order[room.turn.currentIndex]);
         action = (cards ? randomCardAction(room, c, meta) : null) ?? { type: 'spin', characterId: c.id };
+        if (action.type === 'spin' && roulette === 'skill') action.target = aim === 'cpu' ? cpuSkillTarget(room, c.id, simData ?? data) : meta.int(1, 10);
       }
       room = applyAction(room, action, { now, ...(simData ? { data: simData } : {}) }).room;
       room.log = []; // the engine clones the room per action; the log is irrelevant here (≈10× faster)
@@ -698,11 +727,100 @@ export function simulateBias({ games = 500, seed = 1, characters = 8, data: simD
   };
 }
 
+/** Spin target of an aim strategy (null = no target → a plain random roulette, like a timeout auto spin). */
+export const AIM_STRATEGIES = {
+  cpu: (room, c, rng, d) => cpuSkillTarget(room, c.id, d),
+  random: (room, c, rng) => rng.int(1, 10),
+  max: () => 10,
+  min: () => 1,
+  none: () => null,
+};
+
+/**
+ * 룰렛 실력 모드 exploit check: `games` skill-mode lifetime games with `characters` characters (index order,
+ * 4 sessions); every decision / card uses the CPU heuristics, only the spin target differs: seat i of game g aims
+ * with `strategies[(i + g) % strategies.length]`. @returns {{games, rows: {[strategy]: {n, wins, rankSum, totalSum,
+ * placeSum, landings: {tileType: n}, spins, hits, goalFirst}}}}
+ */
+export function simulateAim({ games = 200, seed = 1, characters = 8, strategies = ['cpu', 'random', 'max', 'min', 'none'], data: simData = data, mode = 'lifetime' } = {}) {
+  const rows = Object.fromEntries(strategies.map((k) => [k, { n: 0, wins: 0, rankSum: 0, totalSum: 0, relSum: 0, placeSum: 0, landings: {}, spins: 0, hits: 0, salary: 0 }]));
+  for (let g = 0; g < games; g++) {
+    const meta = createRng(seed * 15485863 + g * 7919 + 3);
+    const v = validateRoomConfig({ mode, maxCharacters: characters, turnOrder: 'index', rouletteMode: 'skill' });
+    let room = { id: `aim${g}`, code: 'AIMAIM', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
+    for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
+    for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}`, avatar: { body: meta.next() < 0.5 ? 'boy' : 'girl' } }, 0).room;
+    const strat = new Map(room.characters.map((c, i) => [c.id, strategies[(i + g) % strategies.length]]));
+    let now = 1_000_000;
+    const started = startGame(room, { now, data: simData });
+    if (!started.ok) throw new Error(started.error);
+    room = started.room;
+    let n = 0;
+    while (room.status === 'playing') {
+      if (++n > MAX_ACTIONS) throw new Error(`aim game ${g} stuck`);
+      now += 1000;
+      const p = room.turn.pending;
+      let action;
+      if (p) {
+        const id = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
+        action = cpuDecide(room, id, simData);
+      } else {
+        const c = room.characters.find((x) => x.id === room.turn.order[room.turn.currentIndex]);
+        action = cpuDecide(room, c.id, simData);
+        if (action?.type === 'spin') {
+          const t = AIM_STRATEGIES[strat.get(c.id)](room, c, meta, simData);
+          action = { type: 'spin', characterId: c.id, ...(t != null ? { target: t, input: 'cpu' } : {}) };
+        }
+      }
+      const r = applyAction(room, action, { now, data: simData });
+      room = r.room;
+      room.log = [];
+      for (const ev of r.events) {
+        const row = rows[strat.get(ev.charId)];
+        if (!row) continue;
+        if (ev.type === 'landed') row.landings[ev.tileType] = (row.landings[ev.tileType] ?? 0) + 1;
+        if (ev.type === 'spun') {
+          row.spins++;
+          if (ev.skill && (ev.rolls?.[0] ?? ev.value) === ev.target) row.hits++;
+        }
+        if (ev.type === 'moneyChanged' && ev.reason === 'salary') row.salary += ev.delta;
+      }
+    }
+    const mean = room.result.ranking.reduce((a, x) => a + x.total, 0) / room.result.ranking.length;
+    for (const r of room.result.ranking) {
+      const row = rows[strat.get(r.charId)];
+      row.n++;
+      row.rankSum += r.rank;
+      row.totalSum += r.total;
+      row.relSum += mean ? r.total / mean - 1 : 0;
+      row.placeSum += r.place ?? characters;
+      if (r.rank === 1) row.wins++;
+    }
+  }
+  return { games, characters, rows };
+}
+
+function mainAim() {
+  const t0 = performance.now();
+  const r = simulateAim({ games: GAMES, seed: SEED });
+  const pct = (n, d) => `${d ? ((100 * n) / d).toFixed(1) : '0.0'}%`;
+  console.log(`\n=== 룰렛 실력 모드 전략 대결 (${r.characters}캐릭터 인생 전체, CPU 결정 + 조준 전략만 다름) ${r.games}판 · seed ${SEED} · ${(performance.now() - t0).toFixed(0)}ms ===`);
+  console.log(`공정 1위 비율 ${pct(1, r.characters)}`);
+  const TYPES = ['salary', 'money', 'loss', 'job', 'event', 'card', 'heart', 'house', 'treasure', 'stop', 'goal'];
+  for (const [k, x] of Object.entries(r.rows)) {
+    const land = Object.values(x.landings).reduce((a, b) => a + b, 0);
+    console.log(
+      `${k.padEnd(6)} ${String(x.n).padStart(5)}명 · 1위 ${pct(x.wins, x.n).padStart(6)} · 평균 순위 ${(x.rankSum / x.n).toFixed(2)} · 총자산 ${(x.totalSum / x.n).toFixed(0)} (판 평균 대비 ${(100 * (x.relSum / x.n)).toFixed(1)}%) · 골인 ${(x.placeSum / x.n).toFixed(2)}등 · 룰렛 ${(x.spins / x.n).toFixed(1)}회 · 명중 ${pct(x.hits, x.spins)} · 월급 ${(x.salary / x.n).toFixed(0)}`,
+    );
+    console.log(`       착지 ${land}회: ${TYPES.map((t) => `${t} ${pct(x.landings[t] ?? 0, land)}`).join(' · ')}`);
+  }
+}
+
 function mainBias() {
   const t0 = performance.now();
-  const r = simulateBias({ games: GAMES, seed: SEED });
+  const r = simulateBias({ games: GAMES, seed: SEED, roulette: ROULETTE, aim: AIM });
   const spread = r.avgRank[0] - r.avgRank.at(-1);
-  console.log(`\n=== 턴 순서 편향 (8캐릭터 인생 전체, index 순서) ${r.games}판 · seed ${SEED} · ${(performance.now() - t0).toFixed(0)}ms ===`);
+  console.log(`\n=== 턴 순서 편향 (8캐릭터 인생 전체, index 순서${ROULETTE === 'skill' ? `, 룰렛 실력 모드 · 조준 ${AIM}` : ''}) ${r.games}판 · seed ${SEED} · ${(performance.now() - t0).toFixed(0)}ms ===`);
   console.log(`최종 1위 비율: ${r.winShare.map((x, i) => `${i + 1}번째 ${(x * 100).toFixed(1)}%`).join(' · ')}`);
   console.log(`평균 최종 순위: ${r.avgRank.map((x, i) => `${i + 1}번째 ${x.toFixed(2)}`).join(' · ')}`);
   console.log(`평균 골인 등수: ${r.avgGoalPlace.map((x, i) => `${i + 1}번째 ${x.toFixed(2)}`).join(' · ')}`);
@@ -747,6 +865,17 @@ function mainRandom() {
   console.log(`훈수 베팅 ${stats.bets.placed}건, 적중 ${pct(stats.bets.won, stats.bets.placed)} · 기초연금 ${stats.pensions}회 · 보너스 룰렛 ${stats.bonusSpins}회`);
   console.log(`프롬프트 ${JSON.stringify(stats.prompts)} · 타임아웃 ${stats.timeouts}회`);
   if (POLICY !== 'random') console.log(`정책: ${POLICY}${POLICY === 'mixed' ? ` · 1위 비율 CPU ${pct(stats.policyWins.cpu, stats.policyWins.games)} / 랜덤 ${pct(stats.policyWins.random, stats.policyWins.games)} (캐릭터 수 비율 CPU ${pct(stats.policyWins.chars.cpu, stats.policyWins.chars.cpu + stats.policyWins.chars.random)})` : ''}`);
+
+  if (ROULETTE === 'skill') {
+    const a = stats.aim;
+    const TYPES = ['salary', 'money', 'loss', 'job', 'event', 'heart', 'house', 'treasure', 'goal'];
+    console.log(`룰렛 실력 모드: 조준 룰렛 ${a.spins}회 · 차이 ${Object.entries(a.off).sort().map(([k, n]) => `${k} ${pct(n, a.spins)}`).join(' · ')}`);
+    for (const who of ['cpu', 'random']) {
+      const l = a.landings[who];
+      const tot = Object.values(l).reduce((x, y) => x + y, 0);
+      if (tot) console.log(`  착지(${who === 'cpu' ? 'CPU 조준' : '랜덤 조준'}) ${tot}회: ${TYPES.map((t) => `${t} ${pct(l[t] ?? 0, tot)}`).join(' · ')}`);
+    }
+  }
 
   // ---------- Stage 6 ----------
   console.log(`\n--- 6단계: 능력치·직업·성장 ---`);
@@ -847,6 +976,7 @@ function mainRandom() {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain) {
-  if (BIAS) mainBias();
+  if (AIM_DUEL) mainAim();
+  else if (BIAS) mainBias();
   else mainRandom();
 }

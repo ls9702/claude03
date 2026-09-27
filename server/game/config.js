@@ -1,5 +1,8 @@
 // Room config validation (pure).
 import { defaultEraTurns, eraIds, getBoardData, getEras } from '../data/index.js';
+import { ROULETTE_MODES } from './roulette.js';
+
+export { ROULETTE_MODES };
 
 export const TURN_ORDERS = ['family', 'index'];
 /** MC NPC (호야 & 봄이) appearance frequency (Stage 5.6). */
@@ -41,6 +44,7 @@ export function defaultRoomConfig() {
     turnTimeoutSec: 0,
     growthOutfits: true, // Stage 6: era / job costumes in game (client `effectiveAvatar`)
     holidays: true, // Stage 7: 명절 대잔치 when middle / young / middle_age / senior first open
+    rouletteMode: 'random', // 룰렛 실력 모드: 'skill' = the player aims (shake / gauge), the server lands near the target
   };
 }
 
@@ -132,6 +136,11 @@ export function validateRoomConfig(input = {}) {
   if (input.holidays !== undefined) {
     if (typeof input.holidays !== 'boolean') errors.push('명절 대잔치 값은 true/false여야 합니다.');
     else cfg.holidays = input.holidays;
+  }
+
+  if (input.rouletteMode !== undefined) {
+    if (!ROULETTE_MODES.includes(input.rouletteMode)) errors.push('룰렛 방식은 완전 랜덤(random) 또는 실력 모드(skill) 중 하나여야 합니다.');
+    else cfg.rouletteMode = input.rouletteMode;
   }
 
   if (input.mcFrequency !== undefined) {

@@ -23,6 +23,7 @@ import { createRng } from './rng.js';
 import { decorateEvents } from './presentation.js';
 import { promptComplete, resolvePrompt, resolveTile } from './spaces.js';
 import { ensureLife, initLife, lifeStep, spinSteps } from './growth.js';
+import { ROULETTE_INPUTS, isSkillRoom, parseTarget, skillValue, snapTarget, useTarget } from './roulette.js';
 import { militaryPay } from './jobs.js';
 import { applyEraNews, drawNews, drawStartNews } from './news.js';
 import {
@@ -369,6 +370,7 @@ function placeBet(tx, action) {
   const room = tx.room;
   const turn = room.turn;
   if (turn.phase !== 'awaitSpin' || turn.pending) fail(409, '지금은 베팅할 수 없어요.');
+  if (isSkillRoom(room)) fail(409, '실력 모드에서는 훈수 베팅이 없어요.');
   const bettor = assertOwner(room, action.actor, action.characterId);
   const current = charById(room, currentCharId(room));
   if (bettor.id === current.id) fail(409, '자기 룰렛에는 베팅할 수 없어요.');
@@ -465,13 +467,22 @@ function doSpin(tx, action) {
   const actor = action.actor;
   if (action.auto && actor?.system && (turn.spinDeadlineAt == null || tx.now < turn.spinDeadlineAt)) fail(409, '아직 시간이 남았어요.');
   const { min, max } = tx.data.balance.spin;
-  const first = tx.rng.int(min, max);
+  // 룰렛 실력 모드: the player's target (shake / gauge / CPU) → t 50 %, t±1 40 %, t±2 10 % (balance.roulette.skill).
+  // The turn-timer auto spin and the admin's forceSpin stay random; a missing / invalid target = a random spin.
+  const skillCfg = tx.data.balance.roulette?.skill ?? {};
+  const wanted = isSkillRoom(room) && !(action.auto && actor?.system) && !actor?.admin ? parseTarget(action.target, { min, max }) : null;
+  // number deck (pace guard): a used number snaps to the nearest free one; all ten used → a fresh deck
+  const aimed = wanted != null && skillCfg.deck !== false ? snapTarget(wanted, c.aimUsed, { min, max }) : wanted;
+  if (aimed != null && skillCfg.deck !== false) c.aimUsed = useTarget(c.aimUsed, aimed, { min, max });
+  const first = aimed != null ? skillValue(tx.rng, aimed, { jitter: skillCfg.jitter, min, max }) : tx.rng.int(min, max);
+  const input = aimed != null && ROULETTE_INPUTS.includes(action.input) ? action.input : null;
   // Stage 7: pending spin modifiers (택시 / 층간소음 second roll, 에너지 +2, 새치기 −3, 경차 1 → 2)
   const mod = applySpinMods(tx, c, first);
   const value = mod.value;
   const serving = c.military?.status === 'serving';
   const steps = spinSteps(tx, c, mod.move); // 군 복무: half the move (rounded up)
-  turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo, ...(steps !== value ? { steps } : {}), ...(mod.rolls ? { rolls: mod.rolls } : {}) };
+  const aim = aimed != null ? { target: aimed, ...(wanted !== aimed ? { wanted } : {}), ...(input ? { input } : {}), skill: true } : {};
+  turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo, ...(steps !== value ? { steps } : {}), ...(mod.rolls ? { rolls: mod.rolls } : {}), ...aim };
   turn.phase = 'resolveSpace';
   turn.spinDeadlineAt = null;
   if (action.auto && actor?.system) addLog(tx, `⏰ 시간 초과! ${c.name}의 룰렛을 자동으로 돌렸어요.`, { tone: 'info', charId: c.id });
@@ -485,13 +496,16 @@ function doSpin(tx, action) {
     ...(mod.mods.length ? { mods: mod.mods } : {}),
     ...(mod.car ? { car: true } : {}),
     ...(action.auto && actor?.system ? { auto: true } : {}),
+    ...aim, // skill mode: {target, input?, skill: true} — public (everyone sees what was aimed)
   });
   const notes = [];
   if (mod.rolls) notes.push(`두 번 돌려 ${mod.rolls.join('·')} 중 ${value}`);
   if (mod.move !== value && !mod.car) notes.push(`카드 효과로 ${mod.move}칸`);
   if (mod.car) notes.push('경차 덕분에 2칸');
   if (serving && steps !== mod.move) notes.push(`복무 중이라 ${steps}칸만 이동`);
-  addLog(tx, `🎡 ${c.name}의 룰렛: ${value}${notes.length ? ` (${notes.join(', ')})` : ''}`, { charId: c.id });
+  // skill mode: 「🎯 목표 7 → 결과 8」 (the first roll; a taxi / noise second roll stays random and shows in the notes)
+  const shown = aimed != null ? `🎯 목표 ${aimed} → 결과 ${first}${first === aimed ? ' 명중!' : ''}` : String(value);
+  addLog(tx, `🎡 ${c.name}의 룰렛: ${shown}${notes.length ? ` (${notes.join(', ')})` : ''}`, { charId: c.id });
   resolveBets(tx, value);
   if (serving) militaryPay(tx, c);
 

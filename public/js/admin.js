@@ -218,6 +218,8 @@ async function onCreate(ev) {
   if (f.growthOutfits && !f.growthOutfits.checked) body.growthOutfits = false;
   // Stage 7 「명절 대잔치」 (default on; only sent when turned off)
   if (f.holidays && !f.holidays.checked) body.holidays = false;
+  // 룰렛 실력 모드 (default random; only sent when skill → older servers keep working)
+  if (f.rouletteMode?.value === 'skill') body.rouletteMode = 'skill';
   // Stage 9-C 「CPU 허용」 (default off; only sent when on)
   if (f.allowCpu?.checked) body.allowCpu = true;
   try {
@@ -297,6 +299,7 @@ async function renderDetail() {
       <dt>턴 제한 시간</dt><dd>${room.config.turnTimeoutSec ? `${room.config.turnTimeoutSec}초` : '끄기'}</dd>
       <dt>성장 의상</dt><dd>${room.config.growthOutfits === false ? '끄기 (로비에서 고른 옷 그대로)' : '켜기 (시대·직업 의상)'}</dd>
       <dt>명절 대잔치</dt><dd>${room.config.holidays === false ? '끄기' : '켜기 (설날·추석 미니게임)'}</dd>
+      <dt>룰렛</dt><dd>${room.config.rouletteMode === 'skill' ? '🎯 실력 모드 (흔들기·타이밍, 훈수 베팅 없음)' : '완전 랜덤'}</dd>
       <dt>CPU 허용</dt><dd>${room.config.allowCpu ? '켜기 (방장도 CPU 추가 가능)' : '끄기 (관리자만 추가)'}</dd>
       ${room.turn ? `<dt>턴 순서(실제)</dt><dd>${room.turn.order.map((id) => esc(byId.get(id)?.name ?? id)).join(' → ')}</dd>` : ''}
     </dl>

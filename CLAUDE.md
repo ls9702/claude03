@@ -92,7 +92,7 @@
 - Room: `{id, code, status: lobby|playing|finished, config, players[], characters[], turn, log[], seed, version,
   nextPlayerSeq, nextCharSeq, createdAt, updatedAt}` (+ `artRequests {[sessionId]: n}`, `artRequestTotal` — never
   sent to clients). Config: `mode, eraTurns, maxCharacters, startingMoney, allowCpu, turnOrder, mcFrequency,
-  turnTimeoutSec` (`TURN_TIMEOUTS` 0 = off (default) | 30 | 60 | 90 | 120). `minEraTurns(eraId, mode)`: route eras
+  turnTimeoutSec` (`TURN_TIMEOUTS` 0 = off (default) | 30 | 60 | 90 | 120), `rouletteMode` random | skill (see "Roulette skill mode"). `minEraTurns(eraId, mode)`: route eras
   (young/middle_age) ≥ 3 ("청년 턴 수는 갈림길·합류 칸이 있어 3 이상이어야 합니다."), the mode's last era ≥ its last fixed
   stop index + 2 (kids 고등학생 ≥ 2 so 수능 and the goal never share a tile); checked on the merged config.
 - Player: `{id, sessionId, name, role: 'player'|'spectator', connected, lastSeen, ready, joinedAt}`. Spectators
@@ -1296,3 +1296,68 @@ the data files) and the MC sibling test in `test/mc.test.js`.
   `app.set('trust proxy', …)` so `clientIp(req)` = the forwarded client for the rate limits (README documents it).
 - **MC siblings (user correction)**: 호야 = boy, older brother; 봄이 = girl, younger sister (see the MC section). All MC pools
   were rewritten accordingly (no 누나 / 형아 / 호야 씨).
+
+## Roulette skill mode (룰렛 실력 모드)
+- Room config `rouletteMode: 'random' | 'skill'` (`ROULETTE_MODES`, default random, 400 "룰렛 방식은 완전 랜덤(random) 또는 실력 모드(skill)
+  중 하나여야 합니다."); admin form 「룰렛: 완전 랜덤 / 실력 모드 (흔들기·타이밍)」 (sent only when skill) + room detail line; lobby
+  `modeLabel` appends 「🎯 룰렛 실력 모드」. `/api/meta.balance.roulette` = `balance.json.roulette` {`skill.jitter`, `skill.deck`,
+  `cpu.aimNoise`}.
+- Pure rules `public/js/shared/roulette.js` (no imports; `server/game/roulette.js` = `export *` re-export): `isSkillRoom`, `parseTarget`
+  (int 1..10 or digit string, else null), `jitterTable(jitter)` (`{"<|offset|>": share}` → signed offsets 0, −1, +1, −2, +2 with ± halves,
+  normalized; invalid → `DEFAULT_JITTER` 50/40/10), `reflect` (0 → 2, 11 → 9), `skillValueFor(t, r)` / `skillValue(rng, t)` (ONE
+  `rng.next()`), `skillDistribution(t)` (exact, CPU + tests), number deck `availableTargets(used)`, `snapTarget(t, used)` (nearest free,
+  tie → nearer the middle, then smaller), `useTarget(used, t)` (all ten used → `[]`).
+- Engine `doSpin`: `spin {characterId, target, input}` — in a skill room, unless the actor is admin (forceSpin) or the system auto spin
+  (turn timer), a valid target → deck snap (`character.aimUsed`, public, sorted; `balance.roulette.skill.deck: false` disables) →
+  `skillValue` for the first roll; spin mods / 경차 / military halving apply after it (a taxi / noise SECOND roll stays random; the bonus spin
+  after the goal is random). Missing / invalid target = a plain random spin (old clients), random rooms ignore it (same RNG draw).
+  `spun` + `turn.lastSpin` gain `{target, wanted? (when snapped), input? ('shake'|'gauge'|'cpu', `ROULETTE_INPUTS`), skill: true}`; log
+  「🎡 ○○의 룰렛: 🎯 목표 7 → 결과 8[ 명중!]」 (first roll). `placeBet` → 409 "실력 모드에서는 훈수 베팅이 없어요." before anything else.
+  Route `POST /api/rooms/:id/actions` passes `target` + `input` (string).
+- Presentation (`spun`): exact hit (first roll) → `lineTag aim_hit` + line, |miss| ≥ 2 → `aim_miss` + line (placeholder `{aim}` added to
+  `lines.json.placeholders`), else the bland `spin` tag (no line). No new event types.
+- Why the deck (measured with `node scripts/simulate.js --aim-duel`, 8-character lifetime, CPU decisions, only the aim differs): every
+  landing pays on average, so with the plain 50/40/10 jitter "always aim 1" won **57.5 %** of games (fair 12.5 %; 3× the landings,
+  33.8 spins vs 12, and the game drags) while "always 10" won 0 %. Jitter cannot fix that (it doesn't change the mean). With the deck (400
+  games × seeds 1 / 2): cpu aim 26.4 / 24.2 %, random aim 7.5 / 8.6, always-10 10.5 / 11.4, always-1 9.8 / 8.6, no target (plain roulette)
+  8.3 / 9.7 — no degenerate strategy; good aiming is worth ~2× the fair share (+19–20 % total). Aim hit rate 50–52 %. CPU aim landings
+  salary 9.4 % / money 14.5 / loss 2.1 / goal 7.9 vs random aim 6.4 / 8.4 / 5.8 / 8.2 (goal halts the walk anyway → no goal exploit).
+  Jitter 40/40/20 (same deck, 400 games): cpu 21.9 %, random 7.8, max 13.6, min 9.8, none 9.5 → kept 50/40/10 (the approved spec; the knob
+  is `balance.roulette.skill.jitter`).
+- CPU (`cpu.js`): `cpuSpinAction` (skill rooms → `{target: cpuSkillTarget, input: 'cpu'}`), `cpuAimScores(room, charId)` = expected worth per
+  target under the jitter: `landingFor` mirrors the engine (plus / minus mods, 경차, military halving, stops / goal halt) × `aimTileWorth`
+  (tileWorth + heart / house / shop / jeju / reversal / merge) with losses × `lossAversion` + `aimSpeed` per tile moved (PERSONALITY:
+  cautious 1 / 1.5, normal 2 / 1.2, bold 4 / 0.8); best free deck number (ties → bigger), then `balance.roulette.cpu.aimNoise[personality]`
+  (cautious 0, normal 0.25, bold 0.5) chance of ±1 from the hashed sub-RNG (`subRng(…, 'aim')`) — the game RNG is never consumed.
+- Client pure `public/js/ui/rouletteSkill.js` (node-tested, `test/client-roulette.test.js`): `INPUT_KEY` `jinsei.rouletteInput`,
+  `detectShakeEnv(win)` {hasMotion, secure (`isSecureContext`), needsPermission (iOS `DeviceMotionEvent.requestPermission`), coarse},
+  `shakeSupport(env, permission)` → {ok, needsPermission, reason} (「흔들기는 HTTPS 주소에서만 돼요 · 버튼으로 해요」 / 「이 기기는 흔들기를 지원하지
+  않아요 · 버튼으로 해요」 / 「흔들기 권한이 거부됐어요 · 버튼으로 해요」), `defaultInput(stored, env)` (shake only on coarse-pointer devices
+  unless chosen), `motionMagnitude(ev)` (`acceleration`, else |accelerationIncludingGravity| − g), `accelToTarget(a)` (`SHAKE` aMin 3 → 1,
+  aMax 28 → 10, gamma 0.8), `createShakeMeter()` (EMA α 0.35, starts at 3 m/s², score = 0.6 peak + 0.4 avg, done after 300 ms still or
+  1.5 s), `gaugePosition(ms)` (ping-pong, 1100 ms per sweep, ×0.9 per sweep from the 4th, ≥ 650 ms), `gaugeTarget(pos)`, `aimText` (「🎯 목표 7 →
+  결과 8」/「… 명중!」, first roll), `aimShort`, `aimGrade`, `deckInfo`, `jitterHint`, `load/saveInputPref`, `DEADLINE_WARN_MS` 5000.
+- `public/js/ui/skillPanel.js` `createSkillPanel(host, {onAim, getMeta, now})` → `open({charId, name, deadlineAt, used})`, `close`,
+  `update`, `isOpen`, `charId`, `input`: fixed sheet `.skill-panel` (z 23, above cut-ins, under inbox / reaction bar / toasts), tabs 📱 흔들기 /
+  👆 버튼으로 (saved), gauge (rAF needle over 10 cells, used cells struck through, 「✋ 멈춰!」, Space / Enter via a capture keydown listener
+  — not the 700 ms prompt guard), shake (「📱 흔들기 켜기」 once when iOS needs permission, live 1..10 meter, tutorial line, "no sensor"
+  hint after 1.5 s without samples), result flash (snapped: 「🎯 7 (이미 쓴 숫자) → 6!」), ⏰ warning under 5 s of the turn timer, Escape /
+  ✕ closes. `body.skill-open` hides the floating spin button. `?debug=1` → `window.__skill`.
+- game2d: `spinNow()` (dock button, floating button, 3D roulette tap) opens the panel in skill rooms (else the plain spin); the panel closes
+  when it's no longer my roulette, `update` keeps deadline / deck fresh; dock text 「🎯 ○○ 룰렛 돌리기」 + hint 「🎯 흔들기나 버튼으로 목표 숫자를
+  정해요」 / 「…룰렛을 🎯 조준하는 중…」; bet card never opens in skill rooms; last-spin line shows `aimText`; `spun` feedback: side float
+  `aimShort` (everyone), my own 2D spins also toast `aimText`; 2D roulette pop shows 「🎯 목표 N」 and the result line (1.7 s). board3d
+  `spun`: subtitle 「🎯 ○○의 룰렛! 목표 N」, then `banner(aimText)` + `emotion.pop(aimShort)`; new hook `hooks.onSpinResult(e)` once the
+  wheel stopped (or at once when the step is instant) → game2d toasts my own 🎯 result (my prompt cut-in usually covers the board by then). CSS `public/css/roulette.css`.
+- Scripts: `simulate.js --roulette skill` (random-policy characters aim at a uniform random number = an average human, CPU policy aims;
+  no bets; prints hit / ±1 / ±2 shares + landings per policy), `--bias --roulette skill [--aim random|cpu]` (`simulateBias({roulette,
+  aim})`), `--aim-duel --games N --seed S` (`simulateAim({games, seed, strategies: cpu|random|max|min|none, data})`), `cpu-game.js
+  --roulette skill` (`playCpuGame({roulette})`). Measured: bias 2000 × seed 1 random aim 12.0–13.1 % (spread −0.06), 1000 × seed 1 CPU aim
+  11.4–13.7 % (spread 0.12); `cpu-game` 4 CPU + 4 random × 300 (seed 1): CPU wins 67.7 % random mode → 82.0 % skill mode (random-aiming
+  humans; avg total 1651 → 2068 vs 1439 → 1475); `simulate --games 300 --seed 11` random vs skill: route 1st-place shares stay fair
+  (young 21.1 / 20.8 / 18.4 → 19.7 / 21.6 / 18.4 %, fair ≈ 20), raw route gaps young 3.3 → 5.7 %, middle_age 12.0 → 10.9 %; lifetime
+  78.0 → 78.9 spins. (The `같은 판 평균 대비` relative line is dominated by games whose mean total is near 0 — use the raw gaps / shares.)
+- Tests: `test/roulette-skill.test.js` (config, jitter table + reflection + seeded 12k samples per target, deck, engine spins incl. snap /
+  log / lastSpin, 160 seeded spins through applyAction, invalid / random / auto / admin, bets 409, presentation tags, CPU target on a
+  crafted board + legality + RNG untouched, HTTP spin + meta + admin), `test/client-roulette.test.js`. E2E: session scratchpad
+  `skill/e2e.cjs` (screenshots `skill-*.png`).

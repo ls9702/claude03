@@ -51,14 +51,14 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades, submaps, result } = getBalance();
+    const { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades, submaps, result, roulette } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
       avatars: getAvatars(),
       reactions: REACTIONS,
       board: { tileTypes: board.tileTypes, routes: board.routes },
-      balance: { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades, submaps, result },
+      balance: { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades, submaps, result, roulette }, // roulette: 실력 모드 jitter
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
       mc: { ...getMc(), lines: getLines().mc ?? {} }, // Stage 5.6: MC NPC profiles + line pools (lobby greeting, result fallback)
@@ -189,6 +189,9 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       kind: body.kind,
       pick: body.pick,
       amount: body.amount,
+      // 룰렛 실력 모드: spin {target 1..10, input shake|gauge} (ignored in random rooms; invalid → a random spin)
+      target: body.target,
+      input: str(body.input),
       // Stage 7: cards, trades, gifts
       cardUid: str(body.cardUid),
       targetId: str(body.targetId),

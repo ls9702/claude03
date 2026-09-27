@@ -18,15 +18,17 @@ import { effectsFor } from './news.js';
 import { cardDef, handLimit, itemDef } from './cards.js';
 import { computeRanking } from './result.js';
 import { createRng } from './rng.js';
+import { availableTargets, isSkillRoom, skillDistribution } from './roulette.js';
 
 export const CPU_OWNER = 'cpu';
 export const PERSONALITIES = ['cautious', 'normal', 'bold'];
 
 /** Personality knobs: thresholds / reserves / margins (money in 만원). */
 export const PERSONALITY = {
-  cautious: { promotion: 0.6, retake: 0.6, propose: 0.6, reserve: 300, shopMult: 0.85, sabotage: 1.15, tradeMargin: 1.15, stake: 'low', routeBias: { career: 1 } },
-  normal: { promotion: 0.5, retake: 0.5, propose: 0.45, reserve: 300, shopMult: 1, sabotage: 0.95, tradeMargin: 1, stake: 'mid', routeBias: {} },
-  bold: { promotion: 0.4, retake: 0.4, propose: 0.3, reserve: 150, shopMult: 1.2, sabotage: 0.8, tradeMargin: 0.9, stake: 'high', routeBias: { money: 1 } },
+  // aimSpeed / lossAversion: 룰렛 실력 모드 target choice (worth per tile moved, weight of a loss landing)
+  cautious: { promotion: 0.6, retake: 0.6, propose: 0.6, reserve: 300, shopMult: 0.85, sabotage: 1.15, tradeMargin: 1.15, stake: 'low', routeBias: { career: 1 }, aimSpeed: 1, lossAversion: 1.5 },
+  normal: { promotion: 0.5, retake: 0.5, propose: 0.45, reserve: 300, shopMult: 1, sabotage: 0.95, tradeMargin: 1, stake: 'mid', routeBias: {}, aimSpeed: 2, lossAversion: 1.2 },
+  bold: { promotion: 0.4, retake: 0.4, propose: 0.3, reserve: 150, shopMult: 1.2, sabotage: 0.8, tradeMargin: 0.9, stake: 'high', routeBias: { money: 1 }, aimSpeed: 4, lossAversion: 0.8 },
 };
 
 export const isCpu = (c) => c?.ownerSessionId === CPU_OWNER;
@@ -600,6 +602,105 @@ function expectedLanding(ctx, c, kind) {
   return vals.reduce((s, v) => s + landing(v + add), 0) / vals.length;
 }
 
+// ---------- 룰렛 실력 모드: the CPU's target ----------
+
+/** Worth of landing on a tile for the aim (tileWorth + the tiles it leaves out: heart, house, shop, submaps). */
+function aimTileWorth(ctx, c, tile) {
+  if (!tile) return 0;
+  switch (tile.type) {
+    case 'heart':
+      return c.spouse ? 15 : 40;
+    case 'house':
+      return c.house ? 10 : (c.money ?? 0) >= 300 ? 45 : 5;
+    case 'shop':
+      return (c.money ?? 0) >= 100 ? 25 : 5;
+    case 'jeju':
+    case 'reversal':
+      return 30;
+    case 'merge':
+      return 5;
+    default:
+      return tileWorth(ctx, c, tile);
+  }
+}
+
+/**
+ * Where a roulette `value` takes `c` (the engine's order: spin mods plus / minus, 경차 1 → 2, military halving,
+ * stops / the goal halt the walk). A pending taxi / noise second roll is random and ignored here.
+ * @returns {{tile, steps}}
+ */
+function landingFor(ctx, c, value) {
+  const board = ctx.room.board;
+  let move = value;
+  for (const m of c.spinMods ?? []) {
+    if (m.kind === 'plus') move += m.value ?? 0;
+    else if (m.kind === 'minus') move -= m.value ?? 0;
+  }
+  move = Math.max(1, move);
+  if (move === 1 && (c.items ?? []).some((id) => (itemDef(ctx.data, id)?.effect?.carMin ?? 0) > 1)) move = 2;
+  const steps = c.military?.status === 'serving' ? Math.max(1, Math.ceil(move / 2)) : move;
+  let pos = c.position;
+  let n = 0;
+  for (; n < steps; n++) {
+    const np = nextPosition(board, pos, c.route);
+    if (!np) break;
+    pos = np;
+    const t = tileAt(board, pos);
+    if (t?.type === 'stop' || t?.type === 'goal') {
+      n++;
+      break;
+    }
+  }
+  return { tile: tileAt(board, pos), steps: n };
+}
+
+/**
+ * Expected worth of every target 1..10 under the server's jitter: {target: worth}. A landing = its tile worth
+ * (losses × the personality's `lossAversion`) + `aimSpeed` per tile moved (bold CPUs like distance).
+ */
+export function cpuAimScores(room, charId, data = gameData()) {
+  const c = room.characters.find((x) => x.id === charId);
+  if (!c || !room.board) return {};
+  const ctx = view(room, data);
+  const k = knobs(c, room);
+  const { min, max } = data.balance.spin;
+  const worth = {};
+  for (let v = min; v <= max; v++) {
+    const { tile, steps } = landingFor(ctx, c, v);
+    const w = aimTileWorth(ctx, c, tile);
+    worth[v] = (w < 0 ? w * (k.lossAversion ?? 1) : w) + (k.aimSpeed ?? 0) * steps;
+  }
+  const jitter = data.balance.roulette?.skill?.jitter;
+  const scores = {};
+  for (let t = min; t <= max; t++) {
+    let s = 0;
+    for (const [v, p] of Object.entries(skillDistribution(t, { jitter, min, max }))) s += p * worth[v];
+    scores[t] = s;
+  }
+  return scores;
+}
+
+/**
+ * The target a CPU aims at in a skill-mode room: the best expected landing among its free numbers (number deck;
+ * ties → the bigger number), then its
+ * personality's aim error (`balance.roulette.cpu.aimNoise[personality]` = chance of ±1) from a hashed sub-RNG —
+ * the game RNG is never consumed.
+ */
+export function cpuSkillTarget(room, charId, data = gameData()) {
+  const c = room.characters.find((x) => x.id === charId);
+  const { min, max } = data.balance.spin;
+  if (!c) return Math.round((min + max) / 2);
+  const scores = cpuAimScores(room, charId, data);
+  // number deck: only the numbers it has not used yet (the server would snap a used one anyway)
+  const free = data.balance.roulette?.skill?.deck === false ? availableTargets([], { min, max }) : availableTargets(c.aimUsed, { min, max });
+  let best = free.at(-1);
+  for (const t of [...free].reverse()) if ((scores[t] ?? -Infinity) > (scores[best] ?? -Infinity) + 1e-9) best = t;
+  const noise = data.balance.roulette?.cpu?.aimNoise?.[cpuPersonality(c, room)] ?? 0;
+  const rng = subRng(room, c, 'aim');
+  if (rng.next() < noise) best = clamp(best + (rng.next() < 0.5 ? -1 : 1), min, max);
+  return best;
+}
+
 /** Tiles left to the goal (following the chosen / default route). */
 function stepsToGoal(room, c) {
   let pos = c.position;
@@ -698,7 +799,12 @@ export function cpuDecide(room, charId, data = gameData()) {
     return { type: 'choose', characterId: c.id, promptId: p.promptId, optionId: cpuAnswer(room, c.id, data) };
   }
   if (room.turn.phase !== 'awaitSpin' || room.turn.order?.[room.turn.currentIndex] !== c.id || c.finished) return null;
-  return cpuCardAction(room, c.id, data) ?? { type: 'spin', characterId: c.id };
+  return cpuCardAction(room, c.id, data) ?? cpuSpinAction(room, c.id, data);
+}
+
+/** The spin itself: a plain spin, or in a skill-mode room the aimed one (`target`, `input: 'cpu'`). */
+export function cpuSpinAction(room, charId, data = gameData()) {
+  return isSkillRoom(room) ? { type: 'spin', characterId: charId, target: cpuSkillTarget(room, charId, data), input: 'cpu' } : { type: 'spin', characterId: charId };
 }
 
 /**

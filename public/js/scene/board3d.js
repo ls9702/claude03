@@ -26,6 +26,7 @@ import { clamp, lerp, hopHeight, easeInOutCubic, catmullRom, arcLengths, pointAt
 import { loadAssetIndex, findAsset } from '../assets.js';
 import { won } from '../format.js';
 import { spinNote } from '../shared/cards.js';
+import { aimShort, aimText } from '../ui/rouletteSkill.js';
 
 const TILE_SIZE = 1.64;
 const TILE_TOP = 0.27;
@@ -768,12 +769,21 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       S.shownCurrent = e.charId;
       cameraOn(e.charId);
       const name = S.chars.find((c) => c.id === e.charId)?.name ?? '';
-      S.animSubtitle = `🎡 ${name}의 룰렛!`;
+      // 룰렛 실력 모드: everyone sees what was aimed, then 「🎯 목표 7 → 결과 8」
+      S.animSubtitle = e.skill ? `🎯 ${name}의 룰렛! 목표 ${e.target}` : `🎡 ${name}의 룰렛!`;
       renderSubtitle();
-      if (ctx.instant) return;
+      if (ctx.instant) {
+        hooks.onSpinResult?.(e);
+        return;
+      }
       setRouletteMode('active');
       await roulette.spin(e.value, { duration: preset.name === 'high' ? 2.4 : 2.0 });
       showNumber(e.value);
+      hooks.onSpinResult?.(e); // the wheel has stopped (no spoiler): game2d toasts my own 🎯 result above cut-ins
+      if (e.skill) {
+        banner(aimText(e), 1900);
+        emotion.pop(e.charId, aimShort(e), { dur: 1.8 });
+      }
       // Stage 6: while serving the pawn moves only `steps` (half the roulette)
       if (e.halved && Number.isFinite(e.steps) && e.steps !== e.value) emotion.pop(e.charId, `🪖${e.steps}칸`, { dur: 1.6 });
       else if (spinNote(e)) emotion.pop(e.charId, spinNote(e).text.replace(' ', ''), { dur: 1.6 }); // Stage 7 card / item

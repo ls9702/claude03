@@ -6,7 +6,9 @@
 // CPU and random characters alternate in creation order and the turn order is `index`, so neither side gets the
 // better seats. Prints each game (winner, routes, jobs, net worth) for ≤ 5 games or with --verbose, and a
 // summary: CPU win share / average rank vs random, by personality, jobs, routes, education.
-// Importable: `playCpuGame({cpus, randoms, mode, seed, eraTurns, holidays, data})`, `cpuVsRandom({games, seed, ...})`.
+// `--roulette skill` = 룰렛 실력 모드 rooms (CPUs aim with `cpuSkillTarget`, random characters at a uniformly random
+// number — an average human).
+// Importable: `playCpuGame({cpus, randoms, mode, seed, eraTurns, holidays, roulette, data})`, `cpuVsRandom({games, seed, ...})`.
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gameData } from '../server/data/index.js';
@@ -47,16 +49,17 @@ function randomAction(room, charId, rng, data) {
       return { type: 'useCard', characterId: c.id, cardUid: k.uid, ...(def.kind === 'sabotage' ? { targetId: rng.pick(targets).id } : {}) };
     }
   }
-  return { type: 'spin', characterId: charId };
+  // 룰렛 실력 모드: an average human aims at a random number
+  return room.config?.rouletteMode === 'skill' ? { type: 'spin', characterId: charId, target: rng.int(1, 10), input: 'gauge' } : { type: 'spin', characterId: charId };
 }
 
 /**
  * One headless game. CPU characters (owner 'cpu') use `cpuDecide`; `randoms` characters (owner session 'rand')
  * play randomly. @returns {{room, ranking, actions}}
  */
-export function playCpuGame({ cpus = 4, randoms = 0, mode = 'lifetime', seed = 1, eraTurns, holidays = true, data = gameData(), fastLog = true } = {}) {
+export function playCpuGame({ cpus = 4, randoms = 0, mode = 'lifetime', seed = 1, eraTurns, holidays = true, roulette = 'random', data = gameData(), fastLog = true } = {}) {
   const meta = createRng(seed * 2654435761);
-  const v = validateRoomConfig({ mode, maxCharacters: Math.min(8, Math.max(2, cpus + randoms)), turnOrder: 'index', holidays, ...(eraTurns ? { eraTurns } : {}) });
+  const v = validateRoomConfig({ mode, maxCharacters: Math.min(8, Math.max(2, cpus + randoms)), turnOrder: 'index', holidays, rouletteMode: roulette, ...(eraTurns ? { eraTurns } : {}) });
   if (!v.ok) throw new Error(v.errors.join(' '));
   let room = { id: `cpu${seed}`, code: 'CPUCPU', status: 'lobby', config: { ...v.config, allowCpu: true }, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
   if (randoms) room = joinRoom(room, 'rand', '랜덤', 0).room;
@@ -95,12 +98,12 @@ export function playCpuGame({ cpus = 4, randoms = 0, mode = 'lifetime', seed = 1
 }
 
 /** Many mixed games → CPU vs random summary. */
-export function cpuVsRandom({ games = 100, seed = 1, cpus = 4, randoms = 4, mode = 'lifetime', data = gameData() } = {}) {
+export function cpuVsRandom({ games = 100, seed = 1, cpus = 4, randoms = 4, mode = 'lifetime', roulette = 'random', data = gameData() } = {}) {
   let cpuWins = 0;
   const rank = { cpu: [0, 0], random: [0, 0] };
   const total = { cpu: [0, 0], random: [0, 0] };
   for (let g = 0; g < games; g++) {
-    const { room, ranking } = playCpuGame({ cpus, randoms, mode, seed: seed * 100003 + g, data });
+    const { room, ranking } = playCpuGame({ cpus, randoms, mode, roulette, seed: seed * 100003 + g, data });
     const cpuIds = new Set(room.characters.filter(isCpu).map((c) => c.id));
     if (cpuIds.has(ranking[0].charId)) cpuWins++;
     for (const r of ranking) {
@@ -122,6 +125,7 @@ function main() {
   const cpus = Number(arg('cpus', 4));
   const randoms = Number(arg('random', 0));
   const mode = String(arg('mode', 'lifetime'));
+  const roulette = String(arg('roulette', 'random'));
   const verbose = !!arg('verbose', false) || games <= 5;
   const jobName = (c) => {
     if (!c.job) return '무직';
@@ -133,7 +137,7 @@ function main() {
   const t0 = performance.now();
   for (let g = 0; g < games; g++) {
     const s = seed * 100003 + g;
-    const { room, ranking, actions } = playCpuGame({ cpus, randoms, mode, seed: s, data });
+    const { room, ranking, actions } = playCpuGame({ cpus, randoms, mode, roulette, seed: s, data });
     sum.games++;
     sum.actions += actions;
     const byId = new Map(room.characters.map((c) => [c.id, c]));
@@ -169,7 +173,7 @@ function main() {
   }
   const avg = ([s, n]) => (n ? (s / n).toFixed(2) : '-');
   const pct = (n, d) => `${d ? ((100 * n) / d).toFixed(1) : '0.0'}%`;
-  console.log(`\n=== CPU 게임 ${sum.games}판 · CPU ${cpus} + 랜덤 ${randoms} · ${mode} · seed ${seed} · ${(performance.now() - t0).toFixed(0)}ms ===`);
+  console.log(`\n=== CPU 게임 ${sum.games}판 · CPU ${cpus} + 랜덤 ${randoms} · ${mode}${roulette === 'skill' ? ' · 룰렛 실력 모드' : ''} · seed ${seed} · ${(performance.now() - t0).toFixed(0)}ms ===`);
   if (randoms) {
     console.log(`CPU 우승 비율 ${pct(sum.cpuWins, sum.games)} (인원 비율 기준 ${pct(cpus, cpus + randoms)}) · 평균 순위 CPU ${avg(sum.rank.cpu)} / 랜덤 ${avg(sum.rank.random)} · 평균 총자산 CPU ${avg(sum.total.cpu)} / 랜덤 ${avg(sum.total.random)}`);
   }

@@ -281,7 +281,8 @@ function modeLabel(room) {
     const era = eras.eras.find((e) => e.id === id);
     return `${era?.name ?? id} ${room.config.eraTurns[id]}`;
   });
-  return `${mode.name} · ${parts.join(' / ')} · 초기 자금 ${room.config.startingMoney.toLocaleString()}만원`;
+  const skill = room.config.rouletteMode === 'skill' ? ' · 🎯 룰렛 실력 모드 (흔들기·버튼으로 목표 숫자)' : '';
+  return `${mode.name} · ${parts.join(' / ')} · 초기 자금 ${room.config.startingMoney.toLocaleString()}만원${skill}`;
 }
 
 function charCard(c, { mine = false } = {}) {

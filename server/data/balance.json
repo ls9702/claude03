@@ -10,6 +10,12 @@
     "ranges": { "1-3": [1, 3], "4-6": [4, 6], "7-10": [7, 10] },
     "keepTurns": 6
   },
+  "roulette": {
+    "_comment": "룰렛 실력 모드 (config rouletteMode skill): 목표 t → t 50 %, t±1 각 20 %, t±2 각 5 % (jitter = |차이|별 비율, ±로 반씩), 1~10 밖은 반사 (0→2, 11→9). 자동 룰렛·관리자 대신 돌리기·골인 후 보너스 룰렛·택시/층간소음의 두 번째 룰렛은 그대로 랜덤. deck = 숫자 덱 (한 번 노린 숫자는 1~10을 다 쓸 때까지 다시 못 노림 → 어떤 전략이든 평균 속도 5.5, 작은 수만 노려 칸을 더 밟는 꼼수 차단). cpu.aimNoise = CPU 성격별로 목표가 ±1 빗나갈 확률 (서버 jitter 전에)",
+    "modes": ["random", "skill"],
+    "skill": { "jitter": { "0": 0.5, "1": 0.4, "2": 0.1 }, "deck": true },
+    "cpu": { "aimNoise": { "cautious": 0, "normal": 0.25, "bold": 0.5 } }
+  },
   "prompts": { "multiTimeoutMs": 40000, "decisionTimeoutMs": null },
   "pension": { "era": "senior", "minCharacters": 3, "bottomN": 2, "base": 200, "gapRatio": 0.1, "max": 1000 },
   "charArt": { "perSession": 2, "perCharacter": 1, "perRoom": 8 },

@@ -303,10 +303,23 @@ export function presentationFor(ev, ctx) {
       tag = 'turn_start';
       bland = 'always';
       break;
-    case 'spun':
-      tag = 'spin';
-      bland = 'always';
+    case 'spun': {
+      // 룰렛 실력 모드: an exact hit / a miss by ≥ 2 gets its own line (the first roll — a taxi second roll is random)
+      const first = Array.isArray(ev.rolls) ? ev.rolls[0] : ev.value;
+      const miss = ev.skill && Number.isInteger(ev.target) ? Math.abs(first - ev.target) : null;
+      if (miss === 0) {
+        tag = 'aim_hit';
+        emotion ??= 'joy';
+      } else if (miss >= 2) {
+        tag = 'aim_miss';
+        emotion ??= 'sweat';
+      } else {
+        tag = 'spin';
+        bland = 'always';
+      }
+      if (miss != null) vars.aim = String(ev.target);
       break;
+    }
     case 'moved':
       tag = 'moved';
       bland = 'always';

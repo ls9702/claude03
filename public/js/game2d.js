@@ -56,6 +56,8 @@ import { createResultScreen } from './ui/resultShow.js';
 import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
 import { won, esc, secondsLeft, ownerHtml, josa, nameHtml } from './format.js';
+import { aimShort, aimText, isSkillRoom } from './ui/rouletteSkill.js';
+import { createSkillPanel } from './ui/skillPanel.js';
 import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
 import {
   STAT_INFO,
@@ -274,6 +276,29 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   // ---------- Stage 5: cut-ins + sound ----------
   const cutin = createCutin(document.body, { getMeta, assets: { findAsset, assetUrl }, audio, now: () => Date.now() + clockOffset() });
   const banner = createBanner(document.body, { getMeta });
+  // 룰렛 실력 모드: my spin opens the aim panel (shake / gauge) and sends {target, input}
+  const skillPanel = createSkillPanel(document.body, {
+    getMeta,
+    now: () => Date.now() + clockOffset(),
+    onAim: async (target, input) => {
+      const cur = currentChar();
+      if (!cur?.isMe || cur.id !== skillPanel.charId) return true; // the turn moved on → just close
+      audio.play('pop');
+      return run({ type: 'spin', characterId: cur.id, target, input });
+    },
+  });
+  const skillOn = () => isSkillRoom(ui.room);
+  /** Spin button / floating button / 3D roulette tap: the aim panel in skill mode, else a plain spin. */
+  function spinNow() {
+    const cur = currentChar();
+    if (!cur?.isMe || ui.room?.turn?.phase !== 'awaitSpin' || ui.room.turn.pending) return;
+    if (!skillOn()) {
+      run({ type: 'spin', characterId: cur.id });
+      return;
+    }
+    skillPanel.open({ charId: cur.id, name: cur.name, deadlineAt: ui.room.turn.spinDeadlineAt ?? null, used: cur.aimUsed ?? [] });
+  }
+  if (params.has('debug')) window.__skill = skillPanel;
   audio.install();
   audio.setSfxMap(getMeta()?.presentation?.sfx);
   loadAssetIndex().then(() => {
@@ -669,7 +694,14 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     el.spin.disabled = !canSpin; // in-flight requests are blocked via the .busy class
     el.dock.classList.toggle('can-spin', canSpin);
     document.body.classList.toggle('spin-docked', canSpin); // the MC corner moves above the sticky dock
-    if (!hold) el.spin.textContent = cur ? `🎡 ${cur.name} 룰렛 돌리기` : '🎡 룰렛 돌리기';
+    const skill = isSkillRoom(room);
+    if (!hold) el.spin.textContent = cur ? `${skill ? '🎯' : '🎡'} ${cur.name} 룰렛 돌리기` : '🎡 룰렛 돌리기';
+    // 룰렛 실력 모드: the aim panel follows the turn (closed when it's no longer my roulette)
+    if (skillPanel.isOpen) {
+      if (!canSpin && !hold) skillPanel.close();
+      else if (cur?.id !== skillPanel.charId) skillPanel.close();
+      else skillPanel.update({ deadlineAt: turn.spinDeadlineAt ?? null, used: cur?.aimUsed ?? [] });
+    }
     ui.canSpin = canSpin;
     if (canSpin) el.spinfab.textContent = el.spin.textContent;
     applyFab();
@@ -686,9 +718,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       const waiting = turn.pending.forCharacterIds.filter((id) => !turn.pending.answered?.includes(id)).map((id) => byId(id)?.name ?? id);
       hint = `⏳ ${esc(turn.pending.title ?? '선택')} — ${esc(waiting.join(', '))} 선택 기다리는 중${deadlineHtml(turn.pending.deadlineAt)}`;
     } else if (canSpin) {
-      hint = `내 차례예요! 룰렛을 돌리세요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
+      hint = skill
+        ? `내 차례예요! 🎯 흔들기나 버튼으로 목표 숫자를 정해요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`
+        : `내 차례예요! 룰렛을 돌리세요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
     } else if (cur) {
-      hint = `${esc(cur.ownerName)}님이 「${esc(cur.name)}」의 룰렛을 돌리기를 기다리는 중…${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
+      hint = `${esc(cur.ownerName)}님이 「${esc(cur.name)}」의 룰렛을 ${skill ? '🎯 조준하는' : '돌리기를 기다리는'} 중…${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
     }
     // 3D: don't spoil the roulette result before the wheel stops (render again on idle)
     const spoiler = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 400);
@@ -697,7 +731,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       // Stage 6: while serving, the pawn moves `steps` (half), not the roulette value
       const note = spinNote(last);
       const steps = last.halved && Number.isFinite(last.steps) && last.steps !== last.value ? ` <small>(🪖 복무 중 ${last.steps}칸 이동)</small>` : note ? ` <small>(${esc(note.text)} 이동)</small>` : '';
-      hint = `<span class="last-spin">최근 룰렛: ${esc(who?.name ?? '')} ${last.value}${steps}</span><br>${hint}`;
+      const aim = aimText(last); // 룰렛 실력 모드: 「🎯 목표 7 → 결과 8」
+      hint = `<span class="last-spin">최근 룰렛: ${esc(who?.name ?? '')} ${aim ? `<span class="aim-note">${esc(aim)}</span>` : last.value}${steps}</span><br>${hint}`;
     }
     el.hint.innerHTML = hint;
   }
@@ -712,7 +747,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const turn = room.turn;
     // betting on another family's roulette only (the server refuses my own family's turn)
     const mine = chars().filter((c) => c.isMe && !c.finished && c.ownerId !== cur?.ownerId); // finished characters can't bet
-    const open = room.status === 'playing' && !hold && cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0;
+    // 룰렛 실력 모드: no side bets (the server refuses them)
+    const open = room.status === 'playing' && !hold && !isSkillRoom(room) && cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0;
     el.bet.hidden = !open;
     if (!open) {
       el.bet.innerHTML = '';
@@ -1515,8 +1551,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       return render(ui.room);
     }
     if (t.closest('[data-el="spin"], [data-el="spinfab"]')) {
-      const cur = currentChar();
-      if (cur) run({ type: 'spin', characterId: cur.id });
+      spinNow();
       return;
     }
     const choice = t.closest('[data-choose]');
@@ -1853,9 +1888,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           meta: getMeta(),
           hooks: {
             onStep: (e) => feedback(e, true),
-            onRouletteTap: () => {
-              const cur = currentChar();
-              if (cur?.isMe && ui.room?.turn?.phase === 'awaitSpin' && !ui.room.turn.pending) run({ type: 'spin', characterId: cur.id });
+            onRouletteTap: () => spinNow(),
+            onSpinResult: (e) => {
+              const c = e.skill ? byId(e.charId) : null;
+              if (c?.isMe) toast(`${c.name}: ${aimText(e)}`, 'info');
             },
             onError: (err) => console.warn('[board3d]', err),
           },
@@ -1998,10 +2034,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     f.addEventListener('animationend', () => f.remove());
   }
 
-  function showRoulette(value, name) {
+  function showRoulette(value, name, e = null) {
     const pop = el.pop;
     pop.hidden = false;
-    pop.innerHTML = `<div class="rp-name">${esc(name)}의 룰렛</div><div class="rp-num">?</div>`;
+    const aim = e?.skill && Number.isInteger(e.target);
+    pop.innerHTML = `<div class="rp-name">${esc(name)}의 룰렛</div>${aim ? `<div class="rp-aim">🎯 목표 ${e.target}</div>` : ''}<div class="rp-num">?</div>${
+      aim ? `<div class="rp-aim-res" hidden>${esc(aimText(e))}</div>` : ''
+    }`;
     const num = pop.querySelector('.rp-num');
     el.dial.classList.add('rolling');
     let n = 0;
@@ -2013,8 +2052,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       if (n >= 10) {
         clearInterval(iv);
         num.classList.add('final');
+        const res = pop.querySelector('.rp-aim-res');
+        if (res) res.hidden = false;
         el.dial.classList.remove('rolling');
-        setTimeout(() => (pop.hidden = true), 900);
+        setTimeout(() => (pop.hidden = true), aim ? 1700 : 900);
       }
     }, 60);
   }
@@ -2140,6 +2181,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     cutin.hide();
     banner.clear();
     mcCorner.clear();
+    skillPanel.close();
     el.spin.hidden = true;
     el.spin.disabled = true;
     el.spinfab.hidden = true;
@@ -2167,7 +2209,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     {
       switch (e.type) {
         case 'spun':
-          if (!in3d) showRoulette(e.value, c?.name ?? '');
+          if (!in3d) showRoulette(e.value, c?.name ?? '', e);
+          if (e.skill) floatOn(e.charId, aimShort(e), e.value === e.target || e.rolls?.[0] === e.target ? 'plus aim' : 'aim');
+          if (e.skill && c?.isMe && !in3d) toast(`${c.name}: ${aimText(e)}`, 'info');
           if (e.halved && Number.isFinite(e.steps) && e.steps !== e.value) floatOn(e.charId, `🪖 ${e.steps}칸만 이동`, 'minus');
           else if (spinNote(e)) floatOn(e.charId, spinNote(e).text, spinNote(e).steps < e.value ? 'minus' : 'plus');
           if (e.auto) toast(`⏰ 시간 초과! ${c?.name ?? ''}의 룰렛을 자동으로 돌렸어요.`);
