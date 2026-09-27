@@ -35,6 +35,7 @@ import {
   tradeSideText,
   validateGift,
   validateTrade,
+  holidayTitle,
 } from './shared/cards.js';
 import { HOLIDAY_OPTION_ICON, cardHtml, itemIconHtml, shopOptionsHtml } from './ui/cardArt.js';
 import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
@@ -392,8 +393,15 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const era = anchor?.type === 'eraChanged' ? anchor.eraName ?? '' : '';
     return cutin.studioSpec(lines, {
       key: `${anchor?.type ?? 'mc'}:${anchor?.era ?? ''}:${anchor?.charId ?? ''}`,
-      tone: anchor?.type === 'gameStarted' ? 'holiday' : 'good',
-      title: anchor?.type === 'gameStarted' ? '🎙️ 인생 방송국 · 생방송 시작' : `🎙️ ${era} 시대 개막`,
+      tone: anchor?.type === 'gameStarted' || anchor?.type === 'holidayStarted' || anchor?.type === 'holidayResult' ? 'holiday' : 'good',
+      title:
+        anchor?.type === 'gameStarted'
+          ? '🎙️ 인생 방송국 · 생방송 시작'
+          : anchor?.type === 'holidayStarted' || anchor?.type === 'holidayResult'
+            ? `🎙️ ${holidayTitle(anchor.kind)}`
+            : era
+              ? `🎙️ ${era} 시대 개막`
+              : '🎙️ 인생 방송국',
       era: era ? `${era} 시대` : '',
       characters: orderedChars(),
       currentId: anchor?.charId ?? null,
@@ -692,6 +700,260 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       }${others ? ` · 다른 가문 ${others}명 베팅 중` : ''}</p>`;
   }
 
+  // ---------- Stage 7: hand, card sheet, trade / gift, inbox ----------
+  const hasCards = () => chars().some((c) => Array.isArray(c.cards));
+  const artFor = (kind, id) => {
+    if (!id || !ui.assetsReady) return null;
+    return (kind === 'job' ? findAsset({ kind: 'icon', job: id }) : findAsset({ kind, [kind]: id }))?.url ?? null;
+  };
+  /** Job badge icon: generated badge art (`{kind:'icon', job}`) when accepted, else the emoji. */
+  const jbIcon = (jb) => {
+    const url = artFor('job', jb?.id);
+    return url ? `<img class="jb-img" src="${esc(url)}" alt="" decoding="async">` : esc(jb?.icon ?? '💼');
+  };
+  const serverNow = () => Date.now() + clockOffset();
+
+  /** Whose hand the dock shows: the current character when it's mine, else my chosen / first character. */
+  function handChar() {
+    const mine = chars().filter((c) => c.isMe);
+    if (!mine.length) return null;
+    const cur = currentChar();
+    if (cur?.isMe && !cur.finished) return cur;
+    return mine.find((c) => c.id === ui.handFor) ?? mine.find((c) => !c.finished) ?? mine[0];
+  }
+
+  function renderHand(room, { hold = false } = {}) {
+    const who = room.status === 'playing' && !isSpectator() && hasCards() ? handChar() : null;
+    el.hand.hidden = !who;
+    if (!who) {
+      el.hand.innerHTML = '';
+      return;
+    }
+    const meta = getMeta();
+    const hand = handOf(who, meta);
+    const lim = cardDefs(meta).handLimit;
+    const mine = chars().filter((c) => c.isMe);
+    const cur = currentChar();
+    const myTurn = cur?.id === who.id;
+    const cards = hand
+      .map((card) => {
+        const pl = hold ? { playable: false, reason: '이벤트 진행 중이에요.', kind: card.info.kind } : cardPlayability(room, who, card, { meta });
+        const cls = [pl.playable ? 'can' : 'dim', card.info.kind === 'passive' ? 'passive' : ''].filter(Boolean).join(' ');
+        return cardHtml(card, { art: artFor('card', card.id), meta, cls, attrs: `data-card-uid="${esc(card.uid)}" data-card-char="${esc(who.id)}"`, note: pl.reason ?? '' });
+      })
+      .join('');
+    let hint;
+    if (!hand.length) hint = '카드가 없어요 · 🃏 카드 칸이나 🛍️ 상점에서 얻어요';
+    else if (myTurn && room.turn.cardUsed) hint = '✅ 이번 턴 카드 사용 완료';
+    else if (myTurn && room.turn.phase === 'awaitSpin' && !room.turn.pending) hint = '룰렛 전에 1장 쓸 수 있어요 · 카드를 눌러 보세요';
+    else hint = '내 차례, 룰렛 전에 1장 쓸 수 있어요';
+    const tabs =
+      mine.length > 1 && !(cur?.isMe && !cur.finished)
+        ? `<span class="hand-tabs" role="group" aria-label="손패 볼 캐릭터">${mine
+            .map((c) => `<button type="button" class="hand-tab${c.id === who.id ? ' on' : ''}" data-hand-for="${esc(c.id)}" aria-pressed="${c.id === who.id}">${esc(c.name)}</button>`)
+            .join('')}</span>`
+        : '';
+    el.hand.innerHTML = `<div class="hand-head"><span class="hand-t">🃏 <b>${esc(who.name)}</b>의 손패 <small>${hand.length}/${lim}</small></span>${tabs}<span class="hand-hint">${esc(hint)}</span></div>
+      <div class="hand-row" role="list">${cards}</div>`;
+  }
+
+  function openCardSheet(charId, uid) {
+    ui.cardSheet = { charId, uid, targetId: null };
+    renderCardSheet();
+    el.cardsheet.querySelector('[data-card-use], [data-sheet-close]')?.focus({ preventScroll: true });
+  }
+  function closeCardSheet() {
+    ui.cardSheet = null;
+    el.cardsheet.hidden = true;
+    el.cardsheet.innerHTML = '';
+  }
+
+  /** Card detail sheet: art, kind, effect, 「사용」 (+ target picker for sabotage cards). Re-rendered on state changes. */
+  function renderCardSheet() {
+    const cs = ui.cardSheet;
+    const room = ui.room;
+    const who = cs ? byId(cs.charId) : null;
+    const meta = getMeta();
+    const card = who ? handOf(who, meta).find((c) => c.uid === cs.uid) : null;
+    if (!cs || !card || room?.status !== 'playing') {
+      if (cs) closeCardSheet();
+      return;
+    }
+    const info = card.info;
+    const pl = cardPlayability(room, who, card, { meta, spectator: isSpectator() });
+    const kind = CARD_KINDS[info.kind] ?? CARD_KINDS.instant;
+    let targets = '';
+    if (pl.needsTarget) {
+      const list = sabotageTargets(room, who);
+      if (cs.targetId && !list.some((x) => x.valid && x.char.id === cs.targetId)) cs.targetId = null;
+      targets = `<h3 class="cs-sub">누구에게 쓸까요?</h3><div class="cs-targets" role="radiogroup" aria-label="대상">${
+        list.length
+          ? list
+              .map(
+                (x) => `<button type="button" class="cs-target${x.char.id === cs.targetId ? ' on' : ''}" data-card-target="${esc(x.char.id)}" role="radio" aria-checked="${x.char.id === cs.targetId}"${x.valid ? '' : ' disabled'}>
+                  <span class="cs-tp">${portraitHtml(x.char, { size: 36 })}</span><span class="cs-tn"><b>${esc(x.char.name)}</b><small>${esc(x.char.ownerName ?? '')}${x.char.isMe ? ' · 나' : ''} · ${esc(room.board?.eras?.[x.char.position?.eraIndex ?? 0]?.name ?? '')}</small>${
+                    x.reason ? `<small class="cs-why">${esc(x.reason)}</small>` : ''
+                  }</span></button>`,
+              )
+              .join('')
+          : '<p class="muted small">노릴 수 있는 캐릭터가 없어요.</p>'
+      }</div>`;
+    }
+    const ready = pl.playable && (!pl.needsTarget || !!cs.targetId);
+    const reason = pl.reason ?? (pl.needsTarget && !cs.targetId ? '대상을 고르세요.' : '');
+    el.cardsheet.innerHTML = `<div class="g-sheet card-sheet k-${esc(info.kind)}">
+      <div class="cs-top">${cardHtml(card, { art: artFor('card', card.id), meta, tag: 'div', cls: 'big' })}
+        <div class="cs-info"><span class="cs-kind" style="--kc:${kind.color}">${esc(kind.label)} 카드</span><h2>${esc(info.icon)} ${esc(info.name)}</h2><p>${esc(info.desc)}</p>${
+          info.jobOnly ? `<p class="small muted">💼 ${esc(jobInfo(info.jobOnly, meta?.jobs)?.name ?? info.jobOnly)} 전용</p>` : ''
+        }<p class="small muted">${esc(who.name)}의 카드</p></div></div>
+      ${targets}
+      ${reason ? `<p class="cs-reason${pl.playable ? '' : ' no'}">${esc(reason)}</p>` : ''}
+      <div class="cs-actions"><button type="button" class="btn ghost" data-sheet-close>닫기</button>${
+        info.kind === 'passive' ? '' : `<button type="button" class="btn primary" data-card-use${ready ? '' : ' disabled'}>${info.kind === 'sabotage' ? '💢 뒤통수 치기' : '✨ 사용'}</button>`
+      }</div></div>`;
+    hydratePortraits(el.cardsheet);
+    el.cardsheet.hidden = false;
+  }
+
+  async function useCard() {
+    const cs = ui.cardSheet;
+    const who = cs ? byId(cs.charId) : null;
+    const card = who ? handOf(who, getMeta()).find((c) => c.uid === cs.uid) : null;
+    if (!card) return closeCardSheet();
+    const body = { type: 'useCard', characterId: who.id, cardUid: card.uid };
+    if (card.info.kind === 'sabotage') body.targetId = cs.targetId;
+    const ok = await run(body);
+    if (ok) {
+      closeCardSheet();
+      if (card.info.kind !== 'sabotage' && card.id !== 'pledge') toast(`${card.info.icon} ${card.info.name} 카드를 썼어요!`);
+    }
+  }
+
+  // --- trade / gift dialog ---
+  function openTrade(mode, toId) {
+    const mine = chars().filter((c) => c.isMe && c.id !== toId && !(mode === 'trade' && c.ownerId && c.ownerId === byId(toId)?.ownerId));
+    if (!mine.length) return;
+    const cur = currentChar();
+    const from = mine.find((c) => c.id === cur?.id) ?? mine.find((c) => !c.finished) ?? mine[0];
+    ui.trade = { mode, toId, fromId: from.id, give: { kind: 'money', money: '', cardUid: null }, want: { kind: 'none', money: '', cardUid: null } };
+    renderTradeDlg();
+    el.tradedlg.querySelector('input, button')?.focus({ preventScroll: true });
+  }
+  function closeTrade() {
+    ui.trade = null;
+    el.tradedlg.hidden = true;
+    el.tradedlg.innerHTML = '';
+  }
+  function tradeCheck() {
+    const t = ui.trade;
+    if (!t) return { ok: false, error: '' };
+    if (t.mode === 'gift') return validateGift({ fromId: t.fromId, toId: t.toId, kind: t.give.kind, money: t.give.money, cardUid: t.give.cardUid }, { room: ui.room, meta: getMeta() });
+    return validateTrade({ fromId: t.fromId, toId: t.toId, give: t.give, want: t.want }, { room: ui.room, meta: getMeta() });
+  }
+  function sideHtml(side, key, owner, { allowNone = true, label }) {
+    const meta = getMeta();
+    const hand = handOf(owner, meta);
+    const kinds = [...(allowNone ? [['none', '없음']] : []), ['money', '💰 돈'], ['card', '🃏 카드']];
+    return `<fieldset class="td-side"><legend>${esc(label)}</legend>
+      <div class="td-kinds" role="radiogroup">${kinds
+        .map(([k, l]) => `<button type="button" class="td-kind${side.kind === k ? ' on' : ''}" data-td-side="${key}" data-td-kind="${k}" role="radio" aria-checked="${side.kind === k}"${k === 'card' && !hand.length ? ' disabled' : ''}>${l}</button>`)
+        .join('')}</div>
+      ${
+        side.kind === 'money'
+          ? `<label class="td-money"><input type="number" inputmode="numeric" min="1" step="1" ${key === 'give' ? `max="${Math.max(0, Math.floor(owner.money))}"` : ''} placeholder="금액 (만원)" value="${esc(side.money)}" data-td-money="${key}"><span>만원</span>${
+              key === 'give' ? `<small class="muted">보유 ${won(owner.money)}</small>` : `<small class="muted">${esc(owner.name)} 보유 ${won(owner.money)}</small>`
+            }</label>`
+          : ''
+      }
+      ${
+        side.kind === 'card'
+          ? `<div class="td-cards">${hand
+              .map((c) => cardHtml(c, { art: artFor('card', c.id), meta, cls: `mini${String(side.cardUid) === c.uid ? ' on' : ''}`, attrs: `data-td-card="${esc(c.uid)}" data-td-side="${key}" aria-pressed="${String(side.cardUid) === c.uid}"` }))
+              .join('')}</div>`
+          : ''
+      }</fieldset>`;
+  }
+  function renderTradeDlg() {
+    const t = ui.trade;
+    const to = t ? byId(t.toId) : null;
+    if (!t || !to || ui.room?.status !== 'playing') return closeTrade();
+    const mine = chars().filter((c) => c.isMe && c.id !== to.id && !(t.mode === 'trade' && c.ownerId && c.ownerId === to.ownerId));
+    if (!mine.some((c) => c.id === t.fromId)) t.fromId = mine[0]?.id ?? null;
+    const from = byId(t.fromId);
+    if (!from) return closeTrade();
+    const check = tradeCheck();
+    const fromSel =
+      mine.length > 1
+        ? `<label class="td-from">보내는 캐릭터 <select data-td-from>${mine.map((c) => `<option value="${esc(c.id)}"${c.id === from.id ? ' selected' : ''}>${esc(c.name)} (${won(c.money)})</option>`).join('')}</select></label>`
+        : `<p class="small muted td-from">보내는 캐릭터: <b>${esc(from.name)}</b> (${won(from.money)})</p>`;
+    el.tradedlg.innerHTML = `<div class="g-sheet trade-sheet">
+      <div class="sheet-who">${portraitHtml(to, { size: 48 })}<div><h2>${t.mode === 'gift' ? '🎁 선물하기' : '🤝 거래 제안'}</h2><p class="small muted">받는 사람: <b>${esc(to.name)}</b> (${esc(to.ownerName ?? '')}${to.isMe ? ' · 내 캐릭터' : ''})</p></div></div>
+      ${fromSel}
+      ${
+        t.mode === 'gift'
+          ? sideHtml(t.give, 'give', from, { allowNone: false, label: '보낼 것' })
+          : `${sideHtml(t.give, 'give', from, { label: `줄 것 (${from.name})` })}${sideHtml(t.want, 'want', to, { label: `받고 싶은 것 (${to.name})` })}<p class="small muted">상대가 수락하면 바로 교환돼요. 60초 안에 답이 없으면 취소돼요.</p>`
+      }
+      <p class="td-error" data-td-error role="alert">${check.ok ? '' : esc(check.error ?? '')}</p>
+      <div class="cs-actions"><button type="button" class="btn ghost" data-td-close>닫기</button><button type="button" class="btn primary" data-td-send${check.ok ? '' : ' disabled'}>${t.mode === 'gift' ? '🎁 보내기' : '🤝 제안하기'}</button></div>
+    </div>`;
+    hydratePortraits(el.tradedlg);
+    el.tradedlg.hidden = false;
+  }
+  function refreshTradeCheck() {
+    const check = tradeCheck();
+    const err = el.tradedlg.querySelector('[data-td-error]');
+    if (err) err.textContent = check.ok ? '' : check.error ?? '';
+    const go = el.tradedlg.querySelector('[data-td-send]');
+    if (go) go.disabled = !check.ok;
+  }
+  async function sendTrade() {
+    const t = ui.trade;
+    const check = tradeCheck();
+    if (!t || !check.ok) return refreshTradeCheck();
+    const to = byId(t.toId);
+    const ok = await run(check.body);
+    if (ok) {
+      closeTrade();
+      toast(t.mode === 'gift' ? `🎁 ${to?.name ?? ''}에게 선물을 보냈어요!` : `🤝 ${to?.name ?? ''}에게 거래를 제안했어요.`);
+    }
+  }
+
+  /** Persistent strip: incoming offers (수락 / 거절 + countdown) and my open offers (취소). */
+  function renderInbox(room) {
+    const show = room?.status === 'playing' && !isSpectator() && Array.isArray(room.trades);
+    const lists = show ? tradeLists(room, serverNow()) : { incoming: [], outgoing: [] };
+    const key = [...lists.incoming, ...lists.outgoing].map((t) => `${t.id}:${t.expiresAt}`).join('|') + `|${chars().map((c) => (c.cards ?? []).length).join(',')}`;
+    if (key === ui.inboxKey) return;
+    ui.inboxKey = key;
+    const meta = getMeta();
+    const n = (id) => byId(id)?.name ?? '';
+    const sides = (t) => {
+      const from = byId(t.fromId);
+      const to = byId(t.toId);
+      return { give: tradeSideText(t.give, { owner: from, meta, won }), want: tradeSideText(t.want, { owner: to, meta, won }) };
+    };
+    const rows = [
+      ...lists.incoming.map((t) => {
+        const s2 = sides(t);
+        return `<div class="ti-row in" data-trade="${esc(t.id)}"><span class="ti-t">🤝 <b>${esc(n(t.fromId))}</b> → <b>${esc(n(t.toId))}</b> 거래 제안${
+          t.expiresAt ? ` <span class="deadline" data-deadline="${Number(t.expiresAt)}" data-icon="⏳"></span>` : ''
+        }</span><span class="ti-d">줄게 <b>${esc(s2.give)}</b> · 원해 <b>${esc(s2.want)}</b></span><span class="ti-a"><button type="button" class="btn tiny primary" data-trade-accept="${esc(t.id)}" data-char="${esc(t.toId)}">수락</button><button type="button" class="btn tiny" data-trade-reject="${esc(t.id)}" data-char="${esc(t.toId)}">거절</button></span></div>`;
+      }),
+      ...lists.outgoing.map((t) => {
+        const s2 = sides(t);
+        return `<div class="ti-row out" data-trade="${esc(t.id)}"><span class="ti-t">⏳ <b>${esc(n(t.fromId))}</b> → ${esc(n(t.toId))}에게 제안 중${
+          t.expiresAt ? ` <span class="deadline" data-deadline="${Number(t.expiresAt)}"></span>` : ''
+        }</span><span class="ti-d">줄게 ${esc(s2.give)} · 원해 ${esc(s2.want)}</span><span class="ti-a"><button type="button" class="btn tiny ghost" data-trade-cancel="${esc(t.id)}" data-char="${esc(t.fromId)}">취소</button></span></div>`;
+      }),
+    ];
+    el.inbox.hidden = !rows.length;
+    el.inbox.innerHTML = rows.join('');
+    document.body.classList.toggle('has-inbox', rows.length > 0);
+    document.body.style.setProperty('--inbox-h', rows.length ? `${el.inbox.offsetHeight + 8}px` : '0px');
+    tickDeadlines();
+  }
+
   // ---------- character panel / log ----------
   function renderChars(room) {
     const cur = currentChar();
@@ -731,7 +993,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const jb = jobBadge(c, jobs);
     if (jb) {
       out.push(
-        `<span class="job-badge${jb.partTime ? ' parttime' : ''}${jb.hidden ? ' hidden-job' : ''}" title="${esc(`${jb.name}${jb.rankName ? ` · ${jb.rankName}` : ''} (${jb.rank}/${jb.maxRank})`)}"><span class="jb-ic">${esc(jb.icon)}</span><span class="jb-n">${esc(jb.name)}</span>${
+        `<span class="job-badge${jb.partTime ? ' parttime' : ''}${jb.hidden ? ' hidden-job' : ''}" title="${esc(`${jb.name}${jb.rankName ? ` · ${jb.rankName}` : ''} (${jb.rank}/${jb.maxRank})`)}"><span class="jb-ic">${jbIcon(jb)}</span><span class="jb-n">${esc(jb.name)}</span>${
           jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''
         }</span>`,
       );
@@ -741,6 +1003,18 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (edu) out.push(`<span class="gc-tag">🎓 ${esc(edu)}</span>`);
     const mil = militaryLabel(c.military);
     if (mil && c.military?.status === 'serving') out.push(`<span class="gc-tag mil">🪖 ${esc(mil)}</span>`);
+    // Stage 7: roulette modifiers (⚡+2 / ✂️−3 …), hand size, item icons
+    for (const b of spinModBadges(c.spinMods)) out.push(`<span class="gc-tag mod ${b.kind}" title="${esc(b.title)}">${esc(b.text)}</span>`);
+    if (Array.isArray(c.cards)) out.push(`<span class="gc-tag hand-n" title="손패 ${c.cards.length}장">🃏 ${c.cards.length}</span>`);
+    const items = itemsOf(c, getMeta());
+    if (items.length) {
+      out.push(
+        `<span class="gc-items" title="${esc(items.map((i) => i.info.name).join(', '))}">${items
+          .slice(0, 4)
+          .map((i) => itemIconHtml(i.id, { art: artFor('item', i.id), meta: getMeta() }))
+          .join('')}${items.length > 4 ? `<small>+${items.length - 4}</small>` : ''}</span>`,
+      );
+    }
     return out.join('');
   }
 
@@ -767,7 +1041,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const facts = [];
     if (jb) {
       facts.push(
-        `<div class="gd-fact"><span class="gd-k">직업</span><span class="gd-v"><span class="job-badge big${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${esc(jb.icon)}</span><span class="jb-n">${esc(jb.name)}</span>${
+        `<div class="gd-fact"><span class="gd-k">직업</span><span class="gd-v"><span class="job-badge big${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${jbIcon(jb)}</span><span class="jb-n">${esc(jb.name)}</span>${
           jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''
         }</span>${jb.rankName ? ` <small>${esc(jb.rankName)} (${jb.rank}/${jb.maxRank})</small>` : ''}${jb.injured ? ` <span class="gc-tag bad">🤕 부상 ${jb.injured}턴</span>` : ''}</span></div>`,
       );
@@ -794,8 +1068,35 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           .join(' ')}</span></div>`,
       );
     }
+    // Stage 7: hand (public), items, 🤝 거래 제안 / 🎁 선물
+    const meta = getMeta();
+    if (Array.isArray(c.cards)) {
+      const hand = handOf(c, meta);
+      facts.push(
+        `<div class="gd-fact"><span class="gd-k">손패</span><span class="gd-v gd-cards">${
+          hand.length ? hand.map((h) => `<span class="gd-card k-${esc(h.info.kind)}" title="${esc(h.info.desc)}">${esc(h.info.icon)} ${esc(h.info.name)}</span>`).join('') : '<span class="muted">없음</span>'
+        }</span></div>`,
+      );
+    }
+    const items = itemsOf(c, meta);
+    if (items.length) {
+      facts.push(
+        `<div class="gd-fact"><span class="gd-k">아이템</span><span class="gd-v gd-items">${items
+          .map((i) => `<span class="gd-item">${itemIconHtml(i.id, { art: artFor('item', i.id), meta })} ${esc(i.info.name)}</span>`)
+          .join('')}</span></div>`,
+      );
+    }
+    const mods = spinModBadges(c.spinMods);
+    if (mods.length) facts.push(`<div class="gd-fact"><span class="gd-k">다음 룰렛</span><span class="gd-v">${mods.map((b) => `<span class="gc-tag mod ${b.kind}">${esc(b.text)} ${esc(b.title)}</span>`).join(' ')}</span></div>`);
+    const acts = [];
+    if (ui.room?.status === 'playing' && !isSpectator() && Array.isArray(c.cards)) {
+      const mine = chars().filter((x) => x.isMe);
+      const others = mine.filter((x) => x.id !== c.id);
+      if (!c.isMe && mine.some((x) => !x.ownerId || x.ownerId !== c.ownerId)) acts.push(`<button type="button" class="btn tiny" data-trade-open="${esc(c.id)}">🤝 거래 제안</button>`);
+      if (others.length) acts.push(`<button type="button" class="btn tiny" data-gift-open="${esc(c.id)}">🎁 선물</button>`);
+    }
     if (!rows.length && !facts.length) facts.push('<p class="muted small">능력치·직업 정보가 아직 없어요.</p>');
-    return `<div class="gc-detail" id="gcd-${esc(c.id)}">${rows.join('')}${facts.length ? `<div class="gd-facts">${facts.join('')}</div>` : ''}</div>`;
+    return `<div class="gc-detail" id="gcd-${esc(c.id)}">${rows.join('')}${facts.length ? `<div class="gd-facts">${facts.join('')}</div>` : ''}${acts.length ? `<div class="gd-acts">${acts.join('')}</div>` : ''}</div>`;
   }
 
   function renderLog(room) {
@@ -917,16 +1218,21 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         <h2>${esc(p.title ?? '선택')}</h2>
         <p>${esc(p.text ?? '')}</p>
         ${subject && subject.id !== who.id ? `<p class="small muted">대상: ${esc(subject.name)}</p>` : ''}
-        <div class="choice-list">${p.options
+        ${
+          p.kind === 'shop'
+            ? `<div class="choice-list shop-choices">${shopOptionsHtml(p, who, { meta: getMeta(), artFor, btnClass: 'btn choice' })}</div>`
+            : `<div class="choice-list">${p.options
           .map((o) => {
             const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
             const badges = [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges];
-            return `<button type="button" class="btn choice" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}">
-                <span class="c-icon">${esc(o.icon || x.icon || '')}</span><span class="c-label">${esc(optionLabel({ ...o, icon: o.icon || x.icon }))}${
+            const icon = o.icon || x.icon || (p.kind === 'holiday' ? HOLIDAY_OPTION_ICON[o.id] ?? '' : '');
+            return `<button type="button" class="btn choice" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"${o.disabled ? ' disabled' : ''}>
+                <span class="c-icon">${esc(icon)}</span><span class="c-label">${esc(optionLabel({ ...o, icon }))}${
                   routeOptionInfo(p, o) ? `<small class="c-desc">${esc(routeOptionInfo(p, o))}</small>` : ''
                 }${badges.length ? `<span class="c-badges">${badges.map((b) => `<span class="c-badge">${esc(b)}</span>`).join('')}</span>` : ''}</span></button>`;
           })
-          .join('')}</div>
+          .join('')}</div>`
+        }
         ${p.deadlineAt ? `<p class="small muted">남은 시간${deadlineHtml(p.deadlineAt)} — 시간이 지나면 기본 선택으로 처리돼요.</p>` : ''}
       </div>`;
     hydratePortraits(el.modal);
@@ -941,6 +1247,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       d.textContent = `${d.dataset.icon ? `${d.dataset.icon} ` : ''}${left}초`;
       d.classList.toggle('urgent', left <= 5);
     }
+    // Stage 7: an offer ran out → drop it from the inbox
+    if (!el.inbox.hidden && ui.room?.trades?.some((t) => Number(t.expiresAt) > 0 && Number(t.expiresAt) <= serverNow())) renderInbox(ui.room);
   }
   /** When this client first saw a prompt (3D: my prompt waits ≤ PROMPT_BOARD_WAIT_MS for the board). */
   function promptSeenAt(promptId) {
@@ -953,6 +1261,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   // ---------- interactions ----------
   root.addEventListener('click', (ev) => {
     const t = ev.target;
+    if (stage7Click(t, ev)) return;
     const detail = t.closest('[data-char-detail]');
     if (detail) {
       const id = detail.dataset.charDetail;
@@ -1023,6 +1332,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     }
   });
   root.addEventListener('input', (ev) => {
+    if (ev.target.dataset.tdMoney && ui.trade) {
+      const side = ev.target.dataset.tdMoney;
+      ui.trade[side].money = ev.target.value;
+      refreshTradeCheck();
+      return;
+    }
     if (ev.target.dataset.bet === 'amount') {
       ui.bet.amount = Number(ev.target.value);
       const lbl = el.bet.querySelector('[data-bet="amt-label"]');
@@ -1033,6 +1348,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     }
   });
   root.addEventListener('change', (ev) => {
+    if ('tdFrom' in ev.target.dataset && ui.trade) {
+      ui.trade.fromId = ev.target.value;
+      ui.trade.give.cardUid = null;
+      renderTradeDlg();
+      return;
+    }
     if (ev.target.dataset.el === 'cutinmode') {
       setCutinMode(ev.target.value);
       return;
@@ -1049,6 +1370,87 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     }
   });
 
+  /** Stage 7 clicks: hand cards, card sheet, trade / gift dialog, inbox. → true when handled. */
+  function stage7Click(t, ev) {
+    const cardBtn = t.closest('[data-card-uid]');
+    if (cardBtn && el.hand.contains(cardBtn)) {
+      openCardSheet(cardBtn.dataset.cardChar, cardBtn.dataset.cardUid);
+      return true;
+    }
+    const handFor = t.closest('[data-hand-for]');
+    if (handFor) {
+      ui.handFor = handFor.dataset.handFor;
+      renderHand(ui.room);
+      return true;
+    }
+    if (el.cardsheet.contains(t)) {
+      if (t === el.cardsheet || t.closest('[data-sheet-close]')) closeCardSheet();
+      else if (t.closest('[data-card-target]') && ui.cardSheet) {
+        const b = t.closest('[data-card-target]');
+        if (!b.disabled) {
+          ui.cardSheet.targetId = b.dataset.cardTarget;
+          renderCardSheet();
+        }
+      } else if (t.closest('[data-card-use]')) useCard();
+      return true;
+    }
+    const tOpen = t.closest('[data-trade-open]');
+    if (tOpen) {
+      openTrade('trade', tOpen.dataset.tradeOpen);
+      return true;
+    }
+    const gOpen = t.closest('[data-gift-open]');
+    if (gOpen) {
+      openTrade('gift', gOpen.dataset.giftOpen);
+      return true;
+    }
+    if (el.tradedlg.contains(t)) {
+      const tr = ui.trade;
+      if (t === el.tradedlg || t.closest('[data-td-close]')) closeTrade();
+      else if (t.closest('[data-td-send]')) sendTrade();
+      else if (tr && t.closest('[data-td-kind]')) {
+        const b = t.closest('[data-td-kind]');
+        const side = tr[b.dataset.tdSide];
+        side.kind = b.dataset.tdKind;
+        if (side.kind !== 'card') side.cardUid = null;
+        renderTradeDlg();
+        el.tradedlg.querySelector(`[data-td-money="${b.dataset.tdSide}"]`)?.focus({ preventScroll: true });
+      } else if (tr && t.closest('[data-td-card]')) {
+        const b = t.closest('[data-td-card]');
+        tr[b.dataset.tdSide].cardUid = b.dataset.tdCard;
+        renderTradeDlg();
+      }
+      return true;
+    }
+    const acc = t.closest('[data-trade-accept], [data-trade-reject]');
+    if (acc) {
+      const accept = 'tradeAccept' in acc.dataset;
+      const tradeId = acc.dataset.tradeAccept ?? acc.dataset.tradeReject;
+      for (const b of el.inbox.querySelectorAll(`[data-trade="${CSS.escape(tradeId)}"] button`)) b.disabled = true;
+      run({ type: 'respondTrade', characterId: acc.dataset.char, tradeId, accept }).then((ok) => {
+        if (!ok) {
+          ui.inboxKey = '';
+          renderInbox(ui.room);
+        } else if (!accept) toast('🤝 거래를 거절했어요.');
+      });
+      return true;
+    }
+    const cancel = t.closest('[data-trade-cancel]');
+    if (cancel) {
+      cancel.disabled = true;
+      run({ type: 'cancelTrade', characterId: cancel.dataset.char, tradeId: cancel.dataset.tradeCancel }).then((ok) => {
+        if (ok) toast('🤝 거래 제안을 취소했어요.');
+        else {
+          ui.inboxKey = '';
+          renderInbox(ui.room);
+        }
+      });
+      return true;
+    }
+    void ev;
+    return false;
+  }
+
   /** 「관전 컷인」 전체 / 간단히 / 끄기 (remembered per device). */
   function setCutinMode(mode) {
     ui.cutinMode = normalizeCutinMode(mode);
@@ -1060,6 +1462,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     toast(`🎬 관전 컷인: ${CUTIN_MODE_LABEL[ui.cutinMode]}${ui.cutinMode === 'compact' ? ' (큰 이벤트만 컷인, 나머지는 작은 알림)' : ''}`);
     if (ui.room) render(ui.room);
   }
+
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    if (ui.cardSheet) closeCardSheet();
+    else if (ui.trade) closeTrade();
+  });
 
   // ---------- main render ----------
   function render(input) {
@@ -1114,7 +1522,15 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     else renderTrack(room, shown);
     const holdSpin = !!holdHud || cutin.busyEvents() || performance.now() - (ui.turnAt ?? 0) < TURN_GRACE_MS;
     renderSpin(room, { hold: holdSpin });
+    renderHand(room, { hold: holdSpin });
     renderBets(room, { hold: holdSpin });
+    if (ui.cardSheet) renderCardSheet();
+    if (ui.trade) {
+      if (room.status !== 'playing' || !byId(ui.trade.toId)) closeTrade();
+      else refreshTradeCheck();
+    }
+    renderInbox(room);
+    flushDeferred();
     if (!holdHud) {
       renderChars(room);
       renderLog(room);
@@ -1292,7 +1708,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const b3 = ui.b3;
     const cur = currentChar();
     b3.setBoard(room.board);
-    b3.setCharacters(chars());
+    // Stage 7: roulette modifiers ride on the pawn's name tag (「✂️−3」「⚡+2」)
+    b3.setCharacters(
+      chars().map((c) => {
+        const mods = spinModBadges(c.spinMods);
+        return mods.length ? { ...c, tagBadge: mods.map((b) => b.text).join(' ') } : c;
+      }),
+    );
     const canSpin = !!cur?.isMe && room.turn.phase === 'awaitSpin' && !room.turn.pending;
     b3.setCurrent(cur?.id ?? null, {
       mine: !!cur?.isMe,
@@ -1339,6 +1761,16 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
 
   function onEvents(payload) {
     const events = payload?.events ?? [];
+    // Stage 7: trade offers are not board events → notify the receiver right away (the inbox has the buttons)
+    for (const e of events) {
+      if (e.type !== 'tradeOffered') continue;
+      const to = byId(e.toId);
+      if (to?.isMe && !byId(e.fromId)?.isMe) {
+        audio.play('pop');
+        toast(`🤝 ${byId(e.fromId)?.name ?? ''}이(가) ${to.name}에게 거래를 제안했어요!`);
+      }
+      ui.inboxKey = '';
+    }
     const go = events.find((e) => e.type === 'gameOver');
     if (go) {
       ui.gameOverLine = go.line ?? null;
@@ -1385,6 +1817,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     el.bet.hidden = true;
     el.modal.hidden = true;
     ui.modalKey = null;
+    el.hand.hidden = true;
+    closeCardSheet();
+    closeTrade();
+    el.inbox.hidden = true;
+    document.body.classList.remove('has-inbox');
+    ui.deferred.length = 0;
     // 3D: the last turn's hops may still play, but the result screen follows within ~FINISH_BOARD_MS
     if (ui.b3) {
       const anim = ui.b3.animator;
@@ -1459,6 +1897,58 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         case 'gameOver':
           if (!cutinsOn()) toast('🏆 게임 종료! 결과 발표'); // else the result intro cut-in announces it
           break;
+        // ---------- Stage 7 ----------
+        case 'cardGained': {
+          const info = cardInfo(e.cardId, getMeta());
+          floatOn(e.charId, `🃏 ${info.name}`, 'plus');
+          if (c?.isMe && (!cutinsOn() || e.source === 'gift' || e.source === 'trade')) toast(`🃏 ${c.name}: ${info.icon} ${info.name} 카드를 얻었어요!`);
+          break;
+        }
+        case 'cardUsed': {
+          const info = cardInfo(e.cardId, getMeta());
+          if (e.targetId) {
+            floatOn(e.targetId, `💢 ${info.name}`, 'minus');
+            const tgt = byId(e.targetId);
+            if (tgt?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(`💢 ${c?.name ?? ''}이(가) ${tgt.name}에게 「${info.name}」 카드를 썼어요!`, 'error');
+          } else floatOn(e.charId, `${info.icon} ${info.name}`, 'plus');
+          break;
+        }
+        case 'cardBlocked':
+          floatOn(e.targetId ?? e.charId, '🛡️ 방어!', 'plus');
+          if (!cutinsOn()) toast(`🛡️ ${byId(e.targetId)?.name ?? ''}의 변호사가 뒤통수를 막았어요!`);
+          break;
+        case 'itemBought': {
+          const info = itemInfo(e.itemId, getMeta());
+          floatOn(e.charId, `🛍️ ${info.name}`, 'plus');
+          if (!cutinsOn() && c?.isMe) toast(`🛍️ ${c.name}: ${info.icon} ${info.name} 구매!`);
+          break;
+        }
+        case 'gift': {
+          const what = Number(e.money) > 0 ? won(e.money) : e.cardId ? cardInfo(e.cardId, getMeta()).name : '';
+          floatOn(e.toId, `🎁 ${what}`, 'plus');
+          if (byId(e.toId)?.isMe && !byId(e.fromId)?.isMe) toast(`🎁 ${byId(e.fromId)?.name ?? ''} → ${byId(e.toId)?.name ?? ''}: ${what} 선물!`);
+          break;
+        }
+        case 'tradeResolved': {
+          if (e.status === 'accepted') {
+            floatOn(e.fromId, '🤝 거래 성사', 'plus');
+            floatOn(e.toId, '🤝 거래 성사', 'plus');
+          }
+          const from = byId(e.fromId);
+          if (from?.isMe && e.status !== 'accepted') toast(`🤝 ${byId(e.toId)?.name ?? ''}와의 거래가 ${TRADE_STATUS[e.status] ?? '끝'}됐어요.`, e.status === 'rejected' ? 'error' : 'info');
+          else if ((from?.isMe || byId(e.toId)?.isMe) && e.status === 'accepted') toast('🤝 거래 성사!');
+          ui.inboxKey = '';
+          break;
+        }
+        case 'holidayStarted':
+          if (!cutinsOn()) toast(`${holidayTitle(e.kind)} 시작!`);
+          break;
+        case 'lottoDraw':
+          if (!cutinsOn()) {
+            const hit = (e.entries ?? []).filter((x) => Number(x.prize) > 0 && byId(x.charId)?.isMe);
+            toast(hit.length ? `🎱 로또 당첨! ${hit.map((x) => `${byId(x.charId)?.name ?? ''} ${won(x.prize)}`).join(', ')}` : `🎱 전국 로또 추첨: ${(e.numbers ?? []).join(', ')}`);
+          }
+          break;
         default:
           break;
       }
@@ -1520,7 +2010,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           const jb = c ? jobBadge(c, getMeta()?.jobs) : null;
           const edu = educationLabel(c?.education);
           const career = jb || edu
-            ? `<span class="rk-career">${jb ? `<span class="job-badge${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${esc(jb.icon)}</span><span class="jb-n">${esc(jb.name)}</span>${jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''}</span>` : ''}${
+            ? `<span class="rk-career">${jb ? `<span class="job-badge${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${jbIcon(jb)}</span><span class="jb-n">${esc(jb.name)}</span>${jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''}</span>` : ''}${
                 edu ? `<span class="gc-tag">🎓 ${esc(edu)}</span>` : ''
               }</span>`
             : '';
@@ -1528,7 +2018,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
             <span class="rk">${MEDAL[r.rank - 1] ?? `${r.rank}위`}</span>
             <span class="rk-portrait">${c ? portraitHtml(c, { size: 52 }) : ''}</span>
             <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${esc(c?.ownerName ?? '')}</small>${career}
-              <span class="small muted">현금 ${won(r.money)}${r.debt ? ` · 빚 ${won(r.debt)}` : ''} · 골인 보너스 ${won(r.goalBonus)}${
+              ${itemsLine(r, c)}<span class="small muted">현금 ${won(r.money)}${r.debt ? ` · 빚 ${won(r.debt)}` : ''}${Number(r.items) > 0 ? ` · 아이템 ${won(r.items)}` : ''} · 골인 보너스 ${won(r.goalBonus)}${
                 r.place ? ` · ${r.place}번째 골인` : ''
               }${routesTxt ? ` · 루트 ${routesTxt}` : ''}</span></span>
             <span class="rk-total">${won(r.total)}</span>
@@ -1537,6 +2027,15 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         .join('')}</ol>`;
     hydratePortraits(host);
     if (intro) showResultIntro(room, ranking, cmap);
+  }
+
+  /** Stage 7 result row: item icons (resale value is in the money line). */
+  function itemsLine(r, c) {
+    const items = itemsOf(c, getMeta());
+    if (!items.length) return '';
+    return `<span class="rk-items" title="아이템 되팔기 가치${Number(r.items) > 0 ? ` ${won(r.items)}` : ''}">${items
+      .map((i) => `<span class="rk-item">${itemIconHtml(i.id, { art: artFor('item', i.id), meta: getMeta() })}<small>${esc(i.info.name)}</small></span>`)
+      .join('')}</span>`;
   }
 
   /** Cut-in style 「결과 발표」 intro (tone result) before the ranking list. */
