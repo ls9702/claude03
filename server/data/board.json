@@ -101,7 +101,7 @@
         { "type": "job", "weight": 1 },
         { "type": "treasure", "weight": 1 },
         { "type": "card", "weight": 2 },
-        { "type": "shop", "weight": 1 }
+        { "type": "shop", "weight": 2 }
       ],
       "money": { "min": 100, "max": 500, "labels": ["연금 수령", "손주 용돈 역송금", "텃밭 수확", "퇴직금 이자"] },
       "loss": { "min": 100, "max": 400, "labels": ["병원비", "보청기", "손주 선물", "효도 관광 바가지"] }
@@ -135,7 +135,7 @@
       "pool": [
         { "type": "treasure", "weight": 3 },
         { "type": "house", "weight": 2 },
-        { "type": "shop", "weight": 2 },
+        { "type": "shop", "weight": 3 },
         { "type": "card", "weight": 1 },
         { "type": "salary", "weight": 2 },
         { "type": "money", "weight": 2, "scale": 1.8 },

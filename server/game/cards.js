@@ -407,20 +407,22 @@ registerPrompts({
         addLog(tx, `🙅 ${c.name}: 「${def.name}」은(는) 이미 가지고 있다`, { charId: c.id });
         return { result: 'left' };
       }
-      if (c.money < offer.price) {
+      // the price is re-checked now: cash or the coupon may have changed hands (trades / gifts) since the display
+      const price = shopPrice(tx, c, offer.basePrice);
+      if (c.money < price) {
         addLog(tx, `😅 ${c.name}: 돈이 모자라서 「${def.name}」을(를) 못 샀다`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
         return { result: 'noMoney' };
       }
-      const couponUsed = offer.price !== offer.basePrice && hasCard(c, 'coupon');
+      const couponUsed = price !== offer.basePrice;
       if (offer.kind === 'item') {
         c.items.push(offer.id);
-        emit(tx, 'itemBought', { charId: c.id, itemId: offer.id, price: offer.price, tone: 'treasure', emotion: 'joy' });
+        emit(tx, 'itemBought', { charId: c.id, itemId: offer.id, price, tone: 'treasure', emotion: 'joy' });
       }
       if (couponUsed) consumeCard(tx, c, 'coupon');
-      changeMoney(tx, c, -offer.price, 'shop', { tone: 'treasure', emotion: 'joy', ...(offer.kind === 'item' ? { itemId: offer.id } : { cardId: offer.id }) });
+      changeMoney(tx, c, -price, 'shop', { tone: 'treasure', emotion: 'joy', ...(offer.kind === 'item' ? { itemId: offer.id } : { cardId: offer.id }) });
       if (offer.kind === 'card') gainCard(tx, c, offer.id, 'shop', { log: false });
       else addStats(tx, c, def.stats ?? {}, 'item', { itemId: offer.id });
-      addLog(tx, `🛍️ ${josa(c.name, '이/가')} 「${def.icon} ${def.name}」을(를) ${won(offer.price)}에 샀다!${couponUsed ? ' (쿠폰 50%)' : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
+      addLog(tx, `🛍️ ${josa(c.name, '이/가')} 「${def.icon} ${def.name}」을(를) ${won(price)}에 샀다!${couponUsed ? ' (쿠폰 50%)' : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
       return offer.kind === 'card' ? { result: 'card', cardId: offer.id } : { result: 'item', itemId: offer.id };
     },
   },

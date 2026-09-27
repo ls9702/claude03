@@ -711,7 +711,11 @@
 - Simulation (`scripts/simulate.js`, exports `playableCards`, `randomCardAction`; `simulateBias({cards = true})`): random
   card play 50 %, random enabled options, rare gifts / trade offers; prints the Stage 7 block (cards per character by
   source, hand vs auto, sabotage count / target net-worth rank / blocks, shop purchase rate, items, holiday pot + Σ won,
-  sebae flow, lotto payout vs EV vs price, gifts, trade outcomes).
+  sebae flow, lotto payout vs EV vs price, gifts, trade outcomes). Seed 11 × 300: lifetime 79.0 spins (Stage 6: 78.8),
+  12.5 decisions per lifetime character (holiday 3.98 of them; own decisions 7.8), 1.15 cards gained / 0.58 played per
+  character, 1.33 sabotages per game (4.8 % blocked; targets by net-worth rank 1st 16.8 % … 8th 2.4 %), shop purchase
+  rate 69.8 %, 고스톱 Σ won = 0, lotto 6.5 paid per ticket (EV 8.93 < 20). `--bias --games 2000 --seed 1`: 1st-place
+  share 11.3–13.7 %, first→last average rank spread −0.25.
 - Tests: `test/stage7-import.test.js` (importer, watermark keying), `test/stage7-cards.test.js` (data, useCard rules, every
   card effect, spin mods, passive cards, hand limit, shop, items, ranking), `test/stage7-social.test.js` (trades incl.
   expiry / runner deadline / re-validation, gifts, holidays incl. pot conservation / ties / config, lotto EV + draws,

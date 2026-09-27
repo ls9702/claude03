@@ -300,7 +300,9 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
   /* game header: era chip · turn · 📰 news stay on one line (the news title ellipsizes) */
   .g-era-line { flex-wrap: nowrap; }
   .g-era-line .era-chip { flex: none; white-space: nowrap; }
-  .g-era-line [data-el='turninfo'] { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .g-era-line [data-el='turninfo'] { flex: 0 0 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .g-era-line .news-badge { flex: 0 1 auto; min-width: 2.4em; max-width: 48vw; }
   .rk-item small { display: none; }
 }
+.hand-row:empty { display: none; }
+.hand:has(.hand-row:empty) { padding-bottom: 4px; }
