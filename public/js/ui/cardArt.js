@@ -113,10 +113,11 @@ export function shopOptionsHtml(p, who, { meta = null, artFor = () => null, btnC
       const art = isCard ? artFor('card', o.cardId) : o.itemId ? artFor('item', o.itemId) : null;
       const kind = isCard ? info?.kind ?? 'instant' : 'item';
       const name = info?.name ?? o.label ?? o.id;
-      const base = Number(info?.price);
+      const base = Number(o.basePrice ?? info?.price);
       const price = Number(o.price);
       const discounted = Number.isFinite(base) && Number.isFinite(price) && price < base;
-      const desc = o.desc || info?.desc || '';
+      // the definition's effect line (the server's option desc repeats kind · price · coupon)
+      const desc = info?.known ? info.desc : o.desc || info?.desc || '';
       const disabled = !!o.disabled;
       const tagText = isCard ? `${CARD_KINDS[kind]?.label ?? ''} 카드` : '아이템';
       return `<button type="button" class="${btnClass} shop-item k-${esc(kind)}${disabled ? ' off' : ''}" ${attrs(o)}${disabled ? ' disabled' : ''}>
@@ -124,8 +125,8 @@ export function shopOptionsHtml(p, who, { meta = null, artFor = () => null, btnC
         <span class="si-art">${art ? `<img src="${esc(art)}" alt="" decoding="async">` : `<span class="si-emoji" aria-hidden="true">${esc(info?.icon ?? o.icon ?? '🛍️')}</span>`}</span>
         <span class="si-name">${esc(name)}</span>
         <span class="si-desc">${esc(desc)}</span>
-        <span class="si-price">${Number.isFinite(price) ? `${discounted ? `<s>${esc(won(base))}</s> ` : ''}<b>${esc(won(price))}</b>` : ''}${discounted ? '<span class="si-coupon">🎟️ 쿠폰 할인</span>' : ''}</span>
-        ${disabled ? `<span class="si-off">${esc(o.reason ?? '살 수 없어요')}</span>` : ''}
+        <span class="si-price">${Number.isFinite(price) ? `${discounted ? `<s>${esc(won(base))}</s>` : ''}<b>${esc(won(price))}</b>` : ''}${discounted ? '<span class="si-coupon">🎟️ 쿠폰 할인</span>' : ''}</span>
+        ${disabled ? `<span class="si-off">${esc(o.reason ?? (/부족/.test(String(o.desc ?? '')) ? '돈이 부족해요' : '살 수 없어요'))}</span>` : ''}
       </button>`;
     })
     .join('');

@@ -36,6 +36,7 @@ import {
   validateGift,
   validateTrade,
   holidayTitle,
+  handFull,
 } from './shared/cards.js';
 import { HOLIDAY_OPTION_ICON, cardHtml, itemIconHtml, shopOptionsHtml } from './ui/cardArt.js';
 import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
@@ -841,7 +842,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (!mine.length) return;
     const cur = currentChar();
     const from = mine.find((c) => c.id === cur?.id) ?? mine.find((c) => !c.finished) ?? mine[0];
-    ui.trade = { mode, toId, fromId: from.id, give: { kind: 'money', money: '', cardUid: null }, want: { kind: 'none', money: '', cardUid: null } };
+    const to = byId(toId);
+    // default: my money for one of their cards (money ↔ money is not a trade)
+    const giveKind = mode === 'trade' && !to?.cards?.length && from.cards?.length ? 'card' : 'money';
+    const wantKind = giveKind === 'card' ? 'money' : 'card';
+    ui.trade = { mode, toId, fromId: from.id, give: { kind: giveKind, money: '', cardUid: null }, want: { kind: wantKind, money: '', cardUid: null } };
     renderTradeDlg();
     el.tradedlg.querySelector('input, button')?.focus({ preventScroll: true });
   }
@@ -856,10 +861,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (t.mode === 'gift') return validateGift({ fromId: t.fromId, toId: t.toId, kind: t.give.kind, money: t.give.money, cardUid: t.give.cardUid }, { room: ui.room, meta: getMeta() });
     return validateTrade({ fromId: t.fromId, toId: t.toId, give: t.give, want: t.want }, { room: ui.room, meta: getMeta() });
   }
-  function sideHtml(side, key, owner, { allowNone = true, label }) {
+  function sideHtml(side, key, owner, { label }) {
     const meta = getMeta();
     const hand = handOf(owner, meta);
-    const kinds = [...(allowNone ? [['none', '없음']] : []), ['money', '💰 돈'], ['card', '🃏 카드']];
+    const kinds = [['money', '💰 돈'], ['card', '🃏 카드']];
     return `<fieldset class="td-side"><legend>${esc(label)}</legend>
       <div class="td-kinds" role="radiogroup">${kinds
         .map(([k, l]) => `<button type="button" class="td-kind${side.kind === k ? ' on' : ''}" data-td-side="${key}" data-td-kind="${k}" role="radio" aria-checked="${side.kind === k}"${k === 'card' && !hand.length ? ' disabled' : ''}>${l}</button>`)
@@ -897,9 +902,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       ${fromSel}
       ${
         t.mode === 'gift'
-          ? sideHtml(t.give, 'give', from, { allowNone: false, label: '보낼 것' })
-          : `${sideHtml(t.give, 'give', from, { label: `줄 것 (${from.name})` })}${sideHtml(t.want, 'want', to, { label: `받고 싶은 것 (${to.name})` })}<p class="small muted">상대가 수락하면 바로 교환돼요. 60초 안에 답이 없으면 취소돼요.</p>`
+          ? sideHtml(t.give, 'give', from, { label: '보낼 것' })
+          : `${sideHtml(t.give, 'give', from, { label: `줄 것 (${from.name})` })}${sideHtml(t.want, 'want', to, { label: `받고 싶은 것 (${to.name})` })}<p class="small muted">상대가 수락하면 바로 교환돼요. 60초 안에 답이 없으면 없던 일이 돼요.</p>`
       }
+      ${handFull(t.give.kind === 'card' ? to : null, getMeta()) ? `<p class="small muted">✋ ${esc(to.name)}의 손패가 가득 차서 가장 오래된 카드 한 장이 버려져요.</p>` : ''}
       <p class="td-error" data-td-error role="alert">${check.ok ? '' : esc(check.error ?? '')}</p>
       <div class="cs-actions"><button type="button" class="btn ghost" data-td-close>닫기</button><button type="button" class="btn primary" data-td-send${check.ok ? '' : ' disabled'}>${t.mode === 'gift' ? '🎁 보내기' : '🤝 제안하기'}</button></div>
     </div>`;

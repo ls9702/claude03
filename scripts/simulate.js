@@ -4,6 +4,10 @@
 // Random decisions, 2–8 characters (random body) owned by 1–4 sessions, random modes/eraTurns.
 // Exits non-zero on any exception or stuck game. Stage 6 report: job distribution, 알바 %, hidden-job unlocks,
 // salary share of income, stats by era, final net worth by education / route, prompts per character, spins.
+// Stage 7 policy: 50 % chance to play a playable card before a spin (random sabotage target), random shop /
+// holiday answers (disabled options skipped), rare random gifts and trade offers (accepted / rejected / left to
+// expire). Stage 7 report: cards gained / used per character, sabotage targets by rank, blocks, shop purchase
+// rate, items, holiday money flow (고스톱 pot conserved), lotto payout vs EV vs price.
 //
 //   node scripts/simulate.js --bias --games 2000 --seed 1
 // Turn-order bias check: 8-character lifetime games (default eraTurns, index order, random decisions, no
@@ -16,6 +20,7 @@ import { minEraTurns, validateRoomConfig } from '../server/game/config.js';
 import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { createRng } from '../server/game/rng.js';
+import { lottoExpectedValue } from '../server/game/holidays.js';
 
 function arg(name, def) {
   const i = process.argv.indexOf(`--${name}`);
@@ -34,6 +39,34 @@ const data = gameData();
 const MODES = Object.keys(data.eras.modes);
 const ERA_IDS = data.eras.eras.map((e) => e.id);
 const BET_PICKS = { oddEven: ['odd', 'even'], range: Object.keys(data.balance.bets.ranges) };
+const CARD_DEFS = new Map(data.cards.cards.map((d) => [d.id, d]));
+
+/** A random answer among the enabled options. */
+const randomOption = (rng, p) => rng.pick(p.options.filter((o) => !o.disabled)).id;
+
+/** Cards the current character may play now: [{card, def, targets|null}]. */
+export function playableCards(room, c) {
+  if (room.turn.cardUsed || room.turn.phase !== 'awaitSpin' || room.turn.pending) return [];
+  const out = [];
+  for (const k of c.cards ?? []) {
+    const def = CARD_DEFS.get(k.id);
+    if (!def || def.kind === 'passive') continue;
+    if (def.jobOnly && c.job?.id !== def.jobOnly) continue;
+    if (def.kind === 'sabotage') {
+      const targets = room.characters.filter((t) => t.id !== c.id && !t.finished && !((t.lastTargetedBy?.[c.id] ?? -Infinity) >= room.turn.round - 1));
+      if (targets.length) out.push({ card: k, def, targets });
+    } else out.push({ card: k, def, targets: null });
+  }
+  return out;
+}
+
+/** Random card play (50 %) for the current character → a useCard action or null. */
+export function randomCardAction(room, c, rng, chance = 0.5) {
+  const options = playableCards(room, c);
+  if (!options.length || !(rng.next() < chance)) return null;
+  const pick = rng.pick(options);
+  return { type: 'useCard', characterId: c.id, cardUid: pick.card.uid, ...(pick.targets ? { targetId: rng.pick(pick.targets).id } : {}) };
+}
 
 function makeLobbyRoom(meta, gameNo) {
   const eraTurns = {};
@@ -112,6 +145,31 @@ const stats = {
   news: {},
   rankUps: 0,
   injuries: 0,
+  // Stage 7
+  s7: {
+    chars: 0,
+    gained: {}, // source → n
+    used: 0, // played by hand
+    auto: {}, // passive card → n triggered
+    sabotage: 0,
+    sabotageByRank: {}, // target's net-worth rank among the characters at the time (1 = richest)
+    sabotageByCard: {},
+    blocked: 0,
+    shopVisits: 0,
+    shopBuys: { card: 0, item: 0 },
+    items: {}, // itemId → n owned at the end
+    itemsPerChar: 0,
+    holidays: 0,
+    gostopPots: 0,
+    gostopNet: 0, // Σ gostop deltas (must be 0)
+    sebae: { in: 0, out: 0 },
+    lottoTickets: 0,
+    lottoPrize: 0,
+    lottoWins: {},
+    gifts: 0,
+    trades: {}, // status → n
+    offers: 0,
+  },
 };
 const STAT_ORDER = ['int', 'str', 'charm', 'luck'];
 
@@ -126,6 +184,7 @@ function playGame(g) {
   let spins = 0;
   const apply = (action) => {
     now += 1000;
+    const before = room;
     const r = applyAction(room, action, { now });
     room = r.room;
     actions++;
@@ -155,6 +214,47 @@ function playGame(g) {
       if (ev.type === 'moneyChanged' && ev.reason === 'pension') stats.pensions++;
       if (ev.type === 'prompt') stats.prompts[ev.kind] = (stats.prompts[ev.kind] ?? 0) + 1;
       if (ev.type === 'bonusSpin') stats.bonusSpins++;
+      // Stage 7
+      const s7 = stats.s7;
+      if (ev.type === 'cardGained') s7.gained[ev.source] = (s7.gained[ev.source] ?? 0) + 1;
+      if (ev.type === 'cardUsed') {
+        if (ev.auto) s7.auto[ev.cardId] = (s7.auto[ev.cardId] ?? 0) + 1;
+        else s7.used++;
+        if (ev.cardKind === 'sabotage' && !ev.auto) {
+          s7.sabotage++;
+          s7.sabotageByCard[ev.cardId] = (s7.sabotageByCard[ev.cardId] ?? 0) + 1;
+          const nw = (x) => x.money - x.debt;
+          const target = before.characters.find((x) => x.id === ev.targetId);
+          const rank = 1 + before.characters.filter((x) => nw(x) > nw(target)).length;
+          s7.sabotageByRank[rank] = (s7.sabotageByRank[rank] ?? 0) + 1;
+        }
+      }
+      if (ev.type === 'cardBlocked') {
+        s7.blocked++;
+        s7.sabotage++;
+      }
+      if (ev.type === 'prompt' && ev.kind === 'shop') s7.shopVisits++;
+      if (ev.type === 'promptResolved' && ev.kind === 'shop' && ev.result === 'card') s7.shopBuys.card++;
+      if (ev.type === 'itemBought') s7.shopBuys.item++;
+      if (ev.type === 'holidayResult') {
+        s7.holidays++;
+        s7.gostopPots += ev.pot;
+        for (const r of ev.results) {
+          s7.gostopNet += r.won;
+          if (r.sebae > 0) s7.sebae.in += r.sebae;
+          else s7.sebae.out -= r.sebae;
+        }
+      }
+      if (ev.type === 'lottoDraw') {
+        for (const e of ev.entries) {
+          s7.lottoTickets++;
+          s7.lottoPrize += e.prize;
+          s7.lottoWins[e.matches] = (s7.lottoWins[e.matches] ?? 0) + 1;
+        }
+      }
+      if (ev.type === 'gift') s7.gifts++;
+      if (ev.type === 'tradeOffered') s7.offers++;
+      if (ev.type === 'tradeResolved') s7.trades[ev.status] = (s7.trades[ev.status] ?? 0) + 1;
       if (ev.type === 'finished' && ev.place === 1) {
         const idx = room.turn.order.indexOf(ev.charId);
         stats.firstFinisherOrderIndex[idx] = (stats.firstFinisherOrderIndex[idx] ?? 0) + 1;
@@ -174,10 +274,14 @@ function playGame(g) {
         continue;
       }
       const id = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
-      apply({ type: 'choose', characterId: id, promptId: p.promptId, optionId: meta.pick(p.options).id });
+      apply({ type: 'choose', characterId: id, promptId: p.promptId, optionId: randomOption(meta, p) });
       continue;
     }
     const cur = room.characters.find((c) => c.id === room.turn.order[room.turn.currentIndex]);
+    // Stage 7: out-of-turn gifts / trades now and then, a card before the spin half of the time
+    interact(() => room, meta, apply);
+    const cardAction = randomCardAction(room, room.characters.find((c) => c.id === cur.id), meta);
+    if (cardAction) apply(cardAction);
     for (const c of room.characters) {
       if (c.ownerSessionId === cur.ownerSessionId || c.money < 5 || meta.next() > 0.3) continue;
       const kind = meta.pick(['oddEven', 'range']);
@@ -187,6 +291,11 @@ function playGame(g) {
     apply({ type: 'spin', characterId: cur.id });
   }
   const mode = room.config.mode;
+  stats.s7.chars += room.characters.length;
+  for (const c of room.characters) {
+    stats.s7.itemsPerChar += c.items.length;
+    for (const it of c.items) stats.s7.items[it] = (stats.s7.items[it] ?? 0) + 1;
+  }
   const sp = (stats.spins[mode] ??= [0, 0]);
   sp[0] += spins;
   sp[1]++;
@@ -246,12 +355,41 @@ function playGame(g) {
   if (VERBOSE) console.log(`#${g} ${mode} chars=${room.characters.length} turns=${room.turn.turnNo} winner=${ranking[0].name} ${ranking[0].total}`);
 }
 
+/** Rare random gifts (2 %), trade offers (3 %) and answers to open offers (accept / reject / wait). */
+function interact(live, rng, apply) {
+  const chars = live().characters;
+  if (rng.next() < 0.02) {
+    const from = rng.pick(chars);
+    const to = rng.pick(chars.filter((x) => x.id !== from.id));
+    if (from.cards.length && rng.next() < 0.5) apply({ type: 'gift', characterId: from.id, toId: to.id, cardUid: rng.pick(from.cards).uid });
+    else if (from.money >= 10) apply({ type: 'gift', characterId: from.id, toId: to.id, money: rng.int(1, Math.max(1, Math.floor(from.money / 10))) });
+  }
+  const r = live();
+  if (rng.next() < 0.03 && r.status === 'playing') {
+    const from = rng.pick(r.characters.filter((x) => !x.finished));
+    const others = r.characters.filter((x) => !x.finished && x.ownerSessionId !== from?.ownerSessionId);
+    if (from && others.length && !r.trades.some((t) => t.fromId === from.id)) {
+      const to = rng.pick(others);
+      const side = (c, allowMoney) => (c.cards.length && (!allowMoney || rng.next() < 0.6) ? { cardUid: rng.pick(c.cards).uid } : allowMoney && c.money >= 5 ? { money: rng.int(1, Math.max(1, Math.floor(c.money / 5))) } : null);
+      const give = side(from, true);
+      const want = give?.money != null ? side(to, false) : side(to, true);
+      if (give && want && !(give.money != null && want.money != null) && !(want.money != null && want.money > to.money)) apply({ type: 'offerTrade', characterId: from.id, toId: to.id, give, want });
+    }
+  }
+  for (const t of [...(live().trades ?? [])]) {
+    if (live().status !== 'playing' || !live().trades.some((x) => x.id === t.id)) continue;
+    const x = rng.next();
+    if (x < 0.25) apply({ type: 'respondTrade', characterId: t.toId, tradeId: t.id, accept: rng.next() < 0.6 });
+    else if (x < 0.3) apply({ type: 'cancelTrade', characterId: t.fromId, tradeId: t.id });
+  }
+}
+
 /**
  * Turn-order bias: `games` 8-character lifetime games (default eraTurns, index turn order, 4 sessions × 2
- * characters, random decisions, no bets).
+ * characters, random decisions, no bets; Stage 7: random card plays unless `cards: false`, holidays on).
  * @returns {{games, winShare: number[], avgRank: number[], avgGoalPlace: number[]}} per turn position
  */
-export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData } = {}) {
+export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true } = {}) {
   const wins = Array(characters).fill(0);
   const rankSum = Array(characters).fill(0);
   const placeSum = Array(characters).fill(0);
@@ -273,8 +411,11 @@ export function simulateBias({ games = 500, seed = 1, characters = 8, data: simD
       let action;
       if (p) {
         const id = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
-        action = { type: 'choose', characterId: id, promptId: p.promptId, optionId: meta.pick(p.options).id };
-      } else action = { type: 'spin', characterId: room.turn.order[room.turn.currentIndex] };
+        action = { type: 'choose', characterId: id, promptId: p.promptId, optionId: randomOption(meta, p) };
+      } else {
+        const c = room.characters.find((x) => x.id === room.turn.order[room.turn.currentIndex]);
+        action = (cards ? randomCardAction(room, c, meta) : null) ?? { type: 'spin', characterId: c.id };
+      }
       room = applyAction(room, action, { now, ...(simData ? { data: simData } : {}) }).room;
       room.log = []; // the engine clones the room per action; the log is irrelevant here (≈10× faster)
     }
@@ -374,6 +515,21 @@ function mainRandom() {
     const gap = mean ? ((Math.max(...avgs) - Math.min(...avgs)) / mean) * 100 : 0;
     console.log(`${era} 루트별 최종 순자산: ${rows.map(([r, v]) => `${r} ${avgOf(v).toFixed(0)} (${v[1]})`).join(' · ')} · 격차 ${gap.toFixed(1)}% (평균 대비 ±${(gap / 2).toFixed(1)}%)`);
   }
+  const s7 = stats.s7;
+  const perChar = (n) => (n / Math.max(1, s7.chars)).toFixed(2);
+  const gainedTotal = Object.values(s7.gained).reduce((a, b) => a + b, 0);
+  const autoTotal = Object.values(s7.auto).reduce((a, b) => a + b, 0);
+  console.log(`\n--- 7단계: 카드·아이템·상호작용 ---`);
+  console.log(`카드 획득 캐릭터당 ${perChar(gainedTotal)}장 (${Object.entries(s7.gained).map(([k, n]) => `${k} ${n}`).join(' · ')}) · 직접 사용 ${perChar(s7.used)} · 자동 발동 ${perChar(autoTotal)} (${Object.entries(s7.auto).map(([k, n]) => `${k} ${n}`).join(' · ')})`);
+  const sabRanks = Object.entries(s7.sabotageByRank).sort((a, b) => a[0] - b[0]);
+  console.log(`뒤통수 ${s7.sabotage}회 (게임당 ${(s7.sabotage / Math.max(1, stats.games)).toFixed(2)}) · 방어 ${s7.blocked}회 (${pct(s7.blocked, s7.sabotage)}) · 카드별 ${JSON.stringify(s7.sabotageByCard)}`);
+  console.log(`뒤통수 대상의 순자산 순위(1 = 1위): ${sabRanks.map(([r, n]) => `${r}위 ${pct(n, s7.sabotage - s7.blocked)}`).join(' · ')}`);
+  console.log(`상점 방문 ${s7.shopVisits}회 · 구매율 ${pct(s7.shopBuys.card + s7.shopBuys.item, s7.shopVisits)} (카드 ${s7.shopBuys.card} · 아이템 ${s7.shopBuys.item}) · 최종 아이템 캐릭터당 ${perChar(s7.itemsPerChar)}개 ${JSON.stringify(s7.items)}`);
+  console.log(`명절 ${s7.holidays}회 · 고스톱 판돈 합 ${s7.gostopPots}만원 · 고스톱 순이동 합계 ${s7.gostopNet} (0이어야 보존) · 세뱃돈 받음 ${s7.sebae.in} / 줌 ${s7.sebae.out}`);
+  const ev = lottoExpectedValue(data.balance.lotto);
+  const price = data.cards.cards.find((k) => k.id === 'lotto')?.price;
+  console.log(`로또 ${s7.lottoTickets}장 · 평균 당첨금 ${(s7.lottoPrize / Math.max(1, s7.lottoTickets)).toFixed(2)}만원 (기대값 ${ev.toFixed(2)} < 카드 가격 ${price}) · 맞춘 개수 ${JSON.stringify(s7.lottoWins)}`);
+  console.log(`선물 ${s7.gifts}회 · 거래 제안 ${s7.offers}건 → ${JSON.stringify(s7.trades)}`);
   console.log(`뉴스: ${Object.entries(stats.news).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
   if (errors) process.exit(1);
 }

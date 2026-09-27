@@ -118,6 +118,7 @@ export function endGame(room, ctx = {}) {
   const now = ctx.now ?? Date.now();
   const r = lobbyEndGame(room, now);
   if (!r.ok) return r;
+  if (r.room.trades) r.room.trades = []; // Stage 7: open offers die with the game
   if (r.room.board && r.room.characters.every((c) => typeof c.money === 'number')) {
     applyResult(r.room, now, { forced: true });
   }
@@ -502,6 +503,10 @@ const HANDLERS = {
  * @param {{type:string, characterId?, promptId?, optionId?, kind?, pick?, amount?, force?, auto?, actor?: {sessionId}|{admin:true}|{system:true}}} action
  *   `skip` = admin/system only; `spin` with `auto: true` + system actor = turn-timeout auto spin (needs the
  *   `turn.spinDeadlineAt` to have passed).
+ *   Stage 7: `useCard {characterId, cardUid, targetId?}` (current character, awaitSpin, 1 per turn);
+ *   `offerTrade {characterId, toId, give, want}` / `respondTrade {characterId, tradeId, accept}` /
+ *   `cancelTrade {characterId, tradeId}` / `gift {characterId, toId, money?|cardUid?}` any time (never touch the
+ *   turn state); `expireTrades` = system (runner timer). Offers past `expiresAt` expire before every action.
  *   `actor` omitted = trusted caller (tests/simulator): no ownership check.
  * @param {{rng?, now?, data?}} ctx
  * @returns {{room, events, logs}}

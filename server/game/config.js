@@ -40,6 +40,7 @@ export function defaultRoomConfig() {
     mcFrequency: 'normal',
     turnTimeoutSec: 0,
     growthOutfits: true, // Stage 6: era / job costumes in game (client `effectiveAvatar`)
+    holidays: true, // Stage 7: 명절 대잔치 when middle / young / middle_age / senior first open
   };
 }
 
@@ -126,6 +127,11 @@ export function validateRoomConfig(input = {}) {
   if (input.growthOutfits !== undefined) {
     if (typeof input.growthOutfits !== 'boolean') errors.push('성장 의상 값은 true/false여야 합니다.');
     else cfg.growthOutfits = input.growthOutfits;
+  }
+
+  if (input.holidays !== undefined) {
+    if (typeof input.holidays !== 'boolean') errors.push('명절 대잔치 값은 true/false여야 합니다.');
+    else cfg.holidays = input.holidays;
   }
 
   if (input.mcFrequency !== undefined) {

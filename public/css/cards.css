@@ -213,7 +213,7 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
 .hw.win .hw-face svg { filter: drop-shadow(0 0 6px #fde047) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35)); }
 @keyframes hw-win { 50% { transform: translateY(-10%) scale(1.08); } }
 /* holiday prompt: three face-down cards on the table */
-.ci-hw-deck { position: absolute; right: 4%; top: 12%; z-index: 3; display: flex; gap: 1cqw; width: 22cqw; }
+.ci-hw-deck { position: absolute; right: 1.5%; top: 3%; z-index: 0; display: flex; gap: 0.8cqw; width: 15cqw; }
 .hw-deal { flex: 1; animation: hw-deal 0.5s calc(0.3s + var(--i) * 0.15s) cubic-bezier(0.3, 1.5, 0.5, 1) both; }
 .hw-deal svg { width: 100%; display: block; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35)); }
 @keyframes hw-deal { from { transform: translateY(-60%) rotate(-20deg); opacity: 0; } }
@@ -283,4 +283,24 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
   .spin-dock.can-spin .hand-row { padding-top: 4px; }
   .spin-dock.can-spin .hand-row .cardf { --cw: 44px; }
   .spin-dock.can-spin .hand-row .cardf .cf-name { font-size: 8.5px; }
+}
+.ci-hres-q { flex-basis: 100%; font-size: 0.72rem; color: #fde68a; font-weight: 700; opacity: 0.9; }
+/* card badges sit between the two characters (the sabotage / block target's glyph stays visible) */
+.ci-badge.card { top: auto; bottom: 4%; right: 0; left: 0; margin: 0 auto; width: max-content; max-width: 44%; }
+/* lotto with the MC studio: smaller MCs, their bubbles over the ball panel */
+.cutin.lotto .ci-studio { --mc-size: clamp(64px, 18cqw, 180px); }
+.cutin.lotto .ci-lotto { z-index: 2; }
+.cutin.lotto .ci-studio .mc-bubble { z-index: 5; }
+.shop-item .si-price { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.shop-item .si-price b, .shop-item .si-price s { white-space: nowrap; }
+.shop-item .si-price s { font-size: 0.75em; }
+/* narrow phones: a spectator badge also fits (the title drops to the dice) */
+@media (max-width: 430px) {
+  .topbar:has(#spec-badge:not([hidden])) .logo-t { display: none; }
+  /* game header: era chip · turn · 📰 news stay on one line (the news title ellipsizes) */
+  .g-era-line { flex-wrap: nowrap; }
+  .g-era-line .era-chip { flex: none; white-space: nowrap; }
+  .g-era-line [data-el='turninfo'] { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .g-era-line .news-badge { flex: 0 1 auto; min-width: 2.4em; max-width: 48vw; }
+  .rk-item small { display: none; }
 }

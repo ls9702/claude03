@@ -220,6 +220,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     for (const id of g.discharged ?? []) chips.push({ text: `🎖️ ${id !== g.charId ? `${nameOf(characters, id)} ` : ''}전역!`, kind: 'plus' });
     // Stage 7: cards gained / used, gifts, a purchase without its own money chip
     for (const cd of g.cards ?? []) {
+      if (a.type === 'gift' && cd.type === 'cardGained' && cd.source === 'gift') continue; // the 🎁 chip names the card
       const info = cardInfo(cd.cardId, meta);
       const who = cd.charId && cd.charId !== g.charId ? `${nameOf(characters, cd.charId)} ` : '';
       chips.push(cd.type === 'cardGained' ? { text: `🃏 ${who}${info.name} 카드 +1`, kind: `card k-${info.kind}` } : { text: `${info.icon} ${who}${info.name} 사용`, kind: `card k-${info.kind}` });
@@ -231,6 +232,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       chips.unshift({ text: `🃏 ${info.name} 카드 +1`, kind: `card k-${info.kind}` });
     }
     if (a.type === 'itemBought' && Number(a.price) > 0 && !g.money.some((m) => m.charId === a.charId && m.delta < 0)) chips.push({ text: `🛍️ -${won(Number(a.price))}`, kind: 'minus' });
+    if (a.type === 'cardUsed' && isCardAnchor(a) && a.targetId) {
+      const info = cardInfo(a.cardId, meta);
+      chips.unshift({ text: `💢 ${nameOf(characters, a.targetId)} ← ${info.icon} ${info.name}`, kind: 'minus' });
+    }
+    if (a.type === 'cardBlocked') chips.unshift({ text: `🛡️ ${nameOf(characters, a.targetId)} 방어 성공`, kind: 'plus' });
     if (a.type === 'holidayStarted') chips.push({ text: '🧧 세배 룰렛', kind: '' }, { text: '🗣️ 잔소리 룰렛', kind: '' }, { text: '🎴 고스톱 한 판', kind: '' });
     if (a.type === 'finished') chips.unshift({ text: `🏁 ${a.place}등 골인`, kind: 'plus' });
     const badge = jobBadgeFor(a) ?? stage7Badge(a, meta);
@@ -267,8 +273,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (holiday) autoMs = Math.max(autoMs, 5200 + holiday.rows.length * 450);
     const texts = g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)];
     if (holiday) {
+      chips.length = 0; // the result table carries 세뱃돈 / 잔소리 / 고스톱 per character
+      if (Number(a.pot) > 0) chips.push({ text: `🎴 판돈 ${won(Number(a.pot))}`, kind: 'plus' });
       const win = holiday.rows.filter((r) => r.winner);
-      texts.splice(0, texts.length, win.length ? `🎴 고스톱 승자: ${win.map((r) => r.name).join(', ')}! ${win.map((r) => r.winText).filter(Boolean).join(' ')}` : '🎴 고스톱은 무승부!');
+      const played = holiday.rows.some((r) => r.card != null);
+      texts.splice(0, texts.length, win.length ? `🎴 고스톱 승자: ${win.map((r) => r.name).join(', ')}! ${win.map((r) => r.winText).filter(Boolean).join(' ')}` : played ? '🎴 고스톱은 무승부!' : '🎴 이번 명절 고스톱은 쉬어 갔어요');
     }
     return {
       key: `${a.type}:${a.charId ?? ''}:${a.tileId ?? a.era ?? a.eraId ?? a.route ?? a.promptId ?? a.jobId ?? a.cardId ?? a.itemId ?? a.tradeId ?? ''}`,
@@ -558,7 +567,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       .map(
         (r) => `<div class="ci-hres-row${r.winner ? ' win' : ''}${r.char?.isMe ? ' me' : ''}"><span class="ci-hres-n">${esc(r.name)}</span>${r.sebae ? `<span class="ci-chip ${r.sebae.kind}">${esc(r.sebae.text)}</span>` : ''}${
           r.nagging ? `<span class="ci-chip stat stat-${esc(r.nagging.stat)} ${r.nagging.kind}">${esc(r.nagging.text)}</span>` : ''
-        }<span class="ci-chip ${r.winner ? 'plus' : r.stake > 0 ? 'minus' : ''}">🎴 ${esc(r.stakeText)}${r.winText ? ` · ${esc(r.winText)}` : ''}</span></div>`,
+        }<span class="ci-chip ${r.winner ? 'plus' : r.net < 0 ? 'minus' : ''}">🎴 ${esc(r.stakeText)}${r.winText ? ` · ${esc(r.winText)}` : ''}</span>${
+          r.nagging?.line ? `<small class="ci-hres-q">“${esc(r.nagging.line)}”</small>` : ''
+        }</div>`,
       )
       .join('');
     $.extra.appendChild(table);
@@ -685,6 +696,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     overlay.classList.remove('leaving');
     overlay.classList.toggle('prompt', !!spec.prompt);
     overlay.classList.toggle('minimized', false);
+    overlay.classList.toggle('lotto', !!spec.lotto);
     overlay.dataset.kind = spec.prompt ? 'prompt' : spec.kind ?? 'event';
     overlay.dataset.key = spec.key ?? '';
     overlay.setAttribute('aria-label', spec.tag || '이벤트');

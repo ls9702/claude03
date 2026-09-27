@@ -128,6 +128,17 @@ test('presentationFor: every event type maps to a tone, scene and emotion (synth
     militaryStart: { charId: c.id, turns: 2 },
     militaryEnd: { charId: c.id },
     educationChanged: { charId: c.id, education: 'college' },
+    // Stage 7
+    cardGained: { charId: c.id, cardId: 'study', uid: 'k1', source: 'tile' },
+    cardUsed: { charId: c.id, cardId: 'noise', uid: 'k2', cardKind: 'sabotage', targetId: room.characters[1].id },
+    cardBlocked: { charId: c.id, targetId: room.characters[1].id, cardId: 'tax_audit', uid: 'k3' },
+    itemBought: { charId: c.id, itemId: 'car', price: 300 },
+    tradeOffered: { tradeId: 't1', fromId: c.id, toId: room.characters[1].id, give: { money: 10 }, want: { cardUid: 'k4', cardId: 'taxi' } },
+    tradeResolved: { tradeId: 't1', fromId: c.id, toId: room.characters[1].id, status: 'accepted' },
+    gift: { fromId: c.id, toId: room.characters[1].id, money: 20 },
+    holidayStarted: { eraId: 'young', kind: 'seol', name: '설날' },
+    holidayResult: { eraId: 'young', kind: 'seol', results: [{ charId: c.id, sebae: 30, nagging: { stat: 'int', delta: 1 }, stake: 0, card: null, won: 0 }], pot: 0, winners: [] },
+    lottoDraw: { eraId: 'young', numbers: [1, 2, 3], entries: [{ charId: c.id, numbers: [1, 5, 9], matches: 1, prize: 10 }] },
   };
   assert.deepEqual(Object.keys(samples).sort(), [...EVENT_TYPES].sort());
   for (const type of EVENT_TYPES) {
@@ -245,11 +256,19 @@ test('tones.json: 8 tones, frames/backgrounds are accepted manifest assets (or C
     assert.ok(t.label && t.icon);
   }
   assert.deepEqual(Object.keys(tones.scenes).sort(), [...SCENES].sort());
+  const items = new Map(manifest.items.map((i) => [i.id, i]));
   for (const [scene, s] of Object.entries(tones.scenes)) {
     if (s.bg === null) continue;
-    assert.equal(accepted.get(s.bg)?.kind, 'bg', `${scene}: ${s.bg}`);
-    assert.equal(accepted.get(s.bg).meta.scene, scene);
+    // every scene's bg is a manifest bg item; one that is not accepted yet (Stage 7: drawn by hand, imported
+    // later) must have a fallback scene whose bg is accepted
+    assert.equal(items.get(s.bg)?.kind, 'bg', `${scene}: ${s.bg}`);
+    assert.equal(items.get(s.bg).meta.scene, scene);
+    if (!accepted.has(s.bg)) {
+      const fb = tones.sceneFallbacks?.[scene];
+      assert.ok(fb && accepted.get(tones.scenes[fb]?.bg)?.kind === 'bg', `${scene}: fallback ${fb} is accepted`);
+    }
   }
+  for (const [scene, fb] of Object.entries(tones.sceneFallbacks ?? {})) assert.ok(SCENES.includes(scene) && SCENES.includes(fb), `${scene} → ${fb}`);
   for (const map of ['eraScenes', 'routeScenes', 'tagScenes', 'eventScenes']) {
     for (const v of Object.values(tones[map])) assert.ok(SCENES.includes(v), `${map}: ${v}`);
   }

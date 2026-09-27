@@ -82,6 +82,10 @@ export function viewFor(room, sessionId = null) {
     board: room.board ? structuredClone(room.board) : null, // public; static per game
     bets: publicBets(room, mine),
     news: structuredClone(room.news ?? {}), // Stage 6: {eraId: newsId} (public, news.json in /api/meta)
+    // Stage 7: hands / items (on characters), open trade offers, holidays held and lotto draws are public
+    trades: structuredClone(room.trades ?? []),
+    holidays: structuredClone(room.holidays ?? {}),
+    lotto: structuredClone(room.lotto ?? { draws: [] }),
     result: room.result ? structuredClone(room.result) : null,
     log: room.log.slice(-50),
     createdAt: room.createdAt,

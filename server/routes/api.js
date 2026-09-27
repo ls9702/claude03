@@ -1,6 +1,6 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getBalance, getBoardData, getEras, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
+import { getAvatars, getBalance, getBoardData, getCards, getEras, getHolidays, getItems, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
 import {
   addCharacter,
   findPlayer,
@@ -18,7 +18,10 @@ import { clientIp, createRateLimiter, sendFail, sessionMiddleware } from './comm
 export const REACTIONS = ['ㅋㅋㅋ', '헐', '오~', '화이팅', '🐔', '👏', '😂', '😱', '❤️', '🎉'];
 const RATE_WINDOW_MS = 2000;
 // `timeout` is allowed for players too, but the engine only accepts it once the deadline passed.
-const PLAYER_ACTIONS = ['spin', 'choose', 'bet', 'timeout'];
+const PLAYER_ACTIONS = ['spin', 'choose', 'bet', 'timeout', 'useCard', 'offerTrade', 'respondTrade', 'cancelTrade', 'gift'];
+const str = (v) => (typeof v === 'string' ? v : undefined);
+/** A trade side `{money?|cardUid?}` from the request body (the engine validates it). */
+const side = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? { money: v.money, cardUid: str(v.cardUid) } : v);
 const RATE_MAX = 5;
 /** New sessions per IP per minute (POST /api/session). */
 export const SESSION_RATE = { windowMs: 60_000, max: 30 };
@@ -44,19 +47,22 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit, stats, military, career } = getBalance();
+    const { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
       avatars: getAvatars(),
       reactions: REACTIONS,
       board: { tileTypes: board.tileTypes, routes: board.routes },
-      balance: { bets, spin, bonusSpinUnit, stats, military, career },
+      balance: { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
       mc: { ...getMc(), lines: getLines().mc ?? {} }, // Stage 5.6: MC NPC profiles + line pools (lobby greeting, result fallback)
       jobs: getJobs(), // Stage 6: jobs.json (17 regular + 6 hidden + partTime)
       news: getNews(), // Stage 6: news.json (era news flashes; room.news = {eraId: newsId})
+      cards: getCards(), // Stage 7: cards.json (hand cards; character.cards = [{uid, id}])
+      items: getItems(), // Stage 7: items.json (shop items; character.items = [id])
+      holidays: getHolidays(), // Stage 7: holidays.json (명절 대잔치)
     });
   });
 
@@ -153,6 +159,15 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       kind: body.kind,
       pick: body.pick,
       amount: body.amount,
+      // Stage 7: cards, trades, gifts
+      cardUid: str(body.cardUid),
+      targetId: str(body.targetId),
+      toId: str(body.toId),
+      tradeId: str(body.tradeId),
+      accept: body.accept,
+      money: body.money,
+      give: side(body.give),
+      want: side(body.want),
       actor: { sessionId: req.sessionId },
     };
     const r = runner.dispatch(req.room.id, action);

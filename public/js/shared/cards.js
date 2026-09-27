@@ -181,12 +181,12 @@ function sidePayload(side, owner, label, { checkMoney = true } = {}) {
 
 /**
  * Trade offer form → `{ok, error, body}` (body = the `offerTrade` action).
- * form = {fromId, toId, give: {kind: none|money|card, money?, cardUid?}, want: {…}}
- * Rules: from is mine, to is someone else's (no trades between my own characters), both still in the game, at least
- * one side non-empty, money within the holder's cash, cards still in hand, receivers' hands not full, one open offer
- * per character.
+ * form = {fromId, toId, give: {kind: money|card, money?, cardUid?}, want: {…}}
+ * Rules (mirror the server): from is mine, to is someone else's (no trades between my own characters — use a gift),
+ * neither has finished, each side is exactly one of money / card, not money ↔ money, money within the holder's cash
+ * (both sides), cards still in hand, one open offer per character.
  */
-export function validateTrade(form, { room = null, meta = null } = {}) {
+export function validateTrade(form, { room = null } = {}) {
   const chars = room?.characters ?? [];
   const from = chars.find((c) => c.id === form?.fromId);
   const to = chars.find((c) => c.id === form?.toId);
@@ -196,21 +196,22 @@ export function validateTrade(form, { room = null, meta = null } = {}) {
   if (!from || !from.isMe) return fail('거래를 제안할 내 캐릭터를 고르세요.');
   if (!to) return fail('거래할 상대를 고르세요.');
   if (from.id === to.id || to.isMe || (from.ownerId && from.ownerId === to.ownerId)) return fail('내 캐릭터끼리는 거래할 수 없어요. 선물을 써 보세요.');
+  if (from.finished || to.finished) return fail('골인한 캐릭터는 거래할 수 없어요.');
+  if (!['money', 'card'].includes(form.give?.kind) || !['money', 'card'].includes(form.want?.kind)) return fail('주고받을 것을 하나씩 고르세요.');
+  if (form.give.kind === 'money' && form.want.kind === 'money') return fail('돈과 돈은 바꿀 수 없어요.');
   const g = sidePayload(form.give, from, '줄 것');
   if (g.error) return fail(g.error);
-  const w = sidePayload(form.want, to, '받을 것', { checkMoney: false });
+  const w = sidePayload(form.want, to, '받을 것');
   if (w.error) return fail(w.error);
-  if (!Object.keys(g.payload).length && !Object.keys(w.payload).length) return fail('주거나 받을 것을 하나 이상 고르세요.');
-  const lim = cardDefs(meta).handLimit;
-  const n = (c) => (Array.isArray(c?.cards) ? c.cards.length : 0);
-  if (g.payload.cardUid && n(to) - (w.payload.cardUid ? 1 : 0) >= lim) return fail(`${to.name}의 손패가 가득 찼어요 (${lim}장).`);
-  if (w.payload.cardUid && n(from) - (g.payload.cardUid ? 1 : 0) >= lim) return fail(`${from.name}의 손패가 가득 찼어요 (${lim}장).`);
-  if (openTradeOf(room, from.id)) return fail(`${from.name}은(는) 이미 대기 중인 거래 제안이 있어요.`);
+  if (openTradeOf(room, from.id)) return fail(`${from.name}은(는) 이미 답을 기다리는 거래 제안이 있어요.`);
   return { ok: true, error: null, body: { type: 'offerTrade', characterId: from.id, toId: to.id, give: g.payload, want: w.payload } };
 }
 
-/** Gift form → `{ok, error, body}`; form = {fromId, toId, kind: money|card, money?, cardUid?} (own characters allowed). */
-export function validateGift(form, { room = null, meta = null } = {}) {
+/**
+ * Gift form → `{ok, error, body}`; form = {fromId, toId, kind: money|card, money?, cardUid?} (own characters allowed:
+ * 가족 송금). A full hand is fine (the receiver drops its oldest card).
+ */
+export function validateGift(form, { room = null } = {}) {
   const chars = room?.characters ?? [];
   const from = chars.find((c) => c.id === form?.fromId);
   const to = chars.find((c) => c.id === form?.toId);
@@ -222,9 +223,12 @@ export function validateGift(form, { room = null, meta = null } = {}) {
   const side = sidePayload({ kind: form.kind, money: form.money, cardUid: form.cardUid }, from, '선물');
   if (side.error) return fail(side.error);
   if (!Object.keys(side.payload).length) return fail('보낼 돈이나 카드를 고르세요.');
-  const lim = cardDefs(meta).handLimit;
-  if (side.payload.cardUid && (to.cards?.length ?? 0) >= lim) return fail(`${to.name}의 손패가 가득 찼어요 (${lim}장).`);
   return { ok: true, error: null, body: { type: 'gift', characterId: from.id, toId: to.id, ...side.payload } };
+}
+
+/** The receiver's hand is full → the oldest card will be dropped (UI note). */
+export function handFull(character, meta) {
+  return (Array.isArray(character?.cards) ? character.cards.length : 0) >= cardDefs(meta).handLimit;
 }
 
 /** Open (not expired) trades of a room at server time `now`. */
@@ -312,33 +316,35 @@ export function holidayTitle(kind) {
 }
 
 /**
- * `holidayResult.results` → display rows (name, 세뱃돈 ±, 잔소리 stat chip, 고스톱 stake / card / winnings, winner).
- * `won` in a result may be a number (winnings) or a boolean (winner flag).
+ * `holidayResult.results` → display rows (name, 세뱃돈 ±, 잔소리 stat chip + line, 고스톱 stake / card / net, winner).
+ * `won` = net 고스톱 money (+ winner, − loser); a boolean is read as the winner flag. `event.winners` (ids) wins.
  */
 export function holidayRows(event, { characters = [], won = (n) => `${n}만원` } = {}) {
   const results = Array.isArray(event?.results) ? event.results : [];
-  const rows = results.map((r) => {
+  const winners = new Set(Array.isArray(event?.winners) ? event.winners : []);
+  return results.map((r) => {
     const c = characters.find((x) => x.id === r.charId);
     const sebae = Number(r.sebae) || 0;
     const nag = isObj(r.nagging) ? r.nagging : null;
     const nd = Number(nag?.delta) || 0;
     const stake = Number(r.stake) || 0;
-    const winAmt = typeof r.won === 'number' ? r.won : null;
+    const net = typeof r.won === 'number' ? r.won : 0;
     const card = Number(r.card);
+    const winner = winners.has(r.charId) || r.won === true || net > 0;
     return {
       charId: r.charId,
       name: c?.name ?? r.charId ?? '',
       char: c ?? null,
       sebae: sebae ? { text: `🧧 세뱃돈 ${sebae > 0 ? '+' : ''}${won(sebae)}`, kind: sebae > 0 ? 'plus' : 'minus', value: sebae } : null,
-      nagging: nag && nd ? { text: `${statIcon[nag.stat] ?? '⭐'} 잔소리 ${statLabel[nag.stat] ?? nag.stat} ${nd > 0 ? '+' : ''}${nd}`, kind: nd > 0 ? 'plus' : 'minus', stat: nag.stat, value: nd } : null,
+      nagging: nag && nd ? { text: `${statIcon[nag.stat] ?? '⭐'} ${statLabel[nag.stat] ?? nag.stat} ${nd > 0 ? '+' : ''}${nd}`, kind: nd > 0 ? 'plus' : 'minus', stat: nag.stat, value: nd, line: typeof nag.line === 'string' ? nag.line : '' } : null,
       stake,
       stakeText: stake > 0 ? `판돈 ${won(stake)}` : '구경만',
       card: Number.isFinite(card) && card > 0 ? card : null,
-      winner: r.won === true || (winAmt != null && winAmt > 0),
-      winText: winAmt != null && winAmt > 0 ? `🏆 +${won(winAmt)}` : r.won === true ? '🏆 승리' : stake > 0 ? `−${won(stake)}` : '',
+      winner,
+      net,
+      winText: net > 0 ? `🏆 +${won(net)}` : net < 0 ? `−${won(-net)}` : winner ? '🏆 승리' : '',
     };
   });
-  return rows;
 }
 
 /**

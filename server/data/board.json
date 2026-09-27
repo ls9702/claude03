@@ -46,8 +46,8 @@
         { "type": "money", "weight": 3 },
         { "type": "loss", "weight": 2 },
         { "type": "event", "weight": 3 },
-        { "type": "habit", "weight": 3 },
-        { "type": "card", "weight": 1 }
+        { "type": "habit", "weight": 2 },
+        { "type": "card", "weight": 2 }
       ],
       "money": { "min": 20, "max": 80, "labels": ["받아쓰기 100점 용돈", "세뱃돈", "어린이날 선물", "그림대회 상금"] },
       "loss": { "min": 10, "max": 50, "labels": ["학원비", "태권도 도복", "문방구 뽑기", "게임 현질"] }
@@ -57,8 +57,8 @@
         { "type": "money", "weight": 3 },
         { "type": "loss", "weight": 2 },
         { "type": "event", "weight": 3 },
-        { "type": "habit", "weight": 3 },
-        { "type": "card", "weight": 1 }
+        { "type": "habit", "weight": 2 },
+        { "type": "card", "weight": 2 }
       ],
       "money": { "min": 30, "max": 100, "labels": ["세뱃돈", "성적 장학금", "용돈 인상", "중고거래 대박"] },
       "loss": { "min": 20, "max": 70, "labels": ["학원비", "수학여행비", "브랜드 패딩", "휴대폰 액정 파손"] }
@@ -68,8 +68,8 @@
         { "type": "money", "weight": 3 },
         { "type": "loss", "weight": 2 },
         { "type": "event", "weight": 3 },
-        { "type": "habit", "weight": 3 },
-        { "type": "card", "weight": 1 }
+        { "type": "habit", "weight": 2 },
+        { "type": "card", "weight": 2 }
       ],
       "money": { "min": 30, "max": 120, "labels": ["편의점 알바비", "교내 대회 상금", "세뱃돈", "모의고사 장학금"] },
       "loss": { "min": 30, "max": 100, "labels": ["인강 결제", "독서실비", "과외비", "야자 간식비"] }
@@ -100,7 +100,7 @@
         { "type": "salary", "weight": 3 },
         { "type": "job", "weight": 1 },
         { "type": "treasure", "weight": 1 },
-        { "type": "card", "weight": 1 },
+        { "type": "card", "weight": 2 },
         { "type": "shop", "weight": 1 }
       ],
       "money": { "min": 100, "max": 500, "labels": ["연금 수령", "손주 용돈 역송금", "텃밭 수확", "퇴직금 이자"] },
@@ -126,7 +126,7 @@
         { "type": "job", "weight": 3 },
         { "type": "money", "weight": 1, "scale": 1.2 },
         { "type": "event", "weight": 1 },
-        { "type": "card", "weight": 1 },
+        { "type": "card", "weight": 2 },
         { "type": "loss", "weight": 1 }
       ],
       "labels": { "money": ["특허 보상금", "승진 보너스", "야근 수당", "스톡옵션"], "loss": ["회식 2차", "자기계발비", "야근 택시비"] }

@@ -479,8 +479,8 @@ test('presentation: Stage 6 event types registered; cut-in anchors vs chips; job
   assert.deepEqual([inj.cutin, inj.scene, inj.tone, inj.emotion], [true, 'hospital', 'bad', 'cry']);
   assert.deepEqual([news.cutin, news.tone, news.lineTag], [true, 'bad', 'news']);
   assert.ok(news.line.includes('취업 한파') || !news.line.includes('{news}'));
-  assert.deepEqual([mil.cutin, mil.scene], [true, 'mountain-trail']);
-  assert.deepEqual([edu.cutin, edu.scene, edu.lineTag], [true, 'school', 'graduation']);
+  assert.deepEqual([mil.cutin, mil.scene], [true, 'army']); // Stage 7 scenes
+  assert.deepEqual([edu.cutin, edu.scene, edu.lineTag], [true, 'campus', 'graduation']);
   for (const e of events) {
     assert.ok(TONES.includes(e.tone) && SCENES.includes(e.scene) && EMOTIONS.includes(e.emotion), e.type);
     assert.ok(lines.tags[e.lineTag], `${e.type}: ${e.lineTag}`);

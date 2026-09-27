@@ -2,6 +2,7 @@
 // - A pending prompt with `deadlineAt` → a timer dispatches a `timeout` action (default answers).
 // - Host turn timer (room config `turnTimeoutSec` > 0): `turn.spinDeadlineAt` → a timer dispatches an
 //   automatic `spin` for the current character (actor system).
+// - Stage 7: the earliest open trade offer's `expiresAt` → `expireTrades` (when it comes before the above).
 import { randomBytes } from 'node:crypto';
 import { EngineError, applyAction, endGame, startGame } from '../game/engine.js';
 
@@ -55,14 +56,20 @@ export class GameRunner {
     return r;
   }
 
-  /** What the room is waiting on with a deadline: a prompt, or (turn timer) the current spin. */
+  /**
+   * What the room is waiting on with a deadline: a prompt, or (turn timer) the current spin — or, when earlier,
+   * the first open trade offer to expire (Stage 7).
+   */
   static deadlineOf(room) {
     if (room?.status !== 'playing' || !room.turn) return null;
+    let d = null;
     const p = room.turn.pending;
-    if (p) return p.deadlineAt ? { kind: 'prompt', at: p.deadlineAt, key: `p:${p.promptId}:${p.deadlineAt}`, promptId: p.promptId } : null;
     const t = room.turn;
-    if (t.phase === 'awaitSpin' && t.spinDeadlineAt) return { kind: 'spin', at: t.spinDeadlineAt, key: `s:${t.turnNo}:${t.spinDeadlineAt}`, turnNo: t.turnNo };
-    return null;
+    if (p) d = p.deadlineAt ? { kind: 'prompt', at: p.deadlineAt, key: `p:${p.promptId}:${p.deadlineAt}`, promptId: p.promptId } : null;
+    else if (t.phase === 'awaitSpin' && t.spinDeadlineAt) d = { kind: 'spin', at: t.spinDeadlineAt, key: `s:${t.turnNo}:${t.spinDeadlineAt}`, turnNo: t.turnNo };
+    const trade = (room.trades ?? []).reduce((a, x) => (!a || x.expiresAt < a.expiresAt ? x : a), null);
+    if (trade && (!d || trade.expiresAt < d.at)) d = { kind: 'trades', at: trade.expiresAt, key: `t:${trade.id}:${trade.expiresAt}` };
+    return d;
   }
 
   /** (Re)arm the deadline timer of a room. */
@@ -83,9 +90,11 @@ export class GameRunner {
       const action =
         d.kind === 'prompt'
           ? { type: 'timeout', promptId: d.promptId, actor: { system: true } }
-          : { type: 'spin', characterId: live.turn.order[live.turn.currentIndex], auto: true, actor: { system: true } };
+          : d.kind === 'trades'
+            ? { type: 'expireTrades', actor: { system: true } }
+            : { type: 'spin', characterId: live.turn.order[live.turn.currentIndex], auto: true, actor: { system: true } };
       const r = this.dispatch(room.id, action);
-      if (!r.ok) this.log(`${d.kind === 'prompt' ? '타임아웃' : '자동 룰렛'} 처리 실패 (${room.id}): ${r.error}`);
+      if (!r.ok) this.log(`${{ prompt: '타임아웃', trades: '거래 만료', spin: '자동 룰렛' }[d.kind]} 처리 실패 (${room.id}): ${r.error}`);
     }, delay);
     timer.unref?.();
     this.timers.set(room.id, { timer, key: d.key });
