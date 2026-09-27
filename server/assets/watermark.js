@@ -227,6 +227,45 @@ export async function removeWatermarkDetailed(buffer, opts = {}) {
   return { buffer: png, found: rest };
 }
 
+/**
+ * Does a structure pass through band pixel (u, v)? True when, along one of 4 axes, the first non-band pixels on
+ * BOTH sides deviate from the reference luma `ref` the same way as the pixel (`d`) — a line crossing the ring
+ * continues outside it, a ring artefact does not.
+ */
+function crossesBand(Y, band, bw, bh, u, v, d, ref, maxStep) {
+  if (Math.abs(d) < 3) return false;
+  const need = Math.max(3, Math.abs(d) * 0.4);
+  // first non-band spot along a ray; a thin line may drift a pixel off the ray → best match in its 3×3
+  const side = (dx, dy) => {
+    const len = Math.hypot(dx, dy);
+    for (let t = 1; t <= maxStep; t++) {
+      const uu = Math.round(u + (dx / len) * t);
+      const vv = Math.round(v + (dy / len) * t);
+      if (uu < 0 || vv < 0 || uu >= bw || vv >= bh) return null;
+      if (band[vv * bw + uu]) continue;
+      let best = 0;
+      for (let j = -1; j <= 1; j++) {
+        for (let i = -1; i <= 1; i++) {
+          const x = uu + i;
+          const y = vv + j;
+          if (x < 0 || y < 0 || x >= bw || y >= bh || band[y * bw + x]) continue;
+          const e = (Y[y * bw + x] - ref) * Math.sign(d);
+          if (e > best) best = e;
+        }
+      }
+      return best * Math.sign(d);
+    }
+    return null;
+  };
+  for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [1, -1], [2, 1], [1, 2], [2, -1], [1, -2]]) {
+    const a = side(dx, dy);
+    const b = side(-dx, -dy);
+    if (a == null || b == null) continue;
+    if (Math.sign(a) === Math.sign(d) && Math.sign(b) === Math.sign(d) && Math.abs(a) >= need && Math.abs(b) >= need) return true;
+  }
+  return false;
+}
+
 /** Binary dilation (square, radius r) of a mask. */
 function dilate(mask, w, h, r) {
   const out = new Uint8Array(w * h);
@@ -250,11 +289,12 @@ function dilate(mask, w, h, r) {
  * Cleanup after the un-blend. Compression (4:2:0 chroma) and anti-aliasing leave a faint ring along the sparkle
  * outline. Reference = per-pixel median luma / chroma of the nearby pixels outside the edge band (window r + 3,
  * band = dilate − erode of a > 0.08, r ≈ 2 px at source scale):
- * - band pixels take the reference luma when within `edgeTolerance` (12) of it, or up to 4× that when that luma has
- *   (almost) no support around (a compression spike), and the reference chroma when within `chromaTolerance` (24);
- * - inside the sparkle only unsupported luma spikes (≥ 8) are replaced.
- * Line art crossing the sparkle keeps its luma (far off the background, and it continues outside the band) and its
- * own colour; texture under the sparkle is kept. Mutates `out` (raw pixels); returns the number of pixels changed.
+ * - band pixels take the reference luma when within `edgeTolerance` (12) of it or when they are a lone speck (≤ 48
+ *   off, ≤ 2 similar pixels in the window, at most one 8-neighbour deviating the same way), and the reference chroma when
+ *   within `chromaTolerance` (24);
+ * - inside the sparkle only lone specks ≥ 8 off are replaced.
+ * Band pixels on a line that crosses the ring (`crossesBand`: the same deviation continues outside the band on both
+ * sides) and strong line art (far off the reference) are kept; texture under the sparkle is kept. Mutates `out` (raw pixels); returns the number of pixels changed.
  */
 export function cleanEdgeBand(out, w, h, ch, alpha, box, s, { edgeTolerance = 12, chromaTolerance = 24, edgeRadius } = {}) {
   const { x: bx, y: by, w: bw, h: bh } = box;
@@ -323,9 +363,25 @@ export function cleanEdgeBand(out, w, h, ch, alpha, box, s, { edgeTolerance = 12
       let cb = Cb[k];
       let cr = Cr[k];
       const dy = Math.abs(y - my);
-      const spike = dy <= edgeTolerance * 4 && support < n * 0.08;
+      const spike = dy <= edgeTolerance * 4 && support <= 2; // a lone value: no other pixel around shares it
       const inBand = band[k] === 1;
-      if (inBand ? dy <= edgeTolerance || spike : spike && dy >= edgeTolerance * 0.66) y = my;
+      if (inBand && crossesBand(Y, band, bw, bh, u, v, Y[k] - my, my, r + 3)) continue; // a line through the ring
+      // a speck of 1–2 pixels: at most one 8-neighbour deviates the same way (a line has neighbours on both sides)
+      let lone = spike;
+      if (lone) {
+        const d = Y[k] - my;
+        let alike = 0;
+        for (let j = -1; j <= 1; j++) {
+          for (let i = -1; i <= 1; i++) {
+            const x = u + i;
+            const yy = v + j;
+            if ((!i && !j) || x < 0 || yy < 0 || x >= bw || yy >= bh) continue;
+            if ((Y[yy * bw + x] - my) * Math.sign(d) >= Math.abs(d) * 0.5) alike++;
+          }
+        }
+        lone = alike <= 1;
+      }
+      if (inBand ? dy <= edgeTolerance || lone : lone && dy >= edgeTolerance * 0.66) y = my;
       if (inBand && Math.abs(cb - mcb) <= chromaTolerance && Math.abs(cr - mcr) <= chromaTolerance) {
         cb = mcb;
         cr = mcr;

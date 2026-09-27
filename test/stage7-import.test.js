@@ -8,7 +8,7 @@ import sharp from 'sharp';
 import { importAssets } from '../scripts/import-assets.js';
 import { getItem, loadManifest } from '../server/assets/manifest.js';
 import { chromaKey, clearCornerIslands, whiteToAlpha } from '../server/assets/postprocess.js';
-import { addWatermark, predictWatermark, removeWatermarkDetailed } from '../server/assets/watermark.js';
+import { addWatermark, cleanEdgeBand, loadWatermarkTemplate, predictWatermark, removeWatermarkDetailed, watermarkAlpha } from '../server/assets/watermark.js';
 import { BACKDROP, magentaCharacter, raw, scene, tempManifest, whiteIcon } from './assetFixtures.js';
 import { tempDir } from './helpers.js';
 
@@ -156,4 +156,41 @@ test('watermark: a synthetic Gemini sparkle is found near the predicted spot and
     assert.equal(none.found, null);
     assert.deepEqual((await raw(none.buffer)).data, a.data);
   }
+});
+
+test('watermark edge cleanup: a faint ring on the outline goes, a line crossing it survives', async () => {
+  const t = await loadWatermarkTemplate();
+  const w = 96;
+  const h = 96;
+  const found = { s: 1, cx: 48, cy: 48 };
+  const alpha = watermarkAlpha(t, found, 0, 0, w, h);
+  const base = (x, y) => (Math.abs(x - y) <= 1 ? [30, 26, 46] : [63, 120, 184]); // blue floor + a dark diagonal line
+  const out = Buffer.alloc(w * h * 3);
+  let ring = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 3;
+      const px = base(x, y);
+      // the compression ring: pixels where the alpha changes get ±9 levels
+      const a = alpha[y * w + x];
+      const edge = Math.abs((alpha[y * w + Math.min(w - 1, x + 1)] ?? a) - a) + Math.abs((alpha[Math.min(h - 1, y + 1) * w + x] ?? a) - a) > 0.05;
+      const bump = edge && px[0] > 50 ? ((x + y) % 2 ? 9 : -9) : 0;
+      if (bump) ring++;
+      for (let c = 0; c < 3; c++) out[i + c] = px[c] + bump;
+    }
+  }
+  assert.ok(ring > 40);
+  cleanEdgeBand(out, w, h, 3, alpha, { x: 0, y: 0, w, h }, found.s);
+  let err = 0;
+  let lineErr = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const px = base(x, y);
+      const d = Math.max(...[0, 1, 2].map((c) => Math.abs(out[(y * w + x) * 3 + c] - px[c])));
+      if (px[0] < 50) lineErr = Math.max(lineErr, d);
+      else err += d;
+    }
+  }
+  assert.ok(err / ring < 2, `ring left: ${(err / ring).toFixed(2)} per ring pixel (was 9)`);
+  assert.ok(lineErr <= 4, `line kept (max change ${lineErr})`);
 });

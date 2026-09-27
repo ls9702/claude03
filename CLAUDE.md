@@ -633,7 +633,11 @@
   placement `WATERMARK_RULE`: s = √(w·h)/1024, centre (w − 120.5·s, h − 120.5·s) (checked at 1024², 1024×687, 1024×572).
   Search ±6 px then sub-pixel × ±6 % scale; matched filter on luminance gradients (line-art pixels skipped), accepted
   when gain k ∈ [0.65, 2.5] and every arm ≥ 0.25 (real marks k 1.0–1.2, clean images ≤ 0.25) → otherwise a no-op; the
-  result carries `watermarkRemoved`. Then bg/anchor are flattened (cover resize, the old 4 % crop is gone); keyed kinds
+  result carries `watermarkRemoved`. `cleanEdgeBand` then removes the compression ring on the outline: band = dilate −
+  erode of a > 0.08 (≈ 2 px at source scale); reference = median luma/chroma of nearby non-band pixels; band pixels
+  take the reference luma when ≤ 12 off or when a lone 1–2 px speck, reference chroma when ≤ 24 off; inside only lone
+  specks; pixels on a line crossing the ring (`crossesBand`: same deviation outside the band on both sides) are kept
+  (`edgeCleanup: false` disables). Then bg/anchor are flattened (cover resize, the old 4 % crop is gone); keyed kinds
   keep the 3-corner backdrop sample + `clearCornerIslands` safety net (defaults unchanged for other callers).
   `addWatermark` stamps a synthetic mark (tests).
 - Manifest kinds `card` (meta.card = cards.json id) and `item` (meta.item) — icon pipeline (`whiteToAlpha, trim,
@@ -722,7 +726,7 @@
   character, 1.33 sabotages per game (4.8 % blocked; targets by net-worth rank 1st 16.8 % … 8th 2.4 %), shop purchase
   rate 69.8 %, 고스톱 Σ won = 0, lotto 6.5 paid per ticket (EV 8.93 < 20). `--bias --games 2000 --seed 1`: 1st-place
   share 11.3–13.7 %, first→last average rank spread −0.25.
-- Tests: `test/stage7-import.test.js` (importer, watermark keying, synthetic sparkle removal + no-op), `test/stage7-cards.test.js` (data, useCard rules, every
+- Tests: `test/stage7-import.test.js` (importer, watermark keying, synthetic sparkle removal + no-op, edge-ring cleanup keeps lines), `test/stage7-cards.test.js` (data, useCard rules, every
   card effect, spin mods, passive cards, hand limit, shop, items, ranking), `test/stage7-social.test.js` (trades incl.
   expiry / runner deadline / re-validation, gifts, holidays incl. pot conservation / ties / config, lotto EV + draws,
   presentation + MC, a random lifetime game, restore + migration, HTTP). `test/helpers.js` `makeRoom` sets
