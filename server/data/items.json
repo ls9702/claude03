@@ -1,0 +1,11 @@
+{
+  "_comment": "Stage 7 아이템(상점). 캐릭터당 종류별 1개. price(만원), resale = 최종 정산 때 price × resale을 순자산에 더함, stats = 살 때 한 번 오르는 능력치. effect: carMin(룰렛 1 → 2), salaryBonus(해당 직업 급여 +%), noSeniorStrLoss(노년 이벤트의 체력 감소 무효).",
+  "items": [
+    { "id": "car", "name": "경차", "icon": "🚗", "desc": "룰렛 1이 나오면 2칸 이동", "price": 300, "resale": 0.5, "effect": { "carMin": 2 } },
+    { "id": "laptop", "name": "노트북", "icon": "💻", "desc": "지력 +1 · 웹툰 작가·유튜버·e스포츠 선수 급여 +10%", "price": 200, "resale": 0.4, "stats": { "int": 1 }, "effect": { "salaryBonus": 0.1, "jobs": ["webtoonist", "youtuber", "esports"] } },
+    { "id": "gym_pass", "name": "헬스 회원권", "icon": "🏋️", "desc": "체력 +1", "price": 150, "resale": 0.2, "stats": { "str": 1 }, "effect": {} },
+    { "id": "designer_bag", "name": "명품 가방", "icon": "👜", "desc": "매력 +1 · 되팔 때 값이 거의 그대로", "price": 400, "resale": 0.9, "stats": { "charm": 1 }, "effect": {} },
+    { "id": "lucky_cat", "name": "복고양이", "icon": "🐱", "desc": "운 +1", "price": 150, "resale": 0.6, "stats": { "luck": 1 }, "effect": {} },
+    { "id": "massage_chair", "name": "안마의자", "icon": "💺", "desc": "노년 이벤트에서 체력이 줄지 않는다", "price": 350, "resale": 0.5, "effect": { "noSeniorStrLoss": true } }
+  ]
+}

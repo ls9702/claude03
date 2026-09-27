@@ -11,12 +11,18 @@
 // a CSS pattern, the background to an SVG scene, characters to the SVG portrait.
 import { won, esc } from '../format.js';
 import { renderAvatarLayers, portraitHtml, hydratePortraits, preloadAvatarLayers } from './avatar2d.js';
-import { autoAdvanceMs, expressionFor, fallbackText, isBigWin, planCutins, poseFor, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
+import { autoAdvanceMs, expressionFor, fallbackText, isBigWin, isCardAnchor, planCutins, poseFor, resolveSceneBg, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
 import { CAST_PRELOAD_MS, PREEMPT_KEEP_MS, routeOptionInfo } from './cutinPolicy.js';
 import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from './mc.js';
 import { educationLabel, jobInfo, optionExtras, optionLabel, rankName, rankStars, salaryChip, statChip } from '../shared/growth.js';
+import { CARD_KINDS, cardInfo, holidayRows, holidayTitle, itemInfo, lottoRows } from '../shared/cards.js';
+import { HOLIDAY_OPTION_ICON, hwatuFlipHtml, hwatuSvg, lottoBallHtml, shopOptionsHtml } from './cardArt.js';
 
-const REASON_ICON = { tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', habit: '📚', tuition: '🎓', military: '🪖' };
+const REASON_ICON = {
+  tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', habit: '📚', tuition: '🎓', military: '🪖',
+  // Stage 7
+  shop: '🛍️', card: '🃏', sabotage: '💢', tax_audit: '🧾', complaint: '📮', pledge: '🗳️', trade: '🤝', sebae: '🧧', gostop: '🎴', holiday: '🎉', lotto: '🎱',
+};
 /** Stage 6 anchors → presentation defaults (the server's tone / scene / emotion win when set). */
 const STAGE6_LOOK = {
   jobChanged: { tone: 'career', scene: 'office', pose: 'cheer', emotion: 'joy', sfx: 'fanfare' },
@@ -27,6 +33,37 @@ const STAGE6_LOOK = {
   militaryEnd: { tone: 'good', scene: null, pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🎖️' },
   educationChanged: { tone: 'good', scene: 'school', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🎓' },
 };
+/**
+ * Stage 7 anchors → presentation defaults (server tone / scene / emotion win). `target*` = the other character on stage
+ * (sabotage victim / defender / gift receiver).
+ */
+function stage7Look(a) {
+  switch (a?.type) {
+    case 'cardUsed':
+      if (a.cardId === 'pledge') return { tone: 'career', scene: 'stage', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🗳️' };
+      if (a.targetId) return { tone: 'bad', scene: null, pose: 'cheer', emotion: 'joy', sfx: 'thud', targetPose: 'shock', targetEmotion: 'shock', targetGlyph: '💢' };
+      return { tone: 'good', scene: null, pose: 'wave', emotion: 'joy', sfx: 'pop' };
+    case 'cardBlocked':
+      return { tone: 'good', scene: null, pose: 'shock', emotion: 'sweat', sfx: 'fanfare', targetPose: 'cheer', targetEmotion: 'joy', targetGlyph: '🛡️' };
+    case 'itemBought':
+      return { tone: 'treasure', scene: 'shop', pose: 'cheer', emotion: 'joy', sfx: 'coin', glyph: '🛍️' };
+    case 'holidayStarted':
+    case 'holidayResult':
+      return { tone: 'holiday', scene: 'holiday', pose: 'wave', emotion: 'joy', sfx: 'fanfare' };
+    case 'lottoDraw':
+      return { tone: 'treasure', scene: 'studio', pose: 'idle', emotion: null, sfx: 'fanfare' };
+    case 'cardGained':
+      return { tone: 'good', scene: null, pose: 'jump', emotion: 'joy', sfx: 'pop', glyph: '🃏' };
+    case 'gift':
+      return { tone: 'love', scene: null, pose: 'wave', emotion: 'joy', sfx: 'heart', targetPose: 'jump', targetEmotion: 'joy', targetGlyph: '🎁' };
+    case 'tradeResolved':
+      return a.status === 'accepted'
+        ? { tone: 'good', scene: null, pose: 'cheer', emotion: 'joy', sfx: 'coin', targetPose: 'cheer', targetEmotion: 'joy', glyph: '🤝' }
+        : { tone: 'neutral', scene: null, pose: 'idle', emotion: 'sweat', sfx: 'pop' };
+    default:
+      return null;
+  }
+}
 const SLOT_X = { 1: [34], 2: [27, 73], 3: [18, 50, 82] };
 
 /** Fallback SVG scenes (viewBox 1600×900) when a generated background is missing. */
@@ -70,6 +107,25 @@ function sceneSvg(scene, tone) {
         <ellipse cx="800" cy="830" rx="420" ry="60" fill="#fff0de" opacity=".7"/>`;
       break;
     }
+    case 'shop': {
+      // 동네 마트 (Stage 7 shop prompt / purchases)
+      const shelf = (y, colors) => `<rect x="80" y="${y}" width="1440" height="16" fill="#b7793f"/>${colors.map((c, i) => `<rect x="${110 + i * 118}" y="${y - 78}" width="84" height="78" rx="10" fill="${c}"/>`).join('')}`;
+      body = `<rect width="1600" height="900" fill="#fff5e6"/><rect y="0" width="1600" height="120" fill="#ff8a3d"/>${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<path d="M${i * 200} 120 q100 70 200 0" fill="${i % 2 ? '#fff' : '#ffd2a3'}"/>`).join('')}
+        <text x="800" y="84" text-anchor="middle" font-size="64" font-weight="900" fill="#fff" font-family="system-ui,sans-serif">인생 마트</text>
+        ${shelf(330, ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6', '#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'])}
+        ${shelf(500, ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#f87171', '#a78bfa', '#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#f87171', '#a78bfa'])}
+        <rect y="640" width="1600" height="260" fill="#e9d8c0"/>${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<rect x="${i * 200}" y="640" width="100" height="260" fill="#dfc9ab"/>`).join('')}`;
+      break;
+    }
+    case 'holiday': {
+      // 명절 상차림 거실: 병풍 + 상 + 전등
+      const panels = [0, 1, 2, 3, 4, 5].map((i) => `<rect x="${260 + i * 180}" y="150" width="170" height="420" fill="${i % 2 ? '#f7e3c0' : '#fbecd2'}" stroke="#a0522d" stroke-width="8"/><circle cx="${345 + i * 180}" cy="300" r="46" fill="${['#e53935', '#fb8c00', '#43a047', '#1e88e5', '#8e24aa', '#e53935'][i]}" opacity=".55"/>`).join('');
+      body = `<rect width="1600" height="900" fill="#f3d9b1"/><rect y="600" width="1600" height="300" fill="#c98b4f"/>${panels}
+        <rect x="360" y="610" width="880" height="60" rx="12" fill="#7b3f1d"/><rect x="400" y="670" width="40" height="140" fill="#5d2e14"/><rect x="1160" y="670" width="40" height="140" fill="#5d2e14"/>
+        ${[0, 1, 2, 3, 4].map((i) => `<ellipse cx="${470 + i * 165}" cy="600" rx="62" ry="22" fill="#fff"/><ellipse cx="${470 + i * 165}" cy="585" rx="44" ry="24" fill="${['#ffb74d', '#e57373', '#aed581', '#fff176', '#f48fb1'][i]}"/>`).join('')}
+        <path d="M150 0 v90 M1450 0 v90" stroke="#8d6e63" stroke-width="6"/><ellipse cx="150" cy="120" rx="46" ry="34" fill="#e53935"/><ellipse cx="1450" cy="120" rx="46" ry="34" fill="#e53935"/>`;
+      break;
+    }
     default:
       body = `<g fill="#fff" opacity=".7"><ellipse cx="300" cy="180" rx="140" ry="44"/><ellipse cx="1200" cy="140" rx="120" ry="38"/></g><rect y="700" width="1600" height="200" fill="#8ccf7e"/>`;
   }
@@ -88,6 +144,15 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   let cur = null; // { spec, resolve, el, timers[] }
   const idle = new Set();
   const pres = () => getMeta()?.presentation ?? {};
+  /** Stage 7 art: card / item illustrations and job badges (`{kind:'icon', job}`) when accepted, else null. */
+  const artFor = (kind, id) => {
+    if (!id) return null;
+    try {
+      return (kind === 'job' ? findAsset({ kind: 'icon', job: id }) : findAsset({ kind, [kind]: id }))?.url ?? null;
+    } catch {
+      return null;
+    }
+  };
 
   const overlay = document.createElement('div');
   overlay.className = 'cutin';
@@ -109,6 +174,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         <div class="ci-who" data-ci="who"></div>
         <div class="ci-chips" data-ci="chips"></div>
         <div class="ci-text" data-ci="text" aria-live="polite"></div>
+        <div class="ci-extra" data-ci="extra"></div>
         <div class="ci-options" data-ci="options"></div>
         <div class="ci-foot"><span class="ci-wait" data-ci="wait"></span><button type="button" class="ci-next" data-ci="next" aria-label="다음">▼</button></div>
         <i class="ci-progress" data-ci="progress" aria-hidden="true"></i>
@@ -125,7 +191,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   function specFromGroup(g, { characters = [], room = null } = {}) {
     const a = g.anchor;
     if (a.type === 'newsFlash') return newsSpec(g, { characters });
-    const look = STAGE6_LOOK[a.type] ?? null;
+    if (a.type === 'lottoDraw') return lottoSpec(g, { characters });
+    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? null;
+    const meta = getMeta();
     const main = characters.find((c) => c.id === g.charId) ?? null;
     const name = main?.name ?? '';
     const chips = [];
@@ -150,34 +218,65 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       chips.push({ ...c, text: who ? `${who}${c.text}` : c.text });
     }
     for (const id of g.discharged ?? []) chips.push({ text: `🎖️ ${id !== g.charId ? `${nameOf(characters, id)} ` : ''}전역!`, kind: 'plus' });
+    // Stage 7: cards gained / used, gifts, a purchase without its own money chip
+    for (const cd of g.cards ?? []) {
+      const info = cardInfo(cd.cardId, meta);
+      const who = cd.charId && cd.charId !== g.charId ? `${nameOf(characters, cd.charId)} ` : '';
+      chips.push(cd.type === 'cardGained' ? { text: `🃏 ${who}${info.name} 카드 +1`, kind: `card k-${info.kind}` } : { text: `${info.icon} ${who}${info.name} 사용`, kind: `card k-${info.kind}` });
+    }
+    for (const gf of g.gifts ?? []) chips.push({ text: `🎁 ${nameOf(characters, gf.fromId)} → ${nameOf(characters, gf.toId)} ${giftWhat(gf, meta)}`, kind: 'plus' });
+    if (a.type === 'gift') chips.unshift({ text: `🎁 ${giftWhat(a, meta)}`, kind: 'plus' });
+    if (a.type === 'cardGained') {
+      const info = cardInfo(a.cardId, meta);
+      chips.unshift({ text: `🃏 ${info.name} 카드 +1`, kind: `card k-${info.kind}` });
+    }
+    if (a.type === 'itemBought' && Number(a.price) > 0 && !g.money.some((m) => m.charId === a.charId && m.delta < 0)) chips.push({ text: `🛍️ -${won(Number(a.price))}`, kind: 'minus' });
+    if (a.type === 'holidayStarted') chips.push({ text: '🧧 세배 룰렛', kind: '' }, { text: '🗣️ 잔소리 룰렛', kind: '' }, { text: '🎴 고스톱 한 판', kind: '' });
     if (a.type === 'finished') chips.unshift({ text: `🏁 ${a.place}등 골인`, kind: 'plus' });
-    const badge = jobBadgeFor(a);
+    const badge = jobBadgeFor(a) ?? stage7Badge(a, meta);
     if (a.type === 'educationChanged' && educationLabel(a.education)) chips.unshift({ text: `🎓 ${educationLabel(a.education)}`, kind: 'plus' });
     if (a.type === 'militaryStart' && a.turns) chips.unshift({ text: `🪖 복무 ${a.turns}턴`, kind: '' });
     if (a.type === 'injured' && a.turns) chips.unshift({ text: `🤕 ${a.turns}턴 부상`, kind: 'minus' });
-    const cast = g.involved
+    const castIds = a.type === 'holidayResult' ? [] : a.type === 'holidayStarted' && !g.involved.length ? characters.slice(0, 3).map((c) => c.id) : g.involved;
+    const cast = castIds
       .map((id) => characters.find((c) => c.id === id))
       .filter(Boolean)
       .map((c, i) => {
         const isMain = c.id === g.charId;
+        const isTarget = !isMain && !!look?.targetPose && c.id === g.targetId;
         const delta = g.money.filter((m) => m.charId === c.id).reduce((s, m) => s + m.delta, 0);
-        let pose = isMain ? (look?.pose ?? poseFor(a, { delta })) : delta > 0 ? 'jump' : delta < 0 ? 'idle' : 'wave';
-        let emotion = isMain ? (a.emotion && a.emotion !== 'neutral' ? a.emotion : look?.emotion ?? a.emotion) : delta > 0 ? 'joy' : delta < 0 ? 'love' : null;
+        let pose = isMain ? (look?.pose ?? poseFor(a, { delta })) : isTarget ? look.targetPose : delta > 0 ? 'jump' : delta < 0 ? 'idle' : 'wave';
+        let emotion = isMain
+          ? a.emotion && a.emotion !== 'neutral' && !look?.targetPose ? a.emotion : look?.emotion ?? a.emotion
+          : isTarget ? look.targetEmotion : delta > 0 ? 'joy' : delta < 0 ? 'love' : null;
         if (a.type === 'gameOver') {
           pose = i === 0 ? 'cheer' : 'wave';
           emotion = i === 0 ? 'joy' : null;
         }
-        return { char: c, pose, emotion: emotion === 'neutral' ? null : emotion, glyph: isMain ? look?.glyph ?? null : null };
+        if (a.type === 'holidayStarted') {
+          pose = 'wave';
+          emotion = 'joy';
+        }
+        return { char: c, pose, emotion: emotion === 'neutral' ? null : emotion, glyph: isMain ? look?.glyph ?? null : isTarget ? look.targetGlyph ?? null : null };
       });
     const ownerChar = characters.find((c) => c.id === g.charId);
     const scene = a.scene && a.scene !== 'none' ? a.scene : look?.scene ?? a.scene ?? 'none';
+    const holiday = a.type === 'holidayResult' ? { kind: a.kind ?? null, rows: holidayRows(a, { characters, won }) } : null;
+    const mineInvolved = characters.some((c) => c.isMe && (c.id === g.charId || c.id === g.targetId || holiday?.rows.some((r) => r.charId === c.id)));
+    let autoMs = autoAdvanceMs({ owner: !!ownerChar?.isMe || mineInvolved, reduced: isReduced() });
+    if (holiday) autoMs = Math.max(autoMs, 5200 + holiday.rows.length * 450);
+    const texts = g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)];
+    if (holiday) {
+      const win = holiday.rows.filter((r) => r.winner);
+      texts.splice(0, texts.length, win.length ? `🎴 고스톱 승자: ${win.map((r) => r.name).join(', ')}! ${win.map((r) => r.winText).filter(Boolean).join(' ')}` : '🎴 고스톱은 무승부!');
+    }
     return {
-      key: `${a.type}:${a.charId ?? ''}:${a.tileId ?? a.era ?? a.route ?? a.promptId ?? a.jobId ?? ''}`,
+      key: `${a.type}:${a.charId ?? ''}:${a.tileId ?? a.era ?? a.eraId ?? a.route ?? a.promptId ?? a.jobId ?? a.cardId ?? a.itemId ?? a.tradeId ?? ''}`,
       tone: look && (!a.tone || a.tone === 'neutral') ? look.tone : a.tone ?? 'neutral',
       scene,
       tag: tagLabel(a, { tones: pres().tones, tileTypes: getMeta()?.board?.tileTypes, routes: getMeta()?.board?.routes }),
       who: name ? `${name}${sceneLabel(scene) ? ` · ${sceneLabel(scene)}` : ''}` : sceneLabel(scene),
-      text: g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)],
+      text: texts,
       line: a.line ?? null,
       speaker: g.charId ?? cast[0]?.char.id ?? null,
       chips,
@@ -188,7 +287,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       bigWin: isBigWin(a, g.delta) || !!look?.bigWin,
       currentId: g.charId,
       era: a.type === 'eraChanged' ? `${a.eraName ?? ''} 시대` : '', // board state may already be ahead → no turn/era spoilers
-      autoMs: autoAdvanceMs({ owner: !!ownerChar?.isMe, reduced: isReduced() }),
+      autoMs,
+      holiday, // Stage 7: 고스톱 flip row + result table
       characters,
       mc: g.mc ?? null, // Stage 5.6: small MC corner lines
     };
@@ -202,8 +302,68 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const max = Math.max(info?.maxRank ?? 1, rank);
     const title = info?.name ?? a.jobName ?? a.jobId;
     const rn = a.rankName ?? rankName(info, rank);
-    if (a.type === 'hiddenJobUnlocked') return { icon: info?.icon ?? '🌟', title, stars: '', sub: '숨은 직업 해금!', kind: 'hiddenjob' };
-    return { icon: info?.icon ?? '💼', title, stars: info?.partTime && max <= 1 ? '' : rankStars(rank, max), sub: rn, kind: a.type === 'rankUp' ? 'rankup' : 'job' };
+    const img = artFor('job', a.jobId);
+    if (a.type === 'hiddenJobUnlocked') return { icon: info?.icon ?? '🌟', img, title, stars: '', sub: '숨은 직업 해금!', kind: 'hiddenjob' };
+    return { icon: info?.icon ?? '💼', img, title, stars: info?.partTime && max <= 1 ? '' : rankStars(rank, max), sub: rn, kind: a.type === 'rankUp' ? 'rankup' : 'job' };
+  }
+
+  /** Stage 7: card art badge (sabotage / 공약 / block / card gained) or item badge (purchase). */
+  function stage7Badge(a, meta) {
+    if ((a?.type === 'cardUsed' && isCardAnchor(a)) || a?.type === 'cardBlocked' || a?.type === 'cardGained') {
+      const info = cardInfo(a.cardId, meta);
+      if (!info) return null;
+      const sub = a.type === 'cardBlocked' ? '🛡️ 변호사가 막았다!' : `${CARD_KINDS[info.kind]?.label ?? ''} 카드${a.type === 'cardGained' ? ' 획득' : ''}`;
+      return { icon: info.icon, img: artFor('card', a.cardId), title: info.name, stars: '', sub, kind: `card k-${info.kind}${a.type === 'cardBlocked' ? ' blocked' : ''}` };
+    }
+    if (a?.type === 'itemBought') {
+      const info = itemInfo(a.itemId, meta);
+      return { icon: info.icon, img: artFor('item', a.itemId), title: info.name, stars: '', sub: info.desc || '새 아이템!', kind: 'item' };
+    }
+    return null;
+  }
+
+  /** 🎁 what a gift / trade side carries ("50만원" / "택시 카드"). */
+  function giftWhat(x, meta) {
+    if (Number(x?.money) > 0) return won(Number(x.money));
+    if (x?.cardId) return `${cardInfo(x.cardId, meta).name} 카드`;
+    return '';
+  }
+
+  /**
+   * Stage 7: 전국 로또 → studio cut-in (MCs when they have lines) with the ball draw on the screen and the entries in
+   * the dialogue box. `g.studio` / `g.mc` = 봄이·호야 lines (`lotto`).
+   */
+  function lottoSpec(g, { characters = [] } = {}) {
+    const a = g.anchor;
+    const lotto = lottoRows(a, { characters, won });
+    const lines = g.studio?.length ? g.studio : g.mc?.length ? g.mc : null;
+    const best = lotto.rows[0];
+    const text = !lotto.rows.length ? ['로또 카드를 가진 사람이 없어 추첨만 했어요.'] : best?.prize > 0 ? [`🎉 ${best.name} ${best.matches}개 일치! ${won(best.prize)} 당첨!`] : ['아쉽게도 이번 회차 당첨자는 없어요…'];
+    const mine = lotto.rows.some((r) => r.char?.isMe);
+    const drawMs = 900 + lotto.numbers.length * 900;
+    const base = {
+      key: `lotto:${a.eraId ?? ''}:${lotto.numbers.join('-')}`,
+      tone: 'treasure',
+      scene: 'studio',
+      tag: tagLabel(a, { tones: pres().tones }),
+      who: '🎱 전국 로또 추첨',
+      text,
+      line: null,
+      speaker: null,
+      chips: lotto.rows.filter((r) => r.prize > 0).map((r) => ({ text: `🎱 ${r.name} +${won(r.prize)}`, kind: 'plus' })),
+      cast: [],
+      bigWin: false,
+      currentId: null,
+      era: '',
+      characters,
+      lotto,
+      sfx: 'fanfare',
+    };
+    if (lines) {
+      const spec = studioSpec(lines, { key: base.key, tone: 'treasure', title: base.tag, characters });
+      return { ...spec, ...base, kind: 'mc', mcScript: lines, text: [], lottoText: text, autoMs: Math.max(spec.autoMs, drawMs + 3500) + (mine ? 1500 : 0) };
+    }
+    return { ...base, kind: 'lotto', autoMs: drawMs + (mine ? 6000 : 4200) };
   }
 
   /** Stage 6: a news flash on its own (no MC studio in the batch / MCs off) → 📰 속보 cut-in in the studio. */
@@ -280,12 +440,20 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     overlay.classList.toggle('has-frame', !!frame);
   }
 
+  /**
+   * Background: the scene's generated bg, else (Stage 7) the `sceneFallbacks` chain's first generated bg
+   * (shop → office, holiday → wedding-hall, …), else the SVG scene.
+   */
   function renderBg(scene, tone) {
-    const bgId = pres().scenes?.[scene]?.bg;
-    const bg = scene && scene !== 'none' ? (bgId && assets.assetUrl?.(bgId)) || findAsset({ kind: 'bg', scene })?.url : null;
+    const r = resolveSceneBg(scene, {
+      presentation: pres(),
+      assetUrl: (id) => assets.assetUrl?.(id) ?? null,
+      findBg: (sc) => findAsset({ kind: 'bg', scene: sc })?.url ?? null,
+    });
     $.bg.dataset.scene = scene ?? 'none';
-    $.bg.innerHTML = bg ? `<img class="ci-bg-img" src="${esc(bg)}" alt="" decoding="async">` : sceneSvg(scene, tone);
-    $.win.classList.toggle('generated', !!bg);
+    $.bg.dataset.bgScene = r.url ? r.scene : r.svgScene;
+    $.bg.innerHTML = r.url ? `<img class="ci-bg-img" src="${esc(r.url)}" alt="" decoding="async">` : sceneSvg(r.svgScene, tone);
+    $.win.classList.toggle('generated', !!r.url);
   }
 
   function renderCast(spec) {
@@ -337,7 +505,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       const b = spec.badge;
       const el = document.createElement('div');
       el.className = `ci-badge ${b.kind ?? ''}`;
-      el.innerHTML = `<span class="ci-badge-ic">${esc(b.icon)}</span><span class="ci-badge-body"><b class="ci-badge-t">${esc(b.title)}</b>${
+      el.innerHTML = `<span class="ci-badge-ic">${b.img ? `<img src="${esc(b.img)}" alt="" decoding="async">` : esc(b.icon)}</span><span class="ci-badge-body"><b class="ci-badge-t">${esc(b.title)}</b>${
         b.stars ? `<span class="ci-badge-stars" aria-label="랭크">${esc(b.stars)}</span>` : ''
       }${b.sub ? `<small class="ci-badge-sub">${esc(b.sub)}</small>` : ''}</span>`;
       $.fx.appendChild(el);
@@ -356,6 +524,73 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     }
   }
 
+  // ---------- Stage 7: 명절 정산 (hwatu flip), 로또 추첨, holiday prompt deck ----------
+  function renderStage7(item) {
+    const { spec } = item;
+    $.extra.innerHTML = '';
+    if (spec.holiday) renderHoliday(item);
+    if (spec.lotto) renderLotto(item);
+    if (spec.prompt?.kind === 'holiday') {
+      const deck = document.createElement('div');
+      deck.className = 'ci-hw-deck';
+      deck.innerHTML = [0, 1, 2].map((i) => `<span class="hw-deal" style="--i:${i}">${hwatuSvg(0, { back: true })}</span>`).join('');
+      $.fx.appendChild(deck);
+    }
+  }
+
+  /** Window: every staker's 화투 face-down → flips one by one, the winner glows; box: 세뱃돈 / 잔소리 / 판돈 table. */
+  function renderHoliday(item) {
+    const { rows, kind } = item.spec.holiday;
+    const players = rows.filter((r) => r.card != null);
+    const row = document.createElement('div');
+    row.className = 'ci-hwrow';
+    row.style.setProperty('--n', String(Math.max(1, players.length)));
+    row.innerHTML = `<div class="ci-hw-title">${esc(holidayTitle(kind))} · 🎴 고스톱</div><div class="ci-hw-cards">${players
+      .map((r, i) => `<span class="ci-hw-slot${r.winner ? ' win' : ''}">${hwatuFlipHtml(r.card, { delay: 500 + i * 420, win: r.winner })}<b class="ci-hw-name">${r.winner ? '👑 ' : ''}${esc(r.name)}</b><small class="ci-hw-k">${r.card}끗</small></span>`)
+      .join('')}${players.length ? '' : '<span class="ci-hw-none">이번 고스톱은 모두 구경만 했어요</span>'}</div>`;
+    $.fx.appendChild(row);
+    const flipAll = () => cur === item && row.querySelectorAll('.hw').forEach((h) => h.classList.add('flip'));
+    if (isReduced()) flipAll();
+    else item.timers.push(setTimeout(() => cur === item && row.classList.add('go'), 60));
+    const table = document.createElement('div');
+    table.className = 'ci-hres';
+    table.innerHTML = rows
+      .map(
+        (r) => `<div class="ci-hres-row${r.winner ? ' win' : ''}${r.char?.isMe ? ' me' : ''}"><span class="ci-hres-n">${esc(r.name)}</span>${r.sebae ? `<span class="ci-chip ${r.sebae.kind}">${esc(r.sebae.text)}</span>` : ''}${
+          r.nagging ? `<span class="ci-chip stat stat-${esc(r.nagging.stat)} ${r.nagging.kind}">${esc(r.nagging.text)}</span>` : ''
+        }<span class="ci-chip ${r.winner ? 'plus' : r.stake > 0 ? 'minus' : ''}">🎴 ${esc(r.stakeText)}${r.winText ? ` · ${esc(r.winText)}` : ''}</span></div>`,
+      )
+      .join('');
+    $.extra.appendChild(table);
+  }
+
+  /** Lotto machine on the studio screen: balls drop one by one; entries (their numbers, hits, prize) in the box. */
+  function renderLotto(item) {
+    const { numbers, rows } = item.spec.lotto;
+    const panel = document.createElement('div');
+    panel.className = 'ci-lotto';
+    panel.innerHTML = `<div class="ci-lotto-t">🎱 전국 로또 당첨 번호</div><div class="ci-lotto-balls">${numbers.map((n, i) => lottoBallHtml(n, { delay: 700 + i * 900 })).join('')}</div>`;
+    $.fx.appendChild(panel);
+    if (item.spec.lottoText?.length) {
+      const p = document.createElement('p');
+      p.className = 'ci-lotto-sum';
+      p.textContent = item.spec.lottoText.join(' ');
+      $.extra.appendChild(p);
+    }
+    if (rows.length) {
+      const list = document.createElement('div');
+      list.className = 'ci-lotto-rows';
+      list.innerHTML = rows
+        .map(
+          (r, i) => `<div class="ci-lotto-row${r.prize > 0 ? ' won' : ''}${r.char?.isMe ? ' me' : ''}" style="--d:${900 + numbers.length * 900 + i * 250}ms"><span class="ci-hres-n">${esc(r.name)}</span><span class="ci-lotto-mine">${r.numbers
+            .map((x) => lottoBallHtml(x.n, { hit: x.hit, small: true }))
+            .join('')}</span><span class="ci-chip ${r.prize > 0 ? 'plus' : ''}">${r.matches}개 일치 · ${esc(r.prizeText)}</span></div>`,
+        )
+        .join('');
+      $.extra.appendChild(list);
+    }
+  }
+
   // ---------- MCs (Stage 5.6) ----------
   const mcSound = (l) => audio?.play('bark', { mc: l.speaker, force: true });
 
@@ -365,7 +600,10 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const stage = document.createElement('div');
     stage.className = 'ci-studio';
     const booth = createMcBooth({ ids: ['hoya', 'bomi'], size: 0 });
-    stage.innerHTML = '<i class="mc-desk" aria-hidden="true"></i>';
+    // the generated studio background has its own host desk → only the SVG studio gets the CSS desk bar
+    const studioArt = !!findAsset({ kind: 'bg', scene: 'studio' });
+    stage.classList.toggle('art', studioArt);
+    stage.innerHTML = studioArt ? '<i class="mc-floor" aria-hidden="true"></i>' : '<i class="mc-desk" aria-hidden="true"></i>';
     stage.appendChild(booth.el);
     $.fx.appendChild(stage);
     const shown = [];
@@ -467,6 +705,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const els = renderCast(spec);
     item.els = els;
     renderStage6(spec);
+    renderStage7(item);
     if (spec.kind === 'mc') renderStudio(item);
     else if (spec.mc?.length) renderSmallMc(item);
     audio?.play(spec.sfx ?? pres().tones?.[spec.tone]?.sfx ?? 'pop');
@@ -515,7 +754,13 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       $.options.dataset.key = optKey;
     }
     if (!p) return;
-    if (p.forMe?.length && !$.options.childElementCount) {
+    if (p.forMe?.length && !$.options.childElementCount && p.kind === 'shop') {
+      // Stage 7 상점: three product cards (art, name, price, effect, coupon, disabled) + 지나가기
+      const who = p.forMe[0];
+      $.options.innerHTML = `${
+        p.forMe.length > 1 || who.id !== p.charId ? `<p class="ci-opt-who">${esc(who.name)}의 선택</p>` : ''
+      }${shopOptionsHtml(p, who, { meta: getMeta(), artFor, btnClass: 'ci-opt' })}`;
+    } else if (p.forMe?.length && !$.options.childElementCount) {
       const who = p.forMe[0];
       $.options.innerHTML = `${
         p.forMe.length > 1 || who.id !== p.charId ? `<p class="ci-opt-who">${esc(who.name)}의 선택${p.forMe.length > 1 ? ` <small>(내 캐릭터 ${p.forMe.length}명 남음)</small>` : ''}</p>` : ''
@@ -715,7 +960,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         options: (p.options ?? []).map((o) => {
           const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
           const desc = routeOptionInfo(p, o);
-          return { ...o, icon: o.icon || x.icon, label: optionLabel({ ...o, icon: o.icon || x.icon }), desc, badges: [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges] };
+          const icon = o.icon || x.icon || (p.kind === 'holiday' ? HOLIDAY_OPTION_ICON[o.id] ?? '' : '');
+          return { ...o, icon, label: optionLabel({ ...o, icon }), desc, badges: [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges] };
         }),
         forMe,
         deadlineAt: p.deadlineAt,

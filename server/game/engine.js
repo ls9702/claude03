@@ -6,6 +6,7 @@ import { buildBoard, findTile, nextPosition, startPosition, tileAt, tileIdAt } f
 import {
   EngineError,
   addLog,
+  assertOwner,
   changeMoney,
   charById,
   createTx,
@@ -112,15 +113,6 @@ function announceTurn(tx) {
   const limit = turnTimeoutMs(tx.room);
   tx.room.turn.spinDeadlineAt = limit ? tx.now + limit : null;
   emit(tx, 'turnStarted', { charId: c.id, turnNo: tx.room.turn.turnNo, round: tx.room.turn.round });
-}
-
-function assertOwner(room, actor, charId) {
-  const c = charById(room, charId);
-  if (!c) fail(404, '캐릭터를 찾을 수 없습니다.');
-  if (actor && !actor.admin && !actor.system && c.ownerSessionId !== actor.sessionId) {
-    fail(403, '내 캐릭터가 아닙니다.');
-  }
-  return c;
 }
 
 function enterEra(tx, c, eraIndex) {

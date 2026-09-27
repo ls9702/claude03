@@ -1,0 +1,23 @@
+{
+  "_comment": "Stage 7 명절 대잔치: eras의 시대가 처음 열릴 때(뉴스 다음, 모드의 첫 시대 제외, 방 설정 holidays가 켜져 있을 때) 설/추석을 번갈아 1회. 전원 동시 프롬프트 holiday(판돈 pass/small/big) → ① 세뱃돈 룰렛(sebae[캐릭터 시대] 범위, 아이 시대는 받고 어른 시대는 준다) ② 잔소리 룰렛(무작위 능력치 ±1) ③ 고스톱(판돈 = stakes × stakeScale[명절 시대], 현금 한도; 판돈을 건 2명 이상이 1~10 화투 끗수를 받고 최고 끗수가 이긴다. 진 사람은 각자 min(자기 판돈, 이긴 사람 판돈)을 내고 동점 승자는 나눠 가짐(내림, 나머지는 먼저인 사람) → 돈은 판돈을 건 사람들 사이에서만 오간다).",
+  "eras": ["middle", "young", "middle_age", "senior"],
+  "kinds": ["seol", "chuseok"],
+  "names": { "seol": "설날", "chuseok": "추석" },
+  "icons": { "seol": "🧧", "chuseok": "🌕" },
+  "sebae": {
+    "baby": [10, 30], "elem": [20, 50], "middle": [30, 80], "high": [40, 100],
+    "young": [-60, -20], "middle_age": [-120, -40], "senior": [-80, -20]
+  },
+  "nagging": {
+    "chance": 0.5,
+    "lines": {
+      "int": ["공부는 잘 하니?", "책 좀 읽어라~"],
+      "str": ["살 좀 빼라~", "운동은 하니?"],
+      "charm": ["애인은 있니?", "옷 좀 단정하게 입어라~"],
+      "luck": ["올해는 운이 트일 거다!", "복 많이 받아라~"]
+    }
+  },
+  "stakes": { "small": 20, "big": 60 },
+  "stakeScale": { "baby": 0.5, "elem": 0.5, "middle": 1, "high": 1, "young": 2, "middle_age": 3, "senior": 2 },
+  "hwatu": { "min": 1, "max": 10 }
+}

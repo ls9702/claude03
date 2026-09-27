@@ -6,6 +6,11 @@
 //   myPendingChars(pending, chars) → my characters that still have to answer the pending prompt
 //   routeOptionInfo(pending, opt)  → one-line description for the 인생 갈림길 options
 //   betPicks(cfg)                  → side-bet buttons from `/api/meta` balance.bets (ranges from the server)
+//
+// Stage 7: 명절 / 로또 / 뒤통수 on me are big (full even in compact), shop / card tiles and other players' purchases
+// or sabotage are minor; lone card / gift / trade events are banners; a lotto draw that arrives while my prompt waits
+// is deferred ('defer') until I have answered.
+import { isCardAnchor } from './cutinMap.js';
 
 /** 「관전 컷인」 setting: full cut-ins for everything / small banners for other players' minor events / none. */
 export const CUTIN_MODES = ['full', 'compact', 'off'];
@@ -24,12 +29,22 @@ export const CAST_PRELOAD_MS = 600;
 
 /** Tiles that will become marriage / job events (Stage 6) — always full cut-ins. */
 export const BIG_TILE_TYPES = ['heart', 'job'];
-const BIG_TYPES = new Set(['finished', 'eraChanged', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash']);
+const BIG_TYPES = new Set(['finished', 'eraChanged', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash', 'holidayStarted', 'holidayResult', 'lottoDraw']);
 const BIG_TAG = /marriage|wedding|job|promotion|birth/;
 /** Stage 6 minor tiles: never full cut-ins for other players (whatever their line tag says). */
-export const MINOR_TILE_TYPES = ['habit', 'salary'];
-/** Stage 6: always a small banner (also for my own characters): 전역. */
-export const BANNER_TYPES = ['militaryEnd'];
+export const MINOR_TILE_TYPES = ['habit', 'salary', 'card', 'shop'];
+/** Always a small banner (also for my own characters): 전역 (Stage 6); card gained / plain card use / gift / trade (Stage 7). */
+export const BANNER_TYPES = ['militaryEnd', 'cardGained', 'gift', 'tradeResolved'];
+/** Stage 7: global shows that wait until my pending prompt is answered instead of shrinking to a banner. */
+export const DEFER_TYPES = ['lottoDraw', 'holidayResult'];
+
+/** A lone banner group (no cut-in anchor): 전역, card gained, plain card use, gift, trade result. */
+export function isBannerGroup(g) {
+  const a = g?.anchor;
+  if (!a) return false;
+  if (a.type === 'cardUsed') return !isCardAnchor(a);
+  return BANNER_TYPES.includes(a.type);
+}
 
 /** Normalize a stored / URL value of the spectator cut-in mode. */
 export function normalizeCutinMode(v, fallback = DEFAULT_CUTIN_MODE) {
@@ -48,8 +63,20 @@ export function isBigGroup(g) {
   return false;
 }
 
-/** My group = its main character is mine. */
-export const isOwnGroup = (g, mine) => !!g?.charId && toSet(mine).has(g.charId);
+/**
+ * My group = its main character is mine; Stage 7: also a sabotage / block aimed at my character and a gift or trade
+ * that reaches one of mine.
+ */
+export function isOwnGroup(g, mine) {
+  const set = toSet(mine);
+  if (g?.charId && set.has(g.charId)) return true;
+  const t = g?.anchor?.type;
+  const target = g?.targetId ?? g?.anchor?.targetId ?? g?.anchor?.toId ?? null;
+  return !!target && ['cardUsed', 'cardBlocked', 'gift', 'tradeResolved'].includes(t) && set.has(target);
+}
+/** Stage 7: a sabotage card / block aimed at one of my characters. */
+export const isSabotageOnMe = (g, mine) =>
+  (g?.anchor?.type === 'cardUsed' || g?.anchor?.type === 'cardBlocked') && !!g.anchor.targetId && toSet(mine).has(g.anchor.targetId);
 
 function toSet(mine) {
   if (mine instanceof Set) return mine;
@@ -63,14 +90,15 @@ function toSet(mine) {
  *          queued?: number, globalOff?: boolean}} ctx
  *   `promptForMe` = a prompt waits for one of my characters (it pre-empts every event cut-in);
  *   `queued` = full cut-ins already shown/queued (spectator backlog cap); `globalOff` = ?cutins=off
- * @returns {'full'|'banner'|'skip'}
+ * @returns {'full'|'banner'|'skip'|'defer'}  'defer' = show it (again through this policy) once my prompt is answered
  */
 export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptForMe = false, gameOver = false, queued = 0, globalOff = false } = {}) {
   if (!g?.anchor || gameOver || g.anchor.type === 'gameOver') return 'skip';
   if (globalOff) return 'skip';
   const own = isOwnGroup(g, mine);
+  if (promptForMe && DEFER_TYPES.includes(g.anchor.type)) return 'defer';
   if (promptForMe) return own || mode !== 'off' ? 'banner' : 'skip';
-  if (BANNER_TYPES.includes(g.anchor.type) && !g.studio?.length) return own || normalizeCutinMode(mode) !== 'off' ? 'banner' : 'skip';
+  if (isBannerGroup(g) && !g.studio?.length) return own || normalizeCutinMode(mode) !== 'off' ? 'banner' : 'skip';
   if (own) return 'full';
   const m = normalizeCutinMode(mode);
   if (m === 'off') return 'skip';
@@ -82,6 +110,7 @@ export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptF
 const ANCHOR_RANK = {
   hiddenJobUnlocked: 9, jobChanged: 8, rankUp: 8, finished: 6, eraChanged: 5, militaryStart: 4, educationChanged: 4,
   injured: 3, routeChosen: 3, promptResolved: 2, landed: 1, militaryEnd: 0,
+  cardBlocked: 6, cardUsed: 5, itemBought: 3, gift: 0, cardGained: 0, tradeResolved: 0,
 };
 const rankOf = (a) => (a?.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType) ? 4 : ANCHOR_RANK[a?.type] ?? 0);
 
@@ -97,7 +126,8 @@ export function mergeGroups(groups = [], { mine = [] } = {}) {
   for (const g of groups) {
     const prev = out.at(-1);
     const mergeable =
-      prev && g.charId && prev.charId === g.charId && !own.has(g.charId) && !g.studio?.length && g.anchor?.type !== 'gameOver' && prev.anchor?.type !== 'gameOver';
+      prev && g.charId && prev.charId === g.charId && !own.has(g.charId) && !g.studio?.length && g.anchor?.type !== 'gameOver' && prev.anchor?.type !== 'gameOver' &&
+      !isOwnGroup(g, own) && !isOwnGroup(prev, own) && !isBannerGroup(g) && !isBannerGroup(prev);
     if (!mergeable) {
       out.push({ ...g, anchors: [g.anchor] });
       continue;
@@ -114,6 +144,9 @@ export function mergeGroups(groups = [], { mine = [] } = {}) {
       stats: [...(prev.stats ?? []), ...(g.stats ?? [])],
       salary: [...(prev.salary ?? []), ...(g.salary ?? [])],
       discharged: [...(prev.discharged ?? []), ...(g.discharged ?? [])],
+      cards: [...(prev.cards ?? []), ...(g.cards ?? [])],
+      gifts: [...(prev.gifts ?? []), ...(g.gifts ?? [])],
+      targetId: anchor === g.anchor ? g.targetId ?? null : prev.targetId ?? null,
       delta: prev.delta + g.delta,
       involved,
       mc: prev.mc ?? g.mc ?? null,

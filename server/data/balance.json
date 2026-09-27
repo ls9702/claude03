@@ -81,5 +81,14 @@
     "jobEras": ["young", "middle_age", "senior"],
     "educationBonus": { "none": 0, "college": 0.08, "elite": 0.15 },
     "offerWeight": { "perReq": 0.5, "education": 1.5 }
-  }
+  },
+  "lotto": {
+    "_comment": "전국 로또(Stage 7): 모드의 첫 시대가 아닌 시대가 처음 열릴 때 lotto 카드 보유자마다 한 장씩 소모. 1~pool 중 pick개 번호(시드)와 추첨 번호 pick개를 비교해 맞은 개수별 상금(만원). 기대값 < 카드 가격(테스트).",
+    "pool": 20,
+    "pick": 3,
+    "prizes": { "3": 1000, "2": 100, "1": 10 },
+    "keepDraws": 10
+  },
+  "shop": { "_comment": "상점 칸(Stage 7): 카드 cards장 + 아이템 items개 진열(가중치, 보유 아이템 제외).", "cards": 2, "items": 1 },
+  "trades": { "_comment": "거래 제안(Stage 7): 제안 유효 시간(ms), 제안자 다음 턴 시작·어느 한쪽 골인 시에도 만료.", "ttlMs": 60000, "maxMoney": 100000 }
 }

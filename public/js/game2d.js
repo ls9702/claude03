@@ -20,6 +20,23 @@ import {
   routeOptionInfo,
 } from './ui/cutinPolicy.js';
 import { clockOffset } from './api.js';
+import {
+  CARD_KINDS,
+  TRADE_STATUS,
+  cardDefs,
+  cardInfo,
+  cardPlayability,
+  handOf,
+  itemInfo,
+  itemsOf,
+  sabotageTargets,
+  spinModBadges,
+  tradeLists,
+  tradeSideText,
+  validateGift,
+  validateTrade,
+} from './shared/cards.js';
+import { HOLIDAY_OPTION_ICON, cardHtml, itemIconHtml, shopOptionsHtml } from './ui/cardArt.js';
 import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
 import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
@@ -48,14 +65,18 @@ const CUTIN_KEY = 'jinsei.cutins'; // legacy 'off' (→ spectator mode off); `?c
 const SPECTATOR_KEY = 'jinsei.spectatorCutins'; // 「관전 컷인」 full | compact | off (default compact)
 /** Stage 6 cut-in anchors (3D: shown after their board step). */
 const STAGE6_CUTIN_TYPES = ['jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged'];
-const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES];
+/** Stage 7 cut-in anchors / lone banner events (3D: shown after their board step). */
+const STAGE7_CUTIN_TYPES = ['cardUsed', 'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw', 'cardGained', 'gift', 'tradeResolved'];
+const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES];
 /** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
-const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged'];
+const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES];
 /** Stage 6 tile types the server may send before board.json knows them (meta wins). */
 const CLIENT_TILE_TYPES = {
   habit: { name: '습관', icon: '📚', color: '#20a39e' },
   salary: { name: '월급', icon: '💵', color: '#3fae5a' },
   job: { name: '직업', icon: '💼', color: '#4f8ee0' },
+  card: { name: '카드', icon: '🃏', color: '#9a6ad6' },
+  shop: { name: '상점', icon: '🛍️', color: '#f39a3d' },
 };
 const RESULT_LINES = ['두근두근… 인생 결산 시간!', '누가 제일 잘 살았을까?', '다들 수고했어, 멋진 인생이었어', '결과 발표 갑니다~!'];
 const FALLBACK_KEY = 'jinsei.board3dFallback'; // sessionStorage: auto-fallback happened this session
@@ -151,6 +172,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           <div class="track-scroll" data-el="scroll"><div class="track" data-el="track"></div></div>
         </div>
         <div class="card g-action spin-dock" data-el="dock">
+          <div class="hand" data-el="hand" hidden></div>
           <div class="spin-box">
             <div class="spin-dial" data-el="dial" aria-live="polite">?</div>
             <div class="spin-ctl">
@@ -167,6 +189,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       </div>
     </div>
     <div class="g-modal" data-el="modal" hidden role="dialog" aria-modal="true"></div>
+    <div class="g-modal card-sheet-wrap" data-el="cardsheet" hidden role="dialog" aria-modal="true" aria-label="카드"></div>
+    <div class="g-modal trade-wrap" data-el="tradedlg" hidden role="dialog" aria-modal="true" aria-label="거래·선물"></div>
+    <div class="trade-inbox" data-el="inbox" hidden aria-live="polite"></div>
     <div class="roulette-pop" data-el="pop" hidden></div>`;
 
   const el = Object.fromEntries([...root.querySelectorAll('[data-el]')].map((n) => [n.dataset.el, n]));
@@ -212,6 +237,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     openChar: null, // Stage 6: character detail card open in the side list
     newsSeen: {}, // Stage 6: eraId → {title, text, tone} from newsFlash events (before meta.news knows it)
     newsOpen: false,
+    // Stage 7
+    handFor: null, // my character whose hand the dock shows (default: current if mine, else first)
+    cardSheet: null, // {charId, uid, targetId}
+    trade: null, // trade / gift dialog state
+    inboxKey: '',
+    deferred: [], // lotto / holiday results that arrived while my prompt was open
   };
 
   // ---------- Stage 5: cut-ins + sound ----------
@@ -321,6 +352,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       globalOff: !cutinsOn(),
     });
     if (kind === 'full') return showGroup(g);
+    if (kind === 'defer') {
+      // Stage 7: a lotto draw / holiday result waits until my prompt is answered (flushDeferred on render)
+      if (!ui.deferred.includes(g)) ui.deferred.push(g);
+      return Promise.resolve(false);
+    }
     if (kind === 'banner') {
       try {
         banner.show(cutin.specFromGroup(g, cutinOpts(g)));
@@ -332,8 +368,17 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     return Promise.resolve(false);
   }
 
+  /** Deferred groups (Stage 7) once no prompt of mine is open any more. */
+  function flushDeferred() {
+    if (!ui.deferred.length || promptForMe() || ui.gameOver) return;
+    const list = ui.deferred.splice(0);
+    for (const g of list) presentGroup(g);
+  }
+
   /** A cut-in group, preceded by the MC studio cut-in when it opens an era (Stage 5.6). */
   function showGroup(g) {
+    // Stage 7 lotto: one studio cut-in (MCs + ball draw) built by cutin2d from the group
+    if (g.anchor?.type === 'lottoDraw') return cutin.show(mcOn() ? g : { ...g, mc: null, studio: null }, cutinOpts(g));
     const jobs = [];
     if (g.news) noteNews(g.news);
     if (g.studio && mcOn()) jobs.push(cutin.show(studioSpecFor(g.studio, g.anchor, g.news)));
@@ -1187,6 +1232,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         // policy decides at play time (my prompt may have arrived meanwhile → banner, no pause)
         const kind = classifyGroup(g, { mine: myIds(), mode: ui.cutinMode, promptForMe: promptForMe(), gameOver: ui.gameOver, queued: cutin.size(), globalOff: !cutinsOn() });
         if (kind !== 'full') {
+          // 'defer' (Stage 7 lotto / holiday result under my prompt) is queued by presentGroup
           presentGroup(g);
           return;
         }

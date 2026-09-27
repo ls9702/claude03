@@ -39,7 +39,7 @@
       "requires": { "stats": { "str": 5 } },
       "ranks": [{ "name": "2군", "salary": 150 }, { "name": "1군", "salary": 280 }, { "name": "주전", "salary": 480 }, { "name": "국가대표", "salary": 720 }],
       "rankUp": { "stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.12, "outfit": "stadium", "scene": "mountain-trail", "tone": "career"
+      "injuryRisk": 0.12, "outfit": "stadium", "scene": "stadium", "tone": "career"
     },
     {
       "id": "soccer", "name": "축구선수", "icon": "⚽", "hidden": false,
@@ -47,7 +47,7 @@
       "requires": { "stats": { "str": 5 } },
       "ranks": [{ "name": "유스", "salary": 150 }, { "name": "K리그", "salary": 280 }, { "name": "국가대표", "salary": 480 }, { "name": "해외파", "salary": 750 }],
       "rankUp": { "stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.12, "outfit": "soccer", "scene": "mountain-trail", "tone": "career"
+      "injuryRisk": 0.12, "outfit": "soccer", "scene": "stadium", "tone": "career"
     },
     {
       "id": "esports", "name": "e스포츠 선수", "icon": "🎮", "hidden": false,
@@ -55,7 +55,7 @@
       "requires": { "stats": { "luck": 4 } },
       "ranks": [{ "name": "연습생", "salary": 140 }, { "name": "프로", "salary": 260 }, { "name": "에이스", "salary": 440 }, { "name": "월즈 우승", "salary": 680 }],
       "rankUp": { "stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.06, "outfit": "hoodie", "scene": "office", "tone": "career"
+      "injuryRisk": 0.06, "outfit": "hoodie", "scene": "stage", "tone": "career"
     },
     {
       "id": "fighter", "name": "격투기 선수", "icon": "🥊", "hidden": false,
@@ -63,7 +63,7 @@
       "requires": { "stats": { "str": 6 } },
       "ranks": [{ "name": "신인", "salary": 160 }, { "name": "랭커", "salary": 330 }, { "name": "챔피언", "salary": 570 }, { "name": "전설", "salary": 810 }],
       "rankUp": { "stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.2, "outfit": "taekwondo", "scene": "mountain-trail", "tone": "career"
+      "injuryRisk": 0.2, "outfit": "taekwondo", "scene": "gym", "tone": "career"
     },
     {
       "id": "actor", "name": "배우", "icon": "🎬", "hidden": false,
@@ -71,7 +71,7 @@
       "requires": { "stats": { "charm": 5 } },
       "ranks": [{ "name": "단역", "salary": 120 }, { "name": "조연", "salary": 260 }, { "name": "주연", "salary": 480 }, { "name": "천만 배우", "salary": 780 }],
       "rankUp": { "stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "trenchcoat", "scene": "wedding-hall", "tone": "career"
+      "injuryRisk": 0, "outfit": "trenchcoat", "scene": "stage", "tone": "career"
     },
     {
       "id": "idol", "name": "아이돌", "icon": "🎤", "hidden": false,
@@ -79,7 +79,7 @@
       "requires": { "stats": { "charm": 5, "str": 3 } },
       "ranks": [{ "name": "연습생", "salary": 100 }, { "name": "데뷔", "salary": 240 }, { "name": "음방 1위", "salary": 480 }, { "name": "월드 스타", "salary": 840 }],
       "rankUp": { "stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.04, "outfit": "idol", "scene": "wedding-hall", "tone": "career"
+      "injuryRisk": 0.04, "outfit": "idol", "scene": "stage", "tone": "career"
     },
     {
       "id": "youtuber", "name": "유튜버", "icon": "📹", "hidden": false,
@@ -95,7 +95,7 @@
       "requires": { "stats": { "str": 3 } },
       "ranks": [{ "name": "막내", "salary": 150 }, { "name": "부주방장", "salary": 240 }, { "name": "셰프", "salary": 360 }, { "name": "스타 셰프", "salary": 570 }],
       "rankUp": { "stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0.03, "outfit": "chef", "scene": "office", "tone": "career"
+      "injuryRisk": 0.03, "outfit": "chef", "scene": "kitchen", "tone": "career"
     },
     {
       "id": "doctor", "name": "의사", "icon": "🩺", "hidden": false,
@@ -111,7 +111,7 @@
       "requires": { "stats": { "int": 5 }, "education": "college" },
       "ranks": [{ "name": "연구원", "salary": 310 }, { "name": "선임", "salary": 440 }, { "name": "책임", "salary": 600 }, { "name": "연구소장", "salary": 860 }],
       "rankUp": { "stat": "int", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "doctor", "scene": "hospital", "tone": "career"
+      "injuryRisk": 0, "outfit": "doctor", "scene": "lab", "tone": "career"
     },
     {
       "id": "police", "name": "경찰관", "icon": "👮", "hidden": false,
@@ -119,7 +119,7 @@
       "requires": { "stats": { "str": 4 } },
       "ranks": [{ "name": "순경", "salary": 160 }, { "name": "경위", "salary": 260 }, { "name": "경감", "salary": 360 }, { "name": "총경", "salary": 500 }],
       "rankUp": { "stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0.05, "outfit": "police", "scene": "office", "tone": "career"
+      "injuryRisk": 0.05, "outfit": "police", "scene": "police", "tone": "career"
     },
     {
       "id": "comedian", "name": "개그맨", "icon": "🤡", "hidden": false,
@@ -127,7 +127,7 @@
       "requires": { "stats": { "charm": 4 } },
       "ranks": [{ "name": "신인", "salary": 100 }, { "name": "코너 고정", "salary": 220 }, { "name": "유행어 제조기", "salary": 420 }, { "name": "연예대상", "salary": 690 }],
       "rankUp": { "stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "hawaiian", "scene": "wedding-hall", "tone": "career"
+      "injuryRisk": 0, "outfit": "hawaiian", "scene": "stage", "tone": "career"
     },
     {
       "id": "teacher", "name": "교사", "icon": "📚", "hidden": false,
@@ -152,7 +152,7 @@
       "requires": {},
       "ranks": [{ "name": "지역 가수", "salary": 600 }, { "name": "트로트 신동", "salary": 980 }, { "name": "국민 트로트 스타", "salary": 1420 }],
       "rankUp": { "stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "idol", "scene": "wedding-hall", "tone": "result",
+      "injuryRisk": 0, "outfit": "idol", "scene": "stage", "tone": "result",
       "unlock": { "era": ["senior"], "stats": { "charm": 8, "luck": 8 }, "desc": "노년 시대에 매력 8·운 8 이상" }
     },
     {
@@ -161,7 +161,7 @@
       "requires": {},
       "ranks": [{ "name": "후보생", "salary": 680 }, { "name": "우주비행사", "salary": 1050 }, { "name": "달 탐사대장", "salary": 1500 }],
       "rankUp": { "stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0.02, "outfit": "longpadding", "scene": "mountain-trail", "tone": "result",
+      "injuryRisk": 0.02, "outfit": "longpadding", "scene": "space", "tone": "result",
       "unlock": { "stats": { "int": 9, "str": 9 }, "desc": "지력 9·체력 9 이상" }
     },
     {
@@ -188,7 +188,7 @@
       "requires": {},
       "ranks": [{ "name": "고정 MC", "salary": 680 }, { "name": "간판 MC", "salary": 1050 }, { "name": "국민 MC", "salary": 1500 }],
       "rankUp": { "stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "suit", "scene": "wedding-hall", "tone": "result",
+      "injuryRisk": 0, "outfit": "suit", "scene": "stage", "tone": "result",
       "unlock": { "maxRankOf": ["comedian", "actor", "youtuber"], "stats": { "charm": 9 }, "desc": "개그맨·배우·유튜버 최고 랭크 + 매력 9 이상" }
     }
   ],

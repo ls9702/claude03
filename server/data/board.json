@@ -99,7 +99,9 @@
         { "type": "event", "weight": 3 },
         { "type": "salary", "weight": 3 },
         { "type": "job", "weight": 1 },
-        { "type": "treasure", "weight": 1 }
+        { "type": "treasure", "weight": 1 },
+        { "type": "card", "weight": 1 },
+        { "type": "shop", "weight": 1 }
       ],
       "money": { "min": 100, "max": 500, "labels": ["연금 수령", "손주 용돈 역송금", "텃밭 수확", "퇴직금 이자"] },
       "loss": { "min": 100, "max": 400, "labels": ["병원비", "보청기", "손주 선물", "효도 관광 바가지"] }
@@ -112,6 +114,7 @@
         { "type": "heart", "weight": 5 },
         { "type": "event", "weight": 2 },
         { "type": "salary", "weight": 3 },
+        { "type": "card", "weight": 1 },
         { "type": "money", "weight": 2, "scale": 0.6 },
         { "type": "loss", "weight": 1, "scale": 0.8 }
       ],
@@ -132,7 +135,8 @@
       "pool": [
         { "type": "treasure", "weight": 3 },
         { "type": "house", "weight": 2 },
-        { "type": "shop", "weight": 1 },
+        { "type": "shop", "weight": 2 },
+        { "type": "card", "weight": 1 },
         { "type": "salary", "weight": 2 },
         { "type": "money", "weight": 2, "scale": 1.8 },
         { "type": "loss", "weight": 2, "scale": 1.5 }
@@ -143,8 +147,6 @@
 
   "placeholders": {
     "heart": "두근두근 만남의 기운… (연애 시스템은 준비 중)",
-    "card": "카드를 한 장 주웠다… 아직 쓸 수 없는 카드다",
-    "shop": "상점 구경만 하고 나왔다 (상점 준비 중)",
     "treasure": "뭔가 반짝이는 걸 봤는데… (보물 감정은 준비 중)",
     "house": "부동산 매물을 둘러봤다 (매매는 준비 중)"
   }

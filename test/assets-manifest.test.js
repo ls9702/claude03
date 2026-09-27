@@ -31,11 +31,13 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
   assert.equal(validateManifest(m).ok, true);
   const count = (k) => m.items.filter((i) => i.kind === k).length;
   assert.equal(count('anchor'), 1);
-  assert.equal(count('bg'), 6); // 5 event scenes + the MC studio (Stage 5.6)
+  assert.equal(count('bg'), 17); // 5 event scenes + the MC studio (Stage 5.6) + 11 Stage 7 scenes (stage … holiday)
   assert.equal(count('charLayer'), 8); // base + 4 expressions + 3 outfits
   assert.equal(count('pose'), 6);
   assert.ok(count('sprite') >= 1);
-  assert.equal(count('icon'), 12);
+  assert.equal(count('icon'), 12 + 23); // tile icons + Stage 7 job badges (icon-job-<id>)
+  assert.equal(count('card'), 16);
+  assert.equal(count('item'), 6);
   assert.equal(count('texture'), 2);
   assert.equal(count('frame'), 7);
   for (const scene of ['school', 'mountain-trail', 'wedding-hall', 'office', 'hospital']) {
@@ -52,7 +54,7 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
     assert.doesNotMatch(p, HANGUL, `${i.id} prompt should be English`);
     assert.doesNotMatch(p, /\{\{/, `${i.id} has unexpanded template vars`);
     if (i.kind !== 'texture') assert.ok(p.includes(STYLE), `${i.id} uses the style bible`);
-    if (i.kind === 'icon') {
+    if (i.kind === 'icon' || i.kind === 'card' || i.kind === 'item') {
       assert.equal(i.aspect, '1:1');
       assert.ok(i.postprocess.includes('whiteToAlpha'));
     }

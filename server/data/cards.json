@@ -1,0 +1,23 @@
+{
+  "_comment": "Stage 7 카드. kind: instant(내 차례 룰렛 전 사용) | passive(조건이 되면 자동 소모) | sabotage(뒤통수, targetId 필요). 손패는 handLimit장까지(넘치면 가장 오래된 카드를 버림), 턴당 1장, 손패는 공개 정보. price = 상점 가격(만원), weight = 카드 칸·상점 뽑기 가중치, jobOnly = 그 직업일 때만 뽑히고 쓸 수 있음. effect 값: stats(능력치), steps(이번 룰렛 +칸), spin: max2|min2(룰렛 두 번 중 큰/작은 값), minus(대상 다음 룰렛 −칸, 최소 1), donation(국회의원 후원금 × eraScale[시대], 1인당, 현금 한도), salaryMult(다음 급여 배수), lossMult(다음 손실 배수), rate/max(세무조사: 현금 비율·상한), exp/fine(갑질 민원: 직장인 경험치 −exp, 아니면 벌금 × eraScale), discount(상점 할인율).",
+  "handLimit": 5,
+  "eraScale": { "baby": 0.5, "elem": 0.5, "middle": 0.7, "high": 1, "young": 2, "middle_age": 3, "senior": 2 },
+  "cards": [
+    { "id": "study", "name": "스터디 모임", "icon": "📚", "kind": "instant", "desc": "지력 +1", "price": 40, "weight": 10, "effect": { "stats": { "int": 1 } } },
+    { "id": "insider", "name": "인싸력", "icon": "🤳", "kind": "instant", "desc": "매력 +1", "price": 40, "weight": 10, "effect": { "stats": { "charm": 1 } } },
+    { "id": "energy", "name": "에너지 드링크", "icon": "⚡", "kind": "instant", "desc": "이번 룰렛 +2칸", "price": 30, "weight": 9, "effect": { "steps": 2 } },
+    { "id": "taxi", "name": "택시", "icon": "🚕", "kind": "instant", "desc": "이번 룰렛을 두 번 돌려 큰 값으로 이동", "price": 40, "weight": 8, "effect": { "spin": "max2" } },
+    { "id": "pledge", "name": "공약 카드", "icon": "🎤", "kind": "instant", "desc": "국회의원 전용 · 다른 캐릭터 모두에게서 후원금을 받는다", "price": 80, "weight": 6, "jobOnly": "politician", "effect": { "donation": 30 } },
+    { "id": "bonus", "name": "성과급 봉투", "icon": "💌", "kind": "passive", "desc": "다음 급여 2배 (자동)", "price": 80, "weight": 6, "effect": { "salaryMult": 2 } },
+    { "id": "insurance", "name": "실손 보험", "icon": "☂️", "kind": "passive", "desc": "다음 손실(지출 칸·나쁜 이벤트·세무조사·벌금) 절반 (자동)", "price": 50, "weight": 8, "effect": { "lossMult": 0.5 } },
+    { "id": "amulet", "name": "건강 부적", "icon": "🧧", "kind": "passive", "desc": "다음 부상이나 나쁜 이벤트 한 번을 막아 준다 (자동)", "price": 60, "weight": 7, "effect": { "cancel": ["injury", "badEvent"] } },
+    { "id": "lotto", "name": "로또 복권", "icon": "🎱", "kind": "passive", "desc": "다음 시대가 열릴 때 전국 로또 추첨에 참가 (자동)", "price": 20, "weight": 8, "effect": { "lotto": true } },
+    { "id": "coupon", "name": "할인 쿠폰", "icon": "🎟️", "kind": "passive", "desc": "다음 상점 구매 50% 할인 (자동)", "price": 20, "weight": 6, "effect": { "discount": 0.5 } },
+    { "id": "lawyer", "name": "변호사 상담권", "icon": "⚖️", "kind": "passive", "desc": "나를 노린 뒤통수 카드 한 장을 막는다 (자동)", "price": 60, "weight": 6, "effect": { "block": "sabotage" } },
+    { "id": "cut_line", "name": "새치기", "icon": "🏃", "kind": "sabotage", "desc": "대상의 다음 룰렛 −3칸 (최소 1칸)", "price": 40, "weight": 7, "effect": { "minus": 3 } },
+    { "id": "noise", "name": "층간소음", "icon": "🔨", "kind": "sabotage", "desc": "대상의 다음 룰렛을 두 번 돌려 작은 값으로", "price": 40, "weight": 7, "effect": { "spin": "min2" } },
+    { "id": "tax_audit", "name": "세무조사", "icon": "🔍", "kind": "sabotage", "desc": "대상이 현금의 10%를 세금으로 낸다 (최대 300만원)", "price": 70, "weight": 5, "effect": { "rate": 0.1, "max": 300 } },
+    { "id": "complaint", "name": "갑질 민원", "icon": "📢", "kind": "sabotage", "desc": "직장인은 경험치 −2, 아니면 벌금", "price": 50, "weight": 6, "effect": { "exp": 2, "fine": 30 } },
+    { "id": "gossip", "name": "소문내기", "icon": "🤫", "kind": "sabotage", "desc": "대상의 매력 −1", "price": 30, "weight": 7, "effect": { "stats": { "charm": -1 } } }
+  ]
+}

@@ -41,6 +41,16 @@ export function charById(room, id) {
   return room.characters.find((c) => c.id === id) || null;
 }
 
+/** The character `charId`, owned by `actor` (admin/system/omitted actors may act for anyone). */
+export function assertOwner(room, actor, charId) {
+  const c = charById(room, charId);
+  if (!c) fail(404, '캐릭터를 찾을 수 없습니다.');
+  if (actor && !actor.admin && !actor.system && c.ownerSessionId !== actor.sessionId) {
+    fail(403, '내 캐릭터가 아닙니다.');
+  }
+  return c;
+}
+
 /** Host tool (room config `turnTimeoutSec`): ms per spin / single-character decision, 0 = off. */
 export function turnTimeoutMs(room) {
   const sec = room?.config?.turnTimeoutSec;

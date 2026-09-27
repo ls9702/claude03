@@ -58,6 +58,10 @@ export const getMc = () => loadData('mc');
 export const getJobs = () => loadData('jobs');
 export const getNews = () => loadData('news');
 export const getEvents = () => loadData('events');
+/** Stage 7: cards (hand cards), shop items, holidays (명절 대잔치). */
+export const getCards = () => loadData('cards');
+export const getItems = () => loadData('items');
+export const getHolidays = () => loadData('holidays');
 
 /** Everything the engine reads, as one object (tests may pass overrides). */
 export function gameData() {
@@ -71,5 +75,8 @@ export function gameData() {
     jobs: getJobs(),
     news: getNews(),
     events: getEvents(),
+    cards: getCards(),
+    items: getItems(),
+    holidays: getHolidays(),
   };
 }
