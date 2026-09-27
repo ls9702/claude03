@@ -70,32 +70,3 @@ export function skillDistribution(t, { jitter, min = 1, max = 10 } = {}) {
   }
   return dist;
 }
-
-// ---------- number deck (pace guard) ----------
-// Every landing pays on average, so a player who could aim small numbers all the time would land ~3× as often
-// and win most games (simulate.js --aim-duel: "always 1" won 57.5 % of 8-player games with the plain jitter).
-// `balance.roulette.skill.deck` (default on): a number a character aimed at is used up until it has aimed at all
-// ten (`character.aimUsed`, public) — any strategy averages 5.5 per ten aimed spins, the aim still picks WHEN.
-
-/** Numbers still free to aim at (all of them once the deck is complete / empty). */
-export function availableTargets(used = [], { min = 1, max = 10 } = {}) {
-  const set = new Set(Array.isArray(used) ? used : []);
-  const all = [];
-  for (let v = min; v <= max; v++) all.push(v);
-  const free = all.filter((v) => !set.has(v));
-  return free.length ? free : all;
-}
-
-/** A requested target → the nearest free number (ties → the one nearer the middle, then the smaller). */
-export function snapTarget(t, used = [], { min = 1, max = 10 } = {}) {
-  const free = availableTargets(used, { min, max });
-  if (free.includes(t)) return t;
-  const mid = (min + max) / 2;
-  return [...free].sort((a, b) => Math.abs(a - t) - Math.abs(b - t) || Math.abs(a - mid) - Math.abs(b - mid) || a - b)[0];
-}
-
-/** The deck after aiming at `t`: `t` marked used; a complete deck starts over. */
-export function useTarget(used = [], t, { min = 1, max = 10 } = {}) {
-  const next = [...new Set([...(Array.isArray(used) ? used : []).filter((v) => Number.isInteger(v) && v >= min && v <= max), t])].sort((a, b) => a - b);
-  return next.length >= max - min + 1 ? [] : next;
-}

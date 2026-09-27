@@ -23,7 +23,7 @@ import { createRng } from './rng.js';
 import { decorateEvents } from './presentation.js';
 import { promptComplete, resolvePrompt, resolveTile } from './spaces.js';
 import { ensureLife, initLife, lifeStep, spinSteps } from './growth.js';
-import { ROULETTE_INPUTS, isSkillRoom, parseTarget, skillValue, snapTarget, useTarget } from './roulette.js';
+import { ROULETTE_INPUTS, isSkillRoom, parseTarget, skillValue } from './roulette.js';
 import { militaryPay } from './jobs.js';
 import { applyEraNews, drawNews, drawStartNews } from './news.js';
 import {
@@ -470,10 +470,9 @@ function doSpin(tx, action) {
   // 룰렛 실력 모드: the player's target (shake / gauge / CPU) → t 50 %, t±1 40 %, t±2 10 % (balance.roulette.skill).
   // The turn-timer auto spin and the admin's forceSpin stay random; a missing / invalid target = a random spin.
   const skillCfg = tx.data.balance.roulette?.skill ?? {};
-  const wanted = isSkillRoom(room) && !(action.auto && actor?.system) && !actor?.admin ? parseTarget(action.target, { min, max }) : null;
-  // number deck (pace guard): a used number snaps to the nearest free one; all ten used → a fresh deck
-  const aimed = wanted != null && skillCfg.deck !== false ? snapTarget(wanted, c.aimUsed, { min, max }) : wanted;
-  if (aimed != null && skillCfg.deck !== false) c.aimUsed = useTarget(c.aimUsed, aimed, { min, max });
+  // Any number 1–10 every turn (the old per-character number deck was removed by user decision; a leftover
+  // `character.aimUsed` in an old save is ignored).
+  const aimed = isSkillRoom(room) && !(action.auto && actor?.system) && !actor?.admin ? parseTarget(action.target, { min, max }) : null;
   const first = aimed != null ? skillValue(tx.rng, aimed, { jitter: skillCfg.jitter, min, max }) : tx.rng.int(min, max);
   const input = aimed != null && ROULETTE_INPUTS.includes(action.input) ? action.input : null;
   // Stage 7: pending spin modifiers (택시 / 층간소음 second roll, 에너지 +2, 새치기 −3, 경차 1 → 2)
@@ -481,7 +480,7 @@ function doSpin(tx, action) {
   const value = mod.value;
   const serving = c.military?.status === 'serving';
   const steps = spinSteps(tx, c, mod.move); // 군 복무: half the move (rounded up)
-  const aim = aimed != null ? { target: aimed, ...(wanted !== aimed ? { wanted } : {}), ...(input ? { input } : {}), skill: true } : {};
+  const aim = aimed != null ? { target: aimed, ...(input ? { input } : {}), skill: true } : {};
   turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo, ...(steps !== value ? { steps } : {}), ...(mod.rolls ? { rolls: mod.rolls } : {}), ...aim };
   turn.phase = 'resolveSpace';
   turn.spinDeadlineAt = null;

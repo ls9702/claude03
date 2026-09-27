@@ -1,5 +1,5 @@
 // 룰렛 실력 모드 — pure client helpers (public/js/ui/rouletteSkill.js): shake availability, acceleration → target,
-// the shake meter, gauge sweep → target, deck info, display texts, input preference.
+// the shake meter, gauge sweep → target, display texts, input preference.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -12,7 +12,6 @@ import {
   aimShort,
   aimText,
   createShakeMeter,
-  deckInfo,
   defaultInput,
   detectShakeEnv,
   gaugePosition,
@@ -119,7 +118,7 @@ test('gauge: ping-pong sweep, faster after 3 sweeps (bounded), position → cell
   assert.deepEqual([0, 0.05, 0.0999, 0.1, 0.5, 0.95, 0.999, 1, -1, 2].map((p) => gaugeTarget(p)), [1, 1, 1, 2, 6, 10, 10, 10, 1, 10]);
 });
 
-test('display + deck + preference helpers', () => {
+test('display + preference helpers (no number deck)', async () => {
   assert.equal(isSkillRoom({ config: { rouletteMode: 'skill' } }), true);
   assert.equal(isSkillRoom({ config: {} }), false);
   assert.equal(aimText({ skill: true, target: 7, value: 8 }), '🎯 목표 7 → 결과 8');
@@ -128,8 +127,8 @@ test('display + deck + preference helpers', () => {
   assert.equal(aimText({ value: 7 }), null);
   assert.equal(aimShort({ skill: true, target: 3, value: 5 }), '🎯3→5');
   assert.deepEqual(['hit', 'near', 'miss', null], [aimGrade({ skill: true, target: 4, value: 4 }), aimGrade({ skill: true, target: 4, value: 5 }), aimGrade({ skill: true, target: 4, value: 6 }), aimGrade({ value: 1 })]);
-  assert.deepEqual(deckInfo({ aimUsed: [2, 5] }), { deck: true, used: [2, 5], free: [1, 3, 4, 6, 7, 8, 9, 10] });
-  assert.deepEqual(deckInfo({ aimUsed: [2] }, { balance: { roulette: { skill: { deck: false } } } }).free.length, 10);
+  const mod = await import('../public/js/ui/rouletteSkill.js');
+  for (const k of ['deckInfo', 'availableTargets', 'snapTarget']) assert.equal(mod[k], undefined, `${k} removed with the number deck`);
   assert.equal(jitterHint(null), '정확히 50% · ±1 40% · ±2 10%');
   assert.equal(jitterHint({ balance: { roulette: { skill: { jitter: { 0: 0.4, 1: 0.4, 2: 0.2 } } } } }), '정확히 40% · ±1 40% · ±2 20%');
   const mem = new Map();
@@ -148,4 +147,11 @@ test('shared roulette module stays isomorphic (no imports) and the server re-exp
   assert.ok(!/^\s*import\s/m.test(src), 'no imports in the shared module');
   const re = readFileSync(new URL('../server/game/roulette.js', import.meta.url), 'utf8');
   assert.match(re, /export \* from '\.\.\/\.\.\/public\/js\/shared\/roulette\.js'/);
+});
+
+test('aim panel: every number 1..10 is always selectable (number deck removed)', () => {
+  const panel = readFileSync(new URL('../public/js/ui/skillPanel.js', import.meta.url), 'utf8');
+  assert.ok(!/aimUsed|deckInfo|snapTarget|이미 쓴|sk-deck/.test(panel), 'no used-number tracking in the panel');
+  const css = readFileSync(new URL('../public/css/roulette.css', import.meta.url), 'utf8');
+  assert.ok(!/\.sk-cell\.used/.test(css));
 });

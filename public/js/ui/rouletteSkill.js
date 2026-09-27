@@ -1,14 +1,9 @@
 // 룰렛 실력 모드 — pure client helpers (node-tested in test/client-roulette.test.js; no DOM at import time).
 // The input picks a target number 1..10 that goes out with the spin (`spin {characterId, target, input}`); the
-// server lands on it 50 % of the time (±1 40 %, ±2 10 %) and keeps a per-character number deck (a used number
-// snaps to the nearest free one until all ten are used — `character.aimUsed`).
+// server lands on it 50 % of the time (±1 40 %, ±2 10 %). Any number 1..10 can be aimed at every turn.
 //   shake: DeviceMotionEvent (secure context; iOS needs DeviceMotionEvent.requestPermission() from a tap) →
 //          smoothed acceleration minus gravity → peak/average → `accelToTarget` (weak → small, strong → big)
 //   gauge: a needle sweeping over a 1..10 bar, 「멈춰!」 (or Space / Enter) → `gaugeTarget(position)`
-import { availableTargets, snapTarget } from '../shared/roulette.js';
-
-export { availableTargets, snapTarget };
-
 export const INPUT_KEY = 'jinsei.rouletteInput';
 export const SKILL_INPUTS = ['shake', 'gauge'];
 
@@ -213,16 +208,6 @@ export function aimGrade(s) {
   if (!s?.skill || !Number.isInteger(s.target)) return null;
   const d = Math.abs(firstRoll(s) - s.target);
   return d === 0 ? 'hit' : d === 1 ? 'near' : 'miss';
-}
-
-/**
- * The number deck of a character for the panel: `{free, used, deck}` (`deck` false when the server's
- * `balance.roulette.skill.deck` is off → every number is free).
- */
-export function deckInfo(character, meta = null) {
-  const deck = meta?.balance?.roulette?.skill?.deck !== false;
-  const used = deck && Array.isArray(character?.aimUsed) ? character.aimUsed.filter((v) => Number.isInteger(v)) : [];
-  return { deck, used, free: availableTargets(used) };
 }
 
 /** Jitter shares for the panel hint (「정확히 50% · ±1 40% · ±2 10%」) from `/api/meta.balance.roulette`. */

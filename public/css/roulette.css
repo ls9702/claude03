@@ -32,7 +32,6 @@
   background: #fff1dd; color: var(--ink); font-weight: 800; font-variant-numeric: tabular-nums;
   transition: background 0.08s, transform 0.08s;
 }
-.sk-cell.used { background: #eee8e0; color: #b3aca4; text-decoration: line-through; }
 .sk-cells.gauge .sk-cell.hot { background: #ffd166; transform: translateY(-2px); }
 .sk-cells.meter .sk-cell.lit { background: linear-gradient(180deg, #ff9a4a, #ff6a2f); color: #fff; }
 .sk-cell.pick { background: var(--ok) !important; color: #fff !important; transform: scale(1.12); }
@@ -49,7 +48,7 @@
 .sk-enable { font-size: 1.05rem; }
 .sk-status { text-align: center; font-weight: 700; margin: 0; }
 .sk-status.sk-na { color: var(--danger); }
-.sk-tip, .sk-odds, .sk-deck { text-align: center; margin: 4px 0 0; }
+.sk-tip, .sk-odds { text-align: center; margin: 4px 0 0; }
 .sk-result { text-align: center; font-size: 1.3rem; font-weight: 900; margin: 6px 0 0; color: var(--ok); }
 .sk-warn {
   margin: 6px 0 0; padding: 6px 8px; border-radius: 8px; text-align: center; font-weight: 800;

@@ -7,7 +7,6 @@ import {
   SHAKE,
   accelToTarget,
   createShakeMeter,
-  deckInfo,
   defaultInput,
   detectShakeEnv,
   gaugePosition,
@@ -17,7 +16,6 @@ import {
   motionMagnitude,
   saveInputPref,
   shakeSupport,
-  snapTarget,
 } from './rouletteSkill.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
@@ -52,7 +50,6 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
     name: '',
     input: 'gauge',
     deadlineAt: null,
-    used: [],
     sending: false,
     // gauge
     gaugeT0: 0,
@@ -73,16 +70,13 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
 
   // ---------- markup ----------
   function cellsHtml(kind) {
-    const used = new Set(S.used);
     let out = '';
-    for (let v = 1; v <= 10; v++) out += `<span class="sk-cell${used.has(v) ? ' used' : ''}" data-v="${v}">${v}</span>`;
+    for (let v = 1; v <= 10; v++) out += `<span class="sk-cell" data-v="${v}">${v}</span>`;
     return `<div class="sk-cells ${kind}">${out}</div>`;
   }
 
   function render() {
     const sup = support();
-    const deck = deckInfo({ aimUsed: S.used }, getMeta());
-    const usedNote = deck.deck && deck.used.length ? `<p class="sk-deck small">이미 쓴 숫자: <b>${deck.used.join(' ')}</b> · 1~10을 다 쓰면 다시 채워져요</p>` : '';
     const body =
       S.input === 'gauge'
         ? `<div class="sk-gauge" data-sk="gauge">${cellsHtml('gauge')}<div class="sk-needle" data-sk="needle"></div></div>
@@ -110,7 +104,6 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
         </div>
         <div class="sk-body" data-sk="body">${body}</div>
         <p class="sk-result" data-sk="result" aria-live="assertive" hidden></p>
-        ${usedNote}
         <p class="small muted sk-odds">목표 숫자 → ${esc(jitterHint(getMeta()))}</p>
         <p class="sk-warn" data-sk="warn" hidden>⏰ 곧 자동으로 돌아가요! 서둘러요</p>
       </div>`;
@@ -203,12 +196,11 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
     if (S.sending) return;
     S.sending = true;
     listen(false);
-    const deck = deckInfo({ aimUsed: S.used }, getMeta());
-    const t = deck.deck ? snapTarget(target, deck.used) : target;
+    const t = target;
     const res = el.querySelector('[data-sk="result"]');
     if (res) {
       res.hidden = false;
-      res.innerHTML = t === target ? `🎯 <b>${t}</b>!` : `🎯 ${target} (이미 쓴 숫자) → <b>${t}</b>!`;
+      res.innerHTML = `🎯 <b>${t}</b>!`;
     }
     el.querySelector(`.sk-cells .sk-cell[data-v="${t}"]`)?.classList.add('pick');
     el.classList.add('picked');
@@ -277,12 +269,11 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
     stopNeedle();
   };
 
-  function open({ charId, name, deadlineAt = null, used = [] } = {}) {
+  function open({ charId, name, deadlineAt = null } = {}) {
     const same = S.open && S.charId === charId;
     S.charId = charId;
     S.name = name ?? '';
     S.deadlineAt = deadlineAt;
-    S.used = Array.isArray(used) ? used : [];
     if (same) return;
     S.env = detectShakeEnv(win);
     S.input = defaultInput(loadInputPref(storage()), S.env);
@@ -312,14 +303,10 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
   return {
     open,
     close,
-    /** Keep the deadline / deck fresh while open (state updates). */
-    update({ deadlineAt, used } = {}) {
+    /** Keep the deadline fresh while open (state updates). */
+    update({ deadlineAt } = {}) {
       if (!S.open) return;
       if (deadlineAt !== undefined) S.deadlineAt = deadlineAt;
-      if (Array.isArray(used) && used.join() !== S.used.join() && !S.sending) {
-        S.used = used;
-        render();
-      }
     },
     get isOpen() {
       return S.open;

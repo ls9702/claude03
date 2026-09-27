@@ -1,4 +1,4 @@
-// 룰렛 실력 모드 (server): config, the jitter distribution + edge reflection, the number deck, engine spins (skill /
+// 룰렛 실력 모드 (server): config, the jitter distribution + edge reflection, engine spins (any target every turn — the number deck was removed; skill /
 // random / invalid target / auto / admin), bets refused, CPU targets (legal, prefer good tiles, never touch the game
 // RNG), presentation tags, HTTP (spin target + /api/meta).
 import { test } from 'node:test';
@@ -10,15 +10,12 @@ import { addCharacter, addCpuCharacter, joinRoom } from '../server/game/lobby.js
 import { cpuAimScores, cpuDecide, cpuSkillTarget } from '../server/game/cpu.js';
 import { createRng } from '../server/game/rng.js';
 import {
-  availableTargets,
   jitterTable,
   parseTarget,
   reflect,
   skillDistribution,
   skillValue,
   skillValueFor,
-  snapTarget,
-  useTarget,
 } from '../server/game/roulette.js';
 import { startServer } from '../server/index.js';
 import { httpCall, makeRoom, tempDir } from './helpers.js';
@@ -91,20 +88,14 @@ test('jitter: seeded samples ≈ 50 / 40 / 10 (middle and edge targets)', () => 
   }
 });
 
-test('targets + number deck: parse, snap to the nearest free number, a full deck starts over', () => {
+test('targets: parse (1..10 integers only); no number-deck helpers are exported any more', async () => {
   assert.deepEqual([parseTarget(7), parseTarget('3'), parseTarget(0), parseTarget(11), parseTarget(2.5), parseTarget('x'), parseTarget(null)], [7, 3, null, null, null, null, null]);
-  assert.deepEqual(availableTargets([1, 2, 3]), [4, 5, 6, 7, 8, 9, 10]);
-  assert.equal(snapTarget(2, [1, 2, 3]), 4);
-  assert.equal(snapTarget(7, [7]), 6, 'tie 6 / 8 → nearer the middle');
-  assert.equal(snapTarget(10, [8, 9, 10]), 7);
-  assert.equal(snapTarget(5, []), 5);
-  let used = [];
-  for (let v = 1; v <= 9; v++) used = useTarget(used, v);
-  assert.deepEqual(used, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
-  assert.deepEqual(useTarget(used, 10), [], 'all ten used → fresh deck');
+  const mod = await import('../server/game/roulette.js');
+  for (const k of ['availableTargets', 'snapTarget', 'useTarget']) assert.equal(mod[k], undefined, k);
+  assert.equal(data.balance.roulette.skill.deck, undefined);
 });
 
-test('engine: skill spin lands near the target; spun + lastSpin + log carry it; the deck snaps a used number', () => {
+test('engine: skill spin lands near the target; spun + lastSpin + log carry it; the same number again next turn', () => {
   let room = started();
   const c = cur(room);
   const actor = { sessionId: ownerOf(room, c) };
@@ -116,19 +107,21 @@ test('engine: skill spin lands near the target; spun + lastSpin + log carry it; 
   assert.ok(Math.abs(sp.value - 7) <= 2);
   assert.equal(r.room.turn.lastSpin.target, 7);
   assert.equal(r.room.turn.lastSpin.skill, true);
-  assert.deepEqual(r.room.characters.find((x) => x.id === c).aimUsed, [7]);
+  assert.equal(r.room.characters.find((x) => x.id === c).aimUsed, undefined, 'no used-number tracking');
   const log = r.events.find((e) => e.type === 'log' && /🎡/.test(e.text));
   assert.match(log.text, new RegExp(`🎯 목표 7 → 결과 ${sp.rolls?.[0] ?? sp.value}`));
-  // a used number snaps (the next turn of the same character, deck [7]): 7 → 6
+  // the next turn of the same character may aim at 7 again (no deck, no snapping, no `wanted`); a leftover
+  // `aimUsed` from an old save is ignored
   room = structuredClone(r.room);
   room.turn = { ...room.turn, phase: 'awaitSpin', pending: null, currentIndex: room.turn.order.indexOf(c) };
+  room.characters.find((x) => x.id === c).aimUsed = [7, 8];
   const r2 = applyAction(room, { type: 'spin', characterId: c, target: 7, input: 'shake', actor }, { now: 2 });
   const sp2 = spinOf(r2);
-  assert.equal(sp2.target, 6);
-  assert.equal(sp2.wanted, 7);
-  assert.deepEqual(r2.room.characters.find((x) => x.id === c).aimUsed, [6, 7]);
+  assert.equal(sp2.target, 7);
+  assert.equal(sp2.wanted, undefined);
+  assert.equal(r2.room.turn.lastSpin.wanted, undefined);
+  assert.deepEqual(r2.room.characters.find((x) => x.id === c).aimUsed, [7, 8], 'leftover field untouched');
   // unknown input names are dropped, the target still counts
-  room.characters.find((x) => x.id === c).aimUsed = [];
   const r3 = applyAction(room, { type: 'spin', characterId: c, target: 4, input: '<script>', actor }, { now: 3 });
   assert.equal(spinOf(r3).target, 4);
   assert.equal(spinOf(r3).input, undefined);
@@ -140,7 +133,6 @@ test('engine: skill spins through applyAction follow the jitter (seeded samples)
   const off = [0, 0, 0];
   const N = 160;
   for (let i = 0; i < N; i++) {
-    room.characters.find((x) => x.id === c).aimUsed = [];
     const sp = spinOf(applyAction(room, { type: 'spin', characterId: c, target: 5 }, { rng: createRng(1000 + i * 7919), now: 1 }));
     off[Math.abs(sp.value - 5)]++;
   }
@@ -200,7 +192,6 @@ test('presentation: aim_hit on an exact hit, aim_miss when off by 2, plain spin 
   const c = cur(room);
   const tags = {};
   for (let i = 0; i < 60 && Object.keys(tags).length < 3; i++) {
-    room.characters.find((x) => x.id === c).aimUsed = [];
     const sp = spinOf(applyAction(room, { type: 'spin', characterId: c, target: 5 }, { rng: createRng(77 + i * 131), now: 1 }));
     const d = Math.abs(sp.value - 5);
     tags[d] = sp;
@@ -215,7 +206,7 @@ test('presentation: aim_hit on an exact hit, aim_miss when off by 2, plain spin 
   for (const t of ['aim_hit', 'aim_miss']) assert.ok(lines[t].length >= 5 && lines[t].length <= 10);
 });
 
-test('CPU: skill target is a free number 1..10, prefers the good tile in reach, never consumes the game RNG', () => {
+test('CPU: skill target is any number 1..10, prefers the good tile in reach, never consumes the game RNG', () => {
   const room = started({ cpu: true });
   const cpuChar = room.characters.find((c) => c.ownerSessionId === 'cpu');
   cpuChar.cpuPersonality = 'cautious'; // aimNoise 0 → deterministic best target
@@ -235,14 +226,13 @@ test('CPU: skill target is a free number 1..10, prefers the good tile in reach, 
   const act = cpuDecide(room, cpuChar.id, data);
   assert.deepEqual(act, { type: 'spin', characterId: cpuChar.id, target: 4, input: 'cpu' });
   assert.equal(room.rngState, before);
-  // with 4 used, the best free number is taken instead (3 or 5, still next to the prize)
+  // no deck: the same best number again (a leftover `aimUsed` is ignored)
   cpuChar.aimUsed = [4];
-  assert.ok([3, 5].includes(cpuSkillTarget(room, cpuChar.id, data)));
+  assert.equal(cpuSkillTarget(room, cpuChar.id, data), 4);
   // any state: always legal
   cpuChar.cpuPersonality = 'bold';
   for (let k = 0; k < 20; k++) {
     room.rngState = k * 99991;
-    cpuChar.aimUsed = [1, 2, 3, 5, 8];
     const x = cpuSkillTarget(room, cpuChar.id, data);
     assert.ok(Number.isInteger(x) && x >= 1 && x <= 10);
   }
@@ -287,7 +277,8 @@ test('HTTP: spin {target, input} reaches the engine; /api/meta carries balance.r
     assert.equal(r.status, 200, r.text);
     const sp = r.json.events.find((e) => e.type === 'spun');
     assert.deepEqual([sp.skill, sp.target, sp.input], [true, 3, 'shake']);
-    assert.deepEqual(r.json.room.characters.find((x) => x.id === c.id).aimUsed, [3]);
+    assert.equal(r.json.room.characters.find((x) => x.id === c.id).aimUsed, undefined);
+    assert.equal(meta.balance.roulette.skill.deck, undefined);
   } finally {
     await srv.close();
     await tmp.cleanup();

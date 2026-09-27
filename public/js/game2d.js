@@ -296,7 +296,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       run({ type: 'spin', characterId: cur.id });
       return;
     }
-    skillPanel.open({ charId: cur.id, name: cur.name, deadlineAt: ui.room.turn.spinDeadlineAt ?? null, used: cur.aimUsed ?? [] });
+    skillPanel.open({ charId: cur.id, name: cur.name, deadlineAt: ui.room.turn.spinDeadlineAt ?? null });
   }
   if (params.has('debug')) window.__skill = skillPanel;
   audio.install();
@@ -700,7 +700,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (skillPanel.isOpen) {
       if (!canSpin && !hold) skillPanel.close();
       else if (cur?.id !== skillPanel.charId) skillPanel.close();
-      else skillPanel.update({ deadlineAt: turn.spinDeadlineAt ?? null, used: cur?.aimUsed ?? [] });
+      else skillPanel.update({ deadlineAt: turn.spinDeadlineAt ?? null });
     }
     ui.canSpin = canSpin;
     if (canSpin) el.spinfab.textContent = el.spin.textContent;

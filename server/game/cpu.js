@@ -18,7 +18,7 @@ import { effectsFor } from './news.js';
 import { cardDef, handLimit, itemDef } from './cards.js';
 import { computeRanking } from './result.js';
 import { createRng } from './rng.js';
-import { availableTargets, isSkillRoom, skillDistribution } from './roulette.js';
+import { isSkillRoom, skillDistribution } from './roulette.js';
 
 export const CPU_OWNER = 'cpu';
 export const PERSONALITIES = ['cautious', 'normal', 'bold'];
@@ -681,8 +681,8 @@ export function cpuAimScores(room, charId, data = gameData()) {
 }
 
 /**
- * The target a CPU aims at in a skill-mode room: the best expected landing among its free numbers (number deck;
- * ties → the bigger number), then its
+ * The target a CPU aims at in a skill-mode room: the best expected landing among all numbers (ties → the bigger
+ * number), then its
  * personality's aim error (`balance.roulette.cpu.aimNoise[personality]` = chance of ±1) from a hashed sub-RNG —
  * the game RNG is never consumed.
  */
@@ -691,10 +691,8 @@ export function cpuSkillTarget(room, charId, data = gameData()) {
   const { min, max } = data.balance.spin;
   if (!c) return Math.round((min + max) / 2);
   const scores = cpuAimScores(room, charId, data);
-  // number deck: only the numbers it has not used yet (the server would snap a used one anyway)
-  const free = data.balance.roulette?.skill?.deck === false ? availableTargets([], { min, max }) : availableTargets(c.aimUsed, { min, max });
-  let best = free.at(-1);
-  for (const t of [...free].reverse()) if ((scores[t] ?? -Infinity) > (scores[best] ?? -Infinity) + 1e-9) best = t;
+  let best = max;
+  for (let t = max; t >= min; t--) if ((scores[t] ?? -Infinity) > (scores[best] ?? -Infinity) + 1e-9) best = t;
   const noise = data.balance.roulette?.cpu?.aimNoise?.[cpuPersonality(c, room)] ?? 0;
   const rng = subRng(room, c, 'aim');
   if (rng.next() < noise) best = clamp(best + (rng.next() < 0.5 ? -1 : 1), min, max);
