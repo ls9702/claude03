@@ -17,6 +17,8 @@ export const ANIMATED_EVENTS = new Set([
   // Stage 6: stats / jobs / growth (cut-in anchors play after their board step; stat / salary = floats)
   'statChanged', 'salary', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd',
   'educationChanged',
+  // Stage 7: cards / items / interaction (pops over the pawn; anchors open their cut-in after the step)
+  'cardGained', 'cardUsed', 'cardBlocked', 'itemBought', 'gift', 'tradeResolved', 'holidayStarted', 'holidayResult', 'lottoDraw',
 ]);
 
 /**

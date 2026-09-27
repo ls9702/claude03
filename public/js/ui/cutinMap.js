@@ -366,7 +366,7 @@ export function resolveSceneBg(scene, { presentation = {}, assetUrl = () => null
   const none = { scene: scene ?? 'none', url: null, svgScene: 'none', via: [] };
   if (!scene || scene === 'none') return none;
   const scenes = presentation?.scenes ?? {};
-  const fb = presentation?.sceneFallbacks ?? {};
+  const fb = presentation?.sceneFallbacks && typeof presentation.sceneFallbacks === 'object' ? presentation.sceneFallbacks : DEFAULT_SCENE_FALLBACKS;
   const via = [];
   for (let s = scene; s && !via.includes(s) && via.length < 5; s = fb[s]) {
     via.push(s);
@@ -376,5 +376,10 @@ export function resolveSceneBg(scene, { presentation = {}, assetUrl = () => null
   }
   return { scene, url: null, svgScene: via.find((x) => SVG_SCENES.has(x)) ?? scene, via };
 }
+/** Contract default of tones.json `sceneFallbacks` (used when the server doesn't send it). */
+export const DEFAULT_SCENE_FALLBACKS = Object.freeze({
+  stage: 'wedding-hall', stadium: 'mountain-trail', gym: 'mountain-trail', army: 'mountain-trail', space: 'mountain-trail',
+  campus: 'school', kitchen: 'office', police: 'office', shop: 'office', lab: 'hospital', holiday: 'wedding-hall',
+});
 /** Scenes the cut-in can draw as SVG without a generated background. */
 export const SVG_SCENES = new Set(['school', 'office', 'hospital', 'wedding-hall', 'mountain-trail', 'studio', 'shop', 'holiday']);

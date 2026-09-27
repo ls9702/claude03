@@ -1,0 +1,269 @@
+/* Stage 7 — cards, items, interaction (hand row, card sheet, trade / gift, inbox, shop, 명절, 로또). Mobile-first. */
+
+/* ---------- card face (ui/cardArt.js cardHtml) ---------- */
+.cardf {
+  --cw: 60px;
+  position: relative; flex: none; width: var(--cw); aspect-ratio: 60 / 84; padding: 0; border: 0; background: none;
+  font: inherit; color: #1f1a24; cursor: pointer; border-radius: 8px; display: block; text-align: center;
+  transition: transform 0.12s, filter 0.15s, opacity 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.cardf .cf-frame { position: absolute; inset: 0; width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18)); }
+.cardf .cf-art { position: absolute; left: 8%; right: 8%; top: 8%; height: 50%; display: grid; place-items: center; overflow: hidden; }
+.cardf .cf-art-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cardf .cf-emoji { font-size: calc(var(--cw) * 0.42); line-height: 1; }
+.cardf .cf-name {
+  position: absolute; left: 7%; right: 7%; top: 63%; bottom: 7%; display: flex; align-items: center; justify-content: center;
+  font-size: max(9px, calc(var(--cw) * 0.16)); font-weight: 900; line-height: 1.1; word-break: keep-all; overflow-wrap: anywhere; overflow: hidden;
+}
+.cardf .cf-auto {
+  position: absolute; left: -4px; top: -5px; background: #15803d; color: #fff; font-size: 0.6rem; font-weight: 900;
+  padding: 0 5px; border-radius: 999px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+button.cardf.can:hover, button.cardf.can:focus-visible { transform: translateY(-4px); outline: none; filter: brightness(1.05); }
+button.cardf.can { animation: cf-ready 1.6s ease-in-out infinite; }
+button.cardf.dim { opacity: 0.62; filter: saturate(0.6); }
+button.cardf.dim:hover { opacity: 0.85; }
+button.cardf:focus-visible { outline: 3px solid rgba(255, 122, 47, 0.55); outline-offset: 2px; }
+@keyframes cf-ready { 50% { transform: translateY(-2px); } }
+.cardf.big { --cw: 104px; cursor: default; }
+.cardf.mini { --cw: 50px; }
+.cardf.mini.on { transform: translateY(-3px); filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 4px #ff7a2f); }
+.cardf.mini.on .cf-frame { outline: 3px solid #ff7a2f; outline-offset: 1px; border-radius: 8px; }
+
+/* ---------- hand row (in the spin dock) ---------- */
+.hand { margin: -2px 0 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); min-width: 0; }
+.hand-head { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; font-size: 0.8rem; margin-bottom: 6px; min-width: 0; }
+.hand-t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.hand-t small { color: var(--muted); font-weight: 800; }
+.hand-hint { color: var(--muted); font-size: 0.75rem; min-width: 0; overflow-wrap: anywhere; }
+.hand-tabs { display: inline-flex; gap: 4px; min-width: 0; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+.hand-tab {
+  appearance: none; font: inherit; font-size: 0.72rem; font-weight: 800; border: 1px solid var(--line); background: #fffaf3; border-radius: 999px;
+  padding: 1px 8px; cursor: pointer; white-space: nowrap; max-width: 9em; overflow: hidden; text-overflow: ellipsis; flex: none;
+}
+.hand-tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.hand-row {
+  display: flex; gap: 8px; overflow-x: auto; overflow-y: visible; padding: 6px 2px 4px; scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch; scrollbar-width: thin; min-width: 0;
+}
+.hand-row .cardf { scroll-snap-align: start; --cw: 62px; }
+@media (max-width: 480px) { .hand-row .cardf { --cw: 54px; } .hand-row { gap: 6px; } }
+
+/* ---------- card detail sheet ---------- */
+.card-sheet-wrap, .trade-wrap { z-index: 41; }
+.card-sheet .cs-top { display: flex; gap: 14px; align-items: flex-start; }
+.card-sheet .cs-info { min-width: 0; flex: 1; }
+.card-sheet .cs-info h2 { margin: 4px 0 6px; overflow-wrap: anywhere; }
+.cs-kind { display: inline-block; background: var(--kc, #3b82f6); color: #fff; font-weight: 900; font-size: 0.75rem; padding: 1px 9px; border-radius: 999px; }
+.cs-sub { margin: 14px 0 6px; font-size: 0.95rem; }
+.cs-targets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cs-target {
+  appearance: none; font: inherit; color: inherit; text-align: left; display: flex; align-items: center; gap: 8px; min-width: 0;
+  border: 2px solid var(--line); background: #fffaf3; border-radius: 12px; padding: 6px 8px; cursor: pointer; min-height: 52px;
+}
+.cs-target.on { border-color: #e2504c; background: #fff1f0; box-shadow: 0 0 0 3px rgba(226, 80, 76, 0.18); }
+.cs-target:disabled { opacity: 0.5; cursor: not-allowed; }
+.cs-tp { flex: none; line-height: 0; }
+.cs-tp svg, .cs-tp canvas { border-radius: 50%; background: #fff0dc; }
+.cs-tn { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.cs-tn b, .cs-tn small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-tn small { color: var(--muted); font-size: 0.72rem; }
+.cs-tn .cs-why { color: var(--danger); white-space: normal; }
+.cs-reason { margin: 10px 0 0; font-size: 0.85rem; font-weight: 700; color: #1f7a45; }
+.cs-reason.no { color: var(--danger); }
+.cs-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.cs-actions .btn { min-width: 96px; }
+
+/* ---------- trade / gift dialog ---------- */
+.trade-sheet h2 { margin: 0 0 2px; }
+.td-from { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; margin: 6px 0 10px; flex-wrap: wrap; }
+.td-from select { flex: 1; min-width: 0; min-height: 36px; padding: 4px 8px; }
+.td-side { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 10px; margin: 0 0 10px; min-width: 0; }
+.td-side legend { font-weight: 800; font-size: 0.85rem; padding: 0 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-kinds { display: flex; gap: 6px; flex-wrap: wrap; }
+.td-kind {
+  appearance: none; font: inherit; font-weight: 800; font-size: 0.85rem; border: 1px solid var(--line); background: #fffaf3; border-radius: 999px;
+  padding: 4px 12px; min-height: 34px; cursor: pointer;
+}
+.td-kind.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.td-kind:disabled { opacity: 0.45; cursor: not-allowed; }
+.td-money { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; font-weight: 700; }
+.td-money input { width: 9em; min-height: 38px; }
+.td-cards { display: flex; gap: 8px; overflow-x: auto; padding: 8px 2px 4px; }
+.td-error { min-height: 1.2em; color: var(--danger); font-size: 0.85rem; font-weight: 700; margin: 4px 0 0; }
+
+/* ---------- trade inbox (incoming offers / my open offers) ---------- */
+.trade-inbox {
+  position: fixed; z-index: 24; right: 8px; top: calc(var(--topbar-h) + 8px); width: min(420px, calc(100vw - 16px));
+  display: flex; flex-direction: column; gap: 6px; pointer-events: none;
+}
+.ti-row {
+  pointer-events: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center;
+  background: #fff; border: 2px solid #4f8ee0; border-radius: 14px; padding: 8px 10px; box-shadow: 0 8px 22px rgba(30, 40, 80, 0.22);
+  animation: eb-in 0.28s cubic-bezier(0.2, 1.4, 0.4, 1) both; font-size: 0.85rem;
+}
+.ti-row.out { border-color: var(--line); background: rgba(255, 255, 255, 0.95); font-size: 0.78rem; padding: 5px 8px; }
+.ti-t, .ti-d { grid-column: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ti-d { color: #44403c; }
+.ti-a { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 4px; }
+.ti-a .btn { min-height: 34px; }
+body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px)); }
+@media (max-width: 480px) { .trade-inbox { left: 8px; right: 8px; width: auto; } }
+
+/* ---------- side list / detail card / result ---------- */
+.gc-tag.mod.good { background: #dcfce7; color: #14532d; }
+.gc-tag.mod.bad { background: #fee2e2; color: #7f1d1d; }
+.gc-tag.hand-n { background: #efe7fb; color: #5b2ea6; }
+.gc-items { display: inline-flex; align-items: center; gap: 1px; font-size: 0.8rem; line-height: 1; }
+.gc-items small { font-size: 0.65rem; color: var(--muted); font-weight: 800; }
+.item-ic { display: inline-block; line-height: 1; }
+.item-ic.img { width: 1.25em; height: 1.25em; object-fit: contain; vertical-align: middle; }
+.gd-cards, .gd-items { display: flex; flex-wrap: wrap; gap: 4px; }
+.gd-card { font-size: 0.75rem; font-weight: 800; border-radius: 6px; padding: 1px 6px; border: 1.5px solid; white-space: nowrap; }
+.gd-card.k-instant { border-color: #3b82f6; background: #eff6ff; color: #1e3a8a; }
+.gd-card.k-passive { border-color: #22a55a; background: #f0fdf4; color: #14532d; }
+.gd-card.k-sabotage { border-color: #e2504c; background: #fef2f2; color: #7f1d1d; }
+.gd-item { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+.gd-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.rk-items { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 2px 0; }
+.rk-item { display: inline-flex; align-items: center; gap: 3px; font-size: 0.85rem; }
+.rk-item small { font-size: 0.72rem; color: var(--muted); font-weight: 700; }
+.jb-img { width: 1.3em; height: 1.3em; object-fit: contain; vertical-align: middle; display: inline-block; }
+.ci-badge-ic img { width: 2.4em; height: 2.4em; object-fit: contain; display: block; }
+
+/* 2D tiles: card / shop are live now (not placeholders) */
+.tile.t-card, .tile.t-shop { background: color-mix(in srgb, var(--tc) 10%, #fff); }
+.tile.t-card .t-icon, .tile.t-shop .t-icon { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2)); }
+
+/* ---------- shop product cards (cut-in + 2D modal) ---------- */
+.shop-grid { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.shop-item {
+  position: relative; flex-direction: column !important; align-items: center !important; justify-content: flex-start !important;
+  text-align: center; gap: 4px !important; padding: 10px 8px 10px !important; min-height: 0; min-width: 0;
+}
+.shop-item .si-tag { font-size: 0.68rem; font-weight: 900; color: #fff; background: #f39a3d; border-radius: 999px; padding: 0 8px; }
+.shop-item.k-instant .si-tag { background: #3b82f6; }
+.shop-item.k-passive .si-tag { background: #22a55a; }
+.shop-item.k-sabotage .si-tag { background: #e2504c; }
+.shop-item .si-art { width: 64px; height: 64px; display: grid; place-items: center; }
+.shop-item .si-art img { width: 100%; height: 100%; object-fit: contain; }
+.shop-item .si-emoji { font-size: 2.4rem; line-height: 1; }
+.shop-item .si-name { font-weight: 900; font-size: 0.95rem; overflow-wrap: anywhere; }
+.shop-item .si-desc { font-size: 0.74rem; font-weight: 700; color: #57534e; line-height: 1.25; overflow-wrap: anywhere; }
+.shop-item .si-price { font-size: 0.9rem; }
+.shop-item .si-price s { color: var(--muted); font-weight: 600; }
+.shop-item .si-coupon { display: block; font-size: 0.68rem; font-weight: 900; color: #b45309; }
+.shop-item .si-off { font-size: 0.7rem; font-weight: 800; color: var(--danger); }
+.shop-item.off { filter: grayscale(0.7); }
+.shop-leave { margin-top: 10px; width: 100%; }
+.shop-choices { display: block; }
+.shop-choices .shop-grid { margin-top: 0; }
+@media (max-width: 480px) {
+  .shop-grid { gap: 6px; }
+  .shop-item .si-art { width: 44px; height: 44px; }
+  .shop-item .si-emoji { font-size: 1.8rem; }
+  .shop-item .si-name { font-size: 0.8rem; }
+  .shop-item .si-desc { font-size: 0.66rem; }
+}
+.cutin .ci-opt-list + .shop-grid, .cutin .ci-options .shop-grid { grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); }
+@media (max-width: 700px), (max-aspect-ratio: 4/5) {
+  .cutin .ci-options .shop-grid { grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); }
+}
+
+/* ---------- cut-ins: chips, extra panel, hwatu, lotto ---------- */
+.ci-chip.card { border: 2px solid currentColor; }
+.ci-chip.card.k-instant { background: #dbeafe; color: #1d4ed8; }
+.ci-chip.card.k-passive { background: #dcfce7; color: #15803d; }
+.ci-chip.card.k-sabotage { background: #fee2e2; color: #b91c1c; }
+.ci-badge.card.k-sabotage { border-color: #e2504c; }
+.ci-badge.card.blocked { border-color: #22a55a; background: #f0fdf4; }
+.ci-badge.item { border-color: #f39a3d; }
+.ci-extra:empty { display: none; }
+.ci-extra { clear: both; margin-top: 6px; }
+.ci-hres { display: grid; gap: 4px; }
+.ci-hres-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 3px 6px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); }
+.ci-hres-row.win { background: rgba(253, 224, 71, 0.18); outline: 2px solid #fde047; }
+.ci-hres-row.me .ci-hres-n { color: #fde047; }
+.ci-hres-n { font-weight: 900; min-width: 4.5em; max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-hres .ci-chip, .ci-lotto-rows .ci-chip { font-size: 0.78rem; padding: 2px 9px; animation-delay: 0.2s; }
+
+/* 고스톱 row in the window */
+.ci-hwrow { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqw; padding: 3cqw; }
+.ci-hw-title {
+  background: rgba(127, 29, 29, 0.9); color: #fff; font-weight: 900; font-size: clamp(12px, 2.4cqw, 24px); padding: 0.3em 1em; border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.ci-hw-cards { display: flex; gap: 1.6cqw; justify-content: center; align-items: flex-end; flex-wrap: nowrap; max-width: 100%; }
+.ci-hw-slot { display: flex; flex-direction: column; align-items: center; gap: 0.4cqw; min-width: 0; width: min(13cqw, calc(90cqw / var(--n, 4))); }
+.ci-hw-name {
+  font-size: clamp(10px, 1.7cqw, 18px); font-weight: 900; color: #fff; background: rgba(20, 12, 24, 0.75); border-radius: 999px; padding: 0 0.6em;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ci-hw-k { font-size: clamp(9px, 1.4cqw, 15px); font-weight: 900; color: #7f1d1d; background: #fff8e7; border-radius: 6px; padding: 0 0.4em; opacity: 0; transition: opacity 0.3s; }
+.ci-hwrow.go .ci-hw-k { opacity: 1; transition-delay: calc(var(--hw-k-delay, 2.2s)); }
+.ci-hw-slot.win .ci-hw-name { background: #ca8a04; }
+.ci-hw-none { color: #fff; font-weight: 800; background: rgba(20, 12, 24, 0.7); padding: 0.4em 1em; border-radius: 12px; }
+.hw { display: block; width: 100%; aspect-ratio: 60 / 96; perspective: 600px; }
+.hw-in { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.hw-side { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.hw-side svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35)); }
+.hw-face { transform: rotateY(180deg); }
+.ci-hwrow.go .hw-in, .hw.flip .hw-in { transform: rotateY(180deg); transition-delay: var(--hw-delay, 0ms); }
+.ci-hwrow.go .hw.win { animation: hw-win 1s calc(var(--hw-delay, 0ms) + 1.4s) ease-in-out 2 both; }
+.hw.win .hw-face svg { filter: drop-shadow(0 0 6px #fde047) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35)); }
+@keyframes hw-win { 50% { transform: translateY(-10%) scale(1.08); } }
+/* holiday prompt: three face-down cards on the table */
+.ci-hw-deck { position: absolute; right: 4%; top: 12%; z-index: 3; display: flex; gap: 1cqw; width: 22cqw; }
+.hw-deal { flex: 1; animation: hw-deal 0.5s calc(0.3s + var(--i) * 0.15s) cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.hw-deal svg { width: 100%; display: block; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35)); }
+@keyframes hw-deal { from { transform: translateY(-60%) rotate(-20deg); opacity: 0; } }
+
+/* lotto machine */
+.ci-lotto {
+  position: absolute; left: 50%; top: 5%; transform: translateX(-50%); z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 1cqw;
+  background: rgba(20, 12, 40, 0.82); border: 3px solid #fde047; border-radius: 2cqw; padding: 1.2cqw 2.4cqw; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+.ci-lotto-t { color: #fde047; font-weight: 900; font-size: clamp(11px, 2cqw, 22px); white-space: nowrap; }
+.ci-lotto-balls { display: flex; gap: 1.4cqw; }
+.lotto-ball {
+  display: inline-grid; place-items: center; width: 7cqw; height: 7cqw; min-width: 26px; min-height: 26px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #fff 0 12%, var(--ball) 55%, color-mix(in srgb, var(--ball) 70%, #000));
+  color: #1f1a24; font-weight: 900; font-size: clamp(11px, 3cqw, 30px); box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35); font-variant-numeric: tabular-nums;
+}
+.lotto-ball.drop { animation: ball-drop 0.7s var(--ball-delay, 0ms) cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+@keyframes ball-drop { from { transform: translateY(-160%) scale(0.4) rotate(-200deg); opacity: 0; } }
+.lotto-ball.small { width: 1.7em; height: 1.7em; min-width: 0; min-height: 0; font-size: 0.72rem; opacity: 0.55; }
+.lotto-ball.small.hit { opacity: 1; box-shadow: 0 0 0 2px #fde047, 0 2px 4px rgba(0, 0, 0, 0.4); }
+.ci-lotto-sum { margin: 0 0 6px; font-weight: 800; color: #fde68a; }
+.ci-lotto-rows { display: grid; gap: 4px; }
+.ci-lotto-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 3px 6px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); animation: ci-bubble-pop 0.3s var(--d, 0ms) both; }
+.ci-lotto-row.won { background: rgba(253, 224, 71, 0.18); outline: 2px solid #fde047; }
+.ci-lotto-row.me .ci-hres-n { color: #fde047; }
+.ci-lotto-mine { display: inline-flex; gap: 3px; }
+.cutin[data-kind='lotto'] .ci-cast { display: none; }
+
+/* studio with a generated background: its own desk → soft floor shadow under the MCs instead of the CSS desk bar */
+.ci-studio .mc-floor {
+  position: absolute; left: 50%; bottom: 2%; width: min(64%, 520px); height: 7%; transform: translateX(-50%); z-index: -1;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.32), transparent 70%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-in { transition: none; }
+  .ci-hwrow .hw-in { transform: rotateY(180deg); }
+  .ci-hw-k { opacity: 1; }
+  button.cardf.can { animation: none; }
+}
+
+/* ---------- 390 px top bar: one line (title shrinks to the dice, room code + 나가기 stay) ---------- */
+.topbar { flex-wrap: nowrap; min-width: 0; }
+.topbar-right { min-width: 0; flex-wrap: nowrap; }
+#leave-btn { white-space: nowrap; flex: none; }
+@media (max-width: 430px) {
+  .logo { flex: 0 1 auto; }
+  .topbar-right { flex: 0 1 auto; }
+  #room-badge { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 360px) {
+  .logo .logo-t { display: none; }
+}

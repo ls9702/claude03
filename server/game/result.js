@@ -1,22 +1,29 @@
 // Final settlement (pure). Stage 2: cash − debt. Later stages add house value,
 // treasure appraisal, stat/experience bonuses and awards here.
+import { gameData } from '../data/index.js';
 import { netWorth } from './effects.js';
+import { itemsValue } from './cards.js';
 
 /**
- * @returns {{rank, charId, name, money, debt, goalBonus, total, place}[]} best first.
+ * @returns {{rank, charId, name, money, debt, goalBonus, items, total, place}[]} best first.
+ * total = money − debt + items (Stage 7: resale value of shop items, Σ price × resale).
  * Ties on total are broken by goal arrival order, then creation order.
  */
-export function computeRanking(room) {
-  const rows = room.characters.map((c) => ({
-    charId: c.id,
-    name: c.name,
-    seq: c.seq ?? 0,
-    money: c.money ?? 0,
-    debt: c.debt ?? 0,
-    goalBonus: c.goalBonus ?? 0,
-    total: netWorth(c),
-    place: c.place ?? null,
-  }));
+export function computeRanking(room, { data = gameData() } = {}) {
+  const rows = room.characters.map((c) => {
+    const items = itemsValue(data, c);
+    return {
+      charId: c.id,
+      name: c.name,
+      seq: c.seq ?? 0,
+      money: c.money ?? 0,
+      debt: c.debt ?? 0,
+      goalBonus: c.goalBonus ?? 0,
+      items,
+      total: netWorth(c) + items,
+      place: c.place ?? null,
+    };
+  });
   rows.sort((a, b) => b.total - a.total || (a.place ?? 99) - (b.place ?? 99) || a.seq - b.seq);
   let prev = null;
   return rows.map((r, i) => {
@@ -28,8 +35,8 @@ export function computeRanking(room) {
 }
 
 /** Mutates a cloned room: status finished + result. */
-export function applyResult(room, now, { forced = false } = {}) {
-  const ranking = computeRanking(room);
+export function applyResult(room, now, { forced = false, data } = {}) {
+  const ranking = computeRanking(room, data ? { data } : {});
   room.status = 'finished';
   room.finishedAt = now;
   room.result = { ranking, finishedAt: now, forced };

@@ -7,6 +7,7 @@
 import { STAT_KEYS, addLog, addStats, changeMoney, emit, josa, netWorth, round5, won } from './effects.js';
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
+import { itemSalaryMult, salaryCardMult, tryAmulet } from './cards.js';
 
 export const PART_TIME_ID = 'parttime';
 
@@ -108,6 +109,7 @@ export function salaryAmount(tx, c) {
   let mult = (cfg.salaryEraMult?.[c.era] ?? 1) * eff.salaryMult;
   if (def?.id === PART_TIME_ID) mult *= eff.partTimeMult;
   if (job.injured > 0) mult *= cfg.injurySalaryMult ?? 0.5;
+  mult *= itemSalaryMult(data, c); // Stage 7: 노트북 (+10 % for creative / e-sports jobs)
   return round5(base * mult);
 }
 
@@ -164,6 +166,7 @@ export function rollInjury(tx, c) {
   if (!def?.injuryRisk || c.job.injured > 0) return false;
   const p = def.injuryRisk * effectsFor(tx, c).injuryMult;
   if (!(tx.rng.next() < p)) return false;
+  if (tryAmulet(tx, c, 'injury')) return false; // Stage 7: 건강 부적
   const turns = tx.data.balance.jobs.injuryTurns ?? 2;
   c.job.injured = turns;
   c.badEvents = (c.badEvents ?? 0) + 1;
@@ -185,7 +188,7 @@ export function militaryPay(tx, c, why = '군 월급') {
 export function paySalary(tx, c) {
   if (c.military?.status === 'serving') return militaryPay(tx, c, '복무 중이라 군 월급만');
   const job = c.job;
-  const amount = salaryAmount(tx, c);
+  const amount = round5(salaryAmount(tx, c) * salaryCardMult(tx, c)); // Stage 7: 성과급 봉투 ×2
   const def = jobDef(tx.data, job?.id ?? PART_TIME_ID);
   const rank = job?.rank ?? 1;
   emit(tx, 'salary', { charId: c.id, jobId: def.id, rank, amount, tone: 'career', emotion: 'joy' });

@@ -25,9 +25,22 @@ import { promptComplete, resolvePrompt, resolveTile } from './spaces.js';
 import { ensureLife, initLife, lifeStep, spinSteps } from './growth.js';
 import { militaryPay } from './jobs.js';
 import { applyEraNews, drawNews, drawStartNews } from './news.js';
+import {
+  applySpinMods,
+  cancelTrade,
+  dropTrades,
+  ensureCards,
+  ensureRoomCards,
+  expireTrades,
+  gift,
+  offerTrade,
+  respondTrade,
+  useCard,
+} from './cards.js';
+import { queueEraOpening, runEraOpenings } from './holidays.js';
 
 export { EngineError, turnTimeoutMs };
-export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout', 'skip'];
+export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout', 'skip', 'useCard', 'offerTrade', 'respondTrade', 'cancelTrade', 'gift', 'expireTrades'];
 export const BET_KINDS = ['oddEven', 'range'];
 
 function makeCtx(room, ctx = {}) {
@@ -73,6 +86,11 @@ export function startGame(room, ctx = {}) {
     goalBonus: 0,
     pensionGiven: false,
     ...initLife(c, { rng: boardRng, data, adult }),
+    // Stage 7: hand cards, items, pending spin modifiers, sabotage memory (all public)
+    cards: [],
+    items: [],
+    spinMods: [],
+    lastTargetedBy: {},
   }));
   // The board is public; without a secret, its tiles would reveal the seed and so every future spin.
   // The side-effect layer (GameRunner) passes `ctx.secret` = crypto random uint32; tests/simulator omit it
@@ -84,6 +102,8 @@ export function startGame(room, ctx = {}) {
   next.promptSeq = 0;
   next.result = null;
   next.news = {};
+  // Stage 7: card uids, open trades, era openings (lotto / holidays; the first era never opens one)
+  Object.assign(next, { nextCardSeq: 0, nextTradeSeq: 0, trades: [], holidayCount: 0, holidays: {}, lotto: { draws: [] }, erasOpened: [firstEra], eraQueue: [] });
   const tx = createTx(next, { rng, now, data });
   emit(tx, 'gameStarted', { eras: next.board.eras.map((e) => e.id) });
   drawStartNews(tx);
@@ -112,6 +132,8 @@ function announceTurn(tx) {
   const c = charById(tx.room, currentCharId(tx.room));
   const limit = turnTimeoutMs(tx.room);
   tx.room.turn.spinDeadlineAt = limit ? tx.now + limit : null;
+  tx.room.turn.cardUsed = false; // Stage 7: one card per turn
+  dropTrades(tx, (t) => t.fromId === c.id, 'expired'); // an offer lasts until the offerer's next turn
   emit(tx, 'turnStarted', { charId: c.id, turnNo: tx.room.turn.turnNo, round: tx.room.turn.round });
 }
 
@@ -126,6 +148,7 @@ function enterEra(tx, c, eraIndex) {
   drawNews(tx, era.id); // first character entering the era → 뉴스 속보
   applyEraNews(tx, c, era.id);
   if (era.id === tx.data.balance.pension.era) catchUpBonus(tx, c);
+  queueEraOpening(tx, era.id); // Stage 7: lotto draw + holiday, run by the turn loop once no prompt is open
 }
 
 /**
@@ -172,6 +195,7 @@ function finishCharacter(tx, c) {
   if (prize) changeMoney(tx, c, prize, 'goalPrize', { emotion: 'joy', tone: 'result' });
   c.goalBonus += prize;
   emit(tx, 'finished', { charId: c.id, place, prize, tone: 'result', emotion: 'joy' });
+  dropTrades(tx, (t) => t.fromId === c.id || t.toId === c.id, 'expired');
   addLog(tx, `🏁 ${c.name} ${place}등으로 골인!${prize ? ` 골인 상금 ${won(prize)}` : ''}`, { tone: 'result', charId: c.id, emotion: 'joy' });
 }
 
@@ -186,7 +210,9 @@ function bonusSpin(tx, c) {
 }
 
 function gameOver(tx) {
-  const ranking = applyResult(tx.room, tx.now);
+  tx.room.trades = [];
+  tx.room.eraQueue = [];
+  const ranking = applyResult(tx.room, tx.now, { data: tx.data });
   emit(tx, 'gameOver', { ranking, tone: 'result' });
   addLog(tx, `🏆 게임 종료! 1등은 ${ranking[0]?.name} (${won(ranking[0]?.total ?? 0)})`, { tone: 'result' });
 }
@@ -244,6 +270,7 @@ function continueTurn(tx) {
       resolvePrompt(tx);
       continue;
     }
+    if (runEraOpenings(tx)) continue; // Stage 7: lotto + 명절 대잔치 of eras opened this turn
     const c = charById(tx.room, currentCharId(tx.room));
     if (c && lifeStep(tx, c)) continue;
     return endTurn(tx);
@@ -337,16 +364,33 @@ function doSpin(tx, action) {
   const actor = action.actor;
   if (action.auto && actor?.system && (turn.spinDeadlineAt == null || tx.now < turn.spinDeadlineAt)) fail(409, '아직 시간이 남았어요.');
   const { min, max } = tx.data.balance.spin;
-  const value = tx.rng.int(min, max);
+  const first = tx.rng.int(min, max);
+  // Stage 7: pending spin modifiers (택시 / 층간소음 second roll, 에너지 +2, 새치기 −3, 경차 1 → 2)
+  const mod = applySpinMods(tx, c, first);
+  const value = mod.value;
   const serving = c.military?.status === 'serving';
-  const steps = spinSteps(tx, c, value); // 군 복무: half the move (rounded up)
-  turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo, ...(steps !== value ? { steps } : {}) };
+  const steps = spinSteps(tx, c, mod.move); // 군 복무: half the move (rounded up)
+  turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo, ...(steps !== value ? { steps } : {}), ...(mod.rolls ? { rolls: mod.rolls } : {}) };
   turn.phase = 'resolveSpace';
   turn.spinDeadlineAt = null;
   if (action.auto && actor?.system) addLog(tx, `⏰ 시간 초과! ${c.name}의 룰렛을 자동으로 돌렸어요.`, { tone: 'info', charId: c.id });
   else if (actor?.admin) addLog(tx, `🛠️ 관리자가 ${c.name}의 룰렛을 대신 돌렸어요.`, { tone: 'info', charId: c.id });
-  emit(tx, 'spun', { charId: c.id, value, ...(steps !== value ? { steps, halved: true } : {}), ...(action.auto && actor?.system ? { auto: true } : {}) });
-  addLog(tx, `🎡 ${c.name}의 룰렛: ${value}${steps !== value ? ` (복무 중이라 ${steps}칸만 이동)` : ''}`, { charId: c.id });
+  emit(tx, 'spun', {
+    charId: c.id,
+    value,
+    ...(steps !== value ? { steps } : {}),
+    ...(serving && steps !== mod.move ? { halved: true } : {}),
+    ...(mod.rolls ? { rolls: mod.rolls } : {}),
+    ...(mod.mods.length ? { mods: mod.mods } : {}),
+    ...(mod.car ? { car: true } : {}),
+    ...(action.auto && actor?.system ? { auto: true } : {}),
+  });
+  const notes = [];
+  if (mod.rolls) notes.push(`두 번 돌려 ${mod.rolls.join('·')} 중 ${value}`);
+  if (mod.move !== value && !mod.car) notes.push(`카드 효과로 ${mod.move}칸`);
+  if (mod.car) notes.push('경차 덕분에 2칸');
+  if (serving && steps !== mod.move) notes.push(`복무 중이라 ${steps}칸만 이동`);
+  addLog(tx, `🎡 ${c.name}의 룰렛: ${value}${notes.length ? ` (${notes.join(', ')})` : ''}`, { charId: c.id });
   resolveBets(tx, value);
   if (serving) militaryPay(tx, c);
 
@@ -393,7 +437,9 @@ function doChoose(tx, action) {
   const c = assertOwner(room, action.actor, action.characterId);
   if (!p.forCharacterIds.includes(c.id)) fail(403, '이 캐릭터가 고를 차례가 아니에요.');
   if (Object.hasOwn(p.answers, c.id)) fail(409, '이미 선택했어요.');
-  if (!p.options.some((o) => o.id === action.optionId)) fail(400, '없는 선택지예요.');
+  const opt = p.options.find((o) => o.id === action.optionId);
+  if (!opt) fail(400, '없는 선택지예요.');
+  if (opt.disabled) fail(409, '지금은 고를 수 없는 선택지예요.');
   p.answers[c.id] = action.optionId;
   // Simultaneous prompts stay secret until resolved (events are broadcast to everyone).
   const secret = !!p.simultaneous || p.forCharacterIds.length > 1;
@@ -431,7 +477,25 @@ function doSkip(tx, action) {
   endTurn(tx);
 }
 
-const HANDLERS = { spin: doSpin, choose: doChoose, bet: placeBet, timeout: doTimeout, skip: doSkip };
+/** Stage 7: the runner's trade-expiry timer (expiry itself runs before every action). */
+function doExpireTrades(tx, action) {
+  if (action.actor && !action.actor.admin && !action.actor.system) fail(403, '시스템만 할 수 있어요.');
+}
+
+const HANDLERS = {
+  spin: doSpin,
+  choose: doChoose,
+  bet: placeBet,
+  timeout: doTimeout,
+  skip: doSkip,
+  // Stage 7 — the card one needs the turn; trades / gifts happen any time and never touch the turn state
+  useCard: (tx, action) => useCard(tx, action, currentCharId(tx.room)),
+  offerTrade,
+  respondTrade,
+  cancelTrade,
+  gift,
+  expireTrades: doExpireTrades,
+};
 
 /**
  * @param {object} room current room (not mutated)
@@ -450,9 +514,14 @@ export function applyAction(room, action, ctx = {}) {
   if (room.status !== 'playing' || !room.board) fail(409, '게임이 진행 중이 아니에요.');
   const c = makeCtx(room, ctx);
   const next = structuredClone(room);
-  for (const ch of next.characters) ensureLife(ch, c.data); // games saved before Stage 6
+  for (const ch of next.characters) {
+    ensureLife(ch, c.data); // games saved before Stage 6
+    ensureCards(ch); // … and Stage 7
+  }
   next.news ??= {};
+  ensureRoomCards(next);
   const tx = createTx(next, c);
+  expireTrades(tx); // pure: offers past `expiresAt` (ctx.now) are dropped before anything else
   handler(tx, action);
   next.rngState = c.rng.state;
   decorateEvents(tx.events, { room: next, data: c.data, seed: c.rng.state });

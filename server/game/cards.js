@@ -5,7 +5,7 @@
 //   (applied and cleared at the character's next spin) · character.lastTargetedBy = {attackerId: round}
 // room.nextCardSeq · room.trades = [{id, fromId, toId, give, want, createdAt, expiresAt}] · room.nextTradeSeq
 // Hands, items and trades are public (cards are open information, like the original board game).
-import { STAT_KEYS, addLog, addStats, assertOwner, changeMoney, charById, emit, fail, josa, round5, won } from './effects.js';
+import { addLog, addStats, assertOwner, changeMoney, charById, emit, fail, josa, round5, won } from './effects.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 
 export const CARD_KINDS = ['instant', 'passive', 'sabotage'];
@@ -577,4 +577,3 @@ export function gift(tx, action) {
   addLog(tx, `🎁 ${josa(from.name, '이/가')} ${to.name}에게 ${describe(tx, side)} 선물!${family}`, { tone: 'love', charId: from.id, emotion: 'love' });
 }
 
-export { STAT_KEYS };

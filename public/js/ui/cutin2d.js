@@ -935,14 +935,18 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       .map((id) => characters.find((c) => c.id === id))
       .filter(Boolean)
       .map((c) => ({ char: c, pose: c.id === p.charId ? (p.kind === 'routeChoice' ? 'wave' : 'idle') : 'idle', emotion: c.id === p.charId && p.emotion !== 'neutral' ? p.emotion : null }));
-    const anchor = { type: 'prompt', tone: p.tone ?? 'neutral', title: p.title, kind: p.kind };
+    // Stage 7: 상점 / 명절 prompts default to their own scene + tone when the server leaves them neutral
+    const kindLook = { shop: { tone: 'treasure', scene: 'shop' }, holiday: { tone: 'holiday', scene: 'holiday' } }[p.kind] ?? null;
+    const tone = p.tone && (p.tone !== 'neutral' || !kindLook) ? p.tone : kindLook?.tone ?? 'neutral';
+    const scene = p.scene && (p.scene !== 'none' || !kindLook) ? p.scene : kindLook?.scene ?? 'none';
+    const anchor = { type: 'prompt', tone, title: p.title, kind: p.kind };
     return {
       key: `prompt:${p.promptId}`,
       kind: 'prompt',
-      tone: p.tone ?? 'neutral',
-      scene: p.scene ?? 'none',
+      tone,
+      scene,
       tag: tagLabel(anchor, { tones: pres().tones }),
-      who: `${subject?.name ?? ''}${sceneLabel(p.scene) ? ` · ${sceneLabel(p.scene)}` : ''}`,
+      who: `${p.kind === 'holiday' && !forMe.length ? '' : subject?.name ?? ''}${sceneLabel(scene) ? ` · ${sceneLabel(scene)}` : ''}`.replace(/^ · /, ''),
       text: [p.text || p.title].filter(Boolean), // the title is the tag above the window (no repeat)
       line: p.line ?? null,
       speaker: p.charId,

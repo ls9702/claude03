@@ -7,6 +7,7 @@ import { resolveHabitTile } from './growth.js';
 import { PART_TIME_ID, paySalary, resolveJobTile } from './jobs.js';
 import { effectsFor } from './news.js';
 import { PROMPTS, openPrompt, promptComplete, registerPrompts, resolvePrompt } from './prompts.js';
+import { applyLoss, cardDef, gainCard, guardStats, resolveCardTile, resolveShopTile, tryAmulet } from './cards.js';
 
 export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
@@ -113,11 +114,19 @@ function runEvent(tx, c, era) {
   const text = ev.text.replaceAll('{name}', c.name);
   const tone = ev.tone && ev.tone !== 'neutral' ? ev.tone : delta > 0 ? 'good' : delta < 0 ? 'bad' : 'info';
   const emotion = ev.emotion ?? (delta > 0 ? 'joy' : delta < 0 ? 'cry' : null);
-  if (delta) changeMoney(tx, c, delta, 'event', { emotion, tone: delta > 0 ? (tone === 'bad' ? 'good' : tone) : 'bad', eventId: ev.id });
-  const changes = ev.stats ? addStats(tx, c, ev.stats, 'event', { eventId: ev.id }) : [];
+  // Stage 7: 건강 부적 cancels a bad event once (nothing happens, not counted as bad luck)
+  if ((delta < 0 || tone === 'bad') && tryAmulet(tx, c, 'badEvent')) {
+    addLog(tx, `❗ ${text} … 였지만 부적이 막아 줬다!`, { tone: 'good', charId: c.id, emotion: 'joy', eventId: ev.id });
+    return null;
+  }
+  if (delta > 0) changeMoney(tx, c, delta, 'event', { emotion, tone: tone === 'bad' ? 'good' : tone, eventId: ev.id });
+  else if (delta < 0) delta = -applyLoss(tx, c, -delta, 'event', { emotion, tone: 'bad', eventId: ev.id }).amount; // 실손 보험
+  const stats = guardStats(tx.data, c, ev.stats); // 안마의자: no str loss in senior events
+  const changes = stats ? addStats(tx, c, stats, 'event', { eventId: ev.id }) : [];
   if (delta < 0 || tone === 'bad') c.badEvents = (c.badEvents ?? 0) + 1;
   const extras = [delta ? `${delta > 0 ? '+' : ''}${won(delta)}` : '', changes.length ? statText(tx.data, changes) : ''].filter(Boolean);
   addLog(tx, `❗ ${text}${extras.length ? ` (${extras.join(', ')})` : ''}`, { tone, charId: c.id, emotion, eventId: ev.id });
+  if (ev.card && cardDef(tx.data, ev.card)) gainCard(tx, c, ev.card, 'event'); // Stage 7: card rewards
   return null;
 }
 
@@ -141,8 +150,7 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       return null;
     }
     case 'loss': {
-      const amount = round5(tile.amount * effectsFor(tx, c).lossMult);
-      const newDebt = changeMoney(tx, c, -amount, 'tile', { tileId: tile.id, emotion: 'cry', tone: 'bad' });
+      const { amount, debt: newDebt } = applyLoss(tx, c, round5(tile.amount * effectsFor(tx, c).lossMult), 'tile', { tileId: tile.id, emotion: 'cry', tone: 'bad' });
       c.badEvents = (c.badEvents ?? 0) + 1;
       addLog(tx, `💸 ${c.name}: ${tile.label}… -${won(amount)}${newDebt > 0 ? ` (빚 ${won(newDebt)} 발생)` : ''}`, {
         tone: 'bad',
@@ -161,6 +169,11 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       return null;
     case 'job':
       return resolveJobTile(tx, c) ? 'prompt' : null;
+    case 'card': // Stage 7
+      return resolveCardTile(tx, c);
+    case 'shop':
+      resolveShopTile(tx, c);
+      return 'prompt';
     case 'stop':
       if (tile.promptId === 'routeChoice') return null; // opened by the turn epilogue after life decisions
       if (PROMPTS[tile.promptId]) {
@@ -176,7 +189,7 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       onGoal?.(c);
       return 'goal';
     default: {
-      // heart/card/shop/treasure/house: placeholders (hooks for later stages).
+      // heart/treasure/house: placeholders (hooks for later stages).
       const text = tx.data.board.placeholders?.[tile.type] ?? tile.label;
       addLog(tx, `${tile.icon ?? ''} ${c.name}: ${text}`.trim(), { tone: routeTone ?? 'info', charId: c.id });
       return null;

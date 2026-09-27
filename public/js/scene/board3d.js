@@ -34,10 +34,15 @@ const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'hou
 const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '정지', merge: '합류', goal: '골', habit: '습관', salary: '월급' };
 const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#3fae5a' };
 /** Stage 6 tile glyphs before board.json knows the type (meta icon wins). */
-const DEFAULT_TILE_GLYPH = { habit: '📚', salary: '💵', job: '💼' };
+const DEFAULT_TILE_GLYPH = { habit: '📚', salary: '💵', job: '💼', card: '🃏', shop: '🛍️' };
 /** Stage 6 board reactions over the pawn (the cut-in follows). */
 const STAGE6_POP = { jobChanged: '💼', rankUp: '⭐', hiddenJobUnlocked: '🌟', injured: '🤕', militaryStart: '🪖', militaryEnd: '🎖️', educationChanged: '🎓' };
 const STAT_FLOAT = { int: ['🧠', '#2446a8'], str: ['💪', '#a33a14'], charm: ['✨', '#a3276a'], luck: ['🍀', '#1d6b3b'] };
+
+/** Stage 7 board reactions over the pawn (sabotage / block pop over the target). */
+const STAGE7_POP = { cardGained: '🃏', itemBought: '🛍️', gift: '🎁', lottoDraw: '🎱' };
+/** Name tag text: name + Stage 7 roulette-modifier badge (`tagBadge`, e.g. 「✂️−3」). */
+const tagName = (c) => (c?.tagBadge ? `${c.name} ${c.tagBadge}` : c?.name ?? '');
 
 /** tile id for a character position (same rule as server board.tileIdAt). */
 export function tileIdForPosition(board, pos) {
@@ -853,6 +858,55 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       if (e.title) banner(`📰 ${e.title}`, 2600);
       if (!ctx.instant) await ctx.sleep(900);
     },
+    // ---------- Stage 7 ----------
+    cardUsed: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      if (e.targetId) {
+        emotion.pop(e.charId, '🃏', { dur: 1.2 });
+        emotion.pop(e.targetId, '💢', { dur: 1.8 });
+      } else emotion.pop(e.charId, e.cardId === 'pledge' ? '🗳️' : '✨', { dur: 1.4 });
+      await ctx.sleep(420);
+    },
+    cardBlocked: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      emotion.pop(e.targetId ?? e.charId, '🛡️', { dur: 1.8 });
+      if (e.targetId && e.charId) emotion.pop(e.charId, '💦', { dur: 1.2 });
+      await ctx.sleep(420);
+    },
+    holidayStarted: async (e, ctx) => {
+      hooks.onStep?.(e);
+      banner(e.kind === 'chuseok' ? '🌕 추석 대잔치!' : e.kind === 'seol' ? '🧧 설날 대잔치!' : '🎉 명절 대잔치!', 2000);
+      if (!ctx.instant) await ctx.sleep(700);
+    },
+    holidayResult: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      for (const r of e.results ?? []) if (r.won) emotion.pop(r.charId, '🎴', { dur: 1.6 });
+      await ctx.sleep(300);
+    },
+    tradeResolved: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant || e.status !== 'accepted') return;
+      emotion.pop(e.fromId, '🤝', { dur: 1.4 });
+      emotion.pop(e.toId, '🤝', { dur: 1.4 });
+      await ctx.sleep(200);
+    },
+    ...Object.fromEntries(
+      Object.entries(STAGE7_POP).map(([type, glyph]) => [
+        type,
+        async (e, ctx) => {
+          hooks.onStep?.(e);
+          if (ctx.instant) return;
+          const id = type === 'gift' ? e.toId : e.charId;
+          if (type === 'lottoDraw') {
+            for (const r of e.entries ?? []) if (Number(r.prize) > 0) emotion.pop(r.charId, '🎱', { dur: 1.8 });
+          } else if (id) emotion.pop(id, glyph, { dur: 1.5 });
+          await ctx.sleep(type === 'lottoDraw' ? 300 : 350);
+        },
+      ]),
+    ),
     ...Object.fromEntries(
       Object.entries(STAGE6_POP).map(([type, glyph]) => [
         type,
@@ -888,7 +942,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       const P = S.pawns.get(c.id);
       if (!P?.pendingAvatar) continue;
       P.pendingAvatar = false;
-      P.pawn.update(c.avatar, c.name, !!c.isMe);
+      P.pawn.update(c.avatar, tagName(c), !!c.isMe);
       P.avatar = c.avatar;
       P.avatarKey = JSON.stringify(c.avatar);
       if (preset.particles > 0 && !document.hidden) emotion.pop(c.id, '✨', { dur: 1.1 });
@@ -1055,7 +1109,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         seen.add(c.id);
         let P = S.pawns.get(c.id);
         if (!P) {
-          const pawn = createPawn({ avatar: c.avatar, defs: meta?.avatars, name: c.name, isMe: !!c.isMe });
+          const pawn = createPawn({ avatar: c.avatar, defs: meta?.avatars, name: tagName(c), isMe: !!c.isMe });
           if (S.template) pawn.useTemplate(S.template);
           scene.add(pawn.group);
           P = { pawn, tileId: 'start', moving: false, order, target: new THREE.Vector3(), yaw: 0, isMe: !!c.isMe, crowded: false, avatar: c.avatar, avatarKey: JSON.stringify(c.avatar) };
@@ -1066,12 +1120,12 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
           // (state arrives before its events → wait out the sync grace, then for the animator to go idle)
           const next = JSON.stringify(c.avatar);
           if (P.avatarKey !== next) {
-            P.pawn.update(P.avatar, c.name, !!c.isMe);
+            P.pawn.update(P.avatar, tagName(c), !!c.isMe);
             P.pendingAvatar = true;
             clearTimeout(S.outfitTimer);
             S.outfitTimer = setTimeout(() => !animator.busy() && applyOutfits(), 420);
           } else {
-            P.pawn.update(c.avatar, c.name, !!c.isMe);
+            P.pawn.update(c.avatar, tagName(c), !!c.isMe);
           }
           P.order = order;
           P.isMe = !!c.isMe;
