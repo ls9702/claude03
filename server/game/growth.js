@@ -11,6 +11,7 @@ import { STAT_KEYS, addDebt, addLog, addStats, changeMoney, charById, emit, josa
 import { checkHiddenUnlocks, inJobEra, offerJob } from './jobs.js';
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
+import { proposeStep } from './family.js';
 
 export const EDUCATIONS = ['none', 'college', 'elite'];
 export const EXAM_RESULTS = ['elite', 'college', 'fail'];
@@ -140,7 +141,7 @@ function atRouteStop(tx, c) {
 
 /**
  * Turn epilogue for the current character: discharge / graduation, then the next life decision in order —
- * 진로 → 군 복무 → 취업 → 자동 입대 → 인생 갈림길 → 숨은 직업. Opens at most one prompt.
+ * 진로 → 군 복무 → 취업 → 자동 입대 → 인생 갈림길 → 숨은 직업 → 프로포즈 (Stage 8). Opens at most one prompt.
  * @returns true when a prompt was opened (the turn waits for it)
  */
 export function lifeStep(tx, c) {
@@ -185,7 +186,7 @@ export function lifeStep(tx, c) {
     openPrompt(tx, 'hiddenJobOffer', c, { jobId: unlocked[0] });
     return true;
   }
-  return false;
+  return proposeStep(tx, c); // Stage 8: a ripe relationship → one 프로포즈 per era
 }
 
 /** 진로 prompt (or apply the only possible choice directly). @returns true when a prompt opened */

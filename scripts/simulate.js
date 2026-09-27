@@ -213,6 +213,9 @@ const stats = {
     markets: [], // mult
     marketDelta: 0, // Σ (after − before)
     landlord: 0,
+    // lifetime-mode family summary (the tuning targets)
+    life: { chars: 0, married: 0, loveTakers: 0, loveMarried: 0, children: 0, genius: 0, maxKids: 0, parents: 0, houses: 0,
+      marriedInc: { all: 0, spouse: 0 }, parentInc: { all: 0, allowance: 0 } },
   },
 };
 const STAT_ORDER = ['int', 'str', 'charm', 'luck'];
@@ -226,6 +229,7 @@ function playGame(g) {
   let room = started.room;
   let actions = 0;
   let spins = 0;
+  const charIncome = new Map(); // charId → {all, spouse, allowance} (positive money changes)
   const apply = (action) => {
     now += 1000;
     const before = room;
@@ -233,6 +237,13 @@ function playGame(g) {
     room = r.room;
     actions++;
     for (const ev of r.events) {
+      if (ev.type === 'moneyChanged' && ev.delta > 0) {
+        const ci = charIncome.get(ev.charId) ?? { all: 0, spouse: 0, allowance: 0 };
+        ci.all += ev.delta;
+        if (ev.reason === 'spouseSalary') ci.spouse += ev.delta;
+        if (ev.reason === 'allowance') ci.allowance += ev.delta;
+        charIncome.set(ev.charId, ci);
+      }
       if (ev.type === 'spun') spins++;
       if (ev.type === 'prompt' && room.config.mode === 'lifetime') {
         const n = ev.forCharacterIds.length;
@@ -398,6 +409,28 @@ function playGame(g) {
         s8.houseValue += c.house.value;
       }
       if (c.jobHistory.some((h) => h.id === 'landlord') || c.hiddenUnlocked.includes('landlord')) s8.landlord++;
+      if (mode === 'lifetime') {
+        const L = s8.life;
+        const ci = charIncome.get(c.id) ?? { all: 0, spouse: 0, allowance: 0 };
+        L.chars++;
+        if (c.house) L.houses++;
+        const love = c.routeHistory.some((h) => h.route === 'love');
+        if (love) L.loveTakers++;
+        if (c.spouse) {
+          L.married++;
+          if (love) L.loveMarried++;
+          L.children += c.children.length;
+          L.marriedInc.all += ci.all;
+          L.marriedInc.spouse += ci.spouse;
+        }
+        L.genius += c.children.filter((k) => k.talent === 'genius').length;
+        L.maxKids = Math.max(L.maxKids, c.children.length);
+        if (c.children.length) {
+          L.parents++;
+          L.parentInc.all += ci.all;
+          L.parentInc.allowance += ci.allowance;
+        }
+      }
       for (const h of c.routeHistory) {
         const b = (s8.marriedByRoute[`${h.era}:${h.route}`] ??= [0, 0]);
         if (c.spouse) b[0]++;
@@ -667,6 +700,10 @@ function mainRandom() {
   console.log(`부동산 칸 ${s8.houseVisits}회 · 구매 ${s8.houseBuys} (${pct(s8.houseBuys, s8.houseVisits)}) · 갈아타기 ${s8.swaps} · 청약 ${s8.subscription} · 골드 매물 ${s8.lucky} · 최종 보유 ${pct(Object.values(s8.finalHouses).reduce((a, b) => a + b, 0), s8.chars)} ${JSON.stringify(s8.finalHouses)} · 평균 집값 ${(s8.houseValue / Math.max(1, Object.values(s8.finalHouses).reduce((a, b) => a + b, 0))).toFixed(0)}`);
   const mk = s8.markets;
   console.log(`노년 시세 ${mk.length}회 · 평균 ×${(mk.reduce((a, b) => a + b, 0) / Math.max(1, mk.length)).toFixed(2)} (최소 ${Math.min(...mk).toFixed(2)} · 최대 ${Math.max(...mk).toFixed(2)}) · 집값 변동 합 ${s8.marketDelta}만원 · 건물주 해금/취임 ${pct(s8.landlord, s8.chars)}`);
+  const L = s8.life;
+  console.log(
+    `[인생 전체 ${L.chars}명] 결혼 ${pct(L.married, L.chars)} · 연애 루트 선택자 결혼 ${pct(L.loveMarried, L.loveTakers)} (${L.loveTakers}명) · 기혼자당 자녀 ${(L.children / Math.max(1, L.married)).toFixed(2)} (최대 ${L.maxKids}) · 천재 ${pct(L.genius, L.children)} · 부모 수입 중 용돈 ${pct(L.parentInc.allowance, L.parentInc.all)} · 기혼자 수입 중 맞벌이 ${pct(L.marriedInc.spouse, L.marriedInc.all)} · 집 보유 ${pct(L.houses, L.chars)}`,
+  );
   console.log(`뉴스: ${Object.entries(stats.news).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
   if (errors) process.exit(1);
 }

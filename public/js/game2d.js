@@ -2161,7 +2161,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const h = c ? houseOf(c, meta) : null;
     const value = Number(r.house) > 0 ? Number(r.house) : h?.value ?? 0;
     const icons = c ? familyIcons(c) : '';
-    const fam = c ? familySummary(c, meta) : '';
+    const fam = c ? familySummary(c, meta).replace(/^💍 /, '') : ''; // the icons already show the 💍
     if (!h && !icons) return '';
     return `<span class="rk-family">${
       h ? `<span class="rk-house" title="${esc(`${h.name} · 자산가치 ${won(value)}`)}">${houseArtHtml(h.id, { art: artFor('house', h.id), label: h.name, cls: 'rk-house-art' })}<small>${esc(h.name)} ${esc(won(value))}</small></span>` : ''

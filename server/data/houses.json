@@ -1,11 +1,11 @@
 {
   "_comment": "Stage 8 부동산. 매물 6종(id 고정). price/value = 만원(구매가·자산가치, 뉴스 housePriceMult와 노년 시세가 반영됨). capacity 1 = 매물당 1명, null = 여러 명(아파트). 1인 1채: 다른 매물을 사면 기존 집을 value × tradeIn에 보상판매. lucky = 럭키 판정(금전 루트 부동산 칸 luckyChance.money, 그 외 other, + 운 × perLuck)으로만 등장. subscription = 아파트 청약 당첨 확률·할인율. market = 첫 캐릭터가 노년에 들어설 때 전체 집값 배수 범위(노년 뉴스 housePriceMult 곱, 범위로 제한).",
   "houses": [
-    { "id": "oneroom",    "name": "원룸 전세",   "icon": "🏢", "price": 300,  "value": 300,  "capacity": 1,    "eras": ["young", "middle_age", "senior"], "desc": "첫 독립! 작지만 소중한 내 공간" },
-    { "id": "villa",      "name": "빌라",        "icon": "🏘️", "price": 700,  "value": 700,  "capacity": 1,    "eras": ["young", "middle_age", "senior"], "desc": "골목 안 아늑한 투룸 빌라" },
-    { "id": "apartment",  "name": "아파트",      "icon": "🏙️", "price": 1200, "value": 1200, "capacity": null, "eras": ["young", "middle_age", "senior"], "desc": "여러 명이 살 수 있는 국민 평형 · 청약 당첨이면 할인!" },
-    { "id": "hanok",      "name": "한옥",        "icon": "🏯", "price": 1800, "value": 1800, "capacity": 1,    "eras": ["young", "middle_age", "senior"], "desc": "마당 있는 전통 한옥, 운치 만점" },
-    { "id": "penthouse",  "name": "펜트하우스",  "icon": "🌆", "price": 3000, "value": 3000, "capacity": 1,    "eras": ["young", "middle_age", "senior"], "desc": "한강 뷰 꼭대기 층, 성공의 상징" },
+    { "id": "oneroom",    "name": "원룸 전세",   "icon": "🏢", "price": 300,  "value": 330,  "capacity": 1,    "eras": ["young", "middle_age", "senior"], "desc": "첫 독립! 작지만 소중한 내 공간" },
+    { "id": "villa",      "name": "빌라",        "icon": "🏘️", "price": 700,  "value": 770,  "capacity": 1,    "eras": ["young", "middle_age", "senior"], "desc": "골목 안 아늑한 투룸 빌라" },
+    { "id": "apartment",  "name": "아파트",      "icon": "🏙️", "price": 1200, "value": 1320, "capacity": null, "eras": ["young", "middle_age", "senior"], "desc": "여러 명이 살 수 있는 국민 평형 · 청약 당첨이면 할인!" },
+    { "id": "hanok",      "name": "한옥",        "icon": "🏯", "price": 1800, "value": 1980, "capacity": 1,    "eras": ["young", "middle_age", "senior"], "desc": "마당 있는 전통 한옥, 운치 만점" },
+    { "id": "penthouse",  "name": "펜트하우스",  "icon": "🌆", "price": 3000, "value": 3300, "capacity": 1,    "eras": ["young", "middle_age", "senior"], "desc": "한강 뷰 꼭대기 층, 성공의 상징" },
     { "id": "jeju_villa", "name": "제주 별장",   "icon": "🏝️", "price": 1500, "value": 2500, "capacity": 1,    "eras": ["young", "middle_age", "senior"], "lucky": true, "desc": "골드 매물! 바다가 보이는 제주 별장 (자산가치가 구매가보다 높아요)" }
   ],
   "listings": 3,

@@ -9,7 +9,7 @@ import { PART_TIME_ID, paySalary, resolveJobTile } from './jobs.js';
 import { effectsFor } from './news.js';
 import { PROMPTS, openPrompt, promptComplete, registerPrompts, resolvePrompt } from './prompts.js';
 import { applyLoss, cardDef, gainCard, guardStats, resolveCardTile, resolveShopTile, tryAmulet } from './cards.js';
-import { blindDate, resolveHeartTile } from './family.js';
+import { loveRouteChosen, resolveHeartTile } from './family.js';
 import { resolveHouseTile } from './houses.js';
 
 export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
@@ -39,7 +39,7 @@ registerPrompts({
       c.routeHistory.push({ era: era.id, route: key, completed: false });
       emit(tx, 'routeChosen', { charId: c.id, era: era.id, route: key, tone: r.tone, emotion: 'joy' });
       addLog(tx, `${r.icon} ${josa(c.name, '은/는')} ${era.name} 시대에 「${r.name}」 루트를 선택!`, { tone: r.tone, charId: c.id });
-      if (key === 'love') blindDate(tx, c); // Stage 8: 소개팅 when single
+      if (key === 'love') loveRouteChosen(tx, c); // Stage 8: 소개팅 when single, affection + when dating
     },
   },
 

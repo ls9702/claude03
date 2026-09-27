@@ -242,6 +242,36 @@ export function blindDate(tx, c) {
   return partner;
 }
 
+/**
+ * 연애 루트 선택: a single character meets someone at once (소개팅), a dating one gets `affection.loveRoute` (the couple
+ * commits to the love route). @returns the partner or null
+ */
+export function loveRouteChosen(tx, c) {
+  ensureFamily(c);
+  if (c.spouse || c.finished) return null;
+  if (!c.love.partner) return blindDate(tx, c);
+  const aff = cfgOf(tx.data).affection ?? {};
+  if (aff.loveRoute) {
+    c.love.affection = Math.min(aff.max ?? 100, (c.love.affection ?? 0) + aff.loveRoute);
+    addLog(tx, `💕 ${josa(c.name, '과/와')} ${c.love.partner.name}, 연애 루트에서 사랑이 깊어진다 (호감도 ${c.love.affection})`, { tone: 'love', charId: c.id, emotion: 'love' });
+  }
+  return c.love.partner;
+}
+
+/**
+ * Turn epilogue (growth.lifeStep): a dating couple whose affection reached `proposeAt` in a propose era gets ONE
+ * 프로포즈 prompt per era (`love.askedEra`), even without a heart tile. @returns true when a prompt opened
+ */
+export function proposeStep(tx, c) {
+  if (!c || c.finished) return false;
+  ensureFamily(c);
+  const cfg = cfgOf(tx.data);
+  if (!c.love.partner || c.spouse || c.love.askedEra === c.era) return false;
+  if ((c.love.affection ?? 0) < (cfg.affection?.proposeAt ?? 50) || !inEra(cfg.propose?.eras, c.era)) return false;
+  openPrompt(tx, 'propose', c);
+  return true;
+}
+
 /** 프로포즈 성공 확률. */
 export function proposeChance(c, data) {
   const cfg = cfgOf(data);
@@ -404,20 +434,37 @@ function growChild(tx, c, child) {
   return child;
 }
 
-/** Parent entered a new era: every child grows one step, then a married parent rolls for a birth (birth eras). */
+/**
+ * A character entered a new era: employed children send 용돈 (`allowance.eras`), every child grows one step, a dating
+ * couple's affection deepens (`affection.eraGain`), and a married parent rolls for a birth (birth eras).
+ */
 export function growChildrenOnEra(tx, c) {
   ensureFamily(c);
+  const cfg = cfgOf(tx.data);
+  if (cfg.children?.allowanceOnEra !== false) payAllowances(tx, c);
   for (const child of c.children ?? []) growChild(tx, c, child);
+  const aff = cfg.affection ?? {};
+  if (c.love.partner && !c.spouse && aff.eraGain) c.love.affection = Math.min(aff.max ?? 100, (c.love.affection ?? 0) + aff.eraGain);
   if (c.spouse) tryBirth(tx, c);
 }
 
-/** Per parent spin: count up; a child grows after `growTurns` spins without a step. */
+/**
+ * Per parent spin: count up; a child grows after `growTurns` spins without a step. A married parent also rolls
+ * `birthChance × birth.perSpin` for a birth.
+ */
 export function growChildrenOnSpin(tx, c) {
-  const every = cfgOf(tx.data).children?.growTurns ?? 2;
+  ensureFamily(c);
+  const cfg = cfgOf(tx.data);
+  const every = cfg.children?.growTurns ?? 2;
   for (const child of c.children ?? []) {
     if ((child.growth ?? 0) >= GROWTH_STEPS.length) continue;
     child.turns = (child.turns ?? 0) + 1;
     if (child.turns >= every) growChild(tx, c, child);
+  }
+  const per = cfg.birth?.perSpin ?? 0;
+  if (c.spouse && per > 0) {
+    const p = birthChance(c, tx.data) * per;
+    if (p > 0 && tx.rng.next() < p) bearChild(tx, c);
   }
 }
 
@@ -575,6 +622,7 @@ registerPrompts({
       const partner = c.love.partner;
       const chance = proposeChance(c, tx.data);
       const steady = cfgOf(tx.data).affection?.steadyGain ?? 10;
+      c.love.askedEra = c.era; // at most one epilogue proposal per era (heart tiles may still ask again)
       return {
         forCharacterIds: [c.id],
         title: '💍 프로포즈',

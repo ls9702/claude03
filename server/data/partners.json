@@ -7,10 +7,10 @@
     "luck":  { "name": "운형",   "icon": "🍀", "desc": "즉흥 여행·놀이공원파", "weight": 1 }
   },
   "stars": {
-    "1": { "salary": 60,  "allowanceMult": 1,   "weight": 4 },
-    "2": { "salary": 100, "allowanceMult": 1.3, "weight": 3 },
-    "3": { "salary": 150, "allowanceMult": 1.6, "weight": 2 },
-    "4": { "salary": 200, "allowanceMult": 2,   "weight": 1 }
+    "1": { "salary": 190, "allowanceMult": 1,   "weight": 4 },
+    "2": { "salary": 270, "allowanceMult": 1.3, "weight": 3 },
+    "3": { "salary": 370, "allowanceMult": 1.6, "weight": 2 },
+    "4": { "salary": 500, "allowanceMult": 2,   "weight": 1 }
   },
   "names": {
     "boy":  ["민호", "준서", "도윤", "시우", "하준", "지호", "현우", "태윤", "건우", "우진", "선우", "서진", "민재", "유찬", "은호", "지환", "정우", "승민", "재원", "동현", "태오", "로운", "시헌", "한결"],
@@ -21,16 +21,18 @@
     "_comment": "만남 meet (+찰떡궁합 matchBonus), 데이트 dates[].gain (+성향 일치 matchBonus), proposeAt 이상 & 청년 이후면 하트 칸에서 프로포즈. 실패 시 failDrop 감소, steadyGain = '조금 더 사귀기'. 기혼자 하트 칸(출산 없음)은 familyGain.",
     "meet": 30,
     "dateGain": 20,
-    "matchBonus": 10,
-    "proposeAt": 50,
+    "matchBonus": 8,
+    "proposeAt": 60,
     "max": 100,
     "failDrop": 15,
     "steadyGain": 10,
-    "familyGain": 10
+    "familyGain": 10,
+    "eraGain": 5,
+    "loveRoute": 30
   },
   "propose": {
     "_comment": "성공 확률 = base + (호감도 − proposeAt) × perAffection + 매력 × charm + 운 × luck (+찰떡궁합 match), [min, max].",
-    "base": 0.4,
+    "base": 0.45,
     "perAffection": 0.01,
     "charm": 0.04,
     "luck": 0.02,
@@ -41,10 +43,10 @@
   },
   "dates": [
     { "id": "walk",      "name": "동네 산책",       "icon": "🚶", "trait": null,    "cost": 0,  "gain": 5 },
-    { "id": "library",   "name": "도서관 데이트",   "icon": "📚", "trait": "int",   "cost": 10, "gain": 20 },
-    { "id": "hiking",    "name": "등산 데이트",     "icon": "⛰️", "trait": "str",   "cost": 10, "gain": 20 },
-    { "id": "concert",   "name": "콘서트 데이트",   "icon": "🎤", "trait": "charm", "cost": 20, "gain": 25 },
-    { "id": "amusement", "name": "놀이공원 데이트", "icon": "🎢", "trait": "luck",  "cost": 20, "gain": 25 }
+    { "id": "library",   "name": "도서관 데이트",   "icon": "📚", "trait": "int",   "cost": 10, "gain": 12 },
+    { "id": "hiking",    "name": "등산 데이트",     "icon": "⛰️", "trait": "str",   "cost": 10, "gain": 12 },
+    { "id": "concert",   "name": "콘서트 데이트",   "icon": "🎤", "trait": "charm", "cost": 20, "gain": 16 },
+    { "id": "amusement", "name": "놀이공원 데이트", "icon": "🎢", "trait": "luck",  "cost": 20, "gain": 16 }
   ],
   "costs": {
     "_comment": "시대별 금액 배수(scale) + 결혼식 비용·축의금(1인당, 현금 한도) + 출산 비용.",
@@ -56,8 +58,9 @@
   "birth": {
     "_comment": "기혼자가 하트 칸에 서면 출산 판정: base + 호감도 × perAffection − 자녀 수 × perChild ∈ [0, max]. 출산장려금 = 뉴스 birthBonus.",
     "eras": ["young", "middle_age"],
-    "base": 0.5,
+    "base": 0.6,
     "perAffection": 0.004,
+    "perSpin": 0.3,
     "perChild": 0.1,
     "max": 0.85
   },
@@ -65,11 +68,11 @@
     "_comment": "최대 max명. 성향 = 50% 배우자 성향 / 50% 내 최고 능력치. 천재 확률 = genius.base (+ 배우자 성향이 내 최고 능력치와 같으면 genius.match) + 운 × genius.luck. 성장: 부모가 새 시대에 들어설 때마다 + 부모 룰렛 growTurns번마다 한 단계 (돌잔치 → 입학 → 수능 → 취업). 용돈 = allowance × 재능 배수 × 배우자 ★ allowanceMult × 시대 배수(급여 칸마다).",
     "max": 4,
     "genius": { "base": 0.15, "match": 0.25, "luck": 0.01 },
-    "growTurns": 2,
+    "growTurns": 1,
     "dolGift": 10,
     "schoolCost": 40,
     "examGift": { "genius": 100, "college": 30, "collegeChance": 0.5 },
-    "allowance": 50,
+    "allowance": 70,
     "talentMult": { "genius": 2, "normal": 1 }
   },
   "outings": [
