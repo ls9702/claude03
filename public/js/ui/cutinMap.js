@@ -92,7 +92,7 @@ export const ANCHOR_CARDS = new Set(['pledge']);
 export const STAGE7_LONE = new Set(['cardGained', 'gift', 'tradeResolved', 'cardUsed']);
 
 /** `cardUsed` that is a cut-in anchor: sabotage (has a target) or 공약, or flagged by the server. */
-export const isCardAnchor = (e) => e?.type === 'cardUsed' && (!!e.targetId || ANCHOR_CARDS.has(e.cardId));
+export const isCardAnchor = (e) => e?.type === 'cardUsed' && !e.auto && (e.cardKind === 'sabotage' || !!e.targetId || ANCHOR_CARDS.has(e.cardId));
 const isAnchor = (e) => !!e && e.type !== 'prompt' && (e.cutin || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || isCardAnchor(e));
 
 /** Follow-ups stop at these (they start their own step / group). */

@@ -137,18 +137,17 @@ export function cardPlayability(room, character, card, { meta = null, spectator 
 }
 
 /**
- * Sabotage targets: every other unfinished character; valid when it is in the same era or further ahead and not
- * the attacker's previous target (`attacker.lastTargetId` / `target.lastTargetedBy`).
+ * Sabotage targets: every other unfinished character; not valid when this attacker already targeted it this round
+ * or the previous one (`target.lastTargetedBy = {attackerId: round}`, the server's rule).
  * @returns {{char: object, valid: boolean, reason: string|null}[]}
  */
 export function sabotageTargets(room, attacker) {
-  const eraOf = (c) => Number(c?.position?.eraIndex ?? 0);
+  const round = Number(room?.turn?.round);
   return (room?.characters ?? [])
     .filter((c) => c.id !== attacker?.id && !c.finished)
     .map((c) => {
-      let reason = null;
-      if (eraOf(c) < eraOf(attacker)) reason = '나보다 앞 시대(뒤처진) 캐릭터는 노릴 수 없어요.';
-      else if (c.lastTargetedBy === attacker?.id || (attacker?.lastTargetId && attacker.lastTargetId === c.id)) reason = '같은 상대를 연속으로 노릴 수 없어요.';
+      const last = isObj(c.lastTargetedBy) ? Number(c.lastTargetedBy[attacker?.id]) : NaN;
+      const reason = Number.isFinite(last) && Number.isFinite(round) && last >= round - 1 ? '같은 캐릭터를 연달아 노릴 수 없어요.' : null;
       return { char: c, valid: !reason, reason };
     })
     .sort((a, b) => Number(b.valid) - Number(a.valid));

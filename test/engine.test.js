@@ -80,7 +80,12 @@ test('spin rolls 1..10 and moves exactly that many tiles (real rng)', () => {
     assert.equal(moved.path.length, spun.value);
     assert.equal(ch(r.room, id).position.index, from + spun.value);
     room = r.room;
-    if (room.turn.pending) break;
+    // answer tile prompts (habit / shop…) with their default so the spins continue
+    while (room.turn.pending) {
+      const p = room.turn.pending;
+      const who = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
+      room = applyAction(room, { type: 'choose', characterId: who, promptId: p.promptId, optionId: p.defaultOptionId }, { now: i }).room;
+    }
     if (ch(room, id).position.index > 25) break;
   }
   assert.ok(seen.size >= 5);

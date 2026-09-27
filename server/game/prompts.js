@@ -1,6 +1,6 @@
 // Prompt registry + lifecycle (single- and multi-character decisions). Prompt kinds are registered by the
 // modules that own them (spaces.js: routeChoice/groupGift, growth.js: habit/exam/career/military, jobs.js:
-// jobOffer/jobTile/hiddenJobOffer) so they can share `openPrompt` without import cycles.
+// jobOffer/jobTile/hiddenJobOffer, cards.js: shop, holidays.js: holiday) so they can share `openPrompt` without import cycles.
 import { charById, emit, turnTimeoutMs } from './effects.js';
 
 /**
@@ -21,6 +21,8 @@ export function registerPrompts(defs) {
 export const ANCHOR_TYPES = new Set([
   'landed', 'eraChanged', 'routeChosen', 'finished', 'prompt', 'promptResolved', 'gameOver', 'jobChanged', 'rankUp',
   'injured', 'hiddenJobUnlocked', 'newsFlash', 'militaryStart', 'educationChanged',
+  // Stage 7
+  'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw',
 ]);
 
 /** Open a prompt → turn.pending, phase awaitDecision; CPU characters answer the default at once. */

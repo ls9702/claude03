@@ -4,12 +4,17 @@
 //
 // Lines are picked with a sub-RNG seeded from the engine RNG state + event index, so every client shows the
 // same text without consuming the gameplay RNG stream (existing seeds keep their outcomes).
-import { getBoardData, getEvents, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
+import { getBoardData, getCards, getEvents, getItems, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
 import { createRng } from './rng.js';
 import { MC_FREQUENCIES } from './config.js';
 
 export const TONES = ['love', 'career', 'treasure', 'good', 'bad', 'holiday', 'result', 'neutral'];
-export const SCENES = ['school', 'mountain-trail', 'wedding-hall', 'office', 'hospital', 'none'];
+export const SCENES = [
+  'school', 'mountain-trail', 'wedding-hall', 'office', 'hospital',
+  // Stage 7 (bg assets may still be todo → the client draws tones.json `sceneFallbacks`)
+  'stage', 'stadium', 'gym', 'army', 'campus', 'kitchen', 'police', 'lab', 'space', 'shop', 'holiday',
+  'none',
+];
 export const EMOTIONS = ['joy', 'cry', 'angry', 'sweat', 'love', 'shock', 'neutral'];
 
 /** Every event type the engine emits (tests assert each one gets a full presentation). */
@@ -19,33 +24,45 @@ export const EVENT_TYPES = [
   // Stage 6 — stats, careers, jobs
   'statChanged', 'jobChanged', 'rankUp', 'salary', 'injured', 'hiddenJobUnlocked', 'newsFlash', 'militaryStart',
   'militaryEnd', 'educationChanged',
+  // Stage 7 — cards, items, interaction
+  'cardGained', 'cardUsed', 'cardBlocked', 'itemBought', 'tradeOffered', 'tradeResolved', 'gift', 'holidayStarted',
+  'holidayResult', 'lottoDraw',
 ];
 
 /** Types that always get a full cut-in (landed only for `tones.cutinTiles`). statChanged / salary / militaryEnd are chips. */
 export const CUTIN_TYPES = new Set([
   'eraChanged', 'routeChosen', 'finished', 'gameOver', 'prompt', 'promptResolved',
   'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'educationChanged',
+  // Stage 7 (cardUsed only for sabotage / 공약 — see isCutinCardUse)
+  'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw',
 ]);
+
+/** Stage 7: a card use that gets a full cut-in (sabotage / 공약); passive triggers and self cards are chips. */
+export const isCutinCardUse = (ev) => ev?.type === 'cardUsed' && !ev.auto && (ev.cardKind === 'sabotage' || ev.cardId === 'pledge');
 
 /** Events whose follow-ups (money, stats, logs) belong to them; the scan for followers stops at the next one. */
 const BOUNDARY = new Set([
   'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
   'promptResolved', 'gameOver', 'betPlaced',
   'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged',
+  'cardBlocked', 'itemBought', 'tradeOffered', 'tradeResolved', 'gift', 'holidayStarted', 'holidayResult', 'lottoDraw',
 ]);
+/** Boundary test (Stage 7: an anchored card use is a boundary, a passive trigger / self card is a follow-up). */
+export const isBoundary = (ev) => BOUNDARY.has(ev.type) || isCutinCardUse(ev);
 
 const PROMPT_TONES = {
   routeChoice: 'good', exam: 'career', groupGift: 'holiday', habit: 'good', career: 'career', military: 'neutral',
-  jobOffer: 'career', jobTile: 'career', hiddenJobOffer: 'result',
+  jobOffer: 'career', jobTile: 'career', hiddenJobOffer: 'result', shop: 'treasure', holiday: 'holiday',
 };
 const PROMPT_TAGS = {
   routeChoice: 'route_choice', exam: 'exam', groupGift: 'gift', habit: 'habit', career: 'career', military: 'military',
-  jobOffer: 'job_offer', jobTile: 'job', hiddenJobOffer: 'hidden_job',
+  jobOffer: 'job_offer', jobTile: 'job', hiddenJobOffer: 'hidden_job', shop: 'shop', holiday: 'holiday',
 };
 const PROMPT_EMOTIONS = {
   exam: 'sweat', groupGift: 'love', routeChoice: 'joy', habit: 'joy', career: 'sweat', military: 'sweat', jobOffer: 'joy',
-  jobTile: 'neutral', hiddenJobOffer: 'shock',
+  jobTile: 'neutral', hiddenJobOffer: 'shock', shop: 'joy', holiday: 'joy',
 };
+const PROMPT_SCENES = { shop: 'shop', holiday: 'holiday' };
 const JOB_TAGS = { hire: 'hire', change: 'job_change', hidden: 'hidden_job', parttime: 'parttime' };
 const JOB_TILE_TAGS = { failed: 'job_fail', blocked: 'injury', overtime: 'overtime', bonus: 'salary', noBonus: 'job_fail', promoted: 'promotion', changed: 'job_change' };
 const EXAM_TAGS = { elite: 'exam_elite', college: 'exam_college', fail: 'exam_fail' };
@@ -58,6 +75,9 @@ function jobOf(data, id) {
   if (id === jobs.partTime?.id) return jobs.partTime;
   return jobs.jobs?.find((j) => j.id === id) ?? null;
 }
+const cardName = (data, id) => (data?.cards ?? getCards()).cards?.find((k) => k.id === id)?.name ?? '';
+const itemName = (data, id) => (data?.items ?? getItems()).items?.find((i) => i.id === id)?.name ?? '';
+const holidayName = (data, kind) => data?.holidays?.names?.[kind] ?? { seol: '설날', chuseok: '추석' }[kind] ?? '';
 const eventOf = (data, id) => (id ? (data?.events ?? getEvents()).events?.find((e) => e.id === id) ?? null : null);
 const newsOf = (data, id) => (id ? (data?.news ?? getNews()).news?.find((n) => n.id === id) ?? null : null);
 const TONE_EMOTION = { good: 'joy', bad: 'cry', love: 'love', result: 'joy', treasure: 'joy', holiday: 'joy', career: 'joy', neutral: 'neutral' };
@@ -108,7 +128,7 @@ function wonText(n) {
 export function followersOf(events, i) {
   const out = [];
   for (let j = i + 1; j < events.length; j++) {
-    if (BOUNDARY.has(events[j].type)) return { list: out, next: events[j] };
+    if (isBoundary(events[j])) return { list: out, next: events[j] };
     out.push(events[j]);
   }
   return { list: out, next: null };
@@ -153,11 +173,15 @@ function moneyTag(delta, debt) {
 export function presentationFor(ev, ctx) {
   const { tones, room } = ctx;
   const chars = room?.characters ?? [];
-  const charId = ev.charId ?? ev.results?.[0]?.charId ?? null;
+  const charId = ev.charId ?? ev.fromId ?? ev.results?.[0]?.charId ?? ev.entries?.[0]?.charId ?? null;
   const c = charId ? chars.find((x) => x.id === charId) : null;
   const era = ev.type === 'eraChanged' ? ev.era : charId ? ctx.eraOf?.(charId) ?? c?.era ?? null : null;
   const eraName = (id) => room?.board?.eras?.find((e) => e.id === id)?.name ?? ctx.data?.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
-  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '' };
+  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '' };
+  const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
+  if (ev.targetId || ev.toId) vars.target = nameOf(ev.targetId ?? ev.toId);
+  if (ev.cardId) vars.card = cardName(ctx.data, ev.cardId);
+  if (ev.itemId) vars.item = itemName(ctx.data, ev.itemId);
   const jobDef = ev.jobId ? jobOf(ctx.data, ev.jobId) : null;
   if (jobDef) vars.job = jobDef.name;
   let tone = explicitTone(ev, tones);
@@ -256,6 +280,7 @@ export function presentationFor(ev, ctx) {
       tag = PROMPT_TAGS[ev.kind] ?? 'prompt_wait';
       tone ??= PROMPT_TONES[ev.kind] ?? 'neutral';
       emotion ??= PROMPT_EMOTIONS[ev.kind] ?? null;
+      scene = PROMPT_SCENES[ev.kind] ?? null;
       break;
     case 'promptResolved': {
       const { list } = followersOf(ctx.events, ctx.index);
@@ -280,6 +305,12 @@ export function presentationFor(ev, ctx) {
         emotion ??= ['failed', 'noBonus'].includes(ev.result) ? 'sweat' : ev.result === 'blocked' ? 'cry' : ev.result === 'overtime' ? 'sweat' : 'joy';
         if (o.delta) vars.amount = wonText(o.delta);
         if (c?.job) vars.job = jobOf(ctx.data, c.job.id)?.name ?? '';
+      } else if (ev.kind === 'shop') {
+        tag = ev.result === 'card' ? 'shop_buy' : 'shop';
+        tone ??= 'treasure';
+        emotion ??= ev.result === 'card' ? 'joy' : ev.result === 'noMoney' ? 'sweat' : 'neutral';
+        if (ev.cardId) vars.item = cardName(ctx.data, ev.cardId);
+        scene = 'shop';
       } else if (ev.kind === 'groupGift') {
         const g = outcome(list, charId);
         tag = g.gifts ? 'gift' : 'gift_none';
@@ -358,8 +389,84 @@ export function presentationFor(ev, ctx) {
       tag = 'graduation';
       tone ??= 'good';
       emotion ??= 'joy';
-      scene = 'school';
+      scene = 'campus';
       break;
+    // ---------- Stage 7 ----------
+    case 'cardGained':
+      tag = 'card';
+      tone ??= 'good';
+      emotion ??= 'joy';
+      break;
+    case 'cardUsed':
+      cutin = isCutinCardUse(ev);
+      if (ev.cardKind === 'sabotage' && !ev.auto) {
+        tag = 'sabotage';
+        tone ??= 'bad';
+        emotion ??= 'angry';
+      } else {
+        tag = 'card_use';
+        tone ??= 'good';
+        emotion ??= 'joy';
+      }
+      break;
+    case 'cardBlocked':
+      tag = 'blocked';
+      tone ??= 'good';
+      emotion ??= 'shock';
+      break;
+    case 'itemBought':
+      tag = 'shop_buy';
+      tone ??= 'treasure';
+      emotion ??= 'joy';
+      scene = 'shop';
+      if (ev.price) vars.amount = wonText(ev.price);
+      break;
+    case 'tradeOffered':
+      tag = 'trade';
+      tone ??= 'neutral';
+      break;
+    case 'tradeResolved':
+      tag = 'trade';
+      tone ??= ev.status === 'accepted' ? 'good' : 'neutral';
+      emotion ??= ev.status === 'accepted' ? 'joy' : ev.status === 'rejected' ? 'sweat' : 'neutral';
+      break;
+    case 'gift':
+      tag = 'gift_send';
+      tone ??= 'love';
+      emotion ??= 'love';
+      if (ev.money) vars.amount = wonText(ev.money);
+      break;
+    case 'holidayStarted':
+      tag = 'holiday';
+      tone = 'holiday';
+      emotion ??= 'joy';
+      scene = 'holiday';
+      vars.holiday = ev.name ?? holidayName(ctx.data, ev.kind);
+      break;
+    case 'holidayResult': {
+      const win = (ev.results ?? []).filter((r) => r.won > 0).sort((a, b) => b.won - a.won)[0];
+      const sebae = (ev.results ?? []).find((r) => r.sebae > 0);
+      const who = win ?? sebae ?? ev.results?.[0];
+      vars.name = nameOf(who?.charId);
+      vars.holiday = ev.name ?? holidayName(ctx.data, ev.kind);
+      tag = win ? 'gostop_win' : sebae ? 'holiday_sebae' : 'holiday_nagging';
+      if (win) vars.amount = wonText(win.won);
+      else if (sebae) vars.amount = wonText(sebae.sebae);
+      tone = 'holiday';
+      emotion ??= 'joy';
+      scene = 'holiday';
+      break;
+    }
+    case 'lottoDraw': {
+      const best = [...(ev.entries ?? [])].sort((a, b) => (b.prize ?? 0) - (a.prize ?? 0))[0];
+      vars.name = nameOf(best?.charId);
+      tag = best?.prize > 0 ? 'lotto_win' : 'lotto_lose';
+      if (best?.prize > 0) vars.amount = wonText(best.prize);
+      tone ??= best?.prize > 0 ? 'treasure' : 'neutral';
+      emotion ??= best?.prize > 0 ? 'joy' : 'sweat';
+      scene = 'shop';
+      break;
+    }
     case 'gameOver': {
       tag = 'game_over';
       tone ??= 'result';
@@ -421,6 +528,7 @@ export function decorateEvents(events, { room, data = {}, seed = 0 } = {}) {
     ev.line = pickLine(lines, p.tag, hashSeed(seed, turnNo, index, ev.type), p.vars);
     ev.cutin = p.cutin;
     if (p.tag) ev.lineTag = p.tag;
+    decorateRows(ev, { lines, room, data, seed: hashSeed(seed, turnNo, index, ev.type), vars: p.vars });
     const pending = room?.turn?.pending;
     if (ev.type === 'prompt' && pending && pending.promptId === ev.promptId) {
       Object.assign(pending, { tone: ev.tone, emotion: ev.emotion, scene: ev.scene, line: ev.line, cutin: true });
@@ -428,6 +536,33 @@ export function decorateEvents(events, { room, data = {}, seed = 0 } = {}) {
   });
   attachMc(events, { room, data, seed, lines });
   return events;
+}
+
+/**
+ * Stage 7 extras: per-character lines for group results (holidayResult rows, lottoDraw entries) and the
+ * victim's reaction (`targetLine`, pool `sabotaged`) on a sabotage card use. Same sub-RNG scheme as `line`.
+ */
+function decorateRows(ev, { lines, room, data, seed, vars }) {
+  const nameOf = (id) => room?.characters?.find((x) => x.id === id)?.name ?? '';
+  if (ev.type === 'cardUsed' && ev.cardKind === 'sabotage' && !ev.auto && ev.targetId) {
+    ev.targetLine = pickLine(lines, 'sabotaged', hashSeed(seed, 'target'), { ...vars, name: nameOf(ev.charId), target: nameOf(ev.targetId) });
+  }
+  if (ev.type === 'holidayResult') {
+    for (const r of ev.results ?? []) {
+      const tag = r.won > 0 ? 'gostop_win' : r.won < 0 ? 'gostop_lose' : r.sebae > 0 ? 'holiday_sebae' : 'holiday_nagging';
+      const amount = r.won > 0 ? wonText(r.won) : r.sebae > 0 ? wonText(r.sebae) : '';
+      r.lineTag = tag;
+      r.line = pickLine(lines, tag, hashSeed(seed, r.charId), { ...vars, name: nameOf(r.charId), amount });
+    }
+  }
+  if (ev.type === 'lottoDraw') {
+    for (const e of ev.entries ?? []) {
+      const tag = e.prize > 0 ? 'lotto_win' : 'lotto_lose';
+      e.lineTag = tag;
+      e.line = pickLine(lines, tag, hashSeed(seed, e.charId), { ...vars, name: nameOf(e.charId), amount: e.prize > 0 ? wonText(e.prize) : '' });
+    }
+  }
+  return data;
 }
 
 // ---------- MC NPCs (Stage 5.6): 호야 & 봄이 ----------
@@ -481,10 +616,11 @@ export function mcFrequencyOf(room) {
 }
 
 /** Which MC situation an event is (null = MCs stay quiet). Pure; `state` is read, not written. */
-export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {}, jobs = getJobs() }) {
+export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {}, jobs = getJobs(), cards = getCards(), items = getItems() }) {
   const chars = room?.characters ?? [];
   const c = ev.charId ? chars.find((x) => x.id === ev.charId) : null;
-  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '' };
+  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '' };
+  const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.jobId) vars.job = (ev.jobId === jobs.partTime?.id ? jobs.partTime : jobs.jobs?.find((j) => j.id === ev.jobId))?.name ?? '';
   const big = mc?.bigAmount ?? BIG_GAIN;
   const money = (delta, debt) => {
@@ -578,6 +714,40 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
     case 'gameOver':
       key = 'resultIntro';
       break;
+    // Stage 7
+    case 'cardUsed':
+      if (ev.cardKind === 'sabotage' && !ev.auto) {
+        key = 'sabotage';
+        vars.target = nameOf(ev.targetId);
+        vars.card = (cards?.cards ?? []).find((k) => k.id === ev.cardId)?.name ?? '';
+      }
+      break;
+    case 'cardBlocked':
+      key = 'blocked';
+      vars.target = nameOf(ev.targetId);
+      vars.card = (cards?.cards ?? []).find((k) => k.id === ev.cardId)?.name ?? '';
+      break;
+    case 'itemBought':
+      key = 'shopping';
+      vars.item = (items?.items ?? []).find((i) => i.id === ev.itemId)?.name ?? '';
+      break;
+    case 'holidayStarted':
+      key = 'holiday';
+      vars.holiday = ev.name ?? '';
+      studio = true;
+      break;
+    case 'lottoDraw': {
+      key = 'lotto';
+      const best = [...(ev.entries ?? [])].sort((a, b) => (b.prize ?? 0) - (a.prize ?? 0))[0];
+      vars.name = nameOf(best?.charId);
+      studio = true;
+      break;
+    }
+    case 'gift':
+      key = 'gift';
+      vars.name = nameOf(ev.fromId);
+      vars.target = nameOf(ev.toId);
+      break;
     default:
       break;
   }
@@ -619,7 +789,7 @@ export function attachMc(events, { room, data = {}, seed = 0, lines = data.lines
   const eraName = (id) => room.board?.eras?.find((e) => e.id === id)?.name ?? data.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
   const placeholders = (data.board ?? getBoardData()).placeholders ?? {};
   events.forEach((ev, index) => {
-    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders, jobs });
+    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders, jobs, cards: data.cards ?? getCards(), items: data.items ?? getItems() });
     if (!sit) return;
     const rng = createRng(hashSeed(seed, turnNo, index, ev.type, 'mc'));
     if (sit.weight !== 'big') {

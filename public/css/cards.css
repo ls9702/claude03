@@ -20,11 +20,11 @@
   padding: 0 5px; border-radius: 999px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 button.cardf.can:hover, button.cardf.can:focus-visible { transform: translateY(-4px); outline: none; filter: brightness(1.05); }
-button.cardf.can { animation: cf-ready 1.6s ease-in-out infinite; }
+button.cardf.can .cf-frame { animation: cf-ready 1.6s ease-in-out infinite; }
 button.cardf.dim { opacity: 0.62; filter: saturate(0.6); }
 button.cardf.dim:hover { opacity: 0.85; }
 button.cardf:focus-visible { outline: 3px solid rgba(255, 122, 47, 0.55); outline-offset: 2px; }
-@keyframes cf-ready { 50% { transform: translateY(-2px); } }
+@keyframes cf-ready { 50% { filter: drop-shadow(0 0 5px rgba(255, 196, 0, 0.95)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18)); } }
 .cardf.big { --cw: 104px; cursor: default; }
 .cardf.mini { --cw: 50px; }
 .cardf.mini.on { transform: translateY(-3px); filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 4px #ff7a2f); }
@@ -252,7 +252,7 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
   .hw-in { transition: none; }
   .ci-hwrow .hw-in { transform: rotateY(180deg); }
   .ci-hw-k { opacity: 1; }
-  button.cardf.can { animation: none; }
+  button.cardf.can .cf-frame { animation: none; }
 }
 
 /* ---------- 390 px top bar: one line (title shrinks to the dice, room code + 나가기 stay) ---------- */
@@ -266,4 +266,21 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
 }
 @media (max-width: 360px) {
   .logo .logo-t { display: none; }
+}
+
+/* ---------- spin dock with a hand: wide screens put the hand beside the spin button (short sticky dock) ---------- */
+@media (min-width: 700px) {
+  .spin-dock:has(.hand:not([hidden])) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 36%); gap: 4px 16px; align-items: center; }
+  .spin-dock:has(.hand:not([hidden])) .hand { margin: 0; padding: 0 16px 0 0; border-bottom: 0; border-right: 1px dashed var(--line); }
+  .spin-dock:has(.hand:not([hidden])) .hand-head { flex-wrap: nowrap; margin-bottom: 2px; }
+  .spin-dock:has(.hand:not([hidden])) .hand-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spin-dock:has(.hand:not([hidden])) .hand-row .cardf { --cw: 56px; }
+}
+/* phones: while the dock is sticky (my turn) the hand shrinks to one short row */
+@media (max-width: 699px) {
+  .spin-dock.can-spin .hand { margin-bottom: 6px; padding-bottom: 4px; }
+  .spin-dock.can-spin .hand-hint { display: none; }
+  .spin-dock.can-spin .hand-row { padding-top: 4px; }
+  .spin-dock.can-spin .hand-row .cardf { --cw: 44px; }
+  .spin-dock.can-spin .hand-row .cardf .cf-name { font-size: 8.5px; }
 }

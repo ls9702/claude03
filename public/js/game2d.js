@@ -746,15 +746,21 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (!hand.length) hint = '카드가 없어요 · 🃏 카드 칸이나 🛍️ 상점에서 얻어요';
     else if (myTurn && room.turn.cardUsed) hint = '✅ 이번 턴 카드 사용 완료';
     else if (myTurn && room.turn.phase === 'awaitSpin' && !room.turn.pending) hint = '룰렛 전에 1장 쓸 수 있어요 · 카드를 눌러 보세요';
-    else hint = '내 차례, 룰렛 전에 1장 쓸 수 있어요';
+    else hint = '내 차례에 룰렛을 돌리기 전 1장 쓸 수 있어요';
     const tabs =
       mine.length > 1 && !(cur?.isMe && !cur.finished)
         ? `<span class="hand-tabs" role="group" aria-label="손패 볼 캐릭터">${mine
             .map((c) => `<button type="button" class="hand-tab${c.id === who.id ? ' on' : ''}" data-hand-for="${esc(c.id)}" aria-pressed="${c.id === who.id}">${esc(c.name)}</button>`)
             .join('')}</span>`
         : '';
-    el.hand.innerHTML = `<div class="hand-head"><span class="hand-t">🃏 <b>${esc(who.name)}</b>의 손패 <small>${hand.length}/${lim}</small></span>${tabs}<span class="hand-hint">${esc(hint)}</span></div>
+    const html = `<div class="hand-head"><span class="hand-t">🃏 <b>${esc(who.name)}</b>의 손패 <small>${hand.length}/${lim}</small></span>${tabs}<span class="hand-hint">${esc(hint)}</span></div>
       <div class="hand-row" role="list">${cards}</div>`;
+    if (el.hand.dataset.html === html) return; // unchanged: keep the DOM (focus, scroll position, hover)
+    const scroll = el.hand.querySelector('.hand-row')?.scrollLeft ?? 0;
+    el.hand.innerHTML = html;
+    el.hand.dataset.html = html;
+    const row = el.hand.querySelector('.hand-row');
+    if (row && scroll) row.scrollLeft = scroll;
   }
 
   function openCardSheet(charId, uid) {

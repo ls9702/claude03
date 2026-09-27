@@ -45,7 +45,9 @@
     "hoesik": "office", "parttime": "office", "injury": "hospital", "military": "army", "military_end": "army",
     "graduation": "campus", "career": "school", "exam_elite": "school", "exam_college": "school",
     "habit": "school", "habit_int": "school", "habit_str": "school", "habit_charm": "school", "habit_luck": "school",
-    "goal": "mountain-trail", "goal_first": "mountain-trail", "game_over": "mountain-trail", "era_baby": "hospital"
+    "goal": "mountain-trail", "goal_first": "mountain-trail", "game_over": "mountain-trail", "era_baby": "hospital",
+    "shop": "shop", "shop_buy": "shop", "holiday": "holiday", "holiday_sebae": "holiday", "holiday_nagging": "holiday",
+    "gostop_win": "holiday", "gostop_lose": "holiday", "lotto_win": "shop", "lotto_lose": "shop", "blocked": "police"
   },
   "eventScenes": { "rain": "mountain-trail", "phone": "school", "lucky": "mountain-trail", "found_money": "school" },
   "cutinTiles": ["event", "heart", "job", "habit", "card", "shop", "treasure", "house", "stop"],
@@ -55,6 +57,8 @@
     "routeChosen": "fanfare", "finished": "fanfare", "gameOver": "fanfare", "bonusSpin": "coin", "betWin": "coin", "betLose": "thud",
     "prompt": "pop", "cry": "tears", "love": "heart", "reaction": "pop",
     "jobChanged": "fanfare", "rankUp": "fanfare", "salary": "coin", "injured": "thud", "hiddenJobUnlocked": "fanfare", "newsFlash": "whoosh",
-    "militaryStart": "thud", "militaryEnd": "fanfare", "educationChanged": "fanfare", "statUp": "pop", "statDown": "thud"
+    "militaryStart": "thud", "militaryEnd": "fanfare", "educationChanged": "fanfare", "statUp": "pop", "statDown": "thud",
+    "cardGained": "pop", "cardUsed": "whoosh", "sabotage": "thud", "cardBlocked": "fanfare", "itemBought": "coin", "tradeOffered": "pop",
+    "tradeResolved": "coin", "gift": "heart", "holidayStarted": "fanfare", "holidayResult": "coin", "lottoDraw": "fanfare"
   }
 }

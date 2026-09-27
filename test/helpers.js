@@ -21,6 +21,7 @@ export function makeRoom(overrides = {}) {
       startingMoney: 1000,
       allowCpu: false,
       turnOrder: 'family',
+      holidays: false, // Stage 7: pre-Stage-7 rule tests run without 명절 prompts (stage7 tests turn them on)
     },
     players: [],
     characters: [],
