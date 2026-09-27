@@ -13374,11 +13374,21 @@
         "chromaKey",
         "resize:1024x1024"
       ],
-      "status": "todo",
+      "status": "accepted",
       "candidates": 3,
       "meta": {
         "mc": "hoya",
         "pose": "mic"
+      },
+      "accepted": {
+        "file": "mc/hoya/pose-mic.png",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:38.580Z",
+        "acceptedAt": "2026-09-27T00:51:38.580Z",
+        "source": "upload",
+        "width": 1024,
+        "height": 1024
       }
     },
     {
@@ -13716,11 +13726,21 @@
         "chromaKey",
         "resize:1024x1024"
       ],
-      "status": "todo",
+      "status": "accepted",
       "candidates": 3,
       "meta": {
         "mc": "bomi",
         "pose": "wave"
+      },
+      "accepted": {
+        "file": "mc/bomi/pose-wave.png",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:38.061Z",
+        "acceptedAt": "2026-09-27T00:51:38.061Z",
+        "source": "upload",
+        "width": 1024,
+        "height": 1024
       }
     },
     {
@@ -13750,11 +13770,21 @@
         "chromaKey",
         "resize:1024x1024"
       ],
-      "status": "todo",
+      "status": "accepted",
       "candidates": 3,
       "meta": {
         "mc": "bomi",
         "pose": "clap"
+      },
+      "accepted": {
+        "file": "mc/bomi/pose-clap.png",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:36.853Z",
+        "acceptedAt": "2026-09-27T00:51:36.853Z",
+        "source": "upload",
+        "width": 1024,
+        "height": 1024
       }
     },
     {
@@ -13784,11 +13814,21 @@
         "chromaKey",
         "resize:1024x1024"
       ],
-      "status": "todo",
+      "status": "accepted",
       "candidates": 3,
       "meta": {
         "mc": "bomi",
         "pose": "mic"
+      },
+      "accepted": {
+        "file": "mc/bomi/pose-mic.png",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:37.415Z",
+        "acceptedAt": "2026-09-27T00:51:37.415Z",
+        "source": "upload",
+        "width": 1024,
+        "height": 1024
       }
     },
     {
@@ -13885,9 +13925,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "stage"
+      },
+      "accepted": {
+        "file": "bg/stage.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:36.296Z",
+        "acceptedAt": "2026-09-27T00:51:36.296Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -13908,9 +13958,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "stadium"
+      },
+      "accepted": {
+        "file": "bg/stadium.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:35.490Z",
+        "acceptedAt": "2026-09-27T00:51:35.490Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -13931,9 +13991,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "gym"
+      },
+      "accepted": {
+        "file": "bg/gym.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:34.747Z",
+        "acceptedAt": "2026-09-27T00:51:34.747Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -13954,9 +14024,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "army"
+      },
+      "accepted": {
+        "file": "bg/army.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:33.179Z",
+        "acceptedAt": "2026-09-27T00:51:33.179Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -13977,9 +14057,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "campus"
+      },
+      "accepted": {
+        "file": "bg/campus.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:51:34.003Z",
+        "acceptedAt": "2026-09-27T00:51:34.003Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
