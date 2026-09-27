@@ -711,7 +711,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const cur = currentChar();
     const turn = room.turn;
     // betting on another family's roulette only (the server refuses my own family's turn)
-    const mine = chars().filter((c) => c.isMe && c.ownerId !== cur?.ownerId);
+    const mine = chars().filter((c) => c.isMe && !c.finished && c.ownerId !== cur?.ownerId); // finished characters can't bet
     const open = room.status === 'playing' && !hold && cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0;
     el.bet.hidden = !open;
     if (!open) {
@@ -728,11 +728,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const slot = room.bets?.[turn.turnNo] ?? {};
     if (!mine.some((c) => c.id === ui.bet.bettor)) ui.bet.bettor = mine[0].id;
     const bettor = byId(ui.bet.bettor);
-    const maxAmt = Math.min(cfg.maxAmount, Math.floor(bettor.money));
+    const placed = slot[bettor.id];
+    // the stake is held at bet time → a replaced bet may use cash + the stake already placed
+    const held = placed && !placed.resolved && placed.staked ? Number(placed.amount) || 0 : 0;
+    const maxAmt = Math.min(cfg.maxAmount, Math.floor(bettor.money + held));
     const canAfford = maxAmt >= cfg.minAmount;
     if (ui.bet.amount == null || ui.bet.amount > maxAmt) ui.bet.amount = Math.max(cfg.minAmount, Math.min(10, maxAmt));
     if (ui.bet.amount < cfg.minAmount) ui.bet.amount = cfg.minAmount;
-    const placed = slot[bettor.id];
     const others = Object.entries(slot).filter(([id]) => !byId(id)?.isMe).length;
     const pickObj = PICKS.find((p) => p.pick === ui.bet.pick) ?? PICKS[0];
     // A4: rebuilt only when something shown changed (the slider / select keep focus and position otherwise;

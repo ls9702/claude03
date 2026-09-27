@@ -236,7 +236,7 @@ test('prompt options: meet candidates, date cost / ❤️, propose chance, house
   assert.match(dateHtml, /data-choose="date:x"[^>]*disabled/);
   assert.doesNotMatch(dateHtml, />🚶 동네 산책</);
   // propose: chance on the propose option only (steady carries chance 0)
-  const propP = { promptId: 'q3', kind: 'propose', charId: 'c1', options: [{ id: 'propose', label: '💍 프로포즈!', icon: '💍', chance: 0.62, desc: '성공 확률 약 62% · 성공하면 결혼식' }, { id: 'steady', label: '💕 조금 더 사귀기', icon: '💕', chance: 0 }] };
+  const propP = { promptId: 'q3', kind: 'propose', charId: 'c1', options: [{ id: 'propose', label: '💍 프러포즈!', icon: '💍', chance: 0.62, desc: '성공 확률 약 62% · 성공하면 결혼식' }, { id: 'steady', label: '💕 조금 더 사귀기', icon: '💕', chance: 0 }] };
   assert.deepEqual(proposeOptions(propP).map((x) => [x.propose, x.chance]), [[true, 62], [false, null]]);
   assert.equal(chancePct(0.5), 50);
   assert.equal(chancePct(75), 75);

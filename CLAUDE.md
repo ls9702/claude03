@@ -1227,3 +1227,72 @@
   떠나요…」, a second Back within 3 s leaves (the room stays saved → forward / return resumes); `pageshow` from the bfcache reopens the
   stream; leaving a room drops the guard entry.
 - Admin: 「시대 길이(칸)」 (was 시대별 턴 수) + 「총 N칸 · 예상 약 M분 (캐릭터 K명 기준)」 (19.5 s per character turn, 5.5 칸 per turn).
+
+## Post-simulation fixes (server)
+Source: `docs/playtest-report.md` (A, B, D). Tests: `test/fixes-playtest.test.js` (+ updated expectations elsewhere, read from
+the data files) and the MC sibling test in `test/mc.test.js`.
+- **Side bets hold the stake (A11)**: `placeBet` moves the stake out of cash at once (`moneyChanged {reason: 'betStake',
+  delta: −amount}`; replacing a bet moves only the difference, `betRefund` when it shrinks; affordability = cash + the held
+  stake). Resolution: a win pays stake + winnings (`moneyChanged reason 'bet'`, delta = stake + `betWinDelta`), a loss pays
+  nothing (no moneyChanged). `betResolved.results[]` keep `delta` = the NET result (win: winnings, loss: −stake) and add
+  `stake`, `paid`. Bets get `staked: true` (saves from before settle the old net way). Void → refund (`betRefund`): admin
+  skip, `pruneBets` of an unresolved old slot, `gameOver`, admin force end (`endGame`, silent, `refunded: true`). EV rules
+  unchanged. Finished characters cannot bet (409 "골인한 캐릭터는 훈수 베팅을 할 수 없어요.").
+- **Finished characters (A12/A13)**: `gift` refuses a finished sender (409 "골인한 캐릭터는 선물을 보낼 수 없어요.") or
+  receiver (409 "이미 골인한 캐릭터에게는 선물할 수 없어요."); `groupGift` (생일 파티) invites only unfinished others
+  (`giftGuests`) and, with nobody left, never opens a prompt (a log line instead).
+- **Action lookup (A17)**: engine `HANDLERS` and prompts `PROMPTS` are null-prototype; a non-string / `toString` /
+  `__proto__` action type → 400.
+- **Names (A10)**: `lobby.cleanName` (players, characters, CPU names): NFC, strips Cc / Cf (ZWSP…RLM, LRE…RLO, LRI…PDI, word
+  joiner, BOM, soft hyphen, tag chars) and the blank Hangul / braille fillers; a ZWJ survives only inside an emoji sequence;
+  collapses whitespace; empty → refused; length = grapheme clusters (`graphemeCount`, Intl.Segmenter) ≤ `NAME_MAX` 12, plus a
+  `NAME_MAX_UNITS` 64 UTF-16 guard (zalgo). The client counter can count graphemes only.
+- **Korean particles (A16)**: `server/game/korean.js` (`hasBatchim`, `particle`, `josa`, `fixParticle`; effects.js re-exports).
+  No server text writes 이(가)/을(를)/은(는)/(으)로 after a value (lobby / shop / lawyer / pledge logs use `particle`).
+  `presentation.fillLine` fixes the particle written after a placeholder for the inserted value ("{name}이 왔다" → "뚱이가
+  왔다", copula "{name}이다" → "뚱이다", "{era}는" → "청년은"); unknown finals (Latin, emoji) keep the template's particle.
+  Spelling 「프러포즈」 everywhere (data, code, tests).
+- **Line repetition (report C4)**: `presentationFor` returns `bland`: `turnStarted / spun / moved / log`, `moneyChanged` below
+  `BIG_GAIN` (100) except pension / gift / goalPrize / bonusSpin / bet / exam, and the betStake / betRefund moves → `line:
+  null` ('always'); plain money / loss landings below `BIG_GAIN` and uneventful landings (generic tags) speak only
+  `BLAND_LINE_CHANCE` 25 % of the time (sub-RNG, 'rare'). `lineTag` stays set. `pickLine(lines, tag, seed, vars, history)`
+  skips a pool entry picked within the room's last `LINE_HISTORY` 20 picks (next unused entry from the seeded start, else the
+  least recently used); `room.lineHistory` (`tag#index`, engine-only, never in `viewFor`) is shared by event lines and row
+  lines (holiday / lotto / schoolMeet / market / appraisal / award rows).
+- **Balance (B1–B10, verified with the sim1 harness in the session scratchpad `sim1/`, `outA|outB|outC/`)** — data:
+  houses value = price × 1.05 (315 / 735 / 1260 / 1890 / 3150), 제주 별장 2000, `market.max` 1.3; `goalPrizes [60,50,45,40,35,
+  30,25,20]`, `bonusSpinUnit` 2 (global: the lifetime bias stayed in range, no per-mode table needed); holidays only in
+  `["middle", "middle_age"]`, kids-era sebae all `[30, 80]`; `partners.birth.perSpin` 0.15, `children.allowance` 50,
+  `examGift` genius 60 / college 20, **`costs.weddingGift` 10 and `children.dolGift` 5** (beyond the report: the listed
+  B4 changes alone left young love at 29 %); `jobs.salaryEraMult.middle_age` 1.2; military `pay` 0 / `strGain` 1; overtime
+  `salaryShare` 0.5 / `exp` 0, `examBonus` 0.2; awards landlord / treasure_king bonus 80; hidden jobs astronaut 8/8,
+  national_mc charm 8, trot_star 7/7, mountain_spirit wishes 2. Board: `routePools.<route>.eraOverrides.<era>.<tileType> =
+  {weight?, scale?}` merged by `board.routePool(bd, route, eraId)` (used by `buildBoard`): career young money weight 2 /
+  scale 1.8, career middle_age salary weight 3, love middle_age salary weight 4 (keys starting with `_` are comments).
+  Code: 기초연금 by `engine.pensionWorth(c, data)` (cash − debt + house + item resale); CPU route score (money relative to
+  the room's average cash, love = charm + partner / family value, career salary capped) and cautious reserve 300.
+  Kids habits never make debt: fees capped at cash (option `cost` = what is charged, `basePrice` when capped, desc 「무료
+  (부모님 찬스)」 when broke), 뽑기 losses capped at cash. `scripts/simulate.js` prints route results relative to the same
+  game (`byRouteRel`); its random policy never bets / gifts with finished characters.
+- **Measured before → after** (4 CPUs unless noted; fair share 25 %): random route assignment (routeRandom4, 2000, seeds 1 /
+  2) young love / career / money 30.4 / 19.8 / 25.1 → 26.4 / 24.0 / 24.7 and 26.5 / 24.7 / 23.9, middle_age 24.0 / 27.3 /
+  24.0 → 24.3 / 26.0 / 24.8 and 24.1 / 26.0 / 24.9; 1-probe + 3 CPU (600 × seed 3, final CPU) houseNever 14.2 → 16.5 (1200 ×
+  seed 4: 19.5), overtimeOnly 28.8 → 24.2, promotionOnly 25.0 → 22.5, routeLove / Career / Money 28.7 / 22.5 / 24.8 → 22.5 /
+  24.0 / 24.5, neverMarry 20.3 → 17.5, militaryNow / Avoid 27.0 / 25.7 → 23.5 / 22.3, random 12.0 → 17.7 (±3.4 at 95 %);
+  pension recipients who win 29.8 → 16.7 % (8 CPUs 16.4 → 6.7 %, fair 12.5); kids-mode seats 40.2 / 28.3 / 18.9 / 15.2 →
+  28.3 / 27.9 / 23.4 / 21.7; lifetime 8-character bias (`--bias --games 2000 --seed 1`) 11.3–13.8 % (spread −0.05) → 11.3–13.2 %
+  (spread 0.13); boy / girl 27.4 / 22.6 → 25.2 / 24.8 (8 CPUs 12.4 / 12.6); hidden job held 1.2 → 3.1 % (simulate random
+  1.2 → 2.1 %, `--policy cpu` 4.6 → 7.6 %); decisions per character 13.8 → 11.8 (simulate lifetime 15.75 → 13.44, holiday
+  3.97 → 2.00); spins per game unchanged (lifetime 78.1 → 78.0); CPU vs random: `cpu-game` 4 + 4 × 300 CPU wins 56.3 → 67.7 %,
+  mixed8 CPU / random 14.8 / 10.3 → 15.9 / 9.2 %; CPU young route money / career / love 78 / 13 / 8 → 44 / 17 / 40 %,
+  middle_age career 82 → 68 %.
+- **Ops (D)**: `RoomStore({finishedRoomTtlMs = FINISHED_ROOM_TTL_MS 3 days, lobbyRoomTtlMs = LOBBY_ROOM_TTL_MS 7 days})`
+  (≤ 0 = keep; env `FINISHED_ROOM_TTL_MS` / `LOBBY_ROOM_TTL_MS` via `config.envMs`): `roomExpiresAt(room)` (finished:
+  `finishedAt` + TTL; lobby: last of updatedAt / createdAt / players' lastSeen + TTL; playing: null), `pruneRooms(now)` (→
+  `deleteRoom`, SSE `deleted`, save file removed), `pruneAll` = rooms then sessions (at `load()` and hourly via
+  `startPruning`), `onRoomDeleted(fn)` (the GameRunner drops that room's deadline + CPU timers). Admin `GET /admin/api/rooms`
+  rows and `GET /admin/api/rooms/:id` carry `expiresAt` (ms | null). `trust proxy`: env `TRUST_PROXY` →
+  `config.parseTrustProxy` (off by default; `1`, `loopback`, CIDR list, `true`) → `createApp({trustProxy})` →
+  `app.set('trust proxy', …)` so `clientIp(req)` = the forwarded client for the rate limits (README documents it).
+- **MC siblings (user correction)**: 호야 = boy, older brother; 봄이 = girl, younger sister (see the MC section). All MC pools
+  were rewritten accordingly (no 누나 / 형아 / 호야 씨).
