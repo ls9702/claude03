@@ -47,5 +47,5 @@ export function createRateLimiter({ windowMs, max, clock = () => Date.now(), max
   };
 }
 
-/** Client IP for rate limits (socket address; set `trust proxy` in Express if running behind one). */
+/** Client IP for rate limits: the socket address, or the forwarded client when env TRUST_PROXY sets Express `trust proxy`. */
 export const clientIp = (req) => req.ip || req.socket?.remoteAddress || 'unknown';

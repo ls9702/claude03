@@ -4,13 +4,13 @@
 //   const banner = createBanner(document.body);
 //   banner.show(spec, { ms });   // spec = cutin.specFromGroup(...) or {tag, who, text[], chips[], cast[], tone, colors}
 //   banner.clear(); banner.busy(); banner.destroy();
-import { esc } from '../format.js';
+import { esc, nameHtml } from '../format.js';
 import { hydratePortraits, portraitHtml } from './avatar2d.js';
 import { BANNER_MS } from './cutinPolicy.js';
 
 const MAX_QUEUE = 2;
 
-export function createBanner(root, { getMeta = () => ({}) } = {}) {
+export function createBanner(root, { getMeta = () => ({}), blocked = () => !!globalThis.document?.body?.classList.contains('cutin-open') } = {}) {
   const host = document.createElement('div');
   host.className = 'ev-banner';
   host.hidden = true;
@@ -20,6 +20,7 @@ export function createBanner(root, { getMeta = () => ({}) } = {}) {
   const q = [];
   let timer = null;
   let showing = false;
+  let current = null; // item on screen
 
   function paint(item) {
     const { spec } = item;
@@ -34,7 +35,7 @@ export function createBanner(root, { getMeta = () => ({}) } = {}) {
     host.innerHTML = `
       ${main ? `<span class="eb-pt">${portraitHtml(main, { size: 38 })}</span>` : ''}
       <span class="eb-body">
-        <span class="eb-tag">${esc(spec.tag ?? '')}${main ? ` · <b>${esc(main.name)}</b>` : ''}</span>
+        <span class="eb-tag">${esc(spec.tag ?? '')}${main && !spec.names ? ` · <b>${nameHtml(main.name)}</b>` : ''}</span>
         <span class="eb-line">${esc(line)}</span>
       </span>
       ${chips.length ? `<span class="eb-chips">${chips.map((c) => `<span class="eb-chip ${esc(c.kind ?? '')}">${esc(c.text)}</span>`).join('')}</span>` : ''}`;
@@ -48,7 +49,16 @@ export function createBanner(root, { getMeta = () => ({}) } = {}) {
 
   function next() {
     clearTimeout(timer);
+    // a cut-in is open: the strip is hidden under it → wait instead of timing out unseen (merges still land)
+    if (q.length && blocked()) {
+      current = null;
+      showing = true;
+      host.hidden = true;
+      timer = setTimeout(next, 300);
+      return;
+    }
     const item = q.shift();
+    current = item ?? null;
     if (!item) {
       showing = false;
       host.classList.add('leaving');
@@ -73,6 +83,23 @@ export function createBanner(root, { getMeta = () => ({}) } = {}) {
     /** Queue a banner (backlog capped: the oldest waiting one is dropped). */
     show(spec, { ms = BANNER_MS } = {}) {
       if (!spec) return;
+      // mergeable banners (later entrants of one era → 「민수·지영 청년 시대 진입」): one strip, names combined
+      if (spec.mergeKey) {
+        const same = [current, ...q].find((it) => it?.spec?.mergeKey === spec.mergeKey);
+        if (same) {
+          same.spec = typeof spec.merge === 'function' ? spec.merge(same.spec) : spec;
+          if (same === current && showing) {
+            try {
+              paint(same);
+            } catch (err) {
+              console.warn('[banner]', err);
+            }
+            clearTimeout(timer);
+            timer = setTimeout(next, q.length ? Math.min(same.ms, 1400) : same.ms);
+          }
+          return;
+        }
+      }
       if (q.length >= MAX_QUEUE) q.shift();
       q.push({ spec, ms });
       if (!showing) next();
@@ -81,6 +108,7 @@ export function createBanner(root, { getMeta = () => ({}) } = {}) {
       q.length = 0;
       clearTimeout(timer);
       showing = false;
+      current = null;
       host.hidden = true;
     },
     busy: () => showing || q.length > 0,

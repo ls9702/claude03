@@ -19,8 +19,9 @@
 - Do not run git commands; the orchestrator commits.
 
 ## Layout (Stage 1)
-- `server/index.js` — `createApp({store, runner, adminPassword, heartbeatMs, assets, log, rate})` /
-  `startServer({port, dataDir, adminPassword, heartbeatMs, debounceMs, log, assets, rate})` (port 0 = ephemeral,
+- `server/index.js` — `createApp({store, runner, adminPassword, heartbeatMs, assets, log, rate, trustProxy})` /
+  `startServer({port, dataDir, adminPassword, heartbeatMs, debounceMs, log, assets, rate, trustProxy, finishedRoomTtlMs,
+  lobbyRoomTtlMs})` (post-simulation ops options: see "Post-simulation fixes (server)"; port 0 = ephemeral,
   used by tests; `rate = {session?, login?: {windowMs, max}}` overrides the limits). Runs as main when executed
   directly; on Linux main first re-execs itself once (`process.execve`, Node ≥ 22.15) with `MALLOC_ENV`
   (`MALLOC_ARENA_MAX=2`, `MALLOC_MMAP_THRESHOLD_=131072`; skipped under `--watch`, when already set or with
@@ -101,17 +102,18 @@
   exposes `players[].role` and `me.role`; `adminSummary` has `spectators`.
 - Character ids `c<seq>` and player ids `p<seq>` are per-room counters; `seq` = creation order.
 - Playing room adds: `board {eras:[{id,name,turns,tiles[],routes?:{love|career|money:{tiles}}}]}`, `rngState`,
-  `bets {[turnNo]: {[charId]: {kind,pick,amount,target,resolved,won?,delta?}}}`, `promptSeq`, `result {ranking, forced}`,
+  `bets {[turnNo]: {[charId]: {kind,pick,amount,target,resolved,staked?,won?,delta?,refunded?}}}`, `promptSeq`, `result {ranking, forced}`,
   `pension {recipients[], decidedAt, turnNo} | null`.
 - Side bets (`balance.bets`): `ranges {"1-3":[1,3], "4-6":[4,6], "7-10":[7,10]}`, `payouts` per pick (stake
   included) `{odd:2, even:2, "1-3":3, "4-6":3, "7-10":2.5}`; winnings `betWinDelta` = floor(amount × (payout − 1))
-  → no pick has a positive expected value (tested for every stake). `/api/meta.balance.bets` carries both.
+  → no pick has a positive expected value (tested for every stake). `/api/meta.balance.bets` carries both. The stake is
+  HELD at bet time (see "Post-simulation fixes (server)").
 - 기초연금 (`balance.pension`): recipients are decided ONCE when the first character enters the pension era — bottom
-  `bottomN` by net worth (≥ `minCharacters`) → `room.pension`; each recipient is paid on their own entry (amount =
-  base + gap to the richest × gapRatio, ≤ max). Never more than `bottomN` payouts.
-- Turn-order balance (tuned with `--bias`, 2000 games × 4 seeds): `goalPrizes [200,150,120,90,60,40,20,10]`,
-  `bonusSpinUnit` 5 → 1st-place share 11–14 % per position, first→last average rank spread ≈ 0.2–0.35 (before:
-  500/300/…, unit 10 → 10.2–14.8 %, spread 0.5–0.6).
+  `bottomN` by total assets (`pensionWorth` = cash − debt + house + items; ≥ `minCharacters`) → `room.pension`; each
+  recipient is paid on their own entry (amount = base + asset gap to the richest × gapRatio, ≤ max). Never more than
+  `bottomN` payouts.
+- Turn-order balance: `goalPrizes [60,50,45,40,35,30,25,20]`, `bonusSpinUnit` 2 since the post-simulation fixes (kids
+  mode seat 1 won 40 %; history: 500/300/… unit 10 → 200/150/… unit 5 → now; numbers in "Post-simulation fixes").
 - Board: tile ids `${eraId}:${main|love|career|money}:${index}` are stable. Route eras (young/middle_age) have
   `tiles = [routeChoice stop, merge]` and three route tracks of equal length `turns − 2` (path length = turns; config
   validation keeps route eras ≥ 3 turns — `buildBoard` itself still clamps routes to ≥ 1 tile for direct callers).
@@ -132,9 +134,8 @@
   gameOver{ranking}, log{text,tone}`. Since Stage 5 every event also has `tone, emotion, scene, line, cutin, lineTag`
   (see Stage 5). Events are broadcast to everyone → never put secret info in them (masking lives in `viewFor`).
 - `viewFor` masks: other sessions' pending answers (exposes `pending.answered[]` instead) and unresolved bets.
-- Hooks for later stages: `treasure` tiles are log-only placeholders in `resolveTile` (card/shop live since Stage 7, heart/house since Stage 8)
-  (text in `board.json.placeholders`); add jobs/cards/romance/submaps as new tile handlers + `PROMPTS` entries;
-  extend `computeRanking` for assets/awards.
+- Hooks: every tile type has a handler since Stage 9 (`board.json.placeholders` is `{}`; `resolveTile`'s default branch
+  stays for future types); add new tiles as handlers + `PROMPTS` entries.
 - Avatar part ids in `server/data/avatars.json` are stable contracts (generated PNG layers will key off them);
   add new options, don't rename existing ids. `eraOutfits` is reserved for era/job costume mapping.
 - Reactions are SSE-only (`reaction` event), never stored in room state.
@@ -543,18 +544,19 @@
   `retakeSkipTurns`, retake exam → a pass enrolls, a fail goes to work — no second 진로 prompt). 군: mandatory bodies
   (`boy`) — enrolled → prompt 지금/졸업 후 (once), otherwise automatic after hiring (job kept); volunteers (`girl`) with str ≥
   `volunteerMinStr` → prompt; else exempt. Serving: spins move `ceil(value/2)` (`spun.steps`, `halved: true`), military pay
-  per spin and on salary tiles, str +2 at 전역; school is paused. Jobs: `eligibleJobs` = requirements + news
+  `military.pay` per spin and on salary tiles (0 since the post-simulation fixes → no pay, a log line on salary tiles), str
+  +`strGain` (1) at 전역; school is paused. Jobs: `eligibleJobs` = requirements + news
   (`jobRequireDelta`, `jobDelta`) + education; offers weighted by `offerWeight` (1 + 0.5×(Σreq−3) + 1.5 with a degree), no
   hidden jobs. Salary tile: `ranks[rank-1].salary × salaryEraMult × news salaryMult (× partTimeMult) × (injured ? 0.5)`,
   jobless students = 알바 pay; exp +1 → passive rank-up at `expNeeded`. Rank-up chance = base + perStat×stat +
   luckBonus×luck + educationBonus (+ examBonus on a promotion exam) + news `rankUpBonus`, clamped; success → `rankUp` + the
   job's stat +1; injury blocks. Job tile: `jobTile` prompt 승진 시험 (or 성과급 at max rank) / 전직 (one eligible candidate,
-  `option.jobId`) / 야근 (60 % salary, exp +2, str −1); students / soldiers only look around; a pending unlocked hidden job
+  `option.jobId`) / 야근 (`overtime.salaryShare` 50 % salary, exp `overtime.exp` 0, str −1); students / soldiers only look around; a pending unlocked hidden job
   is offered instead. Injury: `injuryRisk × news injuryMult` after salary / promotion exams → `injured` = 2 turns
-  (decremented per spin). Hidden unlocks (data `unlock`, all must hold, job eras only): 우주비행사 int 9 & str 9; 국민 MC max
-  rank of 개그맨/배우/유튜버 (now or history) & charm 9; 재벌 총수 max 대기업 & net worth ≥ 3,000; 트로트 스타 senior & charm 8 &
-  luck 8; **interim until Stage 9**: 산신령 luck 9 & `badEvents` ≥ 3 (loss tiles, bad events, injuries); 건물주 = Stage 8
-  (houseSwaps ≥ 3 or penthouse / jeju_villa). News: first entrant of an era (not baby; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
+  (decremented per spin). Hidden unlocks (data `unlock`, all must hold, job eras only; values since the post-simulation
+  fixes): 우주비행사 int 8 & str 8; 국민 MC max rank of 개그맨/배우/유튜버 (now or history) & charm 8; 재벌 총수 max 대기업 &
+  net worth ≥ 3,000; 트로트 스타 senior & charm 7 & luck 7; 산신령 (Stage 9) 사찰 소원 성취 `wishes` ≥ 2; 건물주 (Stage 8)
+  houseSwaps ≥ 3 or penthouse / jeju_villa. News: first entrant of an era (not baby; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
   (global, no charId; MC studio `news`), `statBonus` for every entrant; effects via `effectsFor(tx, c)` (character's era).
 - Events: `statChanged {charId, stat, delta, value, reason}` (habit/event/news/military/graduation/rankUp/overtime),
   `jobChanged {charId, jobId, fromJobId, rank, reason: hire|change|hidden|parttime}`, `rankUp {charId, jobId, rank, rankName}`,
@@ -702,7 +704,7 @@
   news/pension); `continueTurn` runs `runEraOpenings` whenever no prompt is open, before the current character's
   `lifeStep`: ① lotto draw (holders of a `lotto` card use one each; 3 seeded numbers of 1..20 each, 3 drawn → `lottoDraw
   {eraId, numbers, entries [{charId, numbers, matches, prize}]}` + moneyChanged `lotto`; skipped without tickets; exact EV
-  `lottoExpectedValue` 8.93 < price 20) ② holiday (eras middle/young/middle_age/senior, config on, once per era,
+  `lottoExpectedValue` 8.93 < price 20) ② holiday (holidays.json `eras`: middle / middle_age since the post-simulation fixes, config on, once per era,
   seol/chuseok alternate by `holidayCount`) → `holidayStarted {eraId, kind, name}` + ONE simultaneous prompt `holiday`
   (all unfinished characters, 40 s, options `pass` (default) | `small` | `big` with `stake` = stakes × stakeScale[era]).
   Resolution → `holidayResult {eraId, kind, name, results [{charId, sebae, nagging {stat, delta, line}, stake, card, won,
@@ -796,12 +798,12 @@
   (190/270/370/500 만원 per salary tile; 고교 전원 만남 is always ★1), `names.boy|girl` (24 each), `meetEras`, `affection {meet 30,
   dateGain, matchBonus 8, proposeAt 60, max 100, failDrop 15, steadyGain 10, familyGain 10, eraGain 5, loveRoute 30}`, `propose {base 0.45, perAffection, charm,
   luck, match, min, max, eras}`, `dates[]` (walk 5 / library int 12 / hiking str 12 / concert charm 16 / amusement luck 16: `{cost, gain}`), `costs
-  {scale per era, wedding, weddingGift, birth}`, `birth {eras young/middle_age, base 0.6, perAffection, perChild, max, perSpin 0.3}`, `children {max 4,
-  genius {base, match, luck}, growTurns 1, dolGift, schoolCost, examGift, allowance 70, talentMult, allowanceOnEra?}`, `outings[]`, `avatar` (hair /
+  {scale per era, wedding, weddingGift, birth}`, `birth {eras young/middle_age, base 0.6, perAffection, perChild, max, perSpin 0.15}`, `children {max 4,
+  genius {base, match, luck}, growTurns 1, dolGift, schoolCost, examGift (genius 60 / college 20), allowance 50, talentMult, allowanceOnEra?}`, `outings[]`, `avatar` (hair /
   outfit (boy / girl / child) / colour pools, `traitAccessory`). `server/data/houses.json` — 6 fixed ids `oneroom villa apartment
-  hanok penthouse jeju_villa` `{name, icon, price, value (= price × 1.1; jeju 1500 → 2500), capacity 1 | null (apartment), eras, lucky? (jeju), desc}`, `listings` 3,
+  hanok penthouse jeju_villa` `{name, icon, price, value (= price × 1.05; jeju 1500 → 2000), capacity 1 | null (apartment), eras, lucky? (jeju), desc}`, `listings` 3,
   `tradeIn` 0.7, `subscription {houseId apartment, chance, discount}`, `luckyChance {money, other, perLuck}`, `market {era senior,
-  min 0.8, max 1.5}`. news.json: `housing_boom` (young/middle_age ×1.3), new `housing_slump` (middle_age/senior ×0.8) and
+  min 0.8, max 1.3}`. news.json: `housing_boom` (young/middle_age ×1.3), new `housing_slump` (middle_age/senior ×0.8) and
   `redevelopment` (senior ×1.2) = `housePriceMult`; `birth_bonus.birthBonus` 300 = 출산장려금. Board: `heart` love route 7 (career /
   money 1, high 1, senior 1), `house` money route 6, senior 6, love / career 2; heart / house left `placeholders` (only treasure remains).
   manifest: `bg-park` / `bg-house` (todo; scenes `park` → mountain-trail, `house` → office in `sceneFallbacks`).
@@ -843,7 +845,7 @@
   first character entering senior draws `int(80..150)/100 × senior news housePriceMult`, clamped → every house value × mult →
   `houseValueChanged {eraId, mult, changes [{charId, houseId, before, after}], reason: 'market'}`. Ranking: `house` = value, total =
   money − debt + items + house. 건물주 unlock (jobs.json `unlock.anyOf`): `houseSwaps ≥ 3` or owning penthouse / jeju_villa
-  (`unlockMet` also knows `houseSwaps`, `house`, `anyOf`); 산신령 keeps its interim rule until Stage 9.
+  (`unlockMet` also knows `houseSwaps`, `house`, `anyOf`).
 - Prompts (CPU-readable fields; defaults): `meet` options `meet:<partnerId>` ×2 `{partnerId, partner (full spec), trait, stars,
   salary, match}` + `pass` (default = 찰떡궁합 / higher ★ candidate; context.candidates), resultCutin 'auto' (`met` anchors, pass →
   promptResolved `{result: 'pass'}`); `date` options `date:<walk|library|hiking|concert|amusement>` `{dateId, trait, cost, price,
@@ -875,7 +877,7 @@
   default; the CPU policy's ±55 % is route SELECTION: rich CPUs pick the money route); lifetime spins 79.0–79.5, 14.4–14.8
   decisions per lifetime character; bias 2000 × seed 1: 11.5–13.5 %, spread −0.01. The simulate.js Stage 8 block prints a
   `[인생 전체 …명]` line with these. First version (below) for reference.
-- Simulation (`scripts/simulate.js` Stage 8 block; `--family default` answers 만남 / 데이트 / 프로포즈 with the prompt default):
+- Simulation (`scripts/simulate.js` Stage 8 block; `--family default` answers 만남 / 데이트 / 프러포즈 with the prompt default):
   seed 11 × 300 random: lifetime 79.4 spins (Stage 7: 79.0), 13.8 decisions per lifetime character (date 0.65, propose 0.48,
   house 0.24), married 14.7 % (young love route 24 % vs career 12 % / money 10 %); `--family default`: married 27.4 % (love route
   45 %), 0.21 children per character (genius 27 %), love-route net worth within −5..−6 % of the mean (young 1476 vs 1519 / 1647,
@@ -1006,7 +1008,7 @@
   `awards.json` (10 `{id, name, icon, desc, metric, route?, min, bonus, tie: all|split|place|qualify}`), `titles.json`
   (`perCharacter` 2, 25 titles `{id, name, icon, desc, priority, when}` + the `fallback` 평범한 인생), `balance.json` `submaps`
   (era `scale`, hometown / temple / jeju / reversal numbers) and `result` (`mvpVoteMs` 180000 (the result show takes ~60–80 s), `mvpSettleMs` 5000, `highlights
-  {keep 8, show 5, bigMoney 300}`). jobs.json 산신령 `unlock {wishes: 3}` (`unlockMet` knows `wishes`; the Stage 6 interim rule is
+  {keep 8, show 5, bigMoney 300}`). jobs.json 산신령 `unlock {wishes: 2}` (3 before the post-simulation fixes) (`unlockMet` knows `wishes`; the Stage 6 interim rule is
   gone). board.json: tile types `hometown 🏡 / temple 🛕 / jeju 🏝️ / reversal 🎰`, pools: hometown elem/middle/high/senior main +
   love route, temple middle 2 / high 2 / senior 4 + money route 3, jeju love / money routes, reversal senior 5, treasure money route
   4 + senior 2; `placeholders` is `{}` (resolveTile's default branch stays for future types).
@@ -1153,3 +1155,64 @@
   every submap prompt (cut-in 1280 / 390, 2D modal), race win / lose, jackpot ticket, wish, rest, jeju + treasure, skip banner, admin
   closeVote, synthetic 8-character result (appraisal of 8 treasures, awards, titles, highlights, tie for 2nd) at 1280 + 390;
   screenshots `s9b-*.png`).
+
+## Post-simulation fixes (client)
+- Source: `docs/playtest-report.md` A1–A10, A14–A16, A18 + C (waiting time). E2E in the session scratchpad `fix/` (`inject.cjs`
+  targeted checks on the real server with injected state / events, `rtl.cjs`, `dbg-delete.cjs`; screenshots `fix-*.png`) plus the
+  sim2 / sim4 repro scripts.
+- Pure policy (`public/js/ui/cutinPolicy.js`, `test/client-postsim.test.js`): `classifyGroup(g, {…, fastForward, myTurn})` — other
+  players' groups become banners while 「⏩ 빨리 감기」 is on or my roulette waits (`myTurn`), except shared shows I take part in
+  (`involvesMe`: 명절 start / 정산 rows, lotto entries, schoolMeet pairs, gifts); `markRepeats(groups, seen, {mine})` marks other players'
+  2nd+ entrant of an era (no MC studio) and 2nd+ wedding `repeat: true` → banner in 「간단히」 (「전체」 keeps everything); `seenFromRoom`
+  (reload mid-game), `eraBannerText` (「민수·지영 청년 시대 진입」); constants `OTHERS_AUTO_MS` 3000 (other players' plain cut-ins
+  auto-advance ≤ 3 s even with MC lines — race / 명절 정산 / treasure / studio shows keep their length; `spec.capMs`, `spec.own`),
+  `MY_TURN_CATCHUP_MS` 900, `DEADLINE_RESERVE_MS` 12000.
+- My turn (A3, game2d `catchUp`): when my character's awaitSpin starts, after 900 ms other players' queued cut-ins are dropped into
+  banners and the one on screen closes ≤ 0.7 s after it appeared (`cutin.preempt({keepMs, keepOwn, onDrop})`; my own / the opening
+  studio (`opts.own`) stay), the 3D animator rushes its backlog (`animator.rush()`: queued steps run with `ctx.instant` + `ctx.rushed`
+  until the queue drains; a rushed cut-in step of mine still queues its cut-in, others' become banners). `myTurnFree` → the spin button
+  and HUD show without waiting for other players' cut-ins; with a turn timer the button is never held once < 12 s are left (also my own
+  cut-ins are pre-empted then). `cutin.busyOthers()` = something other than my own / prompt cut-ins.
+- ⏩ 빨리 감기 (`data-el="ffbtn"`, localStorage `jinsei.fastForward`): others' cut-ins and prompt waiting screens → banners, the current
+  one closes. Banners: `spec.mergeKey` + `spec.merge(prev)` merge into the strip on screen / queued (era entrants); queued banners
+  wait while a cut-in is open (`createBanner(root, {blocked})`, default `body.cutin-open`) instead of timing out unseen under it.
+- Game over / forced end (A1, A8): app `render()` always calls `game.finish()` for a finished room (idempotent per game: `teardown()` =
+  cut-ins, banners, MC corner, decision sheet, card sheet, trade dialog, inbox, floating spin button; 3D animator `rush()` + clear after
+  `FINISH_BOARD_MS` 1500) and waits `game.whenIdle({maxMs: 2500})` at most. After game over a stale "playing" view (idle callbacks /
+  timers) never renders or reopens a prompt (`render` / `renderModal` guards).
+- Leaving (A6): app `tearDownRoomUi()` on 나가기 / room deleted / 403·404 → `game.teardown()` (also forgets the room: `ui.room = null`),
+  result show reset, `closePhotoDialogs()`, customizer, sheet, body classes. Cut-ins have their own 「🚪 나가기」 (`.ci-exit`, top-left,
+  `cutin.setExit(fn)` set by the app while in a room, asks `confirm` first — a tap meant to advance must not leave; hidden in TV
+  mode).
+- Side list (A4): `renderChars` is keyed per row (`li[data-id]` kept, portrait / body / money / detail body / detail actions replaced
+  only when their markup changes via `setHtml`) → an open detail card never replays `sheet-up`, taps on 「🎁 선물」「🤝 거래 제안」 land.
+  `charDetailParts(c)` → `{body, acts}`. Bet panel rebuilt only when its key changes (slider / select keep focus).
+- Prompt input guard (A5): options of a new / changed prompt ignore taps for `PROMPT_GUARD_MS` 700 (cutin2d exports it; `.arming`
+  fade-in; 2D sheet via `ui.modalAt`). `chose {timedOut: true}` of my character → toast 「⏰ 시간 초과 — ○○(으)로 처리됐어요」 (label from
+  the last seen pending, `josa`).
+- Floating spin (A7): `data-el="spinfab"` (fixed, bottom centre above the reaction bar, z 19) when it's my turn and the dock's button is
+  not really visible (`elementFromPoint` — under the top bar / sticky board / off screen); scroll / resize / IntersectionObserver.
+  Desktop ≥ 900 px: the character list and the log scroll inside the side column; the board is sticky when the viewport is ≥ 640 px tall.
+- Connection (A9): api.js `lastSseMessageAt()`; app watchdog every 5 s — after 35 s without an SSE message it probes `GET /api/session`
+  (≤ every 30 s): a network failure → 「● 재연결 중…」 + stream reopened; `offline` / `online` events act at once (「● 오프라인 · 재연결 중…」).
+- Names (A10): api.js strips bidi controls (U+202A–202E, U+2066–2069, U+200E/200F, U+061C; raw and `\uXXXX`-escaped) from every HTTP /
+  SSE payload before `JSON.parse` (`format.stripBidiJson`); `format.cleanName` = the server's lobby cleaning (Cc/Cf/fillers removed, ZWJ
+  only inside emoji, NFC, whitespace collapsed); `nameLength` = graphemes after cleaning (the n/12 counter = the server's count),
+  `nameFits` = ≤ 12 graphemes and ≤ `NAME_MAX_UNITS` 64 UTF-16 units; join / customizer submit the cleaned name. `nameHtml(name)` =
+  `<bdi>`; CSS `unicode-bidi: isolate` on name elements (HUD, side rows, banners, cut-in who / tabs, ranking…); 3D `textCanvas` and the
+  group photo labels strip bidi controls.
+- Korean particles (A16): `format.josa(word, '이/가' | '을/를' | '은/는' | '과/와' | '으로/로')` mirrors the server (isolates ignored);
+  every client template uses it (cards.js keeps a local `josaTopic`, it has no imports). A lost side bet / a declined trade → info toast.
+- Layout (A14): phone landscape (`orientation: landscape` and height ≤ 500 px) → cut-in grid: illustration left, dialogue / options right
+  (options scroll), reaction bar vertical at the right edge; 명절 정산 / lotto rows scroll inside the box (`max-height: min(26vh, 240px)`),
+  a 명절 정산 cut-in (`.cutin.holiday-res`) uses a smaller window so ▼ stays on a 1280×720 screen. TV (`?quality=tv` → `body.q-tv`):
+  cut-in stage `zoom: 1.4`. Phones: result ranking places 4+ start folded (`.rk-fold`, 「▼ 4위부터 자세히」 `data-rs="more"`).
+- Photo dialog (A15): one instance (`openPhotoDialog` returns the open one), Tab focus trap, Escape, focus back to the opener,
+  `photo-open` removed only when the last one closes, `closePhotoDialogs()`. Storage (A15): api.js localStorage → sessionStorage → memory
+  (`storageMode()`); memory only → a one-time 7 s notice that a refresh will join as a new player.
+- A2: `resultShow.render` sets `S.host` before `build()` → ranking / awards / treasures are filled in the first pass (spectators, CPU-only
+  rooms, TVs).
+- A18: the 인생역전 casino SVG sign sits in the top-right light band (`.sm-sign`), clear of the cast and the race panel.
+- Trade dialog: neither hand has a card (money ↔ money is not a trade) → 「🃏 거래할 카드가 없어요」 + 🎁 선물하기; amount inputs are
+  text + `inputmode=numeric`, digits only; `cards.js` amounts must be `^\d+$` strings (「1e3」, 「+5」, 「0x10」 → 「금액은 숫자로만…」).
+- Admin: 「시대 길이(칸)」 (was 시대별 턴 수) + 「총 N칸 · 예상 약 M분 (캐릭터 K명 기준)」 (19.5 s per character turn, 5.5 칸 per turn).

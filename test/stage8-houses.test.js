@@ -64,7 +64,7 @@ const answer = (tx, c, optionId) => {
   resolvePrompt(tx);
 };
 
-test('houses.json: 6 fixed ids, capacity (apartment unlimited), lucky 제주 별장, tradeIn 0.7, market 0.8–1.5', () => {
+test('houses.json: 6 fixed ids, capacity (apartment unlimited), lucky 제주 별장, tradeIn 0.7, market 0.8–1.3, value ≈ price × 1.05', () => {
   assert.deepEqual(H.houses.map((h) => h.id), HOUSE_IDS);
   assert.deepEqual(HOUSE_IDS, ['oneroom', 'villa', 'apartment', 'hanok', 'penthouse', 'jeju_villa']);
   for (const h of H.houses) {
@@ -76,7 +76,9 @@ test('houses.json: 6 fixed ids, capacity (apartment unlimited), lucky 제주 별
   assert.ok(def('jeju_villa').value > def('jeju_villa').price);
   assert.ok(def('penthouse').price > def('hanok').price && def('oneroom').price < def('villa').price);
   assert.equal(H.tradeIn, 0.7);
-  assert.deepEqual([H.market.min, H.market.max], [0.8, 1.5]);
+  assert.deepEqual([H.market.min, H.market.max], [0.8, 1.3]);
+  // post-simulation balance: a house is worth only a little more than it costs (it was "free money" at ×1.1)
+  for (const h of H.houses.filter((x) => !x.lucky)) assert.equal(h.value, Math.round(h.price * 1.05), h.id);
   assert.equal(H.subscription.houseId, 'apartment');
 });
 
@@ -186,12 +188,13 @@ test('노년 시세: drawn once by the first senior entrant (× senior news, cla
   c.house = { id: 'villa', price: 700, value: 700, boughtTurn: 1 };
   others[0].house = { id: 'apartment', price: 1200, value: 1300, boughtTurn: 2 };
   const m = drawHousingMarket(tx, 'senior');
-  assert.deepEqual(m, { eraId: 'senior', mult: 1.44 }); // 1.20 × 1.2 (재개발)
-  assert.equal(c.house.value, r5(700 * 1.44));
-  assert.equal(others[0].house.value, r5(1300 * 1.44));
+  const want = Math.min(H.market.max, 1.44); // 1.20 × 1.2 (재개발), clamped to market.max
+  assert.deepEqual(m, { eraId: 'senior', mult: want });
+  assert.equal(c.house.value, r5(700 * want));
+  assert.equal(others[0].house.value, r5(1300 * want));
   const ev = tx.events.find((e) => e.type === 'houseValueChanged');
   assert.deepEqual(ev.changes.map((x) => x.charId), [c.id, others[0].id]);
-  assert.equal(ev.mult, 1.44);
+  assert.equal(ev.mult, want);
   // once
   assert.equal(drawHousingMarket(tx, 'senior'), null);
   assert.equal(tx.events.filter((e) => e.type === 'houseValueChanged').length, 1);
@@ -201,7 +204,7 @@ test('노년 시세: drawn once by the first senior entrant (× senior news, cla
   const lo = sandbox({ era: 'senior', rng: { ints: [80] }, news: { senior: 'housing_slump' } });
   assert.equal(drawHousingMarket(lo.tx, 'senior').mult, H.market.min);
   // later senior listings use the market price
-  assert.equal(priceMult(tx, c), 1.44);
+  assert.equal(priceMult(tx, c), want);
   // engine: the first entrant of senior triggers it
   const room = structuredClone(started());
   room.erasOpened = room.board.eras.map((e) => e.id).filter((e) => e !== 'senior');

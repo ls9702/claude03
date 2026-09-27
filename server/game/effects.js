@@ -138,25 +138,7 @@ export function round5(v) {
 }
 
 // ---------- Korean text helpers ----------
-function hasBatchim(word) {
-  const ch = String(word ?? '').trim().slice(-1);
-  const code = ch.charCodeAt(0);
-  if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 !== 0;
-  if (/[0-9]/.test(ch)) return '013678'.includes(ch);
-  return null;
-}
-
-/** josa('철수', '이/가') → '철수가'. Unknown final → '철수이(가)'. '으로/로' after ㄹ → '로'. */
-export function josa(word, pair) {
-  const [a, b] = pair.split('/');
-  if (a === '으로') {
-    const code = String(word ?? '').trim().slice(-1).charCodeAt(0);
-    if (code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 === 8) return `${word}${b}`;
-  }
-  const f = hasBatchim(word);
-  if (f === null) return `${word}${a}(${b})`;
-  return `${word}${f ? a : b}`;
-}
+export { josa, particle, hasBatchim } from './korean.js';
 
 /** Money in 만원 units → '1억 2,000만원' / '350만원'. */
 export function won(n) {

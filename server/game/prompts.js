@@ -11,7 +11,7 @@ import { charById, emit, turnTimeoutMs } from './effects.js';
  * inserted right after the `chose` events, before the resolution's follow-ups; a plain object returned by
  * `resolve` (e.g. `{result: 'elite'}`) is merged into it.
  */
-export const PROMPTS = {};
+export const PROMPTS = Object.create(null); // null prototype: a kind named "toString" is unknown
 
 export function registerPrompts(defs) {
   Object.assign(PROMPTS, defs);

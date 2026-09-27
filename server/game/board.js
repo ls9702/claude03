@@ -30,6 +30,17 @@ function makeTile(id, entry, eraDef, labels, bd, rng) {
   return tile;
 }
 
+/**
+ * A route's tile pool in one era: `routePools[route].pool`, with `eraOverrides[eraId][type] = {weight?, scale?}`
+ * merged into the matching entries (e.g. more / bigger money tiles on the young career route only).
+ */
+export function routePool(bd, route, eraId) {
+  const rp = bd.routePools[route];
+  const ov = rp.eraOverrides?.[eraId];
+  if (!ov) return rp.pool;
+  return rp.pool.map((e) => (ov[e.type] && typeof ov[e.type] === 'object' ? { ...e, ...ov[e.type] } : e));
+}
+
 function stopTile(id, stop) {
   return { id, type: 'stop', label: stop.label, icon: stop.icon, promptId: stop.promptId };
 }
@@ -54,9 +65,10 @@ export function buildBoard(config, rng, data = gameData()) {
       era.routes = {};
       for (const key of ROUTE_KEYS) {
         const rp = bd.routePools[key];
+        const pool = routePool(bd, key, eraId);
         const tiles = [];
         for (let i = 0; i < L; i++) {
-          const tile = makeTile(`${eraId}:${key}:${i}`, rng.weighted(rp.pool), eraDef, rp.labels, bd, rng);
+          const tile = makeTile(`${eraId}:${key}:${i}`, rng.weighted(pool), eraDef, rp.labels, bd, rng);
           tile.route = key;
           tiles.push(tile);
         }

@@ -70,6 +70,7 @@ export function createAnimator({ handlers = {}, clock = realClock, maxStepMs = 1
   let paused = false;
   let resumeWaiters = [];
   let current = null;
+  let rushing = false; // rush(): the backlog plays instantly until the queue drains (my turn / game over)
 
   const sleep = (ms) => new Promise((resolve) => clock.setTimeout(resolve, Math.max(0, ms)));
 
@@ -84,7 +85,7 @@ export function createAnimator({ handlers = {}, clock = realClock, maxStepMs = 1
   async function runStep(step) {
     const fn = step.run ?? handlers[step.kind];
     if (typeof fn !== 'function') return;
-    const ctx = { instant: isHidden() || queue.length > maxQueue, sleep, step };
+    const ctx = { instant: rushing || isHidden() || queue.length > maxQueue, rushed: rushing, sleep, step };
     try {
       const r = fn(step.event, ctx);
       if (r && typeof r.then === 'function') await withTimeout(Promise.resolve(r), step.maxMs ?? maxStepMs);
@@ -108,6 +109,7 @@ export function createAnimator({ handlers = {}, clock = realClock, maxStepMs = 1
     } finally {
       running = false;
       current = null;
+      rushing = false;
     }
     for (const cb of [...idleListeners]) {
       try {
@@ -146,6 +148,19 @@ export function createAnimator({ handlers = {}, clock = realClock, maxStepMs = 1
     },
     get paused() {
       return paused;
+    },
+    /**
+     * Catch up: every queued step (and every step pushed before the queue drains) plays instantly (`ctx.instant`,
+     * `ctx.rushed`); a paused animator resumes. The step on screen finishes normally. → steps rushed
+     */
+    rush() {
+      if (!running && !queue.length) return 0;
+      rushing = true;
+      api.resume();
+      return queue.length;
+    },
+    get rushing() {
+      return rushing;
     },
     /** Drop queued (not yet started) steps. */
     clear() {

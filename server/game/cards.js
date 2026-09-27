@@ -5,7 +5,7 @@
 //   (applied and cleared at the character's next spin) · character.lastTargetedBy = {attackerId: round}
 // room.nextCardSeq · room.trades = [{id, fromId, toId, give, want, createdAt, expiresAt}] · room.nextTradeSeq
 // Hands, items and trades are public (cards are open information, like the original board game).
-import { addLog, addStats, assertOwner, changeMoney, charById, emit, fail, josa, round5, won } from './effects.js';
+import { addLog, addStats, assertOwner, changeMoney, charById, emit, fail, josa, particle, round5, won } from './effects.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 
 export const CARD_KINDS = ['instant', 'passive', 'sabotage'];
@@ -240,7 +240,7 @@ export function useCard(tx, action, currentId) {
       const li = target.cards.findIndex((k) => k.id === 'lawyer');
       const [lawyer] = target.cards.splice(li, 1);
       emit(tx, 'cardBlocked', { charId: c.id, targetId: target.id, cardId: def.id, uid: card.uid, lawyerUid: lawyer.uid, tone: 'good', emotion: 'shock' });
-      addLog(tx, `⚖️ ${target.name}의 변호사가 ${c.name}의 「${def.icon} ${def.name}」을(를) 막아냈다!`, { tone: 'good', charId: target.id, emotion: 'joy' });
+      addLog(tx, `⚖️ ${target.name}의 변호사가 ${c.name}의 「${def.icon} ${def.name}」${particle(def.name, '을/를')} 막아냈다!`, { tone: 'good', charId: target.id, emotion: 'joy' });
       return;
     }
   }
@@ -276,7 +276,7 @@ export function useCard(tx, action, currentId) {
         changeMoney(tx, c, pay, 'donation', { from: o.id, tone: 'good', emotion: 'joy' });
         total += pay;
       }
-      addLog(tx, `${head} 후원금 ${won(total)}이(가) 모였다`, { tone: 'good', charId: c.id, emotion: 'joy' });
+      addLog(tx, `${head} 후원금 ${won(total)}${particle(won(total), '이/가')} 모였다`, { tone: 'good', charId: c.id, emotion: 'joy' });
       return;
     }
     case 'cut_line':
@@ -404,13 +404,13 @@ registerPrompts({
       }
       const def = offer.kind === 'card' ? cardDef(tx.data, offer.id) : itemDef(tx.data, offer.id);
       if (offer.kind === 'item' && hasItem(c, offer.id)) {
-        addLog(tx, `🙅 ${c.name}: 「${def.name}」은(는) 이미 가지고 있다`, { charId: c.id });
+        addLog(tx, `🙅 ${c.name}: 「${def.name}」${particle(def.name, '은/는')} 이미 가지고 있다`, { charId: c.id });
         return { result: 'left' };
       }
       // the price is re-checked now: cash or the coupon may have changed hands (trades / gifts) since the display
       const price = shopPrice(tx, c, offer.basePrice);
       if (c.money < price) {
-        addLog(tx, `😅 ${c.name}: 돈이 모자라서 「${def.name}」을(를) 못 샀다`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
+        addLog(tx, `😅 ${c.name}: 돈이 모자라서 「${def.name}」${particle(def.name, '을/를')} 못 샀다`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
         return { result: 'noMoney' };
       }
       const couponUsed = price !== offer.basePrice;
@@ -422,7 +422,7 @@ registerPrompts({
       changeMoney(tx, c, -price, 'shop', { tone: 'treasure', emotion: 'joy', ...(offer.kind === 'item' ? { itemId: offer.id } : { cardId: offer.id }) });
       if (offer.kind === 'card') gainCard(tx, c, offer.id, 'shop', { log: false });
       else addStats(tx, c, def.stats ?? {}, 'item', { itemId: offer.id });
-      addLog(tx, `🛍️ ${josa(c.name, '이/가')} 「${def.icon} ${def.name}」을(를) ${won(price)}에 샀다!${couponUsed ? ' (쿠폰 50%)' : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
+      addLog(tx, `🛍️ ${josa(c.name, '이/가')} 「${def.icon} ${def.name}」${particle(def.name, '을/를')} ${won(price)}에 샀다!${couponUsed ? ' (쿠폰 50%)' : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
       return offer.kind === 'card' ? { result: 'card', cardId: offer.id } : { result: 'item', itemId: offer.id };
     },
   },
@@ -569,6 +569,8 @@ export function gift(tx, action) {
   const to = charById(room, action.toId);
   if (!to) fail(404, '선물할 캐릭터를 찾을 수 없어요.');
   if (to.id === from.id) fail(400, '자기 자신에게는 선물할 수 없어요.');
+  if (from.finished) fail(409, '골인한 캐릭터는 선물을 보낼 수 없어요.');
+  if (to.finished) fail(409, '이미 골인한 캐릭터에게는 선물할 수 없어요.');
   ensureCards(from);
   ensureCards(to);
   const side = normalizeSide(tx, { money: action.money, cardUid: action.cardUid }, from, { mine: true });

@@ -375,3 +375,41 @@ body.cutin-open { overflow: hidden; }
 @media (max-width: 700px), (max-aspect-ratio: 4/5) {
   .ci-badge { top: auto; bottom: 6%; right: 2%; max-width: 52%; border-width: 2px; }
 }
+
+/* ---------- post-simulation fixes (client) ---------- */
+/* A6: the top bar (나가기) is covered while a cut-in is open → an exit button of its own (top-left) */
+.ci-exit {
+  position: fixed; left: 8px; top: 8px; z-index: 6; appearance: none; border: 0; cursor: pointer; font: inherit;
+  font-size: 0.78rem; font-weight: 800; color: #fff; background: rgba(0, 0, 0, 0.38); border-radius: 999px; padding: 5px 12px;
+}
+.ci-exit:hover, .ci-exit:focus-visible { background: rgba(0, 0, 0, 0.6); }
+.ci-exit[hidden] { display: none; }
+/* A14 (1280×720): long 명절 정산 / lotto tables scroll inside the box, the ▼ stays on screen */
+.ci-extra .ci-hres, .ci-extra .ci-lotto-rows { max-height: min(26vh, 240px); overflow-y: auto; overscroll-behavior: contain; }
+.cutin.holiday-res .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 470px) * 16 / 9)); min-width: min(420px, calc(100vw - 16px)); }
+/* A14: phone landscape (e.g. 844×390): illustration left, dialogue / options right; reaction bar on the right edge */
+@media (orientation: landscape) and (max-height: 500px) {
+  .cutin { padding: 6px 70px 6px 8px; align-items: stretch; }
+  .ci-stage {
+    width: 100%; min-width: 0; margin: 0; display: grid; gap: 6px 10px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto; align-items: start;
+  }
+  .cutin.prompt .ci-stage { width: 100%; }
+  .ci-top { display: none; }
+  .ci-win { grid-column: 1; grid-row: 1 / span 3; align-self: center; max-height: calc(100dvh - 16px); }
+  .ci-reacts { grid-column: 2; grid-row: 1; margin: 0; height: auto; }
+  .ci-box, .cutin.prompt .ci-box { grid-column: 2; grid-row: 2; width: auto; margin-top: 14px; padding: 18px 12px 8px; }
+  .ci-options { max-height: calc(100dvh - 170px); overflow-y: auto; overscroll-behavior: contain; }
+  .ci-tabs, .cutin.prompt .ci-tabs { grid-column: 2; grid-row: 3; width: auto; }
+  .ci-text { font-size: 15px; }
+  .ci-opt-list { grid-template-columns: 1fr; }
+  .ci-opt { min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
+  body.cutin-open .reaction-bar {
+    left: auto; right: 6px; bottom: 50%; transform: translateY(50%); flex-direction: column; border-radius: 22px;
+    max-height: calc(100dvh - 12px); overflow-y: auto; overflow-x: hidden; padding: 4px;
+  }
+  body.cutin-open .reaction-bar .react { min-width: 36px; height: 34px; font-size: 0.85rem; padding: 0 4px; }
+}
+/* TV (?quality=tv): the cut-in is ~1.4× (read from the couch); the width follows the screen height */
+body.q-tv .ci-stage { zoom: 1.4; width: min(1080px, calc(100vw / 1.4 - 40px), calc((100vh / 1.4 - 250px) * 16 / 9)); min-width: 0; }
+body.q-tv .ci-exit { display: none; }

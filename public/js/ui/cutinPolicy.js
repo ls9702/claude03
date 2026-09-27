@@ -30,6 +30,15 @@ export const PROMPT_BOARD_WAIT_MS = 1200;
 export const BANNER_MS = 2200;
 /** Cut-in window waits this long for the cast art (then shows the SVG and swaps). */
 export const CAST_PRELOAD_MS = 600;
+/**
+ * Post-simulation fixes (waiting time): other players' event cut-ins auto-advance after at most this long (mine keep
+ * 7 s). Shows with their own animation (horse race, 명절 정산, lotto, treasure chest, MC studio) keep their length.
+ */
+export const OTHERS_AUTO_MS = 3000;
+/** My turn started while the board / cut-ins still replay older events: catch up after this long (A3). */
+export const MY_TURN_CATCHUP_MS = 900;
+/** …and with a turn timer, never hold my spin button once fewer than this many ms are left. */
+export const DEADLINE_RESERVE_MS = 12000;
 
 /** Tiles that will become marriage / job events (Stage 6) — always full cut-ins. */
 export const BIG_TILE_TYPES = ['heart', 'job'];
@@ -105,7 +114,7 @@ function toSet(mine) {
  *   `queued` = full cut-ins already shown/queued (spectator backlog cap); `globalOff` = ?cutins=off
  * @returns {'full'|'banner'|'skip'|'defer'}  'defer' = show it (again through this policy) once my prompt is answered
  */
-export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptForMe = false, gameOver = false, queued = 0, globalOff = false } = {}) {
+export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptForMe = false, gameOver = false, queued = 0, globalOff = false, fastForward = false, myTurn = false } = {}) {
   if (!g?.anchor || gameOver || g.anchor.type === 'gameOver') return 'skip';
   if (globalOff) return 'skip';
   const own = isOwnGroup(g, mine);
@@ -115,9 +124,77 @@ export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptF
   if (own) return 'full';
   const m = normalizeCutinMode(mode);
   if (m === 'off') return 'skip';
+  // ⏩ 빨리 감기 / my roulette is waiting: other players' events never take over the screen (A3, waiting time);
+  // shared shows my characters take part in (명절 정산, 로또 with my ticket, 고교 첫 만남 pair) stay full
+  if ((fastForward || myTurn) && !involvesMe(g, mine)) return 'banner';
+  // repeated shows of other players (2nd+ entrant of an era, 2nd+ wedding) → one small banner in 「간단히」
+  if (g.repeat && m === 'compact') return 'banner';
   const want = m === 'full' || isBigGroup(g) ? 'full' : 'banner';
   if (want === 'full' && queued >= SPECTATOR_BACKLOG) return 'banner';
   return want;
+}
+
+/** A shared show one of my characters takes part in (명절 start / 정산 rows, lotto entries, schoolMeet pairs, gifts). */
+export function involvesMe(g, mine) {
+  const set = toSet(mine);
+  const a = g?.anchor;
+  if (!a) return false;
+  if (a.type === 'holidayStarted') return true; // everyone's holiday
+  const ids = [g.charId, g.targetId, a.charId, a.targetId, a.toId, ...(a.results ?? []), ...(a.entries ?? []), ...(a.winners ?? []), ...(a.pairs ?? []), ...(a.gifts ?? [])]
+    .map((x) => (x && typeof x === 'object' ? x.charId ?? x.fromId ?? null : x))
+    .filter(Boolean);
+  return ids.some((id) => set.has(id));
+}
+
+/**
+ * Mark other players' repeated shows (post-simulation fixes, waiting time): an era entry after the era's first entrant
+ * (the server gives the first one the MC studio), and every wedding of other players after the first one.
+ * `seen = {eras: Set<eraId>, weddings: number}` is updated in order; my own groups are never marked.
+ * @returns the same groups (with `repeat: true` / `eraId` on the marked ones)
+ */
+export function markRepeats(groups = [], seen = { eras: new Set(), weddings: 0 }, { mine = [] } = {}) {
+  const own = toSet(mine);
+  for (const g of groups) {
+    const anchors = g.anchors ?? [g.anchor];
+    const era = anchors.find((a) => a?.type === 'eraChanged');
+    const wedding = anchors.find((a) => a?.type === 'married');
+    const mineG = isOwnGroup(g, own);
+    if (era?.era) {
+      const first = !seen.eras.has(era.era);
+      seen.eras.add(era.era);
+      if (!mineG && !first && !g.studio?.length && g.anchor?.type === 'eraChanged') {
+        g.repeat = true;
+        g.eraId = era.era;
+        g.eraName = era.eraName ?? '';
+      }
+    }
+    if (wedding && !mineG) {
+      if (seen.weddings > 0 && g.anchor?.type === 'married') g.repeat = true;
+      seen.weddings++;
+    }
+  }
+  return groups;
+}
+
+/** Seen-state for `markRepeats` from a room view (a reload mid-game: eras already reached, weddings already held). */
+export function seenFromRoom(room, { mine = [] } = {}) {
+  const own = toSet(mine);
+  const eras = new Set();
+  const list = room?.board?.eras ?? [];
+  for (const c of room?.characters ?? []) {
+    const idx = c?.position?.eraIndex ?? 0;
+    for (let i = 0; i <= idx && i < list.length; i++) if (list[i]?.id) eras.add(list[i].id);
+    if (c?.finished) for (const e of list) if (e?.id) eras.add(e.id);
+  }
+  const weddings = (room?.characters ?? []).filter((c) => c?.spouse && !own.has(c.id)).length;
+  return { eras, weddings };
+}
+
+/** 「민수·지영 청년 시대 진입」 (more than 3 names → 「민수·지영·하늘 외 2명」). */
+export function eraBannerText(names = [], eraName = '') {
+  const list = names.filter(Boolean).filter((n, i, a) => a.indexOf(n) === i);
+  const who = list.length > 3 ? `${list.slice(0, 3).join('·')} 외 ${list.length - 3}명` : list.join('·');
+  return `${who}${who ? ' ' : ''}${eraName ? `${eraName} 시대` : '새 시대'} 진입`;
 }
 
 const ANCHOR_RANK = {

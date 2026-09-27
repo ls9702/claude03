@@ -35,6 +35,11 @@ export class GameRunner {
     this.timers = new Map(); // roomId -> { timer, key }
     this.cpuTimers = new Map(); // roomId -> { timer, key } (Stage 9-C)
     this.cpuDelay = cpuDelays(cpuDelayMs);
+    // a deleted room (admin / TTL prune) drops its deadline + CPU timers
+    store.onRoomDeleted?.((roomId) => {
+      this.#clear(roomId);
+      this.#clearCpu(roomId);
+    });
   }
 
   /** Admin start: build board + init characters. */

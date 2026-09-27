@@ -17,13 +17,16 @@ test('nameLength counts graphemes (emoji / Hangul), clampName never splits one',
   assert.equal(clampName('짧은 이름'), '짧은 이름');
 });
 
-test('nameFits = within 12 graphemes AND the server code-point count', () => {
+test('nameFits = the server rule: ≤ 12 graphemes after cleaning, ≤ 64 UTF-16 units', () => {
   assert.equal(nameFits('가나다라마바사아자차카타'), true);
   assert.equal(nameFits('열두글자이름입니다아아'), true);
   assert.equal(nameFits('가나다라마바사아자차카타파'), false);
   assert.equal(nameFits('🐶🐱🐰'), true);
-  // 4 ZWJ families = 4 graphemes but 20 code points → the server would refuse it
-  assert.equal(nameFits('👨‍👩‍👧'.repeat(4)), false);
+  // post-simulation fixes (A10): the server counts graphemes too → 4 ZWJ families = 4 (the counter said 4/12 before)
+  assert.equal(nameFits('👨‍👩‍👧'.repeat(4)), true);
+  assert.equal(nameLength('👨‍👩‍👧'.repeat(4)), 4);
+  // a zalgo pile is 1 grapheme but far over 64 UTF-16 units
+  assert.equal(nameFits(`a${'\u0301'.repeat(80)}`), false);
 });
 
 test('clockBounds narrows the server−local offset from HTTP Date headers', () => {

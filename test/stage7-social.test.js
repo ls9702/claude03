@@ -194,8 +194,9 @@ test('holiday: first entrant of 중등 opens one simultaneous prompt for everyon
   // a second entrant of 중등 → nothing; the next holiday era alternates to 추석
   const tx = createTx(structuredClone(done.room), { rng: fixedRng(), now: 0, data });
   assert.equal(openHoliday(tx, 'middle'), false);
-  assert.equal(openHoliday(tx, 'young'), true);
-  assert.equal(tx.room.holidays.young, 'chuseok');
+  assert.equal(openHoliday(tx, 'young'), false, 'young is not a holiday era (2 holidays: 중학생 + 중년)');
+  assert.equal(openHoliday(tx, 'middle_age'), true);
+  assert.equal(tx.room.holidays.middle_age, 'chuseok');
 });
 
 test('holiday: ties split the pot (floor, remainder to the first), lone staker plays nobody, config / first era off', () => {
@@ -322,37 +323,42 @@ test('presentation + MC: Stage 7 types registered, anchors vs chips, lines fille
 
 test('full random lifetime game with holidays, cards, shops and gifts: known events, filled lines, conserved pots', () => {
   const seen = new Set();
-  let room = started({ seed: 21, config: { holidays: true } });
-  const rng = createRng(5);
-  for (let i = 0; i < 3000 && room.status === 'playing'; i++) {
-    const p = room.turn.pending;
-    let action;
-    if (p) {
-      const opts = p.options.filter((o) => !o.disabled);
-      action = { type: 'choose', characterId: p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)), promptId: p.promptId, optionId: rng.pick(opts).id };
-    } else {
-      const c = ch(room, cur(room));
-      if (rng.next() < 0.05 && c.money > 10) action = { type: 'gift', characterId: c.id, toId: room.characters.find((x) => x.id !== c.id).id, money: 5 };
-      else action = randomCardAction(room, c, rng, 0.7) ?? { type: 'spin', characterId: c.id };
+  // a few seeded games (one short game may miss a card tile); every one must end with the holidays of its eras
+  for (const seed of [21, 22, 23, 24, 25]) {
+    let room = started({ seed, config: { holidays: true } });
+    const rng = createRng(seed - 16);
+    for (let i = 0; i < 3000 && room.status === 'playing'; i++) {
+      const p = room.turn.pending;
+      let action;
+      if (p) {
+        const opts = p.options.filter((o) => !o.disabled);
+        action = { type: 'choose', characterId: p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)), promptId: p.promptId, optionId: rng.pick(opts).id };
+      } else {
+        const c = ch(room, cur(room));
+        const to = room.characters.find((x) => x.id !== c.id && !x.finished);
+        if (rng.next() < 0.05 && c.money > 10 && to) action = { type: 'gift', characterId: c.id, toId: to.id, money: 5 };
+        else action = randomCardAction(room, c, rng, 0.7) ?? { type: 'spin', characterId: c.id };
+      }
+      const r = applyAction(room, action, { now: i * 1000 });
+      room = r.room;
+      room.log = [];
+      for (const e of r.events) {
+        seen.add(e.type);
+        assert.ok(EVENT_TYPES.includes(e.type), e.type);
+        if (e.type === 'holidayResult') assert.equal(e.results.reduce((a, x) => a + x.won, 0), 0);
+        if (e.type === 'chose' || e.type === 'betPlaced') continue;
+        assert.ok(lines.tags[e.lineTag], `${e.type}: tag ${e.lineTag}`);
+        assert.ok(!/\{\w+\}/.test(e.line ?? ''), `${e.type}: "${e.line}"`);
+        for (const l of e.mc ?? []) assert.ok(!/\{\w+\}/.test(l.line), `${e.type} mc: "${l.line}"`);
+      }
     }
-    const r = applyAction(room, action, { now: i * 1000 });
-    room = r.room;
-    room.log = [];
-    for (const e of r.events) {
-      seen.add(e.type);
-      assert.ok(EVENT_TYPES.includes(e.type), e.type);
-      if (e.type === 'holidayResult') assert.equal(e.results.reduce((a, x) => a + x.won, 0), 0);
-      if (e.type === 'chose' || e.type === 'betPlaced') continue;
-      assert.ok(lines.tags[e.lineTag], `${e.type}: tag ${e.lineTag}`);
-      assert.ok(!/\{\w+\}/.test(e.line ?? ''), `${e.type}: "${e.line}"`);
-      for (const l of e.mc ?? []) assert.ok(!/\{\w+\}/.test(l.line), `${e.type} mc: "${l.line}"`);
-    }
+    assert.equal(room.status, 'finished');
+    const hEras = gameData().holidays.eras.filter((e) => room.board.eras.some((x, i) => i > 0 && x.id === e));
+    assert.deepEqual(Object.keys(room.holidays).sort(), [...hEras].sort(), 'one holiday per holiday era of the mode');
+    assert.deepEqual(Object.values(room.holidays), hEras.map((_, i) => (i % 2 ? 'chuseok' : 'seol')));
+    assert.ok(room.result.ranking.every((r) => Number.isInteger(r.items)));
   }
-  assert.equal(room.status, 'finished');
   for (const t of ['cardGained', 'cardUsed', 'gift', 'holidayStarted', 'holidayResult']) assert.ok(seen.has(t), t);
-  assert.equal(Object.keys(room.holidays).length, 4, 'middle, young, middle_age, senior');
-  assert.deepEqual(Object.values(room.holidays), ['seol', 'chuseok', 'seol', 'chuseok']);
-  assert.ok(room.result.ranking.every((r) => Number.isInteger(r.items)));
 });
 
 // ---------- restore / migration ----------
@@ -442,7 +448,7 @@ test('HTTP: card / trade / gift actions, spectators 403, /api/meta cards·items�
     const meta = (await call('GET', '/api/meta')).json;
     assert.equal(meta.cards.cards.length, 16);
     assert.equal(meta.items.items.length, 6);
-    assert.deepEqual(meta.holidays.eras, ['middle', 'young', 'middle_age', 'senior']);
+    assert.deepEqual(meta.holidays.eras, gameData().holidays.eras);
     assert.equal(meta.balance.lotto.pool, 20);
     assert.equal(meta.presentation.sceneFallbacks.stage, 'wedding-hall');
   } finally {

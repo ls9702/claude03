@@ -58,8 +58,8 @@ export function submapSceneBody(scene) {
       const lights = [...Array(18).keys()].map((i) => `<circle cx="${60 + i * 88}" cy="60" r="12" fill="${i % 2 ? '#ffd23f' : '#ff5c8a'}"/>`).join('');
       const crowd = [...Array(24).keys()].map((i) => `<circle cx="${40 + i * 66}" cy="${330 + (i % 3) * 8}" r="22" fill="${['#e57373', '#64b5f6', '#ffd54f', '#81c784', '#ba68c8'][i % 5]}"/>`).join('');
       return `<rect width="1600" height="900" fill="#2b1d4d"/><rect y="0" width="1600" height="110" fill="#1b1133"/>${lights}
-        <rect x="560" y="130" width="480" height="150" rx="16" fill="#111" stroke="#ffd23f" stroke-width="8"/>
-        <text x="800" y="222" text-anchor="middle" font-size="64" font-weight="900" fill="#ffd23f" font-family="system-ui,sans-serif">인생역전</text>
+        <rect class="sm-sign" x="1070" y="8" width="500" height="94" rx="16" fill="#111" stroke="#ffd23f" stroke-width="8"/>
+        <text x="1320" y="78" text-anchor="middle" font-size="60" font-weight="900" fill="#ffd23f" font-family="system-ui,sans-serif">인생역전</text>
         <rect y="300" width="1600" height="80" fill="#3c2a66"/>${crowd}
         <rect y="380" width="1600" height="520" fill="#6aa84f"/><rect y="400" width="1600" height="14" fill="#fff" opacity=".8"/><rect y="860" width="1600" height="14" fill="#fff" opacity=".8"/>
         ${[0, 1, 2].map((i) => `<rect y="${540 + i * 110}" width="1600" height="6" fill="#fff" opacity=".35"/>`).join('')}

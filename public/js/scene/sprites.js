@@ -16,8 +16,11 @@ export function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+/** Canvas text never carries bidi controls (a name with U+202E would mirror the tag, A10). */
+const BIDI = /[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C]/g;
 /** Pill-shaped text label on a canvas. */
-export function textCanvas(text, { size = 40, weight = 800, color = '#2d2a32', bg = 'rgba(255,255,255,0.94)', pad = 16, border = null, borderWidth = 5 } = {}) {
+export function textCanvas(rawText, { size = 40, weight = 800, color = '#2d2a32', bg = 'rgba(255,255,255,0.94)', pad = 16, border = null, borderWidth = 5 } = {}) {
+  const text = String(rawText ?? '').replace(BIDI, '');
   const c = document.createElement('canvas');
   const ctx = c.getContext('2d');
   const font = `${weight} ${size}px ${FONT_STACK}`;

@@ -136,6 +136,7 @@
         { "type": "hometown", "weight": 1 },
         { "type": "jeju", "weight": 1 }
       ],
+      "eraOverrides": { "_comment": "시뮬레이션 후 루트 승률 균형: 중년 연애 루트 월급 칸 3→4 (맞벌이)", "middle_age": { "salary": { "weight": 4 } } },
       "labels": { "money": ["맞벌이 월급", "축의금", "육아 수당"], "loss": ["데이트 비용", "기념일 선물", "기저귀·분유"] }
     },
     "career": {
@@ -149,6 +150,7 @@
         { "type": "heart", "weight": 1 },
         { "type": "house", "weight": 2 }
       ],
+      "eraOverrides": { "_comment": "시대별 루트 칸 가중치·금액 배수 덮어쓰기 {시대: {칸 종류: {weight?, scale?}}} (시뮬레이션 후 루트 승률 균형: 청년 커리어 돈 칸 보강, 중년 커리어 월급 칸 4→3)", "young": { "money": { "weight": 2, "scale": 1.8 } }, "middle_age": { "salary": { "weight": 3 } } },
       "labels": { "money": ["특허 보상금", "승진 보너스", "야근 수당", "스톡옵션"], "loss": ["회식 2차", "자기계발비", "야근 택시비"] }
     },
     "money": {

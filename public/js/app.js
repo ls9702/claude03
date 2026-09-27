@@ -4,18 +4,22 @@ import {
   connectEvents,
   ensureSession,
   getMeta,
+  lastSseMessageAt,
   savedName,
+  sseConnected,
+  storageMode,
   savedRoomId,
   setSavedName,
   setSavedRoomId,
 } from './api.js';
-import { NAME_MAX, nameFits, ownerHtml } from './format.js';
+import { NAME_MAX, cleanName, josa, nameFits, ownerHtml } from './format.js';
 import { bindNameInput } from './ui/nameInput.js';
 import { createGameUI } from './game2d.js';
 import { hydratePortraits, portraitHtml, setAvatarDefs } from './ui/avatar2d.js';
 import { openCustomizer, setPreviewRenderer } from './ui/customize.js';
 import { layeredPreviewRenderer } from './ui/avatarCompose.js';
 import { MC_NAMES, mcLinesFrom, renderMc } from './ui/mc.js';
+import { closePhotoDialogs } from './ui/groupPhoto.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) =>
@@ -42,13 +46,13 @@ function acceptRoom(r) {
 
 // ---------- toast / screens ----------
 let toastTimer;
-function toast(msg, kind = 'info') {
+function toast(msg, kind = 'info', ms = 2600) {
   const el = $('#toast');
   el.textContent = msg;
   el.dataset.kind = kind;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  toastTimer = setTimeout(() => el.classList.remove('show'), ms);
 }
 
 /** 👀 관전 (spectator seat, Stage fix): no characters / spin / bet / choose — board, cut-ins, log, reactions. */
@@ -76,16 +80,68 @@ function showScreen(name) {
 
 function setConn(kind) {
   const el = $('#conn');
-  el.dataset.kind = kind;
-  el.textContent = kind === 'ok' ? '● 연결됨' : '● 재연결 중…';
+  const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const k = kind === 'ok' && off ? 'bad' : kind;
+  el.dataset.kind = k;
+  el.textContent = k === 'ok' ? '● 연결됨' : off ? '● 오프라인 · 재연결 중…' : '● 재연결 중…';
 }
 
+// ---------- connection watchdog (A9) ----------
+// The server's SSE heartbeat is a comment (invisible to EventSource), so a dead connection (Wi-Fi gone, laptop lid)
+// can look open for minutes. After WATCHDOG_QUIET_MS without a message the page probes the server: a network failure
+// flips the badge to 「재연결 중…」 and reopens the stream; the browser's offline / online events act at once.
+const WATCHDOG_QUIET_MS = 35000;
+const WATCHDOG_PROBE_EVERY_MS = 30000;
+let lastProbeAt = 0;
+async function watchdogTick() {
+  if (!state.room || state.screen === 'join') return;
+  if (navigator.onLine === false) return setConn('bad');
+  const quiet = Date.now() - Math.max(lastSseMessageAt(), state.connectedAt ?? 0);
+  if (quiet < WATCHDOG_QUIET_MS || Date.now() - lastProbeAt < WATCHDOG_PROBE_EVERY_MS) return;
+  lastProbeAt = Date.now();
+  try {
+    await api('GET', '/api/session');
+    setConn(sseConnected() ? 'ok' : 'bad');
+  } catch (err) {
+    if (err.status) return; // the server answered (4xx): the connection itself works
+    setConn('bad');
+    reconnect();
+  }
+}
+function reconnect() {
+  const room = state.room;
+  if (!room) return;
+  clearTimeout(state.reconnectTimer);
+  state.reconnectTimer = setTimeout(() => state.room?.id === room.id && enterRoom(state.room), 1500);
+}
+setInterval(() => watchdogTick(), 5000);
+window.addEventListener('offline', () => state.room && setConn('bad'));
+window.addEventListener('online', () => {
+  if (!state.room) return;
+  setConn('bad');
+  reconnect(); // a fresh stream (its first message is the current state)
+});
+
 // ---------- room lifecycle ----------
+/** Everything a room put on screen goes away: cut-ins, banners, MC corner, dialogs, the result show (A6). */
+function tearDownRoomUi() {
+  state.game?.teardown?.();
+  state.game?.result?.reset(); // Stage 9: stop the result show, drop the podium
+  state.game?.cutin?.setExit?.(null);
+  closePhotoDialogs();
+  closeCustomizer();
+  setSheet(false);
+  state.waitingResult = false;
+  state.resultWait = null;
+  document.body.classList.remove('cutin-open', 'spin-docked', 'has-inbox', 'spin-fab-on', 'photo-open');
+  $('#float-layer')?.replaceChildren();
+}
+
 function leaveRoom(message) {
   state.closeEvents?.();
   state.closeEvents = null;
-  closeCustomizer();
-  state.game?.result?.reset(); // Stage 9: stop the result show, drop the podium
+  clearTimeout(state.reconnectTimer);
+  tearDownRoomUi();
   state.room = null;
   setSavedRoomId(null);
   showScreen('join');
@@ -96,8 +152,17 @@ function enterRoom(room) {
   state.room = room;
   setSavedRoomId(room.id);
   state.closeEvents?.();
+  state.connectedAt = Date.now();
+  // the top bar (with 나가기) is covered while a cut-in is open → the cut-in has its own exit button
+  // (asked first: a tap meant to advance the cut-in must not throw anyone out of the game)
+  state.game?.cutin?.setExit?.(() => {
+    if (confirm('방에서 나갈까요? 방 코드로 다시 들어올 수 있어요.')) leaveRoom('방에서 나왔어요. 코드로 다시 들어올 수 있어요.');
+  });
   state.closeEvents = connectEvents(room.id, {
-    open: () => setConn('ok'),
+    open: () => {
+      state.connectedAt = Date.now();
+      setConn('ok');
+    },
     state: (r) => {
       if (acceptRoom(r)) render();
     },
@@ -132,19 +197,24 @@ function render() {
     if (room.status === 'playing') {
       showScreen('game');
       renderGame(room);
-    } else if (state.screen === 'game' && state.game?.isBusy?.()) {
-      // let the 3D board finish the last hops / goal confetti before the result screen; controls lock at once
-      renderGame(room);
-      if (!state.waitingResult) {
-        state.waitingResult = true;
-        state.game.whenIdle().then(() => {
-          state.waitingResult = false;
-          render();
-        });
-      }
     } else {
-      showScreen('result');
-      renderResult(room);
+      // game over / forced end: controls lock, prompt cut-ins / dialogs close at once, the 3D backlog rushes (A1, A8)
+      state.game?.finish?.();
+      if (state.screen === 'game' && state.resultWait !== room.id && state.game?.isBusy?.()) {
+        // let the 3D board finish the last hops / goal confetti — at most ~2.5 s — before the result screen
+        renderGame(room);
+        if (!state.waitingResult) {
+          state.waitingResult = true;
+          state.game.whenIdle({ maxMs: 2500 }).then(() => {
+            state.waitingResult = false;
+            state.resultWait = room.id;
+            if (state.room?.id === room.id) render();
+          });
+        }
+      } else {
+        showScreen('result');
+        renderResult(room);
+      }
     }
   }
 }
@@ -379,7 +449,7 @@ async function onMyCharsClick(ev) {
   if (btn.dataset.act === 'edit') startCustomizer(id);
   if (btn.dataset.act === 'delete') {
     const c = state.room.characters.find((x) => x.id === id);
-    if (!c || !confirm(`「${c.name}」을(를) 삭제할까요?`)) return;
+    if (!c || !confirm(`「${c.name}」${josa(c.name, '을/를').slice(c.name.length)} 삭제할까요?`)) return;
     try {
       const res = await api('DELETE', `/api/rooms/${state.room.id}/characters/${id}`);
       state.room = res.room;
@@ -463,7 +533,7 @@ async function onJoin(ev) {
   const errEl = form.querySelector('.form-error');
   const spectator = ev.submitter?.value === 'spectator';
   const code = form.code.value.trim().toUpperCase();
-  let name = form.name.value.replace(/\s+/g, ' ').trim();
+  let name = cleanName(form.name.value); // same cleaning as the server: invisible / bidi characters vanish (A10)
   errEl.textContent = '';
   if (code.length !== 6) return (errEl.textContent = '방 코드는 6자리예요.');
   if (!name && spectator) name = '관전자';
@@ -515,6 +585,8 @@ async function boot() {
     buildReactionBar();
     state.game = createGameUI($('#game-root'), { getMeta: () => state.meta, act, toast, resync });
     await ensureSession();
+    // A15: no site storage → every refresh would join as a new player; say so once
+    if (storageMode() === 'memory') toast('⚠️ 이 브라우저는 저장소가 막혀 있어서 새로고침하면 새 참가자로 들어가요. 새로고침하지 말고 이 화면을 계속 써 주세요.', 'error', 7000);
   } catch (err) {
     showScreen('join');
     toast(err.message || '서버에 연결할 수 없습니다.', 'error');

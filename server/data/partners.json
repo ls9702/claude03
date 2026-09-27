@@ -18,7 +18,7 @@
   },
   "meetEras": ["high", "young", "middle_age", "senior"],
   "affection": {
-    "_comment": "만남 meet (+찰떡궁합 matchBonus), 데이트 dates[].gain (+성향 일치 matchBonus), proposeAt 이상 & 청년 이후면 하트 칸에서 프로포즈. 실패 시 failDrop 감소, steadyGain = '조금 더 사귀기'. 기혼자 하트 칸(출산 없음)은 familyGain.",
+    "_comment": "만남 meet (+찰떡궁합 matchBonus), 데이트 dates[].gain (+성향 일치 matchBonus), proposeAt 이상 & 청년 이후면 하트 칸에서 프러포즈. 실패 시 failDrop 감소, steadyGain = '조금 더 사귀기'. 기혼자 하트 칸(출산 없음)은 familyGain.",
     "meet": 30,
     "dateGain": 20,
     "matchBonus": 8,
@@ -52,7 +52,7 @@
     "_comment": "시대별 금액 배수(scale) + 결혼식 비용·축의금(1인당, 현금 한도) + 출산 비용.",
     "scale": { "high": 0.5, "young": 2, "middle_age": 3, "senior": 2 },
     "wedding": 60,
-    "weddingGift": 20,
+    "weddingGift": 10,
     "birth": 30
   },
   "birth": {
@@ -60,7 +60,7 @@
     "eras": ["young", "middle_age"],
     "base": 0.6,
     "perAffection": 0.004,
-    "perSpin": 0.3,
+    "perSpin": 0.15,
     "perChild": 0.1,
     "max": 0.85
   },
@@ -69,10 +69,10 @@
     "max": 4,
     "genius": { "base": 0.15, "match": 0.25, "luck": 0.01 },
     "growTurns": 1,
-    "dolGift": 10,
+    "dolGift": 5,
     "schoolCost": 40,
-    "examGift": { "genius": 100, "college": 30, "collegeChance": 0.5 },
-    "allowance": 70,
+    "examGift": { "genius": 60, "college": 20, "collegeChance": 0.5 },
+    "allowance": 50,
     "talentMult": { "genius": 2, "normal": 1 }
   },
   "outings": [

@@ -24,7 +24,7 @@ export const PERSONALITIES = ['cautious', 'normal', 'bold'];
 
 /** Personality knobs: thresholds / reserves / margins (money in 만원). */
 export const PERSONALITY = {
-  cautious: { promotion: 0.6, retake: 0.6, propose: 0.6, reserve: 450, shopMult: 0.85, sabotage: 1.15, tradeMargin: 1.15, stake: 'low', routeBias: { career: 1 } },
+  cautious: { promotion: 0.6, retake: 0.6, propose: 0.6, reserve: 300, shopMult: 0.85, sabotage: 1.15, tradeMargin: 1.15, stake: 'low', routeBias: { career: 1 } },
   normal: { promotion: 0.5, retake: 0.5, propose: 0.45, reserve: 300, shopMult: 1, sabotage: 0.95, tradeMargin: 1, stake: 'mid', routeBias: {} },
   bold: { promotion: 0.4, retake: 0.4, propose: 0.3, reserve: 150, shopMult: 1.2, sabotage: 0.8, tradeMargin: 0.9, stake: 'high', routeBias: { money: 1 } },
 };
@@ -169,16 +169,29 @@ const byMax = (list, f) => list.reduce((best, x) => (best == null || f(x) > f(be
 const ROUTES = ['love', 'career', 'money'];
 
 /**
- * 갈림길: charm → love (a charming single / dating CPU), a well-paid job / int → career (salary + job tiles), cash / luck →
- * money (money tiles × 1.8, houses) — plus the personality bias (cautious career, bold money).
+ * 갈림길: charm / a partner / a family → love (소개팅, dates → 프러포즈 → 맞벌이, births → 용돈), a well-paid job / int →
+ * career (salary + job tiles), cash / luck → money (money tiles × 1.8, houses, treasures) — plus the personality bias
+ * (cautious career, bold money). Cash counts RELATIVE to the room's average (rich rooms are not all money rooms).
  */
 function answerRoute(ctx, c, p) {
   const k = knobs(c, ctx.room);
   const regular = c.job && c.job.id !== PART_TIME_ID;
+  const P = ctx.data.partners ?? {};
+  const proposeAt = P.affection?.proposeAt ?? 60;
+  const maxKids = P.children?.max ?? 4;
+  const others = ctx.room.characters.filter((x) => !x.finished || x.id === c.id);
+  const avgCash = others.reduce((a, x) => a + Math.max(0, x.money ?? 0), 0) / Math.max(1, others.length);
+  const relCash = Math.max(0, c.money ?? 0) / Math.max(50, avgCash);
+  const charm = statOf(c, 'charm');
+  const partner = !c.spouse && c.love?.partner;
+  let family = 0;
+  if (c.spouse) family = (c.children?.length ?? 0) < maxKids ? 1.5 : 0.5; // births (용돈 later) / outings
+  else if (partner) family = 1.5 + Math.min(1, (c.love?.affection ?? 0) / proposeAt); // dates → 프러포즈 → 맞벌이
+  else family = 1.5 + (charm >= 6 ? 1 : 0); // 소개팅: a partner right away
   const scores = {
-    love: statOf(c, 'charm') * 0.5 + (!c.spouse && c.love?.partner ? 1.5 : 0) + (!c.spouse && statOf(c, 'charm') >= 6 ? 1.5 : 0),
-    career: 2 + (regular ? salaryAmount(ctx, c) / 100 : 0) + statOf(c, 'int') * 0.2,
-    money: Math.min(6, Math.max(0, c.money ?? 0) / 400) + statOf(c, 'luck') * 0.2 + (c.house ? 0 : 1),
+    love: charm * 0.4 + family,
+    career: 1.5 + (regular ? Math.min(3, salaryAmount(ctx, c) / 150) : 0) + statOf(c, 'int') * 0.2,
+    money: Math.min(3, relCash * 1.5) + statOf(c, 'luck') * 0.2 + (c.house ? 0 : 1),
   };
   for (const [r, b] of Object.entries(k.routeBias)) scores[r] += b;
   const opts = enabled(p).filter((o) => ROUTES.includes(o.id));
@@ -358,7 +371,7 @@ function answerDate(ctx, c, p) {
   return byMax(scored, (x) => x.s)?.o.id ?? null;
 }
 
-/** 프로포즈: when the success chance clears the personality threshold, else the safer option (lowest chance). */
+/** 프러포즈: when the success chance clears the personality threshold, else the safer option (lowest chance). */
 function answerPropose(ctx, c, p) {
   const opts = enabled(p);
   const chancy = opts.filter((o) => hasField(o, 'chance'));

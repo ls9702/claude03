@@ -1,23 +1,47 @@
 // fetch + SSE wrapper for the game page.
-import { clockBounds } from './format.js';
+import { clockBounds, stripBidiJson } from './format.js';
 
 const TOKEN_KEY = 'jinsei.token';
 const ROOM_KEY = 'jinsei.roomId';
 const NAME_KEY = 'jinsei.name';
 
-function lsGet(key) {
+// Storage with fallbacks (A15): localStorage → sessionStorage → memory. A browser that blocks site data would otherwise
+// create a new session (a ghost player) on every refresh; `storageMode()` tells the UI so it can warn once.
+const memory = new Map();
+function probe(kind) {
   try {
-    return localStorage.getItem(key);
+    const st = kind === 'session' ? window.sessionStorage : window.localStorage;
+    const k = '__jinsei_probe';
+    st.setItem(k, '1');
+    st.removeItem(k);
+    return st;
   } catch {
     return null;
   }
 }
+const stores = typeof window === 'undefined' ? { local: null, session: null } : { local: probe('local'), session: probe('session') };
+/** 'local' (normal) | 'session' (lost when the tab closes) | 'memory' (lost on refresh). */
+export const storageMode = () => (stores.local ? 'local' : stores.session ? 'session' : 'memory');
+function lsGet(key) {
+  for (const st of [stores.local, stores.session]) {
+    try {
+      const v = st?.getItem(key);
+      if (v != null) return v;
+    } catch {
+      /* try the next one */
+    }
+  }
+  return memory.get(key) ?? null;
+}
 function lsSet(key, value) {
+  if (value == null) memory.delete(key);
+  else memory.set(key, value);
+  const st = stores.local ?? stores.session;
   try {
-    if (value == null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
+    if (value == null) st?.removeItem(key);
+    else st?.setItem(key, value);
   } catch {
-    /* storage unavailable */
+    /* storage unavailable: the memory copy keeps this page working */
   }
 }
 
@@ -50,7 +74,9 @@ async function raw(method, path, body, withToken = true) {
   if (date) clock = clockBounds(clock, { date, sentAt, receivedAt: Date.now() });
   let data = null;
   try {
-    data = await res.json();
+    // bidi control characters (U+202E …) never reach the UI: a name could flip every following character (A10)
+    const text = await res.text();
+    data = text ? JSON.parse(stripBidiJson(text)) : null;
   } catch {
     /* empty */
   }
@@ -105,6 +131,9 @@ export function onCharArt(fn) {
 }
 /** True while the room SSE stream is connected (the AI slot polls only when it isn't). */
 export const sseConnected = () => sseOpen;
+let lastMessageAt = 0;
+/** Local ms of the last SSE message (connection watchdog, A9). */
+export const lastSseMessageAt = () => lastMessageAt;
 
 /**
  * Open the room SSE stream.
@@ -118,16 +147,18 @@ export function connectEvents(roomId, handlers) {
     es.addEventListener(name, (ev) => {
       let data = null;
       try {
-        data = JSON.parse(ev.data);
+        data = JSON.parse(stripBidiJson(ev.data));
       } catch {
         return;
       }
+      lastMessageAt = Date.now();
       handlers[name]?.(data);
       if (name === 'charArt') for (const fn of [...artListeners]) fn(data);
     });
   }
   es.onopen = () => {
     sseOpen = true;
+    lastMessageAt = Date.now();
     handlers.open?.();
     for (const fn of [...artListeners]) fn({ reconnected: true });
   };

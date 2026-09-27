@@ -2,7 +2,7 @@
 // art, else the SVG portrait) drawn into ONE canvas on the studio stage with a title banner ("인생게임 · 방 코드 ·
 // 날짜"), names and places → PNG download (`canvas.toBlob` + `<a download>`) or the Web Share API. Works without
 // WebGL; in 3D mode a 「🧊 3D 시상대」 style captures the podium scene instead.
-import { esc } from '../format.js';
+import { esc, stripBidi } from '../format.js';
 import { renderAvatar } from './avatar2d.js';
 import { composeArt, composeAvatar } from './avatarCompose.js';
 import { resolveCharacterArt } from './cutinMap.js';
@@ -195,7 +195,7 @@ export async function renderGroupPhoto({ entries = [], poseId = 'v', title = '',
   list.forEach((e, i) => {
     const s = slots[i];
     const rank = Number(e.rank) || i + 1;
-    drawLabel(g, `${MEDALS[rank - 1] ?? `${rank}위`} ${e.char?.name ?? ''}`, s.x, s.labelY, { gold: rank === 1, fontPx: s.row === 'back' ? 24 : 28, max: s.row === 'back' ? 230 : 300 });
+    drawLabel(g, `${MEDALS[rank - 1] ?? `${rank}위`} ${stripBidi(e.char?.name ?? '')}`, s.x, s.labelY, { gold: rank === 1, fontPx: s.row === 'back' ? 24 : 28, max: s.row === 'back' ? 230 : 300 });
   });
   drawBanner(g, width, height, title);
   g.font = `700 ${Math.round(height * 0.022)}px ${FONT_STACK}`;
@@ -213,7 +213,20 @@ export const canvasBlob = (cv) => new Promise((resolve) => (cv?.toBlob ? cv.toBl
  * The 📸 dialog. `entries` in rank order ({char, rank}); `podium` = the 3D podium view (optional 3D style).
  * @returns {{el: HTMLElement, close: () => void}}
  */
+/** Open photo dialogs (A15: at most one; a second 📸 tap brings the open one back into focus). */
+const openDialogs = new Set();
+/** Close every open photo dialog (leaving the room). */
+export function closePhotoDialogs() {
+  for (const d of [...openDialogs]) d.close();
+}
+
 export function openPhotoDialog({ entries = [], code = '', findAsset = () => null, podium = null, toast = () => {}, date = new Date() } = {}) {
+  const already = [...openDialogs][0];
+  if (already?.el?.isConnected) {
+    already.el.querySelector('[data-pose].on, [data-pose]')?.focus({ preventScroll: true });
+    return already;
+  }
+  const opener = typeof document !== 'undefined' ? document.activeElement : null;
   const title = photoTitle({ code, date });
   const fileName = photoFileName({ code, date });
   const state = { poseId: 'v', style: 'art', canvas: null, blob: null, seq: 0 };
@@ -300,13 +313,38 @@ export function openPhotoDialog({ entries = [], code = '', findAsset = () => nul
   }
 
   function close() {
+    if (!openDialogs.has(api)) return;
+    openDialogs.delete(api);
     state.seq++;
     el.remove();
-    document.body.classList.remove('photo-open');
-    document.removeEventListener('keydown', onKey);
+    if (!openDialogs.size) document.body.classList.remove('photo-open'); // only when the last one closes
+    document.removeEventListener('keydown', onKey, true);
+    if (opener?.isConnected) opener.focus?.({ preventScroll: true });
   }
-  const onKey = (ev) => ev.key === 'Escape' && close();
-  document.addEventListener('keydown', onKey);
+  // focus trap: Tab / Shift+Tab cycle inside the dialog, Escape closes it
+  const onKey = (ev) => {
+    if (ev.key === 'Escape') {
+      ev.stopPropagation();
+      close();
+      return;
+    }
+    if (ev.key !== 'Tab') return;
+    const f = [...el.querySelectorAll('button:not([disabled]), [href], input, select, [tabindex]:not([tabindex="-1"])')].filter((n) => n.offsetParent !== null || n === document.activeElement);
+    if (!f.length) return;
+    const first = f[0];
+    const last = f[f.length - 1];
+    if (!el.contains(document.activeElement)) {
+      ev.preventDefault();
+      first.focus();
+    } else if (ev.shiftKey && document.activeElement === first) {
+      ev.preventDefault();
+      last.focus();
+    } else if (!ev.shiftKey && document.activeElement === last) {
+      ev.preventDefault();
+      first.focus();
+    }
+  };
+  document.addEventListener('keydown', onKey, true);
   el.addEventListener('click', (ev) => {
     const t = ev.target;
     if (t === el || t.closest('[data-photo="close"]')) return close();
@@ -336,7 +374,9 @@ export function openPhotoDialog({ entries = [], code = '', findAsset = () => nul
     if (t.closest('[data-photo="save"]')) return save();
     if (t.closest('[data-photo="share"]')) return share();
   });
+  const api = { el, close, build, get canvas() { return state.canvas; } };
+  openDialogs.add(api);
   build();
   $('[data-pose]')?.focus({ preventScroll: true });
-  return { el, close, build, get canvas() { return state.canvas; } };
+  return api;
 }

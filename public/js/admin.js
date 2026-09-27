@@ -117,6 +117,7 @@ function buildCreateForm() {
   };
   sel.addEventListener('change', syncMode);
   $('#era-rows').addEventListener('input', checkEraMins);
+  $('#create-form [name=maxCharacters]')?.addEventListener('input', updateEstimate);
   syncMode();
   $('#era-reset').addEventListener('click', () => {
     for (const e of meta.eras.eras) $(`[name="era_${e.id}"]`).value = e.defaultTurns;
@@ -161,7 +162,29 @@ function checkEraMins() {
     }
   }
   $('#era-hint').textContent = problems.join(' ');
+  updateEstimate();
   return problems;
+}
+
+// Playtest: lifetime mode, default lengths (53 칸), 8 characters ≈ 25 min → ≈ 19.5 s per character turn and a turn
+// moves ≈ 5.5 칸 on average (roulette 1–10).
+const SEC_PER_TURN = 19.5;
+const TILES_PER_TURN = 5.5;
+/** 「예상 약 N분」 for the chosen mode / era lengths / max characters. */
+function updateEstimate() {
+  const out = $('#era-est');
+  if (!out) return;
+  const mode = $('#mode-select').value;
+  const eras = meta.eras.modes[mode]?.eras ?? [];
+  let tiles = 0;
+  for (const id of eras) {
+    const e = meta.eras.eras.find((x) => x.id === id);
+    const raw = $(`[name="era_${id}"]`)?.value;
+    tiles += raw === '' || raw == null ? e?.defaultTurns ?? 0 : Number(raw) || 0;
+  }
+  const chars = Math.min(8, Math.max(2, Number($('#create-form [name=maxCharacters]')?.value) || 8));
+  const min = Math.round(((tiles / TILES_PER_TURN) * chars * SEC_PER_TURN) / 60);
+  out.textContent = tiles ? `총 ${tiles}칸 · 예상 약 ${Math.max(1, min)}분 (캐릭터 ${chars}명 기준)` : '';
 }
 
 async function onCreate(ev) {
@@ -266,7 +289,7 @@ async function renderDetail() {
     ${mvpTools(room, byId)}
     <dl class="kv">
       <dt>모드</dt><dd>${esc(eras.modes[room.config.mode].name)}</dd>
-      <dt>시대별 턴</dt><dd>${esc(eraText)}</dd>
+      <dt>시대 길이(칸)</dt><dd>${esc(eraText)}</dd>
       <dt>최대 캐릭터</dt><dd>${room.config.maxCharacters}</dd>
       <dt>초기 자금</dt><dd>${room.config.startingMoney.toLocaleString()}만원</dd>
       <dt>턴 순서</dt><dd>${room.config.turnOrder === 'family' ? '가문 순' : '캐릭터 번호 순'}</dd>

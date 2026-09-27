@@ -8,9 +8,9 @@
 // holiday answers (disabled options skipped), rare random gifts and trade offers (accepted / rejected / left to
 // expire). Stage 7 report: cards gained / used per character, sabotage targets by rank, blocks, shop purchase
 // rate, items, holiday money flow (고스톱 pot conserved), lotto payout vs EV vs price.
-// Stage 8 policy: random enabled options (만남 / 데이트 / 프로포즈 / 부동산). Report: meets / dates / proposals, marriage
+// Stage 8 policy: random enabled options (만남 / 데이트 / 프러포즈 / 부동산). Report: meets / dates / proposals, marriage
 // rate by route, children per character, genius share, spouse salary + allowance share of income, houses by type,
-// swaps, 청약 / lucky, the 노년 시세 draw and its effect, 건물주. `--family default` answers 만남 / 데이트 / 프로포즈 with
+// swaps, 청약 / lucky, the 노년 시세 draw and its effect, 건물주. `--family default` answers 만남 / 데이트 / 프러포즈 with
 // the prompt default (best candidate, matched date, propose) instead of randomly.
 //
 // Stage 9 report: submap visits / choices, treasures (count, appraisal values, fakes), special awards (share of
@@ -59,7 +59,7 @@ const ERA_IDS = data.eras.eras.map((e) => e.id);
 const BET_PICKS = { oddEven: ['odd', 'even'], range: Object.keys(data.balance.bets.ranges) };
 const CARD_DEFS = new Map(data.cards.cards.map((d) => [d.id, d]));
 
-const FAMILY_POLICY = arg('family', 'random'); // Stage 8: 'default' = 만남 / 데이트 / 프로포즈 take the prompt's default
+const FAMILY_POLICY = arg('family', 'random'); // Stage 8: 'default' = 만남 / 데이트 / 프러포즈 take the prompt's default
 const FAMILY_KINDS = new Set(['meet', 'date', 'propose']);
 /** A random answer among the enabled options. */
 const randomOption = (rng, p) =>
@@ -159,6 +159,7 @@ const stats = {
   finalStats: [0, 0, 0, 0, 0],
   byEducation: {}, // education → [sum net worth, n] (lifetime + adult)
   byRoute: {}, // `${era}:${route}` → [sum net worth, n] (lifetime + adult)
+  byRouteRel: {}, // `${era}:${route}` → [Σ (total / same game's mean − 1), n, 1st places, Σ fair share]
   examResults: {},
   careerChoice: {},
   military: {},
@@ -414,7 +415,7 @@ function playGame(g) {
     const cardAction = randomCardAction(room, room.characters.find((c) => c.id === cur.id), meta);
     if (cardAction) apply(cardAction);
     for (const c of room.characters) {
-      if (cpuPolicy(c)) continue; // CPU-policy characters never bet
+      if (cpuPolicy(c) || c.finished) continue; // CPU-policy / finished characters never bet
       if (c.ownerSessionId === cur.ownerSessionId || c.money < 5 || meta.next() > 0.3) continue;
       const kind = meta.pick(['oddEven', 'range']);
       apply({ type: 'bet', characterId: c.id, kind, pick: meta.pick(BET_PICKS[kind]), amount: meta.int(5, Math.min(20, c.money)) });
@@ -490,6 +491,9 @@ function playGame(g) {
   sp[1]++;
   if (mode === 'lifetime') stats.lifePrompts.chars += room.characters.length;
   const total = new Map(room.result.ranking.map((r) => [r.charId, r.total]));
+  // route metrics relative to the SAME game (start money / game length differ a lot between games)
+  const gameMean = room.result.ranking.reduce((a, r) => a + r.total, 0) / Math.max(1, room.result.ranking.length);
+  const winners = new Set(room.result.ranking.filter((r) => r.rank === 1).map((r) => r.charId));
   if (mode !== 'kids') {
     const s8 = stats.s8;
     for (const c of room.characters) {
@@ -559,6 +563,11 @@ function playGame(g) {
       const b = (stats.byRoute[k] ??= [0, 0]);
       b[0] += nw;
       b[1]++;
+      const rr = (stats.byRouteRel[k] ??= [0, 0, 0, 0]); // Σ(total / game mean − 1), n, wins, Σ 1/characters
+      rr[0] += gameMean ? nw / gameMean - 1 : 0;
+      rr[1]++;
+      if (winners.has(c.id)) rr[2]++;
+      rr[3] += 1 / room.characters.length;
     }
   }
   const m = (stats.byMode[mode] ??= { games: 0, turns: 0, avgMoney: 0 });
@@ -598,7 +607,9 @@ function interact(live, rng, apply) {
   if (rng.next() < 0.02) {
     const from = rng.pick(chars);
     if (cpuPolicy(from)) return interactAnswers(live, rng, apply);
-    const to = rng.pick(chars.filter((x) => x.id !== from.id));
+    const tos = chars.filter((x) => x.id !== from.id && !x.finished); // finished characters never gift / receive
+    if (from.finished || !tos.length) return interactAnswers(live, rng, apply);
+    const to = rng.pick(tos);
     if (from.cards.length && rng.next() < 0.5) apply({ type: 'gift', characterId: from.id, toId: to.id, cardUid: rng.pick(from.cards).uid });
     else if (from.money >= 10) apply({ type: 'gift', characterId: from.id, toId: to.id, money: rng.int(1, Math.max(1, Math.floor(from.money / 10))) });
   }
@@ -764,6 +775,9 @@ function mainRandom() {
     const mean = avgs.reduce((a, b) => a + b, 0) / avgs.length;
     const gap = mean ? ((Math.max(...avgs) - Math.min(...avgs)) / mean) * 100 : 0;
     console.log(`${era} 루트별 최종 순자산: ${rows.map(([r, v]) => `${r} ${avgOf(v).toFixed(0)} (${v[1]})`).join(' · ')} · 격차 ${gap.toFixed(1)}% (평균 대비 ±${(gap / 2).toFixed(1)}%)`);
+    // same-game relative (no start-money / game-length confound): mean total vs the game's mean, 1st-place share vs fair
+    const rel = ['love', 'career', 'money'].map((r) => [r, stats.byRouteRel[`${era}:${r}`] ?? [0, 0, 0, 0]]);
+    console.log(`${era} 루트별 (같은 판 평균 대비): ${rel.map(([r, [d, n, w, f]]) => `${r} ${n ? (d / n >= 0 ? '+' : '') + ((100 * d) / n).toFixed(1) : '0.0'}% · 1위 ${pct(w, n)} (공정 ${pct(f, n)})`).join(' | ')}`);
   }
   const s7 = stats.s7;
   const perChar = (n) => (n / Math.max(1, s7.chars)).toFixed(2);
@@ -783,7 +797,7 @@ function mainRandom() {
   const s8 = stats.s8;
   const per8 = (n) => (n / Math.max(1, s8.chars)).toFixed(2);
   console.log(`\n--- 8단계: 연애·가족·부동산 (청년 이후 모드 ${s8.chars}명) ---`);
-  console.log(`고교 전원 만남 ${s8.schoolMeets}회 · 만남 ${per8(s8.met)} · 데이트 ${per8(s8.dates)} · 프로포즈 ${per8(s8.proposals)} (성공 ${pct(s8.proposeOk, s8.proposals)}) · 결혼 ${pct(s8.married, s8.chars)} · 축의금 결혼당 ${(s8.weddingGifts / Math.max(1, s8.proposeOk)).toFixed(0)}만원`);
+  console.log(`고교 전원 만남 ${s8.schoolMeets}회 · 만남 ${per8(s8.met)} · 데이트 ${per8(s8.dates)} · 프러포즈 ${per8(s8.proposals)} (성공 ${pct(s8.proposeOk, s8.proposals)}) · 결혼 ${pct(s8.married, s8.chars)} · 축의금 결혼당 ${(s8.weddingGifts / Math.max(1, s8.proposeOk)).toFixed(0)}만원`);
   for (const era of ['young', 'middle_age']) {
     console.log(`${era} 루트별 결혼율: ${['love', 'career', 'money'].map((r) => { const [m, n] = s8.marriedByRoute[`${era}:${r}`] ?? [0, 0]; return `${r} ${pct(m, n)}`; }).join(' · ')}`);
   }

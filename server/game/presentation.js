@@ -4,6 +4,7 @@
 //
 // Lines are picked with a sub-RNG seeded from the engine RNG state + event index, so every client shows the
 // same text without consuming the gameplay RNG stream (existing seeds keep their outcomes).
+import { fixParticle } from './korean.js';
 import { getAwards, getBoardData, getCards, getEvents, getHouses, getItems, getJobs, getLines, getMc, getNews, getTones, getTreasures } from '../data/index.js';
 import { createRng } from './rng.js';
 import { MC_FREQUENCIES } from './config.js';
@@ -133,6 +134,10 @@ function familyVars(ev, c) {
 }
 const TONE_EMOTION = { good: 'joy', bad: 'cry', love: 'love', result: 'joy', treasure: 'joy', holiday: 'joy', career: 'joy', neutral: 'neutral' };
 const BIG_GAIN = 100; // 만원 — money_gain vs big_gain line pool
+const GENERIC_TAGS = new Set(['neutral', 'generic_good', 'generic_bad']);
+const MONEY_TAGS = new Set(['money_gain', 'money_loss']);
+/** moneyChanged reasons that keep their line even when small (their own moment). */
+const SPEAKING_REASONS = new Set(['pension', 'gift', 'goalPrize', 'bonusSpin', 'bet', 'exam']);
 
 /** 32-bit FNV-1a over the stringified parts. */
 export function hashSeed(...parts) {
@@ -145,17 +150,60 @@ export function hashSeed(...parts) {
   return h >>> 0;
 }
 
-/** Fill `{name}` etc.; unknown placeholders are left as-is (lines.json tests forbid them). */
+/**
+ * Fill `{name}` etc.; unknown placeholders are left as-is (lines.json tests forbid them). The particle written right
+ * after a placeholder is fixed for the inserted value ("{name}이 왔다" + 뚱이 → "뚱이가 왔다", "{era}는" + 청년 →
+ * "청년은", "{name}이다" + 뚱이 → "뚱이다").
+ */
 export function fillLine(text, vars = {}) {
-  return String(text).replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null && vars[k] !== '' ? String(vars[k]) : m));
+  const parts = String(text).split(/\{(\w+)\}/g); // [text, key, text, key, …]
+  let out = parts[0];
+  for (let i = 1; i < parts.length; i += 2) {
+    const k = parts[i];
+    const v = vars[k] != null && vars[k] !== '' ? String(vars[k]) : null;
+    if (v == null) out += `{${k}}${parts[i + 1]}`;
+    else out += v + fixParticle(v, parts[i + 1]);
+  }
+  return out;
 }
 
-/** Deterministic line for a tag (null when the tag has no pool). */
-export function pickLine(lines, tag, seed, vars = {}) {
+/** How many recent line picks a room remembers (`room.lineHistory`, engine-only) to avoid repeating a line. */
+export const LINE_HISTORY = 20;
+/** Share of bland board events (plain money tiles, uneventful landings) that still get a speech bubble. */
+export const BLAND_LINE_CHANCE = 0.25;
+
+/**
+ * Deterministic line for a tag (null when the tag has no pool). With `history` (an array of recent `tag#index`
+ * keys, mutated) a line used within the last LINE_HISTORY picks is skipped for the next unused one of the pool
+ * (the least recently used when all were used); the pick is recorded.
+ */
+export function pickLine(lines, tag, seed, vars = {}, history = null) {
   const pool = lines?.tags?.[tag];
   if (!tag || !Array.isArray(pool) || !pool.length) return null;
   const rng = createRng(hashSeed(seed, tag));
-  return fillLine(pool[rng.int(0, pool.length - 1)], vars);
+  const start = rng.int(0, pool.length - 1);
+  let idx = start;
+  if (Array.isArray(history)) {
+    const key = (j) => `${tag}#${j}`;
+    let best = -1;
+    let bestAt = Infinity;
+    for (let k = 0; k < pool.length; k++) {
+      const j = (start + k) % pool.length;
+      const at = history.lastIndexOf(key(j));
+      if (at < 0) {
+        best = j;
+        break;
+      }
+      if (at < bestAt) {
+        bestAt = at;
+        best = j;
+      }
+    }
+    idx = best;
+    history.push(key(idx));
+    if (history.length > LINE_HISTORY) history.splice(0, history.length - LINE_HISTORY);
+  }
+  return fillLine(pool[idx], vars);
 }
 
 export function normalizeTone(tone, tones = getTones()) {
@@ -242,6 +290,9 @@ export function presentationFor(ev, ctx) {
   let cutin = CUTIN_TYPES.has(ev.type);
   let scene = null;
   let route = c?.route ?? null;
+  // Speech bubbles are for moments: 'always' = never a line (turn start, roulette, walking, logs, small money
+  // follow-ups), 'rare' = only BLAND_LINE_CHANCE of plain money / uneventful landings get one
+  let bland = null;
 
   switch (ev.type) {
     case 'gameStarted':
@@ -250,12 +301,15 @@ export function presentationFor(ev, ctx) {
       break;
     case 'turnStarted':
       tag = 'turn_start';
+      bland = 'always';
       break;
     case 'spun':
       tag = 'spin';
+      bland = 'always';
       break;
     case 'moved':
       tag = 'moved';
+      bland = 'always';
       break;
     case 'landed': {
       const { list, next } = followersOf(ctx.events, ctx.index);
@@ -287,6 +341,7 @@ export function presentationFor(ev, ctx) {
       emotion ??= o.emotion && EMOTIONS.includes(o.emotion) ? o.emotion : null;
       if (o.delta) vars.amount = wonText(o.delta);
       scene ??= (o.eventId && tones.eventScenes?.[o.eventId]) || null;
+      if (!promptNext && (GENERIC_TAGS.has(tag) || (MONEY_TAGS.has(tag) && Math.abs(o.delta) < BIG_GAIN))) bland = 'rare';
       // Stage 8: a birth / wedding / purchase right after the landing takes the stage (one cut-in, not two)
       const takeover = next && next.charId === charId && STAGE8_TAKEOVER.has(next.type);
       cutin = (tones.cutinTiles ?? []).includes(tt) && !promptNext && !takeover;
@@ -298,6 +353,8 @@ export function presentationFor(ev, ctx) {
       const debt = d < 0 && (ev.debt ?? 0) > 0 && (ev.money ?? 0) === 0;
       tag = { pension: 'pension', gift: 'gift', goalPrize: 'goal', bonusSpin: 'bonus', bet: d > 0 ? 'bet_win' : 'bet_lose' }[ev.reason] ?? moneyTag(d, debt);
       if (ev.reason === 'exam') tag = 'exam_pass';
+      // held side-bet stakes moving (betStake / betRefund) and small money follow-ups never speak
+      if (ev.reason === 'betStake' || ev.reason === 'betRefund' || (!SPEAKING_REASONS.has(ev.reason) && Math.abs(d) < BIG_GAIN)) bland = 'always';
       tone ??= d > 0 ? 'good' : d < 0 ? 'bad' : 'neutral';
       emotion ??= d > 0 ? 'joy' : d < 0 ? (debt ? 'shock' : 'cry') : null;
       break;
@@ -659,6 +716,7 @@ export function presentationFor(ev, ctx) {
       break;
     }
     case 'log':
+      bland = 'always'; // the log line is the text; its anchor event speaks
       tone ??= normalizeTone(ev.tone, tones) ?? 'neutral';
       tag = tone === 'good' || tone === 'result' ? 'generic_good' : tone === 'bad' ? 'generic_bad' : 'neutral';
       if (!charId) tag = 'neutral'; // room-wide lines (game over, news) have no {name} to fill
@@ -680,7 +738,7 @@ export function presentationFor(ev, ctx) {
     tones.tones?.[tone]?.scene ??
     'none';
   if (!SCENES.includes(scene)) scene = 'none';
-  return { tone, emotion, scene, tag, cutin, charId, vars };
+  return { tone, emotion, scene, tag, cutin, charId, vars, bland };
 }
 
 /**
@@ -704,16 +762,20 @@ export function decorateEvents(events, { room, data = {}, seed = 0 } = {}) {
     }
   }
   const turnNo = room?.turn?.turnNo ?? 0;
+  // recent line picks of this room (engine-only state, never sent: viewFor lists its fields explicitly)
+  const history = room ? (Array.isArray(room.lineHistory) ? room.lineHistory : (room.lineHistory = [])) : null;
   events.forEach((ev, index) => {
     if (ev.type === 'eraChanged') eras.set(ev.charId, ev.era);
     const p = presentationFor(ev, { events, index, room, tones, lines, data, eraOf: (id) => eras.get(id) ?? null });
     ev.tone = p.tone;
     ev.emotion = p.emotion;
     ev.scene = p.scene;
-    ev.line = pickLine(lines, p.tag, hashSeed(seed, turnNo, index, ev.type), p.vars);
+    const eseed = hashSeed(seed, turnNo, index, ev.type);
+    const quiet = p.bland === 'always' || (p.bland === 'rare' && createRng(hashSeed(eseed, 'bland')).next() >= BLAND_LINE_CHANCE);
+    ev.line = quiet ? null : pickLine(lines, p.tag, eseed, p.vars, history);
     ev.cutin = p.cutin;
     if (p.tag) ev.lineTag = p.tag;
-    decorateRows(ev, { lines, room, data, seed: hashSeed(seed, turnNo, index, ev.type), vars: p.vars });
+    decorateRows(ev, { lines, room, data, seed: eseed, vars: p.vars, history });
     const pending = room?.turn?.pending;
     if (ev.type === 'prompt' && pending && pending.promptId === ev.promptId) {
       Object.assign(pending, { tone: ev.tone, emotion: ev.emotion, scene: ev.scene, line: ev.line, cutin: true });
@@ -727,31 +789,31 @@ export function decorateEvents(events, { room, data = {}, seed = 0 } = {}) {
  * Stage 7 extras: per-character lines for group results (holidayResult rows, lottoDraw entries) and the
  * victim's reaction (`targetLine`, pool `sabotaged`) on a sabotage card use. Same sub-RNG scheme as `line`.
  */
-function decorateRows(ev, { lines, room, data, seed, vars }) {
+function decorateRows(ev, { lines, room, data, seed, vars, history = null }) {
   const nameOf = (id) => room?.characters?.find((x) => x.id === id)?.name ?? '';
   if (ev.type === 'cardUsed' && ev.cardKind === 'sabotage' && !ev.auto && ev.targetId) {
-    ev.targetLine = pickLine(lines, 'sabotaged', hashSeed(seed, 'target'), { ...vars, name: nameOf(ev.charId), target: nameOf(ev.targetId) });
+    ev.targetLine = pickLine(lines, 'sabotaged', hashSeed(seed, 'target'), { ...vars, name: nameOf(ev.charId), target: nameOf(ev.targetId) }, history);
   }
   if (ev.type === 'holidayResult') {
     for (const r of ev.results ?? []) {
       const tag = r.won > 0 ? 'gostop_win' : r.won < 0 ? 'gostop_lose' : r.sebae > 0 ? 'holiday_sebae' : 'holiday_nagging';
       const amount = r.won > 0 ? wonText(r.won) : r.sebae > 0 ? wonText(r.sebae) : '';
       r.lineTag = tag;
-      r.line = pickLine(lines, tag, hashSeed(seed, r.charId), { ...vars, name: nameOf(r.charId), amount });
+      r.line = pickLine(lines, tag, hashSeed(seed, r.charId), { ...vars, name: nameOf(r.charId), amount }, history);
     }
   }
   // Stage 8: one line per pair of the 고교 전원 만남 / per owner of the 노년 시세
   if (ev.type === 'schoolMeet') {
     for (const pr of ev.pairs ?? []) {
       pr.lineTag = 'meet';
-      pr.line = pickLine(lines, 'meet', hashSeed(seed, pr.charId), { ...vars, name: nameOf(pr.charId), partner: pr.partner?.name ?? '' });
+      pr.line = pickLine(lines, 'meet', hashSeed(seed, pr.charId), { ...vars, name: nameOf(pr.charId), partner: pr.partner?.name ?? '' }, history);
     }
   }
   if (ev.type === 'houseValueChanged') {
     for (const ch of ev.changes ?? []) {
       const tag = ch.after >= ch.before ? 'market_up' : 'market_down';
       ch.lineTag = tag;
-      ch.line = pickLine(lines, tag, hashSeed(seed, ch.charId), { ...vars, name: nameOf(ch.charId), amount: wonText(ch.after - ch.before), house: houseName(data, ch.houseId) });
+      ch.line = pickLine(lines, tag, hashSeed(seed, ch.charId), { ...vars, name: nameOf(ch.charId), amount: wonText(ch.after - ch.before), house: houseName(data, ch.houseId) }, history);
     }
   }
   // Stage 9: the result show — one line per appraised treasure (real / fake) and per award; copied onto
@@ -761,13 +823,13 @@ function decorateRows(ev, { lines, room, data, seed, vars }) {
     (ev.treasures ?? []).forEach((t, i) => {
       const tag = t.fake ? 'appraisal_fake' : 'appraisal_real';
       t.lineTag = tag;
-      t.line = pickLine(lines, tag, hashSeed(seed, t.uid), { ...vars, name: nameOf(t.charId), treasure: tname(t.treasureId), amount: wonText(t.value) });
+      t.line = pickLine(lines, tag, hashSeed(seed, t.uid), { ...vars, name: nameOf(t.charId), treasure: tname(t.treasureId), amount: wonText(t.value) }, history);
       const row = room?.result?.treasures?.[i];
       if (row?.uid === t.uid) Object.assign(row, { line: t.line, lineTag: tag });
     });
     (ev.awards ?? []).forEach((a, i) => {
       a.lineTag = 'award';
-      a.line = pickLine(lines, 'award', hashSeed(seed, a.id), { ...vars, name: nameOf(a.charIds?.[0]), award: a.name ?? awardName(data, a.id), amount: wonText(a.bonus) });
+      a.line = pickLine(lines, 'award', hashSeed(seed, a.id), { ...vars, name: nameOf(a.charIds?.[0]), award: a.name ?? awardName(data, a.id), amount: wonText(a.bonus) }, history);
       const row = room?.result?.awards?.[i];
       if (row?.id === a.id) Object.assign(row, { line: a.line, lineTag: 'award' });
     });
@@ -777,7 +839,7 @@ function decorateRows(ev, { lines, room, data, seed, vars }) {
     for (const e of ev.entries ?? []) {
       const tag = e.prize > 0 ? 'lotto_win' : 'lotto_lose';
       e.lineTag = tag;
-      e.line = pickLine(lines, tag, hashSeed(seed, e.charId), { ...vars, name: nameOf(e.charId), amount: e.prize > 0 ? wonText(e.prize) : '' });
+      e.line = pickLine(lines, tag, hashSeed(seed, e.charId), { ...vars, name: nameOf(e.charId), amount: e.prize > 0 ? wonText(e.prize) : '' }, history);
     }
   }
   return data;

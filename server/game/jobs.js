@@ -179,7 +179,10 @@ export function rollInjury(tx, c) {
 /** Military pay (while serving a salary tile / every serving spin pays this instead of a job salary). */
 export function militaryPay(tx, c, why = '군 월급') {
   const pay = tx.data.balance.military?.pay ?? 0;
-  if (!pay) return 0;
+  if (!pay) {
+    if (why !== '군 월급') addLog(tx, `🪖 ${c.name}: 복무 중이라 월급은 전역 뒤에…`, { charId: c.id, emotion: 'sweat' });
+    return 0;
+  }
   changeMoney(tx, c, pay, 'military', { emotion: 'joy', tone: 'good' });
   addLog(tx, `🪖 ${c.name}: ${why} +${won(pay)}`, { tone: 'good', charId: c.id });
   return pay;

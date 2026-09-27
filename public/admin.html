@@ -32,8 +32,9 @@
         <h2>방 만들기</h2>
         <label class="field"><span>모드</span><select name="mode" id="mode-select"></select></label>
         <fieldset class="era-set">
-          <legend>시대별 턴 수 <small class="muted">(1~40, 기본값 표시)</small></legend>
+          <legend>시대 길이(칸) <small class="muted">(시대마다 말판 칸 수 1~40, 기본값 표시)</small></legend>
           <div id="era-rows" class="era-rows"></div>
+          <p id="era-est" class="era-est small muted" aria-live="polite"></p>
           <p id="era-hint" class="era-hint small" role="status" aria-live="polite"></p>
           <button type="button" id="era-reset" class="btn tiny ghost">기본값으로</button>
         </fieldset>

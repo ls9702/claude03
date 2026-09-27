@@ -12,6 +12,11 @@ export const SESSION_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 /** Open SSE streams per session per room; a new one closes the oldest beyond this. */
 export const MAX_STREAMS_PER_SESSION = 3;
 const TOUCH_SAVE_MS = 60 * 60 * 1000; // persist lastSeenAt at most hourly per session
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Finished rooms are deleted (memory + save file) this long after the game ended (env FINISHED_ROOM_TTL_MS). */
+export const FINISHED_ROOM_TTL_MS = 3 * DAY_MS;
+/** Lobby rooms nobody touched for this long are deleted too (env LOBBY_ROOM_TTL_MS). Playing rooms never expire. */
+export const LOBBY_ROOM_TTL_MS = 7 * DAY_MS;
 
 export function sseFrame(event, data) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -25,6 +30,8 @@ export class RoomStore {
     sessionTtlMs = SESSION_TTL_MS,
     maxStreamsPerSession = MAX_STREAMS_PER_SESSION,
     clock = () => Date.now(),
+    finishedRoomTtlMs = FINISHED_ROOM_TTL_MS,
+    lobbyRoomTtlMs = LOBBY_ROOM_TTL_MS,
   } = {}) {
     if (!dataDir) throw new Error('dataDir required');
     this.dataDir = dataDir;
@@ -41,6 +48,9 @@ export class RoomStore {
     this.pending = new Set(); // in-flight write promises
     this.chains = new Map(); // file -> Promise (writes to one file are strictly ordered)
     this.pruneTimer = null;
+    this.finishedRoomTtlMs = finishedRoomTtlMs; // ≤ 0 / null = keep forever
+    this.lobbyRoomTtlMs = lobbyRoomTtlMs;
+    this.deleteListeners = new Set(); // (roomId) => void — e.g. the game runner drops its timers
   }
 
   // ---------- boot / persistence ----------
@@ -63,6 +73,8 @@ export class RoomStore {
         this.log(`방 복원 실패 (${file}): ${err.message}`);
       }
     }
+    const rooms = await this.pruneRooms();
+    if (rooms) this.log(`기한이 지난 방 ${rooms}개를 정리했습니다.`);
     const pruned = this.pruneSessions();
     if (pruned) this.log(`오래된 세션 ${pruned}개를 정리했습니다.`);
     return this;
@@ -180,14 +192,57 @@ export class RoomStore {
     return n;
   }
 
-  /** Prune sessions every `intervalMs` (unref'd; stopped by close()). */
+  /** Prune expired rooms, then sessions, every `intervalMs` (unref'd; stopped by close()). */
   startPruning(intervalMs = SESSION_PRUNE_INTERVAL_MS) {
     clearInterval(this.pruneTimer);
-    this.pruneTimer = setInterval(() => {
-      const n = this.pruneSessions();
-      if (n) this.log(`오래된 세션 ${n}개를 정리했습니다.`);
-    }, intervalMs);
+    this.pruneTimer = setInterval(() => this.pruneAll(), intervalMs);
     this.pruneTimer.unref?.();
+  }
+
+  /** One hourly pass: expired rooms (memory + save file), then unused sessions. @returns {rooms, sessions} */
+  async pruneAll(now = this.clock()) {
+    const rooms = await this.pruneRooms(now);
+    if (rooms) this.log(`기한이 지난 방 ${rooms}개를 정리했습니다.`);
+    const sessions = this.pruneSessions(now);
+    if (sessions) this.log(`오래된 세션 ${sessions}개를 정리했습니다.`);
+    return { rooms, sessions };
+  }
+
+  /**
+   * When a room will be deleted by the prune (ms epoch), or null: finished rooms `finishedRoomTtlMs` after the
+   * game ended, lobby rooms `lobbyRoomTtlMs` after their last activity (room update / player seen); playing rooms
+   * never.
+   */
+  roomExpiresAt(room) {
+    if (!room) return null;
+    const ttlOf = (ms) => (Number.isFinite(ms) && ms > 0 ? ms : null);
+    if (room.status === 'finished') {
+      const ttl = ttlOf(this.finishedRoomTtlMs);
+      const endedAt = room.finishedAt ?? room.result?.finishedAt ?? room.updatedAt ?? room.createdAt ?? 0;
+      return ttl ? endedAt + ttl : null;
+    }
+    if (room.status === 'lobby') {
+      const ttl = ttlOf(this.lobbyRoomTtlMs);
+      const seen = Math.max(room.updatedAt ?? 0, room.createdAt ?? 0, ...(room.players ?? []).map((p) => p.lastSeen ?? 0));
+      return ttl ? seen + ttl : null;
+    }
+    return null;
+  }
+
+  /** Delete every room past `roomExpiresAt` (subscribers get `deleted`). @returns the count */
+  async pruneRooms(now = this.clock()) {
+    const expired = [...this.rooms.values()].filter((r) => {
+      const at = this.roomExpiresAt(r);
+      return at != null && at <= now;
+    });
+    for (const r of expired) await this.deleteRoom(r.id);
+    return expired.length;
+  }
+
+  /** Listen for room deletions (admin delete / TTL prune). @returns unsubscribe */
+  onRoomDeleted(fn) {
+    this.deleteListeners.add(fn);
+    return () => this.deleteListeners.delete(fn);
   }
 
   // ---------- rooms ----------
@@ -287,6 +342,13 @@ export class RoomStore {
     clearTimeout(this.timers.get(id));
     this.timers.delete(id);
     this.rooms.delete(id);
+    for (const fn of this.deleteListeners) {
+      try {
+        fn(id);
+      } catch (err) {
+        this.log(`방 삭제 알림 실패: ${err.message}`);
+      }
+    }
     await Promise.all([...this.pending]);
     await rm(path.join(this.savesDir, `${id}.json`), { force: true });
     return true;

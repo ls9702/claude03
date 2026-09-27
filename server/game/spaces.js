@@ -18,6 +18,9 @@ export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
 const TONE_BY_ROUTE = { love: 'love', career: 'career', money: 'money' };
 
+/** Guests of a 생일 파티 (groupGift): every other character still on the board (골인한 캐릭터 never wait / gift). */
+export const giftGuests = (room, c) => room.turn.order.filter((id) => id !== c.id && !charById(room, id)?.finished);
+
 // ---------- prompts (single- and multi-character decisions) ----------
 
 registerPrompts({
@@ -48,7 +51,7 @@ registerPrompts({
   groupGift: {
     resultCutin: true,
     build(tx, c, { event }) {
-      const others = tx.room.turn.order.filter((id) => id !== c.id);
+      const others = giftGuests(tx.room, c);
       return {
         forCharacterIds: others,
         title: '🎂 생일 파티',
@@ -110,7 +113,14 @@ export function eventPool(data, eraId, c) {
 function runEvent(tx, c, era) {
   const pool = eventPool(tx.data, era.id, c);
   const ev = tx.rng.weighted(pool);
-  if (ev.kind === 'groupGift') return openPrompt(tx, 'groupGift', c, { event: ev });
+  if (ev.kind === 'groupGift') {
+    // Nobody left to invite (everyone else reached the goal) → the party resolves at once, no prompt / wait
+    if (!giftGuests(tx.room, c).length) {
+      addLog(tx, `🎂 ${c.name}의 생일! 다들 골인해서 혼자 조용히 케이크를 먹었다`, { tone: 'info', charId: c.id, emotion: 'sweat', eventId: ev.id });
+      return null;
+    }
+    return openPrompt(tx, 'groupGift', c, { event: ev });
+  }
   let delta = 0;
   if (ev.money) {
     const scale = ev.scale ? (tx.data.balance.eventScale[era.id] ?? 1) : 1;
@@ -180,7 +190,7 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
     case 'shop':
       resolveShopTile(tx, c);
       return 'prompt';
-    case 'heart': // Stage 8: 만남 / 데이트 / 프로포즈 prompt, or family (출산 / 가족 나들이)
+    case 'heart': // Stage 8: 만남 / 데이트 / 프러포즈 prompt, or family (출산 / 가족 나들이)
       return resolveHeartTile(tx, c) ? 'prompt' : null;
     case 'house': // Stage 8: 부동산 매물 prompt
       return resolveHouseTile(tx, c, tile) ? 'prompt' : null;

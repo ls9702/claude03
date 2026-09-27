@@ -277,7 +277,7 @@ test('진로: 바로 취업 → job offer → 갈림길; 재수 once (skip a tur
 
 // ---------- 군 복무 ----------
 
-test('군 복무: college boy chooses now → halved spins + pay → 전역 (체력 +2); later → after graduation, job kept', () => {
+test('군 복무: college boy chooses now → halved spins (+ pay) → 전역 (체력 +strGain); later → after graduation, job kept', () => {
   const room = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
   const id = atYoungGate(room);
   let r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
@@ -298,7 +298,8 @@ test('군 복무: college boy chooses now → halved spins + pay → 전역 (체
     const spun = s.events.find((e) => e.type === 'spun');
     assert.deepEqual([spun.value, spun.steps, spun.halved], [8, 4, true]);
     assert.equal(s.events.find((e) => e.type === 'moved').path.length, 4);
-    assert.ok(s.events.some((e) => e.type === 'moneyChanged' && e.reason === 'military' && e.delta === data.balance.military.pay));
+    if (data.balance.military.pay) assert.ok(s.events.some((e) => e.type === 'moneyChanged' && e.reason === 'military' && e.delta === data.balance.military.pay));
+    else assert.ok(!s.events.some((e) => e.type === 'moneyChanged' && e.reason === 'military'), 'no pay (balance.military.pay 0)');
     room2 = s.room;
     if (s.room.turn.pending) room2 = choose(s.room, s.room.turn.pending.options[0].id).room;
     if (i === data.balance.military.turns - 1) {

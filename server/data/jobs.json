@@ -153,7 +153,7 @@
       "ranks": [{ "name": "지역 가수", "salary": 600 }, { "name": "트로트 신동", "salary": 980 }, { "name": "국민 트로트 스타", "salary": 1420 }],
       "rankUp": { "stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
       "injuryRisk": 0, "outfit": "idol", "scene": "stage", "tone": "result",
-      "unlock": { "era": ["senior"], "stats": { "charm": 8, "luck": 8 }, "desc": "노년 시대에 매력 8·운 8 이상" }
+      "unlock": { "era": ["senior"], "stats": { "charm": 7, "luck": 7 }, "desc": "노년 시대에 매력 7·운 7 이상" }
     },
     {
       "id": "astronaut", "name": "우주비행사", "icon": "🚀", "hidden": true,
@@ -162,7 +162,7 @@
       "ranks": [{ "name": "후보생", "salary": 680 }, { "name": "우주비행사", "salary": 1050 }, { "name": "달 탐사대장", "salary": 1500 }],
       "rankUp": { "stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
       "injuryRisk": 0.02, "outfit": "longpadding", "scene": "space", "tone": "result",
-      "unlock": { "stats": { "int": 9, "str": 9 }, "desc": "지력 9·체력 9 이상" }
+      "unlock": { "stats": { "int": 8, "str": 8 }, "desc": "지력 8·체력 8 이상" }
     },
     {
       "id": "mountain_spirit", "name": "산신령", "icon": "🏔️", "hidden": true,
@@ -171,7 +171,7 @@
       "ranks": [{ "name": "동네 도사", "salary": 600 }, { "name": "산신령", "salary": 980 }, { "name": "백두산 산신령", "salary": 1350 }],
       "rankUp": { "stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
       "injuryRisk": 0, "outfit": "hanbokTrad", "scene": "mountain-trail", "tone": "treasure",
-      "unlock": { "wishes": 3, "desc": "사찰에서 소원을 3번 이상 이루기" }
+      "unlock": { "wishes": 2, "desc": "사찰에서 소원을 2번 이상 이루기" }
     },
     {
       "id": "chaebol", "name": "재벌 총수", "icon": "👑", "hidden": true,
@@ -189,7 +189,7 @@
       "ranks": [{ "name": "고정 MC", "salary": 680 }, { "name": "간판 MC", "salary": 1050 }, { "name": "국민 MC", "salary": 1500 }],
       "rankUp": { "stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
       "injuryRisk": 0, "outfit": "suit", "scene": "stage", "tone": "result",
-      "unlock": { "maxRankOf": ["comedian", "actor", "youtuber"], "stats": { "charm": 9 }, "desc": "개그맨·배우·유튜버 최고 랭크 + 매력 9 이상" }
+      "unlock": { "maxRankOf": ["comedian", "actor", "youtuber"], "stats": { "charm": 8 }, "desc": "개그맨·배우·유튜버 최고 랭크 + 매력 8 이상" }
     }
   ],
   "partTime": {

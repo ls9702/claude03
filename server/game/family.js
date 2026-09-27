@@ -1,4 +1,4 @@
-// Stage 8 — romance & family (partners.json): 고교 전원 만남, heart tiles (만남 / 데이트 / 프로포즈 / 가족),
+// Stage 8 — romance & family (partners.json): 고교 전원 만남, heart tiles (만남 / 데이트 / 프러포즈 / 가족),
 // 결혼식 축의금, 맞벌이 급여, 출산, 자녀 성장 (돌잔치 → 입학 → 수능 → 취업) and 용돈 송금. Pure helpers over a tx;
 // every random draw comes from tx.rng (seeded).
 //
@@ -194,7 +194,7 @@ export function schoolMeet(tx, eraId) {
 const inEra = (list, era) => !list || list.includes(era);
 
 /**
- * Heart tile: no partner → 만남 prompt; partner → 데이트 prompt, or 프로포즈 at `proposeAt` (job eras);
+ * Heart tile: no partner → 만남 prompt; partner → 데이트 prompt, or 프러포즈 at `proposeAt` (job eras);
  * married → 출산 roll (birth eras, < max children) else a family outing (money / stats, affection +).
  * @returns true when a prompt opened
  */
@@ -260,7 +260,7 @@ export function loveRouteChosen(tx, c) {
 
 /**
  * Turn epilogue (growth.lifeStep): a dating couple whose affection reached `proposeAt` in a propose era gets ONE
- * 프로포즈 prompt per era (`love.askedEra`), even without a heart tile. @returns true when a prompt opened
+ * 프러포즈 prompt per era (`love.askedEra`), even without a heart tile. @returns true when a prompt opened
  */
 export function proposeStep(tx, c) {
   if (!c || c.finished) return false;
@@ -272,7 +272,7 @@ export function proposeStep(tx, c) {
   return true;
 }
 
-/** 프로포즈 성공 확률. */
+/** 프러포즈 성공 확률. */
 export function proposeChance(c, data) {
   const cfg = cfgOf(data);
   const p = cfg.propose ?? {};
@@ -580,7 +580,7 @@ registerPrompts({
 
   /**
    * 데이트 (heart tile, partner): trait-matched dates give more affection; cost × era scale. Reaching `proposeAt`
-   * in a propose era opens the 프로포즈 prompt right away (same heart tile).
+   * in a propose era opens the 프러포즈 prompt right away (same heart tile).
    */
   date: {
     resultCutin: true,
@@ -616,7 +616,7 @@ registerPrompts({
     },
   },
 
-  /** 프로포즈 (heart tile, affection ≥ proposeAt, job eras): success → wedding, fail → affection drop. */
+  /** 프러포즈 (heart tile, affection ≥ proposeAt, job eras): success → wedding, fail → affection drop. */
   propose: {
     build(tx, c) {
       const partner = c.love.partner;
@@ -625,10 +625,10 @@ registerPrompts({
       c.love.askedEra = c.era; // at most one epilogue proposal per era (heart tiles may still ask again)
       return {
         forCharacterIds: [c.id],
-        title: '💍 프로포즈',
+        title: '💍 프러포즈',
         text: `${josa(partner.name, '과/와')}의 호감도 ${c.love.affection}! ${josa(c.name, '은/는')} 오늘 반지를 꺼낼까?`,
         options: [
-          { id: 'propose', label: '💍 프로포즈!', icon: '💍', chance, partnerId: partner.id, desc: `성공 확률 약 ${Math.round(chance * 100)}% · 성공하면 결혼식 (축의금·맞벌이)` },
+          { id: 'propose', label: '💍 프러포즈!', icon: '💍', chance, partnerId: partner.id, desc: `성공 확률 약 ${Math.round(chance * 100)}% · 성공하면 결혼식 (축의금·맞벌이)` },
           { id: 'steady', label: '💕 조금 더 사귀기', icon: '💕', chance: 0, partnerId: partner.id, desc: `호감도 +${steady} (무료) · 다음 하트 칸에서 다시` },
         ],
         defaultOptionId: 'propose',
@@ -652,11 +652,11 @@ registerPrompts({
       const success = tx.rng.next() < chance;
       emit(tx, 'proposed', { charId: c.id, partnerId: partner.id, partner: personSpec(partner), success, chance, tone: success ? 'love' : 'bad', emotion: success ? 'love' : 'cry' });
       if (success) {
-        addLog(tx, `💍 ${c.name}의 프로포즈 대성공! ${partner.name}: "좋아!"`, { tone: 'love', charId: c.id, emotion: 'love' });
+        addLog(tx, `💍 ${c.name}의 프러포즈 대성공! ${partner.name}: "좋아!"`, { tone: 'love', charId: c.id, emotion: 'love' });
         marry(tx, c);
       } else {
         c.love.affection = Math.max(0, c.love.affection - (aff.failDrop ?? 15));
-        addLog(tx, `💔 ${c.name}의 프로포즈 실패… ${partner.name}: "아직은 좀…" (호감도 ${c.love.affection})`, { tone: 'bad', charId: c.id, emotion: 'cry' });
+        addLog(tx, `💔 ${c.name}의 프러포즈 실패… ${partner.name}: "아직은 좀…" (호감도 ${c.love.affection})`, { tone: 'bad', charId: c.id, emotion: 'cry' });
       }
       return null;
     },

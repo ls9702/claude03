@@ -309,3 +309,4 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
 .ti-t { display: flex; align-items: baseline; gap: 6px; }
 .ti-tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ti-t .deadline { flex: none; }
+.gd-acts[hidden] { display: none; }

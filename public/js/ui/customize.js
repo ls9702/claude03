@@ -9,7 +9,7 @@
 import { getAvatarDefs, normalizeAvatar, outfitTintable, randomAvatar, renderAvatar } from './avatar2d.js';
 import { mountArtSlot } from './charArt.js';
 import { bindNameInput } from './nameInput.js';
-import { NAME_MAX, nameFits } from '../format.js';
+import { NAME_MAX, cleanName, nameFits } from '../format.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -471,7 +471,7 @@ export function openCustomizer(host, { title = '캐릭터 만들기', initial = 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     if (busy) return;
-    const name = form.elements.name.value.replace(/\s+/g, ' ').trim();
+    const name = cleanName(form.elements.name.value); // same cleaning as the server (invisible / bidi characters)
     if (!name) {
       errEl.textContent = '이름을 입력하세요.';
       form.elements.name.focus();

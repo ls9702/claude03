@@ -91,9 +91,9 @@ test('data: treasures.json (≥ 20, named classics), board pools per era / route
   for (const r of Object.keys(bd.routePools)) assert.equal(w(route(r), 'reversal'), 0);
   // 보물: 금전 루트가 가장 많이, 노년 main 에도 조금
   assert.ok(w(route('money'), 'treasure') > w(era('senior'), 'treasure') && w(era('senior'), 'treasure') > 0);
-  // 산신령 = 사찰 소원 성취 3번 (data-driven)
+  // 산신령 = 사찰 소원 성취 2번 (data-driven; 3 → 2 after the playtest simulation)
   assert.deepEqual(Object.keys(data.jobs.jobs.find((j) => j.id === 'mountain_spirit').unlock).sort(), ['desc', 'wishes']);
-  assert.equal(data.jobs.jobs.find((j) => j.id === 'mountain_spirit').unlock.wishes, 3);
+  assert.equal(data.jobs.jobs.find((j) => j.id === 'mountain_spirit').unlock.wishes, 2);
   for (const k of SUBMAPS) assert.ok(PROMPTS[k], `prompt ${k}`);
 });
 
@@ -461,7 +461,7 @@ test('restore: a JSON snapshot with treasures + an open temple prompt continues 
 
 test('random lifetime games: submaps / treasures happen; every event known, lines filled; totals add up', () => {
   const seen = new Set();
-  for (const seed of [4, 9]) {
+  for (const seed of [4, 9, 12]) {
     let room = started({ seed, chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2'], ['B', 'B2']] });
     const rng = createRng(seed);
     for (let i = 0; i < 3000 && room.status === 'playing'; i++) {

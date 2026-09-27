@@ -73,6 +73,10 @@ test('decorateEvents: same seed → identical presentation (all clients show the
   assert.deepEqual(g1.room.result.ranking, g2.room.result.ranking);
 });
 
+// Bland events never get a speech bubble; plain money / uneventful landings and small money follow-ups rarely do.
+const QUIET_TYPES = new Set(['turnStarted', 'spun', 'moved', 'log']);
+const MAYBE_QUIET = new Set(['landed', 'moneyChanged']);
+
 test('every emitted event carries tone/emotion/scene/cutin (+ line) from the allowed sets', () => {
   const seenTypes = new Set();
   for (const [seed, mode] of [[3, 'kids'], [8, 'adult'], [21, 'kids'], [34, 'adult']]) {
@@ -85,9 +89,13 @@ test('every emitted event carries tone/emotion/scene/cutin (+ line) from the all
       assert.equal(typeof e.cutin, 'boolean');
       if (e.type === 'chose' || e.type === 'betPlaced') assert.equal(e.line, null);
       else {
-        assert.equal(typeof e.line, 'string', `${e.type} has a line`);
-        assert.ok(!/\{\w+\}/.test(e.line), `unfilled placeholder in "${e.line}"`);
         assert.ok(lines.tags[e.lineTag], `line tag ${e.lineTag} exists in lines.json`);
+        if (QUIET_TYPES.has(e.type)) assert.equal(e.line, null, `${e.type} never speaks`);
+        else if (e.line == null) assert.ok(MAYBE_QUIET.has(e.type), `${e.type} has a line`);
+        else {
+          assert.equal(typeof e.line, 'string', `${e.type} has a line`);
+          assert.ok(!/\{\w+\}/.test(e.line), `unfilled placeholder in "${e.line}"`);
+        }
       }
     }
   }

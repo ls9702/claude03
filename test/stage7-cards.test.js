@@ -74,7 +74,7 @@ test('data: cards.json / items.json / holidays.json schemas, fixed ids, manifest
   assert.equal(cards.find((k) => k.id === 'pledge').jobOnly, 'politician');
   assert.deepEqual(data.items.items.map((i) => i.id), ITEM_IDS);
   for (const i of data.items.items) assert.ok(i.name && i.icon && i.desc && i.price > 0 && i.resale > 0 && i.resale < 1, i.id);
-  assert.deepEqual(data.holidays.eras, ['middle', 'young', 'middle_age', 'senior']);
+  assert.deepEqual(data.holidays.eras, ['middle', 'middle_age']); // post-simulation: 2 holidays per lifetime game
   const m = JSON.parse(readFileSync(new URL('../server/assets/manifest.json', import.meta.url), 'utf8'));
   const byId = new Map(m.items.map((i) => [i.id, i]));
   for (const id of CARD_IDS) assert.equal(byId.get(`card-${id.replaceAll('_', '-')}`)?.meta.card, id);

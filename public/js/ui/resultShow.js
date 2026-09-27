@@ -154,9 +154,11 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
       return;
     }
     if (S.key !== key || S.host !== host || !host.querySelector('.rs')) {
-      build(room, host);
+      // A2: the host is known before build() → ranking / awards / treasures are filled in the same pass (spectators,
+      // CPU-only rooms and TVs may never get another state push)
       S.key = key;
       S.host = host;
+      build(room, host);
       if (autoplay && !sGet(watchedKey(room))) queueMicrotask(() => play());
       return;
     }
@@ -228,7 +230,7 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
   function rankingHtml(rows, room, { titles = {}, full = false } = {}) {
     const bars = breakdownBars(rows);
     const routes = meta().board?.routes ?? {};
-    return `<ol class="ranking rs-ranking${full ? '' : ' show'}" style="--n:${rows.length}">${rows
+    return `<ol class="ranking rs-ranking${full ? '' : ' show'}${full && S.expanded ? ' expanded' : ''}" style="--n:${rows.length}">${rows
       .map((r, i) => {
         const c = r.char;
         const b = bars[i];
@@ -246,7 +248,7 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
         const extra = full
           ? `${rowExtras(r.raw, c) ?? ''}<span class="small muted">${parts.join(' · ')} · 골인 보너스 ${won(r.goalBonus)}${r.place ? ` · ${r.place}번째 골인` : ''}${routesTxt ? ` · 루트 ${routesTxt}` : ''}</span>`
           : `<span class="small muted">${parts.join(' · ')}</span>`;
-        return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}${mvp ? ' mvp' : ''}" style="--k:${rows.length - 1 - i}" data-char="${esc(r.charId)}">
+        return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}${mvp ? ' mvp' : ''}${full && i >= 3 ? ' rk-fold' : ''}" style="--k:${rows.length - 1 - i}" data-char="${esc(r.charId)}">
           <span class="rk">${medal(r.rank)}</span>
           <span class="rk-portrait">${c ? portraitHtml(c, { size: 52 }) : ''}</span>
           <span class="rk-body"><b>${esc(r.name)}</b>${mvp ? ' <span class="rs-crown" title="MVP">👑 MVP</span>' : ''} <small class="muted">${c ? ownerName(c) : ''}</small>${
@@ -259,7 +261,11 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
           <span class="rk-total">${won(r.total)}</span>
         </li>`;
       })
-      .join('')}</ol><div class="rs-legend" aria-hidden="true">${BREAKDOWN.map((b) => `<span><i style="--c:${b.color}"></i>${esc(b.icon)} ${esc(b.label)}</span>`).join('')}<span><i class="neg"></i>빚</span></div>`;
+      .join('')}</ol>${
+      full && rows.length > 3
+        ? `<button type="button" class="btn tiny ghost rs-more" data-rs="more" aria-expanded="${S.expanded ? 'true' : 'false'}">${S.expanded ? '▲ 4위부터 간단히' : `▼ 4위부터 자세히 (${rows.length - 3}명)`}</button>`
+        : ''
+    }<div class="rs-legend" aria-hidden="true">${BREAKDOWN.map((b) => `<span><i style="--c:${b.color}"></i>${esc(b.icon)} ${esc(b.label)}</span>`).join('')}<span><i class="neg"></i>빚</span></div>`;
   }
   const ownerName = (c) => (c.ownerId === 'cpu' || c.cpu ? '<span class="cpu-badge" title="컴퓨터 플레이어">🤖 CPU</span>' : esc(c.ownerName ?? ''));
 
@@ -477,6 +483,16 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
 
   async function onHostClick(ev) {
     const t = ev.target;
+    const more = t.closest('[data-rs="more"]');
+    if (more) {
+      // phones: places 4+ start folded (name + total); this toggles their details
+      S.expanded = !S.expanded;
+      const ol = S.host.querySelector('.rs-ranking');
+      ol?.classList.toggle('expanded', S.expanded);
+      more.setAttribute('aria-expanded', String(S.expanded));
+      more.textContent = S.expanded ? '▲ 4위부터 간단히' : `▼ 4위부터 자세히 (${Math.max(0, S.rows.length - 3)}명)`;
+      return;
+    }
     const v = t.closest('[data-vote]');
     if (v && !v.disabled) {
       const box = S.host.querySelector('[data-rs="mvp"]');

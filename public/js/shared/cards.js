@@ -12,6 +12,17 @@
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 /** Card kinds → label + frame colours (instant blue, passive green, sabotage red). */
+
+/** 「이름은/는」 (local mirror of format.josa — this module has no imports). */
+function josaTopic(name) {
+  const w = String(name ?? '');
+  const code = w.replace(/[\u2066-\u2069]/g, '').trim().slice(-1).charCodeAt(0);
+  if (code >= 0xac00 && code <= 0xd7a3) return `${w}${(code - 0xac00) % 28 ? '은' : '는'}`;
+  const ch = w.trim().slice(-1);
+  if (/[0-9]/.test(ch)) return `${w}${'013678'.includes(ch) ? '은' : '는'}`;
+  return `${w}은(는)`;
+}
+
 export const CARD_KINDS = Object.freeze({
   instant: { label: '즉시', color: '#3b82f6', dark: '#1d4ed8', soft: '#dbeafe' },
   passive: { label: '자동', color: '#22a55a', dark: '#15803d', soft: '#dcfce7' },
@@ -156,8 +167,11 @@ export function sabotageTargets(room, attacker) {
 // ---------- trades & gifts ----------
 const intAmount = (v) => {
   if (v === '' || v == null) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : NaN;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  // digits only: 「1e3」, 「+5」, 「0x10」 are not amounts (Number() would accept them)
+  const t = String(v).trim();
+  if (!/^\d+$/.test(t)) return t === '' ? null : NaN;
+  return Number(t);
 };
 
 /** One side of a trade form → payload `{money}` | `{cardUid}` | {} (+ error). */
@@ -165,7 +179,8 @@ function sidePayload(side, owner, label, { checkMoney = true } = {}) {
   if (!side || side.kind === 'none' || !side.kind) return { payload: {}, error: null };
   if (side.kind === 'money') {
     const n = intAmount(side.money);
-    if (n == null || Number.isNaN(n)) return { payload: {}, error: `${label} 금액을 입력하세요.` };
+    if (n == null) return { payload: {}, error: `${label} 금액을 입력하세요.` };
+    if (Number.isNaN(n)) return { payload: {}, error: `${label} 금액은 숫자로만 입력하세요 (만원 단위).` };
     if (!Number.isInteger(n) || n <= 0) return { payload: {}, error: `${label} 금액은 1만원 이상의 정수여야 해요.` };
     if (checkMoney && n > Math.floor(Number(owner?.money) || 0)) return { payload: {}, error: `${label}: ${owner?.name ?? ''}의 현금이 부족해요.` };
     return { payload: { money: n }, error: null };
@@ -203,7 +218,7 @@ export function validateTrade(form, { room = null } = {}) {
   if (g.error) return fail(g.error);
   const w = sidePayload(form.want, to, '받을 것');
   if (w.error) return fail(w.error);
-  if (openTradeOf(room, from.id)) return fail(`${from.name}은(는) 이미 답을 기다리는 거래 제안이 있어요.`);
+  if (openTradeOf(room, from.id)) return fail(`${josaTopic(from.name)} 이미 답을 기다리는 거래 제안이 있어요.`);
   return { ok: true, error: null, body: { type: 'offerTrade', characterId: from.id, toId: to.id, give: g.payload, want: w.payload } };
 }
 

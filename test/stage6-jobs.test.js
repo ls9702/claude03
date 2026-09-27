@@ -233,7 +233,7 @@ test('job offer: requirements, education, news deltas; ≤ 3 distinct weighted c
 
 // ---------- salary / rank-up / injury ----------
 
-test('salary: rank pay × era × news, injury cut, 알바 when jobless, military pay while serving', () => {
+test('salary: rank pay × era × news, injury cut, 알바 when jobless, (military pay) while serving', () => {
   const J = data.balance.jobs;
   let { c, tx } = sandbox();
   setJob(c, 'office_worker', 2);
@@ -270,7 +270,9 @@ test('salary: rank pay × era × news, injury cut, 알바 when jobless, military
   setJob(c, 'police', 1);
   paySalary(tx, c);
   assert.ok(!tx.events.some((e) => e.type === 'salary'));
-  assert.equal(tx.events.find((e) => e.type === 'moneyChanged').reason, 'military');
+  const mil = tx.events.find((e) => e.type === 'moneyChanged');
+  if (data.balance.military.pay) assert.equal(mil.reason, 'military');
+  else assert.equal(mil, undefined, 'no military pay (balance.military.pay 0): no salary while serving');
 });
 
 test('rank-up: chance formula, passive at expNeeded (seeded), stat +1, history; injury blocks; max rank', () => {
@@ -392,27 +394,34 @@ test('hidden jobs: all 6 unlock conditions (boundaries), unlock event once, offe
     assert.equal(unlockMet(tx, c, def(id)), want, `${id} ${JSON.stringify(patch)} → ${want}`);
   };
   const S = (o) => ({ stats: { int: 2, str: 2, charm: 2, luck: 2, ...o } });
-  // 우주비행사: 지력 9 & 체력 9
-  check('astronaut', S({ int: 9, str: 9 }), true);
-  check('astronaut', S({ int: 9, str: 8 }), false);
-  // 국민 MC: 개그맨/배우/유튜버 최고 랭크 + 매력 9 (current job or history)
+  // boundaries read from jobs.json (tuned after the playtest simulation: 8/8, 매력 8, 7/7, 소원 2)
+  const need = (id) => def(id).unlock.stats;
+  // 우주비행사: 지력 & 체력
+  const A = need('astronaut');
+  check('astronaut', S({ int: A.int, str: A.str }), true);
+  check('astronaut', S({ int: A.int, str: A.str - 1 }), false);
+  check('astronaut', S({ int: A.int - 1, str: 10 }), false);
+  // 국민 MC: 개그맨/배우/유튜버 최고 랭크 + 매력 (current job or history)
+  const M = need('national_mc').charm;
   const maxOf = (id) => def(id).ranks.length;
-  check('national_mc', { ...S({ charm: 9 }), job: { id: 'comedian', rank: maxOf('comedian'), exp: 0, injured: 0 } }, true);
-  check('national_mc', { ...S({ charm: 9 }), job: { id: 'civil_servant', rank: 1, exp: 0, injured: 0 }, jobHistory: [{ id: 'youtuber', rank: maxOf('youtuber'), era: 'young' }] }, true);
-  check('national_mc', { ...S({ charm: 8 }), job: { id: 'actor', rank: maxOf('actor'), exp: 0, injured: 0 } }, false);
-  check('national_mc', { ...S({ charm: 9 }), job: { id: 'actor', rank: maxOf('actor') - 1, exp: 0, injured: 0 } }, false);
+  check('national_mc', { ...S({ charm: M }), job: { id: 'comedian', rank: maxOf('comedian'), exp: 0, injured: 0 } }, true);
+  check('national_mc', { ...S({ charm: M }), job: { id: 'civil_servant', rank: 1, exp: 0, injured: 0 }, jobHistory: [{ id: 'youtuber', rank: maxOf('youtuber'), era: 'young' }] }, true);
+  check('national_mc', { ...S({ charm: M - 1 }), job: { id: 'actor', rank: maxOf('actor'), exp: 0, injured: 0 } }, false);
+  check('national_mc', { ...S({ charm: M }), job: { id: 'actor', rank: maxOf('actor') - 1, exp: 0, injured: 0 } }, false);
   // 재벌 총수: 대기업 최고 랭크 + 순자산
   const nw = def('chaebol').unlock.netWorth;
   check('chaebol', { job: { id: 'office_worker', rank: maxOf('office_worker'), exp: 0, injured: 0 }, money: nw, debt: 0 }, true);
   check('chaebol', { job: { id: 'office_worker', rank: maxOf('office_worker'), exp: 0, injured: 0 }, money: nw, debt: 1 }, false);
   check('chaebol', { job: { id: 'office_worker', rank: 1, exp: 0, injured: 0 }, money: nw * 2, debt: 0 }, false);
-  // 트로트 스타: 노년 + 매력 8 & 운 8
-  check('trot_star', S({ charm: 8, luck: 8 }), true, 'senior');
-  check('trot_star', S({ charm: 8, luck: 8 }), false, 'middle_age');
-  check('trot_star', S({ charm: 8, luck: 7 }), false, 'senior');
-  // 산신령 (Stage 9): 사찰 소원 성취 3번 이상 (the Stage 6 interim 운 9 + 나쁜 일 3번 is gone)
-  check('mountain_spirit', { wishes: 3 }, true);
-  check('mountain_spirit', { wishes: 2 }, false);
+  // 트로트 스타: 노년 + 매력 & 운
+  const T = need('trot_star');
+  check('trot_star', S({ charm: T.charm, luck: T.luck }), true, 'senior');
+  check('trot_star', S({ charm: T.charm, luck: T.luck }), false, 'middle_age');
+  check('trot_star', S({ charm: T.charm, luck: T.luck - 1 }), false, 'senior');
+  // 산신령 (Stage 9): 사찰 소원 성취 횟수 (the Stage 6 interim 운 9 + 나쁜 일 3번 is gone)
+  const W = def('mountain_spirit').unlock.wishes;
+  check('mountain_spirit', { wishes: W }, true);
+  check('mountain_spirit', { wishes: W - 1 }, false);
   check('mountain_spirit', { ...S({ luck: 9 }), badEvents: 3 }, false);
   // 건물주 (Stage 8): 부동산 갈아타기 3회 이상, 또는 펜트하우스 / 제주 별장 보유 (any job era)
   check('landlord', { houseSwaps: 3 }, true, 'young');
@@ -423,11 +432,11 @@ test('hidden jobs: all 6 unlock conditions (boundaries), unlock event once, offe
   assert.equal(hiddenJobs(data).length, 6);
 
   // unlock once + engine offer at the end of the turn
-  const { c, tx } = sandbox({ patch: S({ int: 9, str: 9 }) });
+  const { c, tx } = sandbox({ patch: S({ int: A.int, str: A.str }) });
   assert.deepEqual(checkHiddenUnlocks(tx, c), ['astronaut']);
   assert.deepEqual(checkHiddenUnlocks(tx, c), [], 'only once');
   assert.deepEqual(c.hiddenUnlocked, ['astronaut']);
-  const kids = sandbox({ era: 'high', patch: S({ int: 9, str: 9 }) });
+  const kids = sandbox({ era: 'high', patch: S({ int: A.int, str: A.str }) });
   assert.deepEqual(checkHiddenUnlocks(kids.tx, kids.c), [], 'kids eras never unlock');
 
   const room = started();

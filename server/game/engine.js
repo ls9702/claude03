@@ -33,13 +33,14 @@ import {
   ensureRoomCards,
   expireTrades,
   gift,
+  itemsValue,
   offerTrade,
   respondTrade,
   useCard,
 } from './cards.js';
 import { queueEraOpening, runEraOpenings } from './holidays.js';
 import { ensureFamily, ensureRoomFamily, growChildrenOnEra, growChildrenOnSpin, initFamily, schoolMeet } from './family.js';
-import { drawHousingMarket, syncHouseOwners } from './houses.js';
+import { drawHousingMarket, houseValue, syncHouseOwners } from './houses.js';
 import { ensureRoomTreasures, ensureTreasures } from './treasures.js';
 import { ensureRecord, initRecord, recordHighlights, topHighlights, trackRecords } from './highlights.js';
 import './submaps.js'; // Stage 9: registers the hometown / temple / jeju / reversal prompts
@@ -136,6 +137,16 @@ export function endGame(room, ctx = {}) {
   const r = lobbyEndGame(room, now);
   if (!r.ok) return r;
   if (r.room.trades) r.room.trades = []; // Stage 7: open offers die with the game
+  // Held stakes of bets the roulette never settled go back to their bettors (no events on a force end)
+  for (const slot of Object.values(r.room.bets ?? {})) {
+    for (const [charId, bet] of Object.entries(slot)) {
+      if (bet.resolved || !bet.staked) continue;
+      const c = charById(r.room, charId);
+      if (c && typeof c.money === 'number') c.money += bet.amount;
+      bet.resolved = true;
+      bet.refunded = true;
+    }
+  }
   if (r.room.board && r.room.characters.every((c) => typeof c.money === 'number')) {
     for (const c of r.room.characters) ensureTreasures(ensureRecord(c));
     ensureRoomTreasures(r.room);
@@ -176,20 +187,29 @@ function enterEra(tx, c, eraIndex) {
 }
 
 /**
+ * 역전 보정 (기초연금) basis: total assets = cash − debt + house value + item resale (the ranking's total without
+ * the hidden treasure values and the end-of-game awards). Cash alone made house owners look poor.
+ */
+export function pensionWorth(c, data) {
+  return netWorth(c) + houseValue(c) + itemsValue(data, c);
+}
+
+/**
  * 역전 보정 (기초연금): the recipients are decided ONCE, when the first character enters the pension era —
- * the bottom `bottomN` by net worth (games with ≥ `minCharacters`) — and stored in `room.pension =
- * {recipients, decidedAt, turnNo}`. Each recipient is paid on their own entry (the amount uses the gap to
- * the richest character at that moment), so later entries can never add more recipients.
+ * the bottom `bottomN` by total assets (`pensionWorth`; games with ≥ `minCharacters`) — and stored in
+ * `room.pension = {recipients, decidedAt, turnNo}`. Each recipient is paid on their own entry (the amount uses
+ * the asset gap to the richest character at that moment), so later entries can never add more recipients.
  */
 function catchUpBonus(tx, c) {
   const cfg = tx.data.balance.pension;
   const room = tx.room;
   const chars = room.characters;
   if (chars.length < cfg.minCharacters) return;
+  const worth = (x) => pensionWorth(x, tx.data);
   if (!room.pension) {
     // Saves from before the fixed rule: pensions already paid count as recipients.
     const given = chars.filter((x) => x.pensionGiven).map((x) => x.id);
-    const sorted = [...chars].filter((x) => !given.includes(x.id)).sort((a, b) => netWorth(a) - netWorth(b) || (a.seq ?? 0) - (b.seq ?? 0));
+    const sorted = [...chars].filter((x) => !given.includes(x.id)).sort((a, b) => worth(a) - worth(b) || (a.seq ?? 0) - (b.seq ?? 0));
     const recipients = [...given, ...sorted.map((x) => x.id)].slice(0, Math.max(given.length, cfg.bottomN));
     room.pension = { recipients, decidedAt: tx.now, turnNo: room.turn?.turnNo ?? 0 };
   }
@@ -202,8 +222,9 @@ function catchUpBonus(tx, c) {
 
 function payPension(tx, c) {
   const cfg = tx.data.balance.pension;
-  const top = Math.max(...tx.room.characters.map(netWorth));
-  const raw = cfg.base + Math.max(0, top - netWorth(c)) * cfg.gapRatio;
+  const worth = (x) => pensionWorth(x, tx.data);
+  const top = Math.max(...tx.room.characters.map(worth));
+  const raw = cfg.base + Math.max(0, top - worth(c)) * cfg.gapRatio;
   const amount = Math.min(cfg.max, Math.round(raw / 10) * 10);
   c.pensionGiven = true;
   changeMoney(tx, c, amount, 'pension', { emotion: 'joy', tone: 'good' });
@@ -235,6 +256,7 @@ function bonusSpin(tx, c) {
 
 function gameOver(tx) {
   tx.room.trades = [];
+  for (const slot of Object.values(tx.room.bets ?? {})) refundBets(tx, slot); // stakes of bets that never resolved
   tx.room.eraQueue = [];
   tx.tracked = trackRecords(tx.room, tx.events, tx.tracked ?? 0); // the titles read the life records
   const ranking = applyResult(tx.room, tx.now, { data: tx.data });
@@ -297,7 +319,11 @@ function endTurn(tx) {
 function pruneBets(tx) {
   const keep = tx.data.balance.bets.keepTurns;
   const bets = tx.room.bets ?? {};
-  for (const k of Object.keys(bets)) if (Number(k) <= tx.room.turn.turnNo - keep) delete bets[k];
+  for (const k of Object.keys(bets)) {
+    if (Number(k) > tx.room.turn.turnNo - keep) continue;
+    refundBets(tx, bets[k]); // never happens in normal play (skip already voids); older saves may hold one
+    delete bets[k];
+  }
 }
 
 /**
@@ -346,6 +372,7 @@ function placeBet(tx, action) {
   const bettor = assertOwner(room, action.actor, action.characterId);
   const current = charById(room, currentCharId(room));
   if (bettor.id === current.id) fail(409, '자기 룰렛에는 베팅할 수 없어요.');
+  if (bettor.finished) fail(409, '골인한 캐릭터는 훈수 베팅을 할 수 없어요.');
   if (bettor.ownerSessionId === 'cpu') fail(409, 'CPU는 베팅하지 않아요.');
   if (bettor.ownerSessionId === current.ownerSessionId) fail(403, '내 캐릭터의 턴에는 훈수 베팅을 할 수 없어요.');
   const cfg = tx.data.balance.bets;
@@ -357,13 +384,41 @@ function placeBet(tx, action) {
   if (!Number.isInteger(amount) || amount < cfg.minAmount || amount > cfg.maxAmount) {
     fail(400, `베팅 금액은 ${won(cfg.minAmount)}~${won(cfg.maxAmount)}이에요.`);
   }
-  if (amount > bettor.money) fail(409, '돈이 부족해요.');
   room.bets ??= {};
   const slot = (room.bets[turn.turnNo] ??= {});
-  const replaced = Object.hasOwn(slot, bettor.id);
-  slot[bettor.id] = { kind, pick, amount, target: current.id, resolved: false };
+  const prev = Object.hasOwn(slot, bettor.id) ? slot[bettor.id] : null;
+  // The stake is held at bet time (a replaced bet's held stake counts as available), so a lost bet can never
+  // turn into debt however the money moves before the roulette.
+  const held = prev?.staked ? prev.amount : 0;
+  if (amount > bettor.money + held) fail(409, '돈이 부족해요.');
+  slot[bettor.id] = { kind, pick, amount, target: current.id, resolved: false, staked: true };
+  const net = amount - held;
+  if (net) moveStake(tx, bettor, -net, net > 0 ? 'betStake' : 'betRefund');
   emit(tx, 'betPlaced', { charId: bettor.id, turnNo: turn.turnNo, target: current.id });
-  if (!replaced) addLog(tx, `🎲 ${josa(bettor.name, '이/가')} ${current.name}의 룰렛에 훈수 베팅!`, { charId: bettor.id });
+  if (!prev) addLog(tx, `🎲 ${josa(bettor.name, '이/가')} ${current.name}의 룰렛에 훈수 베팅!`, { charId: bettor.id });
+}
+
+/**
+ * Move held bet money between a bettor's cash and the stake (never touches debt): −amount holds the stake
+ * (`betStake`), +amount gives an unresolved stake back (`betRefund`, void / skipped / pruned / game end).
+ */
+function moveStake(tx, c, delta, reason) {
+  c.money = Math.max(0, (c.money ?? 0) + delta);
+  emit(tx, 'moneyChanged', { charId: c.id, delta, reason, money: c.money, debt: c.debt ?? 0, tone: 'neutral' });
+}
+
+/** Give back the held stakes of unresolved bets in `slot` (pre-fix saves never held one). @returns count */
+function refundBets(tx, slot) {
+  let n = 0;
+  for (const [charId, bet] of Object.entries(slot ?? {})) {
+    if (bet.resolved) continue;
+    n++;
+    bet.resolved = true;
+    bet.refunded = true;
+    const c = charById(tx.room, charId);
+    if (c && bet.staked && bet.amount > 0) moveStake(tx, c, bet.amount, 'betRefund');
+  }
+  return n;
 }
 
 const PICK_LABEL = { odd: '홀', even: '짝' };
@@ -372,20 +427,23 @@ function resolveBets(tx, value) {
   const room = tx.room;
   const slot = room.bets?.[room.turn.turnNo];
   if (!slot) return;
-  const cfg = tx.data.balance.bets;
   const results = [];
   for (const [charId, bet] of Object.entries(slot)) {
     if (bet.resolved) continue;
     const c = charById(room, charId);
     if (!c) continue;
     const won_ = betWins(bet, value, tx.data.balance);
+    // `delta` = net result (win: winnings without the stake, loss: −stake), as before the stake was held
     const delta = won_ ? betWinDelta(bet, tx.data.balance) : -bet.amount;
     bet.resolved = true;
     bet.won = won_;
     bet.delta = delta;
     bet.value = value;
-    changeMoney(tx, c, delta, 'bet', { emotion: won_ ? 'joy' : 'sweat', tone: won_ ? 'good' : 'bad' });
-    results.push({ charId, kind: bet.kind, pick: bet.pick, amount: bet.amount, won: won_, delta });
+    // Held stake: a win pays stake + winnings, a loss pays nothing (the stake already left the cash).
+    // Bets saved before the stake was held settle the old way (net delta).
+    const paid = bet.staked ? (won_ ? bet.amount + delta : 0) : delta;
+    if (paid) changeMoney(tx, c, paid, 'bet', { emotion: won_ ? 'joy' : 'sweat', tone: won_ ? 'good' : 'bad' });
+    results.push({ charId, kind: bet.kind, pick: bet.pick, amount: bet.amount, won: won_, delta, stake: bet.amount, paid: bet.staked ? paid : Math.max(0, paid) });
     const pickText = PICK_LABEL[bet.pick] ?? bet.pick;
     addLog(tx, `${won_ ? '🤑' : '😅'} ${c.name} 훈수 베팅(${pickText}) ${won_ ? `적중! +${won(delta)}` : `꽝… ${won(delta)}`}`, {
       tone: won_ ? 'good' : 'bad',
@@ -514,7 +572,7 @@ function doSkip(tx, action) {
   if (turn.phase !== 'awaitSpin' || turn.pending) fail(409, '룰렛을 기다리는 중에만 턴을 넘길 수 있어요.');
   const c = charById(room, currentCharId(room));
   // Side bets on this turn are void (stakes are only settled when the roulette resolves them).
-  const voided = Object.keys(room.bets?.[turn.turnNo] ?? {}).length;
+  const voided = refundBets(tx, room.bets?.[turn.turnNo]);
   if (room.bets) delete room.bets[turn.turnNo];
   turn.spinDeadlineAt = null;
   addLog(tx, `⏭️ 관리자가 ${c?.name ?? '현재 캐릭터'}의 턴을 넘겼어요.${voided ? ' (훈수 베팅은 무효)' : ''}`, { tone: 'info', charId: c?.id ?? null });
@@ -526,7 +584,7 @@ function doExpireTrades(tx, action) {
   if (action.actor && !action.actor.admin && !action.actor.system) fail(403, '시스템만 할 수 있어요.');
 }
 
-const HANDLERS = {
+const HANDLERS = Object.assign(Object.create(null), {
   spin: doSpin,
   choose: doChoose,
   bet: placeBet,
@@ -539,7 +597,7 @@ const HANDLERS = {
   cancelTrade,
   gift,
   expireTrades: doExpireTrades,
-};
+});
 
 /**
  * @param {object} room current room (not mutated)
@@ -557,9 +615,11 @@ const HANDLERS = {
  */
 export function applyAction(room, action, ctx = {}) {
   if (!action || typeof action !== 'object') fail(400, '잘못된 요청입니다.');
+  if (typeof action.type !== 'string') fail(400, '알 수 없는 행동입니다.');
   if (RESULT_ACTIONS.includes(action.type)) return applyResultAction(room, action, ctx);
-  const handler = HANDLERS[action.type];
-  if (!handler) fail(400, '알 수 없는 행동입니다.');
+  // Own keys of a null-prototype table only ('toString' / '__proto__' are unknown actions, not Object methods)
+  const handler = Object.hasOwn(HANDLERS, action.type) ? HANDLERS[action.type] : null;
+  if (typeof handler !== 'function') fail(400, '알 수 없는 행동입니다.');
   if (room.status !== 'playing' || !room.board) fail(409, '게임이 진행 중이 아니에요.');
   const c = makeCtx(room, ctx);
   const next = structuredClone(room);

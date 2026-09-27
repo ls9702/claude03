@@ -39,6 +39,31 @@ export function resolveAdminPassword(dataDir, explicit = null) {
   return { password, source: 'generated', file };
 }
 export const DATA_DIR = path.resolve(process.env.DATA_DIR || './data');
+
+/** Non-negative integer ms from env (0 = keep forever), else the default. */
+export function envMs(value, fallback) {
+  if (value === undefined || value === '') return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
+/** Room TTLs (ms; 0 = never): finished rooms (default 3 days after the end), idle lobby rooms (default 7 days). */
+export const FINISHED_ROOM_TTL_MS = envMs(process.env.FINISHED_ROOM_TTL_MS, 3 * 24 * 60 * 60 * 1000);
+export const LOBBY_ROOM_TTL_MS = envMs(process.env.LOBBY_ROOM_TTL_MS, 7 * 24 * 60 * 60 * 1000);
+
+/**
+ * Express `trust proxy` (env TRUST_PROXY): off by default = the socket address is the client IP (rate limits).
+ * Behind a reverse proxy / tunnel set it so `req.ip` is the real client: `1` (hops), `loopback`, a CIDR list
+ * ("loopback, 10.0.0.0/8") or `true` (trust every X-Forwarded-For hop — only when nothing else can reach the port).
+ */
+export function parseTrustProxy(value) {
+  if (value === undefined || value === null) return false;
+  const v = String(value).trim();
+  if (!v || /^(0|false|off|no)$/i.test(v)) return false;
+  if (/^(true|on|yes)$/i.test(v)) return true;
+  if (/^\d+$/.test(v)) return Number(v);
+  return v;
+}
+export const TRUST_PROXY = parseTrustProxy(process.env.TRUST_PROXY);
 /** TEST-ONLY: '1' = fake Gemini for the AI character art smoke test, '402' = fake "credits exhausted". */
 export const CHAR_ART_FAKE = process.env.CHAR_ART_FAKE || '';
 export const CHAR_ART_FAKE_DELAY_MS = Number(process.env.CHAR_ART_FAKE_DELAY_MS) >= 0 && process.env.CHAR_ART_FAKE_DELAY_MS !== undefined && process.env.CHAR_ART_FAKE_DELAY_MS !== '' ? Number(process.env.CHAR_ART_FAKE_DELAY_MS) : 250;

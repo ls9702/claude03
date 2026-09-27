@@ -3,6 +3,7 @@
 import { buildTurnOrder } from './order.js';
 import { sanitizeAvatar } from './avatar.js';
 import { getAvatars } from '../data/index.js';
+import { josa, particle } from './korean.js';
 
 export const MAX_PLAYERS = 4;
 export const NAME_MAX = 12;
@@ -10,10 +11,51 @@ export const LOG_LIMIT = 500;
 
 const fail = (status, error) => ({ ok: false, status, error });
 
-function cleanName(name) {
+/** Longest accepted name in UTF-16 units (a guard against zalgo / huge ZWJ chains that are 1 grapheme each). */
+export const NAME_MAX_UNITS = 64;
+
+// Invisible / direction-changing characters: format controls (Cf: ZWSP, ZWNJ, LRM/RLM, LRE…RLO, LRI…PDI, word
+// joiner, BOM, soft hyphen, tag characters…), other controls (Cc) and the Hangul / braille fillers that render blank.
+const INVISIBLE_RE = /[\p{Cc}\p{Cf}\u115F\u1160\u3164\uFFA0\u2800]/gu;
+const ZWJ = '\u200D';
+const PICTO_RE = /\p{Extended_Pictographic}/u;
+const EMOJI_MOD_RE = /[\uFE0E\uFE0F\u{1F3FB}-\u{1F3FF}]/u; // variation selectors / skin tones inside an emoji
+
+let segmenter = null;
+/** User-perceived characters (grapheme clusters), same count as the client's name counter. */
+export function graphemeCount(s) {
+  try {
+    segmenter ??= new Intl.Segmenter('ko', { granularity: 'grapheme' });
+    let n = 0;
+    for (const _ of segmenter.segment(s)) n++;
+    return n;
+  } catch {
+    return [...s].length;
+  }
+}
+
+/**
+ * Normalize a display name: strip invisible / bidi control characters (a zero-width joiner survives only inside an
+ * emoji sequence such as 👨‍👩‍👧), collapse whitespace, trim. @returns the clean name, or null when it is empty or
+ * longer than NAME_MAX graphemes.
+ */
+export function cleanName(name) {
   if (typeof name !== 'string') return null;
-  const n = name.replace(/\s+/g, ' ').trim();
-  const len = [...n].length;
+  const cps = [...name.normalize('NFC')];
+  let out = '';
+  for (let i = 0; i < cps.length; i++) {
+    const ch = cps[i];
+    if (ch === ZWJ) {
+      const prev = [...out].findLast((x) => !EMOJI_MOD_RE.test(x)) ?? '';
+      const next = cps[i + 1] ?? '';
+      if (PICTO_RE.test(prev) && PICTO_RE.test(next)) out += ch;
+      continue;
+    }
+    out += ch.replace(INVISIBLE_RE, '');
+  }
+  const n = out.replace(/\s+/g, ' ').trim();
+  if (!n || n.length > NAME_MAX_UNITS) return null;
+  const len = graphemeCount(n);
   return len >= 1 && len <= NAME_MAX ? n : null;
 }
 
@@ -49,7 +91,7 @@ export function joinRoom(room, sessionId, name, now = Date.now(), { spectator = 
   if (existing) {
     const logs = [];
     if (existing.name !== clean) {
-      logs.push(pushLog(next, `${existing.name} 님이 이름을 ${clean}(으)로 바꿨습니다.`, now));
+      logs.push(pushLog(next, `${existing.name} 님이 이름을 ${josa(clean, '으로/로')} 바꿨습니다.`, now));
       existing.name = clean;
     }
     existing.lastSeen = now;
@@ -103,7 +145,7 @@ export function addCharacter(room, sessionId, { name, avatar } = {}, now = Date.
   next.characters.push(character);
   const owner = findPlayer(next, sessionId);
   owner.ready = false;
-  const logs = [pushLog(next, `${owner.name} 님이 캐릭터 「${clean}」을(를) 만들었습니다.`, now)];
+  const logs = [pushLog(next, `${owner.name} 님이 캐릭터 「${clean}」${particle(clean, '을/를')} 만들었습니다.`, now)];
   return { ok: true, room: next, logs, character };
 }
 
@@ -144,7 +186,7 @@ export function removeCharacter(room, sessionId, charId, now = Date.now()) {
   const next = structuredClone(room);
   next.characters = next.characters.filter((x) => x.id !== charId);
   const owner = findPlayer(next, sessionId);
-  const logs = [pushLog(next, `${owner.name} 님이 캐릭터 「${found.c.name}」을(를) 지웠습니다.`, now)];
+  const logs = [pushLog(next, `${owner.name} 님이 캐릭터 「${found.c.name}」${particle(found.c.name, '을/를')} 지웠습니다.`, now)];
   return { ok: true, room: next, logs };
 }
 
@@ -272,7 +314,7 @@ export function addCpuCharacter(room, { name, avatar } = {}, now = Date.now(), {
     createdAt: now,
   };
   next.characters.push(character);
-  const logs = [pushLog(next, `🤖 ${by} 님이 CPU 캐릭터 「${clean}」을(를) 넣었습니다.`, now)];
+  const logs = [pushLog(next, `🤖 ${by} 님이 CPU 캐릭터 「${clean}」${particle(clean, '을/를')} 넣었습니다.`, now)];
   return { ok: true, room: next, logs, character };
 }
 
@@ -284,6 +326,6 @@ export function removeCpuCharacter(room, charId, now = Date.now(), { by = '관�
   if (room.status !== 'lobby') return fail(409, '로비에서만 CPU를 뺄 수 있습니다.');
   const next = structuredClone(room);
   next.characters = next.characters.filter((x) => x.id !== charId);
-  const logs = [pushLog(next, `🤖 ${by} 님이 CPU 캐릭터 「${c.name}」을(를) 뺐습니다.`, now)];
+  const logs = [pushLog(next, `🤖 ${by} 님이 CPU 캐릭터 「${c.name}」${particle(c.name, '을/를')} 뺐습니다.`, now)];
   return { ok: true, room: next, logs };
 }

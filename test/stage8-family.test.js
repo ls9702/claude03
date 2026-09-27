@@ -1,4 +1,4 @@
-// Stage 8 — romance & family: data, 고교 전원 만남, 만남 / 데이트 / 프로포즈, 결혼식 축의금, 맞벌이, 출산 (max 4),
+// Stage 8 — romance & family: data, 고교 전원 만남, 만남 / 데이트 / 프러포즈, 결혼식 축의금, 맞벌이, 출산 (max 4),
 // 자녀 성장 + 용돈, presentation / MC, a random lifetime game, restore mid-marriage and pre-Stage-8 saves.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -151,7 +151,7 @@ test('schoolMeet: the first character entering 고등학생 gives every single u
   assert.equal(tx.events.length, 0);
 });
 
-// ---------- 만남 / 데이트 / 프로포즈 ----------
+// ---------- 만남 / 데이트 / 프러포즈 ----------
 
 test('meet: a single character on a heart tile gets 2 candidates + pass; picking one → met, affection = meet (+match)', () => {
   const { tx, c } = sandbox();
@@ -187,7 +187,7 @@ test('meet: a single character on a heart tile gets 2 candidates + pass; picking
   assert.equal(heart(s3.tx, s3.c), null);
 });
 
-test('date: 5 options (costs × era scale, disabled when broke), trait match bonus; reaching proposeAt opens 프로포즈', () => {
+test('date: 5 options (costs × era scale, disabled when broke), trait match bonus; reaching proposeAt opens 프러포즈', () => {
   const { tx, c } = sandbox({ money: 25 });
   c.love.partner = partnerOf({ trait: 'int' });
   const lib = P.dates.find((d) => d.id === 'library').gain + P.affection.matchBonus;
@@ -212,7 +212,7 @@ test('date: 5 options (costs × era scale, disabled when broke), trait match bon
   assert.equal(c.money, 5);
   assert.equal(c.love.dates, 1);
   assert.equal(tx.events.find((e) => e.type === 'promptResolved').kind, 'date', 'date result cut-in');
-  assert.equal(tx.room.turn.pending.kind, 'propose', 'affection ≥ proposeAt → 프로포즈 right away');
+  assert.equal(tx.room.turn.pending.kind, 'propose', 'affection ≥ proposeAt → 프러포즈 right away');
   // high school: no proposal
   const h = sandbox({ era: 'high' });
   h.c.love.partner = partnerOf();
@@ -423,7 +423,7 @@ test('engine: a married parent entering a new era grows the children and rolls a
   assert.equal(r.events.find((e) => e.type === 'childBorn').mcKey, 'birth');
 });
 
-test('automatic romance: love route → 소개팅 or affection +loveRoute; one epilogue 프로포즈 per era; era affection gain', () => {
+test('automatic romance: love route → 소개팅 or affection +loveRoute; one epilogue 프러포즈 per era; era affection gain', () => {
   const aff = P.affection;
   // single → 소개팅 (met, no prompt)
   const a = sandbox();
@@ -526,6 +526,8 @@ test('presentation + MC: Stage 8 types registered; anchors vs chips; lines fille
   assert.ok(by('houseValueChanged').changes[0].line);
   for (const e of evs) {
     assert.ok(data.lines.tags[e.lineTag], `${e.type}: ${e.lineTag}`);
+    // small money follow-ups stay quiet (no speech bubble); everything else speaks
+    if (e.type === 'moneyChanged' && e.line == null) continue;
     assert.ok(e.line && !/\{\w+\}/.test(e.line), `${e.type}: "${e.line}"`);
     for (const l of e.mc ?? []) assert.ok(!/\{\w+\}/.test(l.line), `${e.type} mc "${l.line}"`);
   }
@@ -581,7 +583,7 @@ test('full random lifetime games: family + house events, known types, filled lin
   assert.ok(married >= 2, `married ${married}`);
 });
 
-test('restore: a JSON snapshot mid-marriage (open 프로포즈) continues identically; pre-Stage-8 saves migrate', () => {
+test('restore: a JSON snapshot mid-marriage (open 프러포즈) continues identically; pre-Stage-8 saves migrate', () => {
   const room = structuredClone(started());
   room.erasOpened = room.board.eras.map((e) => e.id);
   const c = ch(room, cur(room));

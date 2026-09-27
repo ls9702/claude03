@@ -25,10 +25,13 @@ const PUBLIC_DIR = path.join(ROOT, 'public');
  * @param {object} opts
  * @param {{session?, login?}} [opts.rate] rate-limit overrides ({windowMs, max}) for POST /api/session and admin login
  */
-export function createApp({ store, runner = new GameRunner(store), adminPassword, heartbeatMs = 15000, assets = {}, log: appLog = () => {}, rate = {} }) {
+export function createApp({ store, runner = new GameRunner(store), adminPassword, heartbeatMs = 15000, assets = {}, log: appLog = () => {}, rate = {}, trustProxy = false }) {
   if (typeof adminPassword !== 'string' || !adminPassword) throw new Error('adminPassword required');
   const app = express();
   app.disable('x-powered-by');
+  // Behind a reverse proxy / tunnel: req.ip = the forwarded client address (rate limits); off by default so a
+  // client cannot spoof X-Forwarded-For to dodge (or aim) the login lock.
+  if (trustProxy !== false && trustProxy != null) app.set('trust proxy', trustProxy);
   app.use(UPLOAD_PATH, assetUploadJsonParser()); // large asset uploads are parsed after admin auth
   app.use(express.json({ limit: '64kb' }));
 
@@ -93,14 +96,17 @@ export async function startServer({
   charArtFake = config.CHAR_ART_FAKE,
   rate = {},
   cpuDelayMs, // Stage 9-C: CPU pacing (ms number or {spin, prompt, trade}); default CPU_DELAY_MS
+  trustProxy = config.TRUST_PROXY, // env TRUST_PROXY (off by default)
+  finishedRoomTtlMs = config.FINISHED_ROOM_TTL_MS, // env FINISHED_ROOM_TTL_MS (3 days; 0 = keep)
+  lobbyRoomTtlMs = config.LOBBY_ROOM_TTL_MS, // env LOBBY_ROOM_TTL_MS (7 days; 0 = keep)
 } = {}) {
   configureSharpForServer(); // low-memory libvips settings (AI art / studio run inside the server)
   const pw = resolveAdminPassword(dataDir, adminPassword);
   const notice = adminPasswordNotice(pw);
   if (notice) log(notice);
-  const store = new RoomStore({ dataDir, debounceMs, log });
+  const store = new RoomStore({ dataDir, debounceMs, log, finishedRoomTtlMs, lobbyRoomTtlMs });
   await store.load();
-  store.startPruning(); // player sessions: TTL 7 days unless still in a room (also pruned at load)
+  store.startPruning(); // hourly: expired rooms (finished 3 days / idle lobby 7 days) + unused sessions (also at load)
   const runner = new GameRunner(store, { log, ...(cpuDelayMs != null ? { cpuDelayMs } : {}) });
   runner.restore(); // re-arm prompt deadline timers of restored rooms
   let assetOpts = { log, ...assets };
@@ -116,7 +122,7 @@ export async function startServer({
       },
     };
   }
-  const app = createApp({ store, runner, adminPassword: pw.password, heartbeatMs, assets: assetOpts, log, rate });
+  const app = createApp({ store, runner, adminPassword: pw.password, heartbeatMs, assets: assetOpts, log, rate, trustProxy });
   app.locals.charArt.restore(); // AI art jobs do not survive a restart → pending becomes failed
   const server = await new Promise((resolve, reject) => {
     const s = app.listen(port, host, () => resolve(s));

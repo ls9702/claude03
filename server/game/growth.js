@@ -141,7 +141,7 @@ function atRouteStop(tx, c) {
 
 /**
  * Turn epilogue for the current character: discharge / graduation, then the next life decision in order —
- * 진로 → 군 복무 → 취업 → 자동 입대 → 인생 갈림길 → 숨은 직업 → 프로포즈 (Stage 8). Opens at most one prompt.
+ * 진로 → 군 복무 → 취업 → 자동 입대 → 인생 갈림길 → 숨은 직업 → 프러포즈 (Stage 8). Opens at most one prompt.
  * @returns true when a prompt was opened (the turn waits for it)
  */
 export function lifeStep(tx, c) {
@@ -186,7 +186,7 @@ export function lifeStep(tx, c) {
     openPrompt(tx, 'hiddenJobOffer', c, { jobId: unlocked[0] });
     return true;
   }
-  return proposeStep(tx, c); // Stage 8: a ripe relationship → one 프로포즈 per era
+  return proposeStep(tx, c); // Stage 8: a ripe relationship → one 프러포즈 per era
 }
 
 /** 진로 prompt (or apply the only possible choice directly). @returns true when a prompt opened */
@@ -258,14 +258,23 @@ registerPrompts({
       const era = c.era;
       const scale = (cfg.costScale?.[era] ?? 1) * effectsFor(tx, c).habitCostMult;
       const labels = cfg.labels?.[era] ?? cfg.labels?.elem ?? {};
+      // A habit never pushes a kid into debt: a fee is capped at the cash on hand (the rest = 부모님 찬스, so a
+      // broke kid's lessons are free) and the 뽑기 loss is capped too.
+      const cash = Math.max(0, c.money ?? 0);
       const options = cfg.options.map((o) => {
         const gain = `${statName(tx.data, o.stat)} +${o.gain}`;
+        const fee = o.cost ? round5(o.cost * scale) : 0;
+        const pay = Math.min(fee, cash);
         const money = o.money
-          ? ` · 용돈 ${won(round5(o.money[0] * scale))}~+${won(round5(o.money[1] * scale))}`
+          ? ` · 용돈 ${won(-Math.min(cash, -round5(o.money[0] * scale)))}~+${won(round5(o.money[1] * scale))}`
           : o.cost
-            ? ` · ${won(round5(o.cost * scale))}`
+            ? pay <= 0
+              ? ' · 무료 (부모님 찬스)'
+              : pay < fee
+                ? ` · ${won(pay)} (나머지는 부모님 찬스)`
+                : ` · ${won(fee)}`
             : '';
-        return { id: o.id, label: `${o.icon} ${labels[o.id] ?? o.id}`, icon: o.icon, stat: o.stat, desc: `${gain}${money}` };
+        return { id: o.id, label: `${o.icon} ${labels[o.id] ?? o.id}`, icon: o.icon, stat: o.stat, desc: `${gain}${money}`, ...(o.cost ? { cost: pay, ...(pay < fee ? { basePrice: fee } : {}) } : {}) };
       });
       return {
         forCharacterIds: [c.id],
@@ -287,6 +296,7 @@ registerPrompts({
       let money = 0;
       if (opt.money) money = round5(tx.rng.int(opt.money[0], opt.money[1]) * scale);
       else if (opt.cost) money = -round5(opt.cost * scale);
+      if (money < 0) money = -Math.min(-money, Math.max(0, c.money ?? 0)); // never into debt (부모님 찬스)
       if (money) changeMoney(tx, c, money, 'habit', { emotion: money > 0 ? 'joy' : 'sweat', tone: money > 0 ? 'good' : 'bad' });
       const statPart = changes.length ? statText(tx.data, changes) : '능력치는 이미 최고';
       addLog(tx, `${opt.icon} ${c.name}: ${label}! ${statPart}${money ? ` (${money > 0 ? '+' : ''}${won(money)})` : ''}`, {
@@ -360,7 +370,7 @@ registerPrompts({
   military: {
     build(tx, c, { mode }) {
       const m = tx.data.balance.military;
-      const desc = `룰렛 ${m.turns}번 절반 이동 · 체력 +${m.strGain} · 군 월급 ${won(m.pay)}`;
+      const desc = `룰렛 ${m.turns}번 절반 이동 · 체력 +${m.strGain}${m.pay ? ` · 군 월급 ${won(m.pay)}` : ''}`;
       const options =
         mode === 'volunteer'
           ? [

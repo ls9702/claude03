@@ -12,7 +12,9 @@
 import { won, esc } from '../format.js';
 import { renderAvatarLayers, portraitHtml, hydratePortraits, preloadAvatarLayers } from './avatar2d.js';
 import { autoAdvanceMs, expressionFor, fallbackText, isBigWin, isCardAnchor, planCutins, poseFor, resolveSceneBg, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
-import { CAST_PRELOAD_MS, PREEMPT_KEEP_MS, routeOptionInfo } from './cutinPolicy.js';
+import { CAST_PRELOAD_MS, OTHERS_AUTO_MS, PREEMPT_KEEP_MS, routeOptionInfo } from './cutinPolicy.js';
+/** A new / changed prompt ignores option taps this long (a late tap meant for the previous one, A5). */
+export const PROMPT_GUARD_MS = 700;
 import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from './mc.js';
 import { educationLabel, jobInfo, optionExtras, optionLabel, rankName, rankStars, salaryChip, statChip } from '../shared/growth.js';
 import { CARD_KINDS, cardInfo, holidayRows, holidayTitle, itemInfo, lottoRows } from '../shared/cards.js';
@@ -245,6 +247,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   overlay.setAttribute('aria-modal', 'true');
   overlay.innerHTML = `
     <div class="ci-frame" aria-hidden="true"></div>
+    <button type="button" class="ci-exit" data-ci="exit" data-ci-exit hidden aria-label="방 나가기" title="방 나가기">🚪 나가기</button>
     <div class="ci-stage">
       <div class="ci-top"><span class="ci-era" data-ci="era"></span></div>
       <div class="ci-win" data-ci="win">
@@ -387,10 +390,14 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const scene = a.scene && a.scene !== 'none' ? a.scene : look?.scene ?? a.scene ?? 'none';
     const holiday = a.type === 'holidayResult' ? { kind: a.kind ?? null, rows: holidayRows(a, { characters, won }) } : null;
     const mineInvolved = characters.some((c) => c.isMe && (c.id === g.charId || c.id === g.targetId || holiday?.rows.some((r) => r.charId === c.id)));
-    let autoMs = autoAdvanceMs({ owner: !!ownerChar?.isMe || mineInvolved, reduced: isReduced() });
+    const owner = !!ownerChar?.isMe || mineInvolved;
+    let autoMs = autoAdvanceMs({ owner, reduced: isReduced() });
     if (holiday) autoMs = Math.max(autoMs, 5200 + holiday.rows.length * 450);
     if (s9.race) autoMs = Math.max(autoMs, s9.race.durationMs + 2600);
     if (s9.treasure) autoMs = Math.max(autoMs, 4600);
+    // other players' plain event cut-ins: ≤ 3 s even with MC lines (post-simulation waiting-time fix); shows keep theirs
+    const capMs = !owner && !holiday && !s9.race && !s9.treasure ? Math.min(autoMs, OTHERS_AUTO_MS) : null;
+    if (capMs) autoMs = capMs;
     const texts = g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)];
     // sabotage: the victim's reaction line (server `targetLine`, pool `sabotaged`)
     if (a.type === 'cardUsed' && a.targetId && a.targetLine) texts.splice(2, texts.length, `${nameOf(characters, a.targetId)}: “${a.targetLine}”`);
@@ -419,6 +426,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       currentId: g.charId,
       era: a.type === 'eraChanged' ? `${a.eraName ?? ''} 시대` : '', // board state may already be ahead → no turn/era spoilers
       autoMs,
+      capMs, // other players' cut-in: the MC corner lines never stretch it past this
+      own: owner, // mine (or involves my character): kept when my turn pre-empts other players' cut-ins
       holiday, // Stage 7: 고스톱 flip row + result table
       house: fam.house, // Stage 8: 🏠 illustration panel (houseBought)
       dol: fam.dol, // 돌잡이 table
@@ -652,9 +661,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     };
     if (lines) {
       const spec = studioSpec(lines, { key: base.key, tone: base.tone, title: base.tag, characters });
-      return { ...spec, ...base, kind: 'mc', mcScript: lines, text: [], marketText: text, autoMs: Math.max(spec.autoMs, 5200) };
+      return { ...spec, ...base, kind: 'mc', mcScript: lines, text: [], marketText: text, autoMs: Math.max(spec.autoMs, 5200), own: owners.some((o) => o.char.isMe) };
     }
-    return { ...base, kind: 'market', autoMs: autoAdvanceMs({ owner: owners.some((o) => o.char.isMe), reduced: isReduced() }) + 1200 };
+    return { ...base, kind: 'market', autoMs: autoAdvanceMs({ owner: owners.some((o) => o.char.isMe), reduced: isReduced() }) + 1200, own: owners.some((o) => o.char.isMe) };
   }
 
   /** 🎁 what a gift / trade side carries ("50만원" / "택시 카드"). */
@@ -696,9 +705,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     };
     if (lines) {
       const spec = studioSpec(lines, { key: base.key, tone: 'treasure', title: base.tag, characters });
-      return { ...spec, ...base, kind: 'mc', mcScript: lines, text: [], lottoText: text, autoMs: Math.max(spec.autoMs, drawMs + 3500) + (mine ? 1500 : 0) };
+      return { ...spec, ...base, kind: 'mc', mcScript: lines, text: [], lottoText: text, autoMs: Math.max(spec.autoMs, drawMs + 3500) + (mine ? 1500 : 0), own: mine };
     }
-    return { ...base, kind: 'lotto', autoMs: drawMs + (mine ? 6000 : 4200) };
+    return { ...base, kind: 'lotto', autoMs: drawMs + (mine ? 6000 : 4200), own: mine };
   }
 
   /** Stage 6: a news flash on its own (no MC studio in the batch / MCs off) → 📰 속보 cut-in in the studio. */
@@ -1152,6 +1161,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     overlay.classList.toggle('minimized', false);
     overlay.classList.toggle('lotto', !!spec.lotto);
     overlay.classList.toggle('market', !!spec.market);
+    overlay.classList.toggle('holiday-res', !!spec.holiday?.rows?.length); // 명절 정산: smaller window, rows scroll (A14)
     overlay.dataset.kind = spec.prompt ? 'prompt' : spec.kind ?? 'event';
     overlay.dataset.key = spec.key ?? '';
     overlay.setAttribute('aria-label', spec.tag || '이벤트');
@@ -1197,7 +1207,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       }, isReduced() ? 0 : 320),
     );
     $.progress.classList.remove('run');
-    if (spec.autoMs && spec.kind !== 'mc' && spec.mc?.length) spec.autoMs = Math.max(spec.autoMs, (spec.line ? 1100 : 500) + mcScriptMs(spec.mc, { gap: 1200, hold: 1500 }));
+    if (spec.autoMs && spec.kind !== 'mc' && spec.mc?.length && !spec.capMs) spec.autoMs = Math.max(spec.autoMs, (spec.line ? 1100 : 500) + mcScriptMs(spec.mc, { gap: 1200, hold: 1500 }));
     if (spec.autoMs) {
       item.timers.push(setTimeout(() => cur === item && close('auto'), spec.autoMs)); // 'auto' → onClose tells auto from tap
       $.progress.style.setProperty('--ci-auto', `${spec.autoMs}ms`);
@@ -1221,6 +1231,13 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (!optKey || $.options.dataset.key !== optKey) {
       $.options.innerHTML = '';
       $.options.dataset.key = optKey;
+      // a new prompt / my next character: taps are ignored for a moment (a late tap meant for the previous one)
+      optionsAt = performance.now();
+      $.options.classList.remove('arming');
+      if (optKey) {
+        void $.options.offsetWidth;
+        $.options.classList.add('arming');
+      }
     }
     if (!p) return;
     const famHtml = p.forMe?.length && !$.options.childElementCount ? stage8OptionsHtml(p) : null;
@@ -1374,8 +1391,14 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     close(true);
   }
 
+  let optionsAt = 0;
   overlay.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-ci-exit]')) {
+      exitHandler?.();
+      return;
+    }
     const opt = ev.target.closest('[data-choose]');
+    if (opt && cur?.opts?.onChoose && performance.now() - optionsAt < PROMPT_GUARD_MS) return; // A5 input guard
     if (opt && cur?.opts?.onChoose) {
       for (const b of overlay.querySelectorAll('.ci-opt')) b.disabled = true;
       opt.classList.add('picked');
@@ -1408,6 +1431,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
 
   // ---------- prompts ----------
   let promptItem = null;
+  let exitHandler = null;
+  /** My own cut-in (my character / involves mine; `opts.own` from the caller wins). */
+  const isOwnItem = (it) => !!(it?.opts?.own ?? it?.spec?.own);
   const dismissedPrompts = new Set();
 
   function promptSpec(p, { characters = [], forMe = [], room = null } = {}) {
@@ -1556,16 +1582,22 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
      * A prompt of mine is waiting: drop every queued event cut-in (their promises resolve false) and close the
      * one on screen after at most `keepMs` in total. The prompt cut-in itself is kept. → number dropped
      */
-    preempt({ keepMs = PREEMPT_KEEP_MS } = {}) {
+    preempt({ keepMs = PREEMPT_KEEP_MS, keepOwn = false, onDrop = null } = {}) {
       let dropped = 0;
+      const kept = (it) => it === promptItem?.item || (keepOwn && isOwnItem(it));
       for (let i = q.length - 1; i >= 0; i--) {
         const it = q[i];
-        if (it === promptItem?.item) continue;
+        if (kept(it)) continue;
         q.splice(i, 1);
+        try {
+          onDrop?.(it.spec);
+        } catch {
+          /* ignore */
+        }
         it.resolve(false);
         dropped++;
       }
-      if (cur && cur !== promptItem?.item) {
+      if (cur && !kept(cur)) {
         const it = cur;
         if (it.loading) {
           close(false);
@@ -1579,6 +1611,13 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         }
       }
       return dropped;
+    },
+    /** Something other than my own / prompt cut-ins is on screen or queued (my turn pre-empts those). */
+    busyOthers: () => (!!cur && cur !== promptItem?.item && !isOwnItem(cur)) || q.some((it) => it !== promptItem?.item && !isOwnItem(it)),
+    /** Exit button (「나가기」) inside the cut-in top bar: the top bar is covered while a cut-in is open (A6). */
+    setExit(fn) {
+      exitHandler = typeof fn === 'function' ? fn : null;
+      $.exit.hidden = !exitHandler;
     },
     /** Drop queued (not yet shown) event cut-ins, e.g. at game over. */
     clearQueue() {
