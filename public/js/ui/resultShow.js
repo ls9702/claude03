@@ -306,10 +306,11 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
     const mvp = room.result?.mvp?.winner ?? null;
     const col = (place) => {
       const step = lay.steps.find((s) => s.place === place);
-      return `<div class="pd2-col p${place}"><div class="pd2-figs">${step.rows
+      const k = step.rows.length;
+      return `<div class="pd2-col p${place}"><div class="pd2-figs${k > 1 ? ' multi' : ''}">${step.rows
         .map(
           (r) => `<div class="pd2-fig${r.char?.isMe ? ' me' : ''}" data-char="${esc(r.charId)}">${mvp === r.charId ? '<span class="pd2-crown" title="MVP">👑</span>' : ''}<span class="pd2-av">${
-            r.char ? portraitHtml(r.char, { size: place === 1 ? 104 : 80, crop: 'bust' }) : ''
+            r.char ? portraitHtml(r.char, { size: k > 1 ? (k > 2 ? 40 : 56) : place === 1 ? 104 : 80, crop: 'bust' }) : ''
           }</span><b class="pd2-name">${esc(r.name)}</b><small class="pd2-total">${esc(won(r.total))}</small></div>`,
         )
         .join('')}</div><div class="pd2-block"><span class="pd2-medal">${MEDALS[place - 1]}</span><span class="pd2-num">${place}</span></div></div>`;
@@ -413,11 +414,20 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
         })
         .join('')}</div>`;
     hydratePortraits(box);
+    const invite = !winner && st.open && mcOn() ? mcParts(room.result).mvp ?? [] : [];
+    if (invite.length) {
+      const l = invite.at(-1);
+      const booth = createMcBooth({ ids: [l.speaker], size: 48 });
+      booth.say(l);
+      booth.el.classList.add('rs-mvp-invite');
+      box.querySelector('h3')?.after(booth.el);
+    }
     if (winner && S.mvpSeen !== winner.id) {
       S.mvpSeen = winner.id;
-      celebrateMvp(room, winner);
+      // the state arrives before its events: give mvpDecided (with its MC lines) a moment to land
+      setTimeout(() => S.room === room && celebrateMvp(room, winner), 120);
     } else if (winner) {
-      const lines = S.mvpLines ?? linesFor(room, 'mvp', { name: winner.name });
+      const lines = decidedLines(winner);
       const last = lines.at(-1);
       const slot = box.querySelector('[data-rs="mvp-mc"]');
       if (slot && last && mcOn()) {
@@ -431,7 +441,7 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
   function celebrateMvp(room, winner) {
     S.podium?.setCrown(winner.id);
     S.podium?.celebrate();
-    const lines = S.mvpLines ?? linesFor(room, 'mvp', { name: winner.name });
+    const lines = decidedLines(winner);
     const slot = S.host?.querySelector('[data-rs="mvp-mc"]');
     if (slot && lines.length && mcOn()) {
       const booth = createMcBooth({ ids: ['hoya', 'bomi'].filter((id) => lines.some((l) => l.speaker === id)), size: 56 });
@@ -439,6 +449,12 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
       playMcScript(booth, lines, { gap: 1300, hold: 99999, cancelled: () => !slot.isConnected });
     }
     if (!S.show) toast(`👑 MVP는 ${winner.name}!`);
+  }
+
+  /** MC lines of the decided MVP: the mvpDecided event's, else built-ins (result.mc 'mvp' = the vote invitation). */
+  function decidedLines(winner) {
+    if (!mcOn()) return [];
+    return S.mvpLines?.length ? S.mvpLines : fallbackMc('mvp', { name: winner.name });
   }
 
   function tick() {
@@ -649,7 +665,7 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
     const rows = step.rows;
     $o.body.innerHTML = `<div class="rs-appr"><p class="rs-drum">두구두구두구… 🥁</p><div class="rs-appr-grid" style="--n:${rows.length}">${rows
       .map(
-        (t, k) => `<div class="rs-tcard" data-k="${k}"><div class="rs-tcard-in"><div class="rs-tf front">${treasureArtHtml(t.treasureId, { art: artFor('treasure', t.treasureId), meta: meta(), cls: 'rs-tc-art' })}<b>${esc(t.info.name)}</b><small>${esc(t.name)}</small><span class="rs-q">???</span></div><div class="rs-tf back${t.fake ? ' fake' : ''}">${treasureArtHtml(t.treasureId, { art: artFor('treasure', t.treasureId), meta: meta(), cls: 'rs-tc-art' })}<b>${esc(t.info.name)}</b><small>${esc(t.name)}</small><span class="rs-v">${esc(t.text)}</span></div></div></div>`,
+        (t, k) => `<div class="rs-tcard" data-k="${k}"><div class="rs-tcard-in"><div class="rs-tf front">${treasureArtHtml(t.treasureId, { art: artFor('treasure', t.treasureId), meta: meta(), cls: 'rs-tc-art' })}<b>${esc(t.info.name)}</b><small>${esc(t.name)}</small><span class="rs-q">???</span></div><div class="rs-tf back${t.fake ? ' fake' : ''}">${treasureArtHtml(t.treasureId, { art: artFor('treasure', t.treasureId), meta: meta(), cls: 'rs-tc-art' })}<b>${esc(t.info.name)}</b><small>${esc(t.name)}</small><span class="rs-v">${esc(t.text)}</span>${t.line ? `<q class="rs-tline">${esc(t.line)}</q>` : ''}</div></div></div>`,
       )
       .join('')}</div><div class="rs-appr-sum" data-rshow="sum"></div></div>`;
     sayMc(linesFor(room, 'appraisal'), tk, 'appraisal');

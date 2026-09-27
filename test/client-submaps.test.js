@@ -158,7 +158,7 @@ test('racePlan: deterministic from the event; the chosen horse wins exactly when
     assert.equal(p.won, false);
     assert.notEqual(p.winner, 5, 'a lost bet never shows the chosen horse winning');
     assert.equal(p.horses.find((h) => h.chosen).odds, 5);
-    assert.notEqual(p.horses.find((h) => h.chosen).place, 1);
+    assert.equal(p.horses.find((h) => h.chosen).place, 3); // 꼴찌, like the server's log line
   }
   assert.equal(racePlan({ ...lose, winnerOdds: 10 }).winner, 10); // the server may name the winner
   assert.deepEqual(HORSES.map((h) => h.odds), [2, 5, 10]);
@@ -274,12 +274,19 @@ test('policy: treasure finds minor unless mine; jackpots / big wins / 산신령 
   assert.equal(isBannerGroup(skip), true);
   assert.equal(classifyGroup({ ...skip, charId: 'c1' }, { mine, mode: 'full' }), 'banner');
   assert.equal(classifyGroup(skip, { mine, mode: 'off' }), 'skip');
-  // merge: a treasure found on a 제주 trip joins the trip cut-in of another player (the bigger anchor leads)
-  const merged = mergeGroups(planCutins([
-    { type: 'submapResult', charId: 'c2', submap: 'jeju', optionId: 'trip', result: 'trip', amount: -30, cutin: true },
+  // a 제주 trip that found a treasure = ONE cut-in (planCutins folds the treasureFound into the trip: g.treasure)
+  const trip = planCutins([
+    { type: 'submapResult', charId: 'c2', submap: 'jeju', optionId: 'trip', result: 'trip', amount: -30, treasure: true, cutin: true },
+    { type: 'moneyChanged', charId: 'c2', delta: -30, reason: 'jeju' },
+    { type: 'log', text: '🏝️ 제주도 여행!' },
     { type: 'treasureFound', charId: 'c2', uid: 'tr3', treasureId: 'celadon', source: 'jeju' },
-  ]), { mine });
-  assert.equal(merged.length, 1);
-  assert.equal(merged[0].anchor.type, 'submapResult');
-  assert.deepEqual(merged[0].anchors.map((a) => a.type), ['submapResult', 'treasureFound']);
+    { type: 'log', text: '🏺 고려청자 발견' },
+  ]);
+  assert.equal(trip.length, 1);
+  assert.equal(trip[0].anchor.type, 'submapResult');
+  assert.equal(trip[0].treasure.treasureId, 'celadon');
+  assert.deepEqual(trip[0].texts, ['🏝️ 제주도 여행!', '🏺 고려청자 발견']);
+  assert.equal(mergeGroups(trip, { mine })[0].treasure.uid, 'tr3');
+  // a treasure tile find stays its own group
+  assert.equal(planCutins([{ type: 'submapResult', charId: 'c2', submap: 'jeju', optionId: 'trip', result: 'trip', cutin: true }, { type: 'treasureFound', charId: 'c2', uid: 'tr4', treasureId: 'x', source: 'tile' }]).length, 2);
 });

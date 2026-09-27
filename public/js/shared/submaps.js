@@ -193,7 +193,7 @@ export function hashParts(...parts) {
 /**
  * Horse race of a reversal `horse:<odds>` result. Deterministic from the event: the chosen horse wins when the result is
  * a win, else the event's `winner` / `winnerOdds` (or a hashed other horse) wins. Finish order: winner first, the rest
- * hashed. `finishMs` = when each horse crosses the line; `ease` differs per horse (the winner comes from behind).
+ * hashed — a lost bet's horse always last. `finishMs` = when each horse crosses the line; `ease` differs per horse (the winner comes from behind).
  * @returns {{chosen: number|null, winner: number, won: boolean, durationMs: number, horses: {odds, name, color, lane,
  *   place, finishMs, ease, chosen, winner}[]}}
  */
@@ -211,6 +211,8 @@ export function racePlan(e) {
   }
   const rest = HORSES.filter((h) => h.odds !== winner);
   if (seed & 16) rest.reverse();
+  // a lost bet: the chosen horse comes in last (the server's log says 꼴찌)
+  if (!won && chosen && rest.some((h) => h.odds === chosen)) rest.sort((x, y) => (x.odds === chosen) - (y.odds === chosen));
   const order = [HORSES.find((h) => h.odds === winner), ...rest];
   const horses = HORSES.map((h) => {
     const place = order.indexOf(h) + 1;

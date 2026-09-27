@@ -99,7 +99,7 @@ export function appraisalRows(result, characters = [], { meta = null, won = (n) 
     .map((t) => {
       const info = treasureInfo(t.treasureId ?? t.id, meta);
       const v = treasureValueText(t, { won, meta });
-      return { charId: t.charId, name: cmap.get(t.charId)?.name ?? '', char: cmap.get(t.charId) ?? null, uid: t.uid ?? '', treasureId: t.treasureId ?? t.id, info, value: v.value ?? 0, fake: v.fake, text: v.text };
+      return { charId: t.charId, name: cmap.get(t.charId)?.name ?? '', char: cmap.get(t.charId) ?? null, uid: t.uid ?? '', treasureId: t.treasureId ?? t.id, info, value: v.value ?? 0, fake: v.fake, text: v.text, line: typeof t.line === 'string' ? t.line : '' };
     })
     .sort((a, b) => a.value - b.value || (rankOf.get(b.charId) ?? 0) - (rankOf.get(a.charId) ?? 0) || String(a.uid).localeCompare(String(b.uid)));
 }

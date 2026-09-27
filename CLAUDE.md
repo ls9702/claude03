@@ -1005,7 +1005,7 @@
   `server/data/treasures.json` (22 `{id, name, icon, desc, min, max, fakeChance, weight, eras?}` + `fake {min 0, max 5}`),
   `awards.json` (10 `{id, name, icon, desc, metric, route?, min, bonus, tie: all|split|place|qualify}`), `titles.json`
   (`perCharacter` 2, 25 titles `{id, name, icon, desc, priority, when}` + the `fallback` 평범한 인생), `balance.json` `submaps`
-  (era `scale`, hometown / temple / jeju / reversal numbers) and `result` (`mvpVoteMs` 60000, `mvpSettleMs` 5000, `highlights
+  (era `scale`, hometown / temple / jeju / reversal numbers) and `result` (`mvpVoteMs` 180000 (the result show takes ~60–80 s), `mvpSettleMs` 5000, `highlights
   {keep 8, show 5, bigMoney 300}`). jobs.json 산신령 `unlock {wishes: 3}` (`unlockMet` knows `wishes`; the Stage 6 interim rule is
   gone). board.json: tile types `hometown 🏡 / temple 🛕 / jeju 🏝️ / reversal 🎰`, pools: hometown elem/middle/high/senior main +
   love route, temple middle 2 / high 2 / senior 4 + money route 3, jeju love / money routes, reversal senior 5, treasure money route
@@ -1087,3 +1087,69 @@
   migration, random lifetime games), `test/stage9-result.test.js` (award / title schemas, award ties, metrics, title conditions,
   records, highlight capture + cap, ranking composition + gameOver payload, MVP rules, no-voter games, forced end + runner timer +
   restore, HTTP vote / closeVote / meta).
+
+## Stage 9 — client (submaps, result show, podium, photo)
+- Pure `public/js/shared/submaps.js` (imports only growth.js; `test/client-submaps.test.js`): `SUBMAPS` / `submapInfo(id, meta)`
+  (hometown 🏡 / temple 🛕 / jeju 🌴 / reversal 🎰 → scene casino; `meta.submaps` wins), `SUBMAP_TILE_TYPES` (+ treasure 💎; board.json
+  wins), `submapOf`, `parseOptionId` (`train:<stat>`, `horse:<odds>`), `stripIcon`, `submapOptions(p)` (cards: stat chips, horse odds /
+  chance % / stake / payout, lotto, server `desc` wins), `submapSuccess(e)` (9-A results wishOk/lottoWin/horseWin/jackpot → true,
+  wishFail/lottoLose/horseLose → false, rest/visit/train/trip → null), `isSubmapPass` (skip / leave / `cutin: false` → banner),
+  `isWishUnlock` (wishOk with `wishes` ≥ jobs.json `unlock.wishes`, default 3), `isSubmapBig` (jackpot, reversal win ≥ `BIG_REVERSAL`
+  500, 산신령 wish), `racePlan(e)` (deterministic from the event: the chosen horse wins exactly on a win, a lost bet's horse comes in
+  last; `winner`/`winnerOdds` honoured; finish times + easing per horse), treasures `treasureInfo/treasuresOf/treasureCount/
+  treasureValueText` (「감정 전 ???」 until `result.treasures`, fake → 「💥 가짜!」).
+- `public/js/ui/submapArt.js` (string builders, node-tested): `submapSceneBody(scene)` (SVG 시골집 / 산사 pagoda + bell `.sm-bell` /
+  제주 돌하르방 + 바다 + 유채꽃 / 경마장, no ids), `horseSvg`, `raceHtml(plan)` (3 lanes, CSS race `.sm-race.go`, `--t` finish times,
+  place labels, 🏆 적중 / 💸 꽝 flag), `raceGateHtml` (reversal prompt window), `treasureChestSvg`, `treasureArtHtml` (accepted
+  `findAsset({kind:'treasure', treasure})` img, else emoji), `submapOptionsHtml(p, who, {btnClass})` (null for other kinds; used by
+  the cut-in prompt AND the 2D modal), `treasureListHtml`.
+- cutinMap: `STAGE9_ANCHORS` submapResult / treasureFound (anchors + boundaries), `submapEntered` / `mvpDecided` never anchors
+  (the prompt / result screen take the stage); a jeju `treasureFound` right after its trip result folds into that group
+  (`g.treasure`, ONE cut-in); tags 「🎰 인생역전 · 경마」「🛕 산사 · 소원」「💎 보물 발견」; `PREFER_SVG_SCENES` (hometown temple
+  jeju casino): their own SVG beats a `sceneFallbacks` background (own generated bg still wins). cutinPolicy: treasureFound in
+  `MINOR_TYPES` (banner for others in 「간단히」, full when mine), submapResult big only by `isSubmapBig`, passes = banners, merge
+  ranks submapResult 6 / treasureFound 5. cutin2d `stage9Look` + `stage9Extras` (race panel, ✨ wish / 🍂 wish-fail fx, 🎟️ lotto
+  scratch ticket (jackpot glow), treasure chest → item pop + badge, chips), prompt kind looks (scenes hometown/temple/jeju/casino),
+  `overlay.dataset.submap` (temple bell swing). Auto-close now resolves `'auto'` (→ `onClose('auto')` tells a tap from a timeout).
+- game2d: `CLIENT_TILE_TYPES` + submap tiles, side-row 💎 n tag, detail card treasure list, floats / toasts for submapEntered /
+  submapResult / treasureFound, 2D modal submap cards; 3D: animator + board3d pops (🏡🛕🌴🎰 / 💰+n or 💸 + coins / 💎 + stars), tile
+  glyphs/colours. Admin: 「👑 MVP 투표」 box on finished rooms with live counts + 「🗳️ 투표 마감」 (`closeVote`).
+- Result show — pure `public/js/shared/result.js` (`test/client-result.test.js`): `rankRows` (server `rank`, else competition ranking),
+  `BREAKDOWN` / `breakdown` / `breakdownBars` (현금 − 빚 · 집 · 아이템 · 보물 · 특별상; Σ segments − negative = total), `podiumLayout`
+  (steps 2·1·3, ties share a step), `appraisalRows` (cheapest first, fake 💥, per-treasure `line`) / `appraisalTotals`, `awardCards`
+  (+ acceptance `line`) / `titleBadges` (meta.awards / meta.titles), `highlightSlides` (LAST → FIRST place, ≤ 3 per character spread
+  over the lifetime, `HIGHLIGHT_BUDGET_MS` 60 s: fewer per character, then slides 1500 → ≥ 1100 ms), `planResultShow` (intro →
+  highlights → appraisal → awards → ranking → podium; empty steps dropped), `mcParts`, `FALLBACK_MC` / `fallbackMc` (appraisal /
+  awards / decided MVP), `mvpState` / `voteButtons` (players only, own characters refused unless all are mine, `closed` / deadline /
+  winner, my vote = ✅ and still changeable to another), `countdownText`, `photoLayout(n)` (1–8, ≤ 4 in one row, else back row
+  smaller / higher / between, rank 1 front centre, `centerOut`), `PHOTO_POSES` 브이/만세/하트/점프, `poseOffset`, `photoTitle` /
+  `photoFileName` (`jinsei-<code>-<yyyymmdd>.png`). `public/js/scene/podiumLayout.js` `podiumSlots(steps)` (pure).
+- `public/js/ui/resultShow.js` `createResultScreen({getMeta, cutin, act, toast, rowExtras, artFor, findAsset, mcOn, want3D, now})` →
+  `render(room, host, {autoplay})` (page built once per result key; later renders only update ranking / awards / treasures / MVP by
+  JSON keys), `onEvents` (mvpDecided → MC lines from the event), `play({force})`, `skip`, `reset` (app `leaveRoom`), `podium`,
+  `openPhoto`. Show: a/b through `cutin` (studio intro from `result.mc` intro or client pools; highlight slides = cut-in specs with the
+  character art, scene, tone, `eventRef.line` bubble, amount chip; a tap before the auto-close skips the rest of that character),
+  c–f in the `.rshow` overlay (z 23; 🥁 appraisal flip cards, award cards one by one then all + 칭호 list, ranking with growing bars
+  last → first, podium) with an MC booth per step (`result.mc` parts appraisal / awards / last+penalty / winner). Fixed 「⏭ 건너뛰기」
+  (z 27) and, while the vote is open and I haven't voted, 「👑 MVP 투표하기 · n초」 (skips to the vote — the server's vote clock runs
+  from the game end, ~60 s, shorter than the show). Autoplays once per room per browser session (sessionStorage
+  `jinsei.resultShow.<room>.<finishedAt>`); 「▶ 결산 방송 다시 보기」 replays; `?cutins=off` → page only. Page: tools (다시 보기 ·
+  📸), podium (3D canvas in 3D mode — the same element moves between the overlay and the page, WebGL context kept — else a CSS
+  podium with bust portraits, ties side by side), 👑 MVP section (vote cards with live counts / bars / countdown, MC invitation from
+  `result.mc` part mvp, decided → 👑 card + `mvp.line` + event MC lines + crown on the podium / ranking row, note noVotes/noVoters),
+  ranking (medal, titles, extras from game2d, stacked bar + legend), awards + titles, treasure appraisal list.
+- `public/js/scene/podium3d.js` `createPodium3D(canvas, {defs, entries, reducedMotion})` → `celebrate/setCrown/snapshot(w, h)/stats/
+  dispose`: own tiny scene (floor + merged 3-step podium + number sprites + pawns via `buildPawnGeometry` + name tags + confetti
+  bursts, slow ±25° orbit, winner hops). Measured 15 draw calls / ~5.6k triangles with 5 pawns. `?debug=1` → `window.__podium3d`,
+  `window.__result`.
+- `public/js/ui/groupPhoto.js` `renderGroupPhoto({entries, poseId, title, bgUrl, snapshot})` (1600×1000: studio bg
+  `findAsset({kind:'bg', scene:'studio'})` else a drawn stage, figures = AI art pose/expression > composed layers (`composeAvatar`
+  crop full) > SVG portrait, pose offsets + glyphs, medal name pills, title banner) and `openPhotoDialog` (pose radio, 🎨 일러스트 /
+  🧊 3D 시상대 (podium `snapshot`) in 3D mode, 📥 PNG 저장 = `canvas.toBlob` + `<a download>`, 📤 공유 = Web Share API with the file
+  when available). Works without WebGL.
+- CSS `public/css/stage9.css` (linked after family.css). E2E: session scratchpad `s9b/` (`game.cjs` = natural CPU-assisted game on the
+  9-A server: 1280 3D + 390 2D + 3 CPUs → submap prompts / race / wish / treasure, full show, votes (B in the UI during the show, A by
+  API) → mvpDecided, 3D podium, photo downloads (PNG 1600×1000 ≈ 1.8 MB), replay, 0 console errors, no 390 overflow; `inject.cjs` =
+  every submap prompt (cut-in 1280 / 390, 2D modal), race win / lose, jackpot ticket, wish, rest, jeju + treasure, skip banner, admin
+  closeVote, synthetic 8-character result (appraisal of 8 treasures, awards, titles, highlights, tie for 2nd) at 1280 + 390;
+  screenshots `s9b-*.png`).

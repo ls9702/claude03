@@ -118,7 +118,7 @@ export function createPodium3D(canvas, { defs = null, entries = [], reducedMotio
     // slow orbit (±25°) around the podium, a little closer on narrow screens
     const narrow = camera.aspect < 1.1;
     const a = reducedMotion ? 0 : Math.sin(t * 0.22) * 0.44;
-    const r = narrow ? 13.5 : 10.5;
+    const r = narrow ? 14 : 11.5;
     camera.position.set(Math.sin(a) * r, narrow ? 4.6 : 4.1, Math.cos(a) * r);
     camera.lookAt(0, narrow ? 1.6 : 1.45, 0);
   }

@@ -584,13 +584,14 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   function stage9Extras(g, { chips, meta }) {
     const a = g.anchor;
     const out = { badge: null, race: null, treasure: null, lottoNums: null, ticket: null };
-    if (a.type === 'treasureFound') {
-      const info = treasureInfo(a.treasureId ?? a.id, meta);
+    const tf = a.type === 'treasureFound' ? a : g.treasure?.type === 'treasureFound' ? g.treasure : null; // 제주 trip + treasure
+    if (tf) {
+      const info = treasureInfo(tf.treasureId ?? tf.id, meta);
       const art = artFor('treasure', info.id);
       out.treasure = { id: info.id, name: info.name, icon: info.icon, art };
       out.badge = { icon: info.icon, img: art, title: info.name, stars: '', sub: '💎 감정은 게임이 끝나면!', kind: 'treasure' };
       chips.unshift({ text: `💎 ${info.name} 획득`, kind: 'plus' });
-      return out;
+      if (a.type === 'treasureFound') return out;
     }
     if (a.type !== 'submapResult') return out;
     const opt = parseOptionId(a.optionId);
@@ -1015,11 +1016,13 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       // start after the entry squash; the plan decides who wins (same for every viewer)
       item.timers.push(setTimeout(() => cur === item && panel.firstElementChild?.classList.add('go'), isReduced() ? 0 : 450));
     }
-    if (spec.fx9 === 'wish' || spec.fx9 === 'wishfail') {
+    const sparkle = spec.fx9 === 'wish' || spec.fx9 === 'wishfail' || spec.ticket?.win || (spec.race?.won && spec.bigWin);
+    if (sparkle) {
+      const kind = spec.fx9 === 'wishfail' ? 'wishfail' : 'wish';
       const fx = document.createElement('div');
-      fx.className = `ci-wishfx ${spec.fx9}`;
-      const glyphs = spec.fx9 === 'wish' ? ['✨', '🌟', '✨', '💫'] : ['🍂', '💧'];
-      fx.innerHTML = Array.from({ length: spec.fx9 === 'wish' ? 14 : 5 }, (_, i) => `<i style="--i:${i};--x:${(i * 53) % 100}%">${glyphs[i % glyphs.length]}</i>`).join('');
+      fx.className = `ci-wishfx ${kind}`;
+      const glyphs = kind === 'wish' ? (spec.fx9 === 'wish' ? ['✨', '🌟', '✨', '💫'] : ['💰', '✨', '🎉', '💵']) : ['🍂', '💧'];
+      fx.innerHTML = Array.from({ length: kind === 'wish' ? 14 : 5 }, (_, i) => `<i style="--i:${i};--x:${(i * 53) % 100}%">${glyphs[i % glyphs.length]}</i>`).join('');
       $.fx.appendChild(fx);
     }
     if (spec.lottoNums?.length) {

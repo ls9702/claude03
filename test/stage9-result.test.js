@@ -404,7 +404,7 @@ test('HTTP: /api/meta Stage 9 data; players vote (spectators 403, own 409); admi
   try {
     const meta = (await call('GET', '/api/meta')).json;
     assert.ok(meta.treasures.treasures.length >= 20 && meta.awards.awards.length >= 10 && meta.titles.titles.length >= 16);
-    assert.equal(meta.balance.result.mvpVoteMs, 60000);
+    assert.equal(meta.balance.result.mvpVoteMs, 180000);
     assert.ok(meta.balance.submaps.reversal.horse.odds['10']);
     assert.ok(meta.board.tileTypes.temple && meta.board.tileTypes.reversal);
     const login = await call('POST', '/admin/api/login', { body: { password: 'pw' } });

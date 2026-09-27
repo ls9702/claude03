@@ -1,6 +1,6 @@
 // Stage 9 — pure placement of the 3D 시상대 pawns (no three / DOM; node-tested).
 // Steps: 1 centre (x 0), 2 left (x −2.3), 3 right (x +2.3); tied characters share a step side by side. Everyone else
-// stands on the stage floor in two flanks beside the podium (alternating left / right, stepping outwards).
+// stands on the stage floor in two flanks beside the podium (alternating left / right, stepping outwards and back).
 
 export const STEP_X = { 1: 0, 2: -2.3, 3: 2.3 };
 const STEP_W = 2.2;
@@ -24,7 +24,8 @@ export function podiumSlots(steps = []) {
     if (out[i]) return;
     const side = n % 2 ? 1 : -1;
     const ring = Math.floor(n / 2);
-    out[i] = { x: +(side * (4.1 + ring * 0.95)).toFixed(3), z: +(0.5 + ring * 0.55).toFixed(3), step: 0, face: +(-side * 0.35).toFixed(3) };
+    // outer rings stand further back (they stay inside the camera's view)
+    out[i] = { x: +(side * (3.9 + ring * 0.75)).toFixed(3), z: +(0.6 - ring * 1.0).toFixed(3), step: 0, face: +(-side * 0.35).toFixed(3) };
     n++;
   });
   return out;

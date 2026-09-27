@@ -206,6 +206,18 @@ export function planCutins(events = []) {
       if (g.anchor.mc?.length && !g.studio) g.studio = g.anchor.mc; // its own studio lines (봄이 reads the headline)
     }
   }
+  // Stage 9: a 제주 trip that found a treasure is ONE cut-in (the trip carries the treasure panel: `g.treasure`)
+  for (const g of [...groups]) {
+    if (g.anchor.type !== 'treasureFound' || g.anchor.source !== 'jeju') continue;
+    const trip = groups.find((x) => x._i < g._i && x.anchor.type === 'submapResult' && x.anchor.submap === 'jeju' && x.charId === g.charId);
+    if (!trip) continue;
+    trip.treasure = g.anchor;
+    trip.texts = [...trip.texts, ...g.texts];
+    trip.money = [...trip.money, ...g.money];
+    trip.mcEvents = [...trip.mcEvents, ...g.mcEvents];
+    trip.mc ??= g.mc;
+    groups.splice(groups.indexOf(g), 1);
+  }
   for (const g of groups) delete g._i;
   return groups;
 }
