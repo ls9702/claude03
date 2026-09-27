@@ -247,16 +247,14 @@ function dilate(mask, w, h, r) {
 }
 
 /**
- * Cleanup after the un-blend. Compression (chroma subsampling) and anti-aliasing leave a faint ring along the sparkle
- * outline and a chroma cast inside it. For every pixel of the sparkle area (a > 0.02, grown by r ≈ 2 px at source
- * scale) the reference is the median luma / chroma of the untouched pixels around it (a ≤ 0.01, window grown until it
- * has samples):
- * - chroma (B−Y, R−Y) is replaced when within `chromaTolerance` (24) of the reference — line art with its own colour
- *   keeps it;
- * - luma on the edge band (dilate − erode of a > 0.08) is replaced when within `edgeTolerance` (12) of the reference,
- *   or up to 4× that when that luma has (almost) no support around (a compression spike); inside the sparkle only
- *   such unsupported spikes (≥ 8) are replaced, so texture and line art (whose luma continues outside) survive.
- * Mutates `out` (raw pixels); returns the number of pixels changed.
+ * Cleanup after the un-blend. Compression (4:2:0 chroma) and anti-aliasing leave a faint ring along the sparkle
+ * outline. Reference = per-pixel median luma / chroma of the nearby pixels outside the edge band (window r + 3,
+ * band = dilate − erode of a > 0.08, r ≈ 2 px at source scale):
+ * - band pixels take the reference luma when within `edgeTolerance` (12) of it, or up to 4× that when that luma has
+ *   (almost) no support around (a compression spike), and the reference chroma when within `chromaTolerance` (24);
+ * - inside the sparkle only unsupported luma spikes (≥ 8) are replaced.
+ * Line art crossing the sparkle keeps its luma (far off the background, and it continues outside the band) and its
+ * own colour; texture under the sparkle is kept. Mutates `out` (raw pixels); returns the number of pixels changed.
  */
 export function cleanEdgeBand(out, w, h, ch, alpha, box, s, { edgeTolerance = 12, chromaTolerance = 24, edgeRadius } = {}) {
   const { x: bx, y: by, w: bw, h: bh } = box;
@@ -273,8 +271,8 @@ export function cleanEdgeBand(out, w, h, ch, alpha, box, s, { edgeTolerance = 12
   const grownCore = dilate(core, bw, bh, r);
   const notEroded = dilate(notCore, bw, bh, r);
   const area = dilate(any, bw, bh, r);
-  const ref = new Uint8Array(N); // untouched reference pixels
-  for (let i = 0; i < N; i++) ref[i] = alpha[i] <= 0.01 && !area[i] ? 1 : 0;
+  const band = new Uint8Array(N); // the edge ring: dilate(core) − erode(core)
+  for (let i = 0; i < N; i++) band[i] = grownCore[i] && notEroded[i] ? 1 : 0;
   // luma / chroma planes of the un-blended pixels
   const Y = new Float32Array(N);
   const Cb = new Float32Array(N);
@@ -304,18 +302,14 @@ export function cleanEdgeBand(out, w, h, ch, alpha, box, s, { edgeTolerance = 12
       ys.length = 0;
       cbs.length = 0;
       crs.length = 0;
-      for (let R = r + 3; R <= maxR && ys.length < 24; R = Math.ceil(R * 1.6)) {
-        ys.length = 0;
-        cbs.length = 0;
-        crs.length = 0;
-        for (let vv = Math.max(0, v - R); vv <= Math.min(bh - 1, v + R); vv++) {
-          for (let uu = Math.max(0, u - R); uu <= Math.min(bw - 1, u + R); uu++) {
-            const q = vv * bw + uu;
-            if (!ref[q]) continue;
-            ys.push(Y[q]);
-            cbs.push(Cb[q]);
-            crs.push(Cr[q]);
-          }
+      const R = r + 3;
+      for (let vv = Math.max(0, v - R); vv <= Math.min(bh - 1, v + R); vv++) {
+        for (let uu = Math.max(0, u - R); uu <= Math.min(bw - 1, u + R); uu++) {
+          const q = vv * bw + uu;
+          if (band[q] || q === k) continue;
+          ys.push(Y[q]);
+          cbs.push(Cb[q]);
+          crs.push(Cr[q]);
         }
       }
       const n = ys.length;
@@ -330,9 +324,9 @@ export function cleanEdgeBand(out, w, h, ch, alpha, box, s, { edgeTolerance = 12
       let cr = Cr[k];
       const dy = Math.abs(y - my);
       const spike = dy <= edgeTolerance * 4 && support < n * 0.08;
-      const inBand = grownCore[k] && notEroded[k];
+      const inBand = band[k] === 1;
       if (inBand ? dy <= edgeTolerance || spike : spike && dy >= edgeTolerance * 0.66) y = my;
-      if (Math.abs(cb - mcb) <= chromaTolerance && Math.abs(cr - mcr) <= chromaTolerance) {
+      if (inBand && Math.abs(cb - mcb) <= chromaTolerance && Math.abs(cr - mcr) <= chromaTolerance) {
         cb = mcb;
         cr = mcr;
       }
