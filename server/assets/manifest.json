@@ -14090,9 +14090,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "kitchen"
+      },
+      "accepted": {
+        "file": "bg/kitchen.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:59:57.621Z",
+        "acceptedAt": "2026-09-27T00:59:57.621Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -14113,9 +14123,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "police"
+      },
+      "accepted": {
+        "file": "bg/police.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:59:58.933Z",
+        "acceptedAt": "2026-09-27T00:59:58.933Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -14136,9 +14156,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "lab"
+      },
+      "accepted": {
+        "file": "bg/lab.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:59:58.290Z",
+        "acceptedAt": "2026-09-27T00:59:58.290Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -14159,9 +14189,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "space"
+      },
+      "accepted": {
+        "file": "bg/space.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T01:00:00.311Z",
+        "acceptedAt": "2026-09-27T01:00:00.311Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -14182,9 +14222,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "shop"
+      },
+      "accepted": {
+        "file": "bg/shop.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-09-27T00:59:59.700Z",
+        "acceptedAt": "2026-09-27T00:59:59.700Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
