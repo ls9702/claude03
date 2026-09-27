@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Manual asset import: images made by hand in the Gemini app, dropped into assets-inbox/ as `<asset id>.png`
 // (.jpg / .jpeg / .webp too), are run through the item's own postprocess (chroma key / white key / trim /
-// resize / WebP) with the Gemini-app watermark handling, accepted in the manifest, and removed from the inbox.
+// resize / WebP) after the Gemini-app sparkle watermark is un-blended (server/assets/watermark.js), accepted in the
+// manifest, and removed from the inbox.
 //
 //   node scripts/import-assets.js [--dir assets-inbox] [--only id[,id]] [--dry-run] [--keep]
 //
@@ -117,8 +118,10 @@ export async function importAssets({
         else if (res.transparent > 0.97) res.warnings.push('거의 전부 투명해졌어요 — 그림이 배경색과 비슷한지 확인');
       }
       if (!keep) await rm(file, { force: true });
+      res.watermark = out.watermarkRemoved ?? null;
       const tr = res.transparent != null ? ` · 투명 ${(res.transparent * 100).toFixed(1)}%` : '';
-      log(`✅ ${name} → ${id} (${item.kind}) ${res.output} ${res.width}×${res.height}${tr}${replaced ? ' · 기존 채택본 교체' : ''}${keep ? ' · 원본 유지' : ' · 원본 삭제'}`);
+      const wm = res.watermark ? ` · 워터마크 제거 (${Math.round(res.watermark.cx)},${Math.round(res.watermark.cy)})` : ' · 워터마크 없음';
+      log(`✅ ${name} → ${id} (${item.kind}) ${res.output} ${res.width}×${res.height}${tr}${wm}${replaced ? ' · 기존 채택본 교체' : ''}${keep ? ' · 원본 유지' : ' · 원본 삭제'}`);
       for (const w of res.warnings) log(`   ⚠️ ${w}`);
     } catch (err) {
       res.error = err.message;

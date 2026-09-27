@@ -625,11 +625,17 @@
   `importAssets({dir, only, dryRun, keep, manifestPath, outputDir, dataDir, studio, log})` → `studio.upload(id, buf,
   {process: true, watermark: true})` (item postprocess, accepted `source: 'upload'`), inbox file deleted unless `--keep`,
   Korean summary per file (output size, % transparent for keyed kinds, warnings: small source upscaled, aspect far off,
-  almost no / almost all transparency). Unknown id / kind part / sprite → skipped, exit 1. The studio gets a client that
-  refuses API calls. `watermark: true`: kind bg/anchor are flattened (never letterboxed) and cropped ~4 % right+bottom
-  (`cropWatermark`) before the cover resize; `chromaKey`/`whiteToAlpha({watermark})` sample the backdrop from 3 corners
-  (`sampleBackground({corners: 3})`) and `clearCornerIslands` removes an isolated island inside the bottom-right box
-  (`WATERMARK_BOX` seed 10 % / fit 16 %; defaults unchanged for every other caller).
+  almost no / almost all transparency, 워터마크 제거 (x,y) | 없음). Unknown id / kind part / sprite → skipped, exit 1. The
+  studio gets a client that refuses API calls. `watermark: true` (upload option, set by the importer): first
+  `server/assets/watermark.js` `removeWatermarkDetailed` un-blends the Gemini-app sparkle ✦ (white alpha overlay:
+  obs = orig·(1−a) + 255a → orig = (obs − 255a)/(1 − a), a ≥ 0.9 inpainted). Alpha template = tracked
+  `server/assets/watermark-alpha.png` (64×64, a×255, max a ≈ 0.31, averaged from 16 flat-magenta 1024² originals);
+  placement `WATERMARK_RULE`: s = √(w·h)/1024, centre (w − 120.5·s, h − 120.5·s) (checked at 1024², 1024×687, 1024×572).
+  Search ±6 px then sub-pixel × ±6 % scale; matched filter on luminance gradients (line-art pixels skipped), accepted
+  when gain k ∈ [0.65, 2.5] and every arm ≥ 0.25 (real marks k 1.0–1.2, clean images ≤ 0.25) → otherwise a no-op; the
+  result carries `watermarkRemoved`. Then bg/anchor are flattened (cover resize, the old 4 % crop is gone); keyed kinds
+  keep the 3-corner backdrop sample + `clearCornerIslands` safety net (defaults unchanged for other callers).
+  `addWatermark` stamps a synthetic mark (tests).
 - Manifest kinds `card` (meta.card = cards.json id) and `item` (meta.item) — icon pipeline (`whiteToAlpha, trim,
   resize:256x256` → png). New ids (status todo): `bg-stage bg-stadium bg-gym bg-army bg-campus bg-kitchen bg-police bg-lab
   bg-space bg-shop bg-holiday` (meta.scene), `card-<id with _→->` ×16 (`cards/<…>.png`), `item-<…>` ×6 (`items/<…>.png`),
@@ -716,7 +722,7 @@
   character, 1.33 sabotages per game (4.8 % blocked; targets by net-worth rank 1st 16.8 % … 8th 2.4 %), shop purchase
   rate 69.8 %, 고스톱 Σ won = 0, lotto 6.5 paid per ticket (EV 8.93 < 20). `--bias --games 2000 --seed 1`: 1st-place
   share 11.3–13.7 %, first→last average rank spread −0.25.
-- Tests: `test/stage7-import.test.js` (importer, watermark keying), `test/stage7-cards.test.js` (data, useCard rules, every
+- Tests: `test/stage7-import.test.js` (importer, watermark keying, synthetic sparkle removal + no-op), `test/stage7-cards.test.js` (data, useCard rules, every
   card effect, spin mods, passive cards, hand limit, shop, items, ranking), `test/stage7-social.test.js` (trades incl.
   expiry / runner deadline / re-validation, gifts, holidays incl. pot conservation / ties / config, lotto EV + draws,
   presentation + MC, a random lifetime game, restore + migration, HTTP). `test/helpers.js` `makeRoom` sets

@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import { importAssets } from '../scripts/import-assets.js';
 import { getItem, loadManifest } from '../server/assets/manifest.js';
 import { chromaKey, clearCornerIslands, whiteToAlpha } from '../server/assets/postprocess.js';
+import { addWatermark, predictWatermark, removeWatermarkDetailed } from '../server/assets/watermark.js';
 import { BACKDROP, magentaCharacter, raw, scene, tempManifest, whiteIcon } from './assetFixtures.js';
 import { tempDir } from './helpers.js';
 
@@ -114,4 +115,45 @@ test('watermark keying: 3-corner backdrop sample + the isolated bottom-right spa
   for (let y = 40; y < 100; y++) for (let x = 40; x < 100; x++) data[(y * 100 + x) * 4 + 3] = 255;
   assert.equal(clearCornerIslands(data, 100, 100), 0);
   assert.equal(BACKDROP.r, 213);
+});
+
+/** A textured opaque scene: sky gradient, a band and dark line art crossing the bottom-right corner. */
+function linedScene(w, h) {
+  const lines = [0.78, 0.8, 0.86, 0.9].map((f, i) => `<path d="M0 ${h * (f - 0.25)} Q ${w * 0.6} ${h * (f - 0.1)} ${w} ${h * f}" stroke="${i % 2 ? '#2a2440' : '#7d7fd0'}" stroke-width="${i % 2 ? 2 : 9}" fill="none"/>`);
+  return sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fb8ff"/><stop offset="1" stop-color="#f6e7e0"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/>${lines.join('')}</svg>`)).png().toBuffer();
+}
+
+test('watermark: a synthetic Gemini sparkle is found near the predicted spot and un-blended; clean images are untouched', async () => {
+  for (const [w, h, dx, dy] of [[640, 360, 0, 0], [512, 512, 2, -1]]) {
+    const clean = await linedScene(w, h);
+    const marked = await addWatermark(clean, { dx, dy });
+    const p = predictWatermark(w, h);
+    const r = await removeWatermarkDetailed(marked);
+    assert.ok(r.found, `${w}×${h} found`);
+    assert.ok(Math.abs(r.found.cx - (p.cx + dx)) <= 1 && Math.abs(r.found.cy - (p.cy + dy)) <= 1, JSON.stringify(r.found));
+    const [a, b, m] = await Promise.all([raw(clean), raw(r.buffer), raw(marked)]);
+    let err = 0;
+    let before = 0;
+    let n = 0;
+    let worst = 0;
+    const R = Math.ceil(40 * p.s);
+    for (let y = Math.round(p.cy) - R; y < Math.round(p.cy) + R; y++) {
+      for (let x = Math.round(p.cx) - R; x < Math.round(p.cx) + R; x++) {
+        for (let c = 0; c < 3; c++) {
+          const i = (y * w + x) * 4 + c;
+          const d = Math.abs(a.data[i] - b.data[i]);
+          err += d;
+          before += Math.abs(a.data[i] - m.data[i]);
+          worst = Math.max(worst, d);
+          n++;
+        }
+      }
+    }
+    assert.ok(before / n > 1, `the synthetic mark is visible (${(before / n).toFixed(2)})`);
+    assert.ok(err / n < 1 && err < before * 0.3 && worst <= 40, `${w}×${h}: mean ${(err / n).toFixed(2)} (was ${(before / n).toFixed(2)}), worst ${worst}`);
+    // no watermark → no-op (same pixels)
+    const none = await removeWatermarkDetailed(clean);
+    assert.equal(none.found, null);
+    assert.deepEqual((await raw(none.buffer)).data, a.data);
+  }
 });

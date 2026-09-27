@@ -7,7 +7,7 @@
 //   scale s = √(w·h) / 1024 · centre = (w − 120.5·s, h − 120.5·s) · template centre (31.5, 31.5) → image pixel
 //   (x, y) sees a((x − cx)/s + 31.5, (y − cy)/s + 31.5) (area-averaged over the pixel footprint).
 // `removeWatermark` searches around the predicted spot (integer offsets, then sub-pixel offsets × scale), scores a
-// candidate by how much the un-blend lowers the edge energy under the mask, reverses the blend
+// candidate with a matched filter on luminance gradients (see scoreCandidate / findWatermark), reverses the blend
 // (orig = (obs − 255a)/(1 − a), clamped; a ≥ 0.9 is inpainted from neighbours) and is a no-op when no candidate
 // clearly improves the image (images without a watermark are returned untouched).
 import { readFileSync } from 'node:fs';
@@ -52,20 +52,25 @@ function sampleT(t, u, v) {
 }
 
 /**
- * Alpha raster of a sparkle at scale `s`, centre (cx, cy), over the box [bx, bx + bw) × [by, by + bh); each pixel is
- * the mean of 3×3 samples over its footprint (a smaller sparkle is anti-aliased, not point-sampled).
+ * Alpha raster of a sparkle at scale `s`, centre (cx, cy), over the box [bx, bx + bw) × [by, by + bh); a downscaled
+ * sparkle averages 3×3 samples over the extra pixel footprint (anti-aliased, not point-sampled).
  */
 export function watermarkAlpha(t, { s, cx, cy }, bx, by, bw, bh, rule = WATERMARK_RULE) {
   const out = new Float32Array(bw * bh);
-  const k = 3;
+  // the template pixels are already area-integrated at scale 1 → only the extra footprint of a downscaled pixel
+  // (1/s − 1 template px) is averaged; upscaled sparkles are sampled bilinearly
+  const spread = Math.max(0, 1 / s - 1);
+  const k = spread > 0.05 ? 3 : 1;
   for (let y = 0; y < bh; y++) {
     for (let x = 0; x < bw; x++) {
       let sum = 0;
+      const u0 = (bx + x - cx) / s + rule.center;
+      const v0 = (by + y - cy) / s + rule.center;
       for (let j = 0; j < k; j++) {
         for (let i = 0; i < k; i++) {
-          const px = bx + x + (i + 0.5) / k - 0.5;
-          const py = by + y + (j + 0.5) / k - 0.5;
-          sum += sampleT(t, (px - cx) / s + rule.center, (py - cy) / s + rule.center);
+          const du = k > 1 ? ((i + 0.5) / k - 0.5) * spread : 0;
+          const dv = k > 1 ? ((j + 0.5) / k - 0.5) * spread : 0;
+          sum += sampleT(t, u0 + du, v0 + dv);
         }
       }
       out[y * bw + x] = sum / (k * k);
@@ -77,38 +82,62 @@ export function watermarkAlpha(t, { s, cx, cy }, bx, by, bw, bh, rule = WATERMAR
 const lum = (d, i) => d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
 
 /**
- * Score a candidate: edge energy (|∇ luminance|) of the un-blended patch vs. the observed one, over pixels whose
- * 4-neighbourhood touches the mask. @returns {gain, eObs, eRest} (gain = 1 − eRest / eObs)
+ * Score a candidate with a matched filter on luminance gradients: the white overlay adds ∇a·(255 − v) to the
+ * observed gradient (v = local background). `k` = least-squares gain of that predicted edge pattern in the observed
+ * gradients (≈ 1 at the right spot, ≈ 0 without a watermark); pixels whose observed gradient is far above what the
+ * overlay could add (line art crossing the sparkle) are skipped, and `minQuadrant` = the lowest k of the four arms.
+ * @returns {gain: k, minQuadrant, snr, matched, energy}
  */
-function scoreCandidate(data, w, h, ch, alpha, bx, by, bw, bh) {
-  const rest = new Float32Array(bw * bh);
+function scoreCandidate(data, w, h, ch, alpha, bx, by, bw, bh, cx, cy) {
   const obs = new Float32Array(bw * bh);
-  for (let y = 0; y < bh; y++) {
-    for (let x = 0; x < bw; x++) {
-      const o = lum(data, ((by + y) * w + bx + x) * ch);
-      const a = Math.min(0.9, alpha[y * bw + x]);
-      obs[y * bw + x] = o;
-      rest[y * bw + x] = a > 0 ? (o - 255 * a) / (1 - a) : o;
-    }
-  }
-  let eObs = 0;
-  let eRest = 0;
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) obs[y * bw + x] = lum(data, ((by + y) * w + bx + x) * ch);
+  const pred = [];
   for (let y = 0; y < bh - 1; y++) {
     for (let x = 0; x < bw - 1; x++) {
       const p = y * bw + x;
       if (!(alpha[p] > 0.004 || alpha[p + 1] > 0.004 || alpha[p + bw] > 0.004)) continue;
-      eObs += Math.abs(obs[p] - obs[p + 1]) + Math.abs(obs[p] - obs[p + bw]);
-      eRest += Math.abs(rest[p] - rest[p + 1]) + Math.abs(rest[p] - rest[p + bw]);
+      // un-blended background estimate for the edge height
+      const a = Math.min(0.9, alpha[p]);
+      const v = Math.max(0, Math.min(255, (obs[p] - 255 * a) / (1 - a)));
+      const px = (alpha[p + 1] - alpha[p]) * (255 - v);
+      const py = (alpha[p + bw] - alpha[p]) * (255 - v);
+      pred.push(p, px, py);
     }
   }
-  return { gain: eObs > 0 ? 1 - eRest / eObs : 0, eObs, eRest };
+  // pixels on line art / texture (observed gradient far above what the overlay could add) carry no evidence
+  const qm = [0, 0, 0, 0];
+  const qe = [0, 0, 0, 0];
+  for (let i = 0; i < pred.length; i += 3) {
+    const p = pred[i];
+    const ox = obs[p + 1] - obs[p];
+    const oy = obs[p + bw] - obs[p];
+    const lim = Math.max(10, 2 * Math.hypot(pred[i + 1], pred[i + 2]));
+    if (Math.hypot(ox, oy) > lim) continue;
+    const x = bx + (p % bw);
+    const y = by + Math.floor(p / bw);
+    const q = (x >= cx ? 1 : 0) + (y >= cy ? 2 : 0);
+    qm[q] += ox * pred[i + 1] + oy * pred[i + 2];
+    qe[q] += pred[i + 1] ** 2 + pred[i + 2] ** 2;
+  }
+  const matched = qm.reduce((a, b) => a + b, 0);
+  const energy = qe.reduce((a, b) => a + b, 0);
+  const ks = qe.map((e, q) => (e > energy * 0.01 ? qm[q] / e : null)).filter((k) => k != null);
+  return {
+    gain: energy > 1e-6 ? matched / energy : 0,
+    minQuadrant: ks.length ? Math.min(...ks) : 0,
+    snr: energy > 1e-6 ? matched / Math.sqrt(energy) : 0, // matched-filter response (scale-fair ranking)
+    matched,
+    energy,
+  };
 }
 
 /**
- * Find the sparkle in raw RGB(A) pixels. @returns {s, cx, cy, gain} of the best candidate, or null when none lowers
- * the edge energy by at least `minGain`.
+ * Find the sparkle in raw RGB(A) pixels: the candidate with the best matched-filter response, accepted when its gain
+ * k is in [minGain, maxGain] and every arm fits (minQuadrant). Measured: Gemini-app images k 1.0–1.15 (min arm
+ * 0.62–1.13), clean backgrounds k ≤ 0.25 (min arm ≤ 0.02), synthetic line art k ≤ 0.57 (min arm ≤ 0.1).
+ * @returns {s, cx, cy, gain, minQuadrant} or null
  */
-export function findWatermark(data, w, h, ch, t, { minGain = 0.12, search = 6, rule = WATERMARK_RULE } = {}) {
+export function findWatermark(data, w, h, ch, t, { minGain = 0.65, maxGain = 2.5, minQuadrant = 0.25, search = 6, rule = WATERMARK_RULE } = {}) {
   const p = predictWatermark(w, h, rule);
   if (p.s < 0.2) return null;
   const R = Math.ceil(rule.radius * p.s * 1.12) + search + 2;
@@ -117,12 +146,15 @@ export function findWatermark(data, w, h, ch, t, { minGain = 0.12, search = 6, r
   const bw = Math.min(w, Math.round(p.cx) + R) - bx;
   const bh = Math.min(h, Math.round(p.cy) + R) - by;
   if (bw < 8 || bh < 8) return null;
-  const tryAt = (s, cx, cy) => ({ s, cx, cy, ...scoreCandidate(data, w, h, ch, watermarkAlpha(t, { s, cx, cy }, bx, by, bw, bh, rule), bx, by, bw, bh) });
+  const tryAt = (s, cx, cy) => ({ s, cx, cy, ...scoreCandidate(data, w, h, ch, watermarkAlpha(t, { s, cx, cy }, bx, by, bw, bh, rule), bx, by, bw, bh, cx, cy) });
+  // rank by how well the whole shape fits (overall gain + worst arm, each capped): robust to line art crossing one arm
+  const rank = (c) => Math.min(c.gain, 1.3) + Math.min(c.minQuadrant, 1.3);
+  const better = (c, b) => !b || rank(c) > rank(b);
   let best = null;
   for (let dy = -search; dy <= search; dy++) {
     for (let dx = -search; dx <= search; dx++) {
       const c = tryAt(p.s, p.cx + dx, p.cy + dy);
-      if (!best || c.gain > best.gain) best = c;
+      if (better(c, best)) best = c;
     }
   }
   // refine: sub-pixel offsets × ±6 % scale around the best integer offset
@@ -132,12 +164,12 @@ export function findWatermark(data, w, h, ch, t, { minGain = 0.12, search = 6, r
       for (let dx = -0.75; dx <= 0.75; dx += 0.25) {
         if (ks === 1 && !dx && !dy) continue;
         const c = tryAt(p.s * ks, base.cx + dx, base.cy + dy);
-        if (c.gain > best.gain) best = c;
+        if (better(c, best)) best = c;
       }
     }
   }
-  if (!(best.gain >= minGain)) return null;
-  return { s: best.s, cx: best.cx, cy: best.cy, gain: best.gain, box: { x: bx, y: by, w: bw, h: bh } };
+  if (!(best.gain >= minGain && best.gain <= maxGain && best.minQuadrant >= minQuadrant)) return null;
+  return { s: best.s, cx: best.cx, cy: best.cy, gain: best.gain, minQuadrant: best.minQuadrant, box: { x: bx, y: by, w: bw, h: bh } };
 }
 
 /**

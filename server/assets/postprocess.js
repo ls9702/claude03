@@ -151,14 +151,6 @@ export function clearCornerIslands(data, w, h, { seed = WATERMARK_BOX.seed, fit 
   return cleared;
 }
 
-/** Crop a fraction off the right and bottom edges (the Gemini-app sparkle watermark) of an opaque image. */
-export async function cropWatermark(buffer, { frac = 0.04 } = {}) {
-  const meta = await sharp(buffer).metadata();
-  const width = Math.max(1, Math.round(meta.width * (1 - frac)));
-  const height = Math.max(1, Math.round(meta.height * (1 - frac)));
-  return sharp(buffer).extract({ left: 0, top: 0, width, height }).png().toBuffer();
-}
-
 /**
  * Chroma key: backdrop colour from the corners, soft distance alpha, hue-family kill (catches the
  * darker magenta ground shadow), despill of semi-transparent edges, small-island removal.

@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { createGeminiClient } from './gemini.js';
 import { KIND_LABELS, LOCAL_REF_DIR, MANIFEST_PATH, getItem, loadManifest, localRefPath, outputsFor, partFiles, renderPrompt, saveManifest, topoOrder } from './manifest.js';
-import { applySteps, cropWatermark, toRaw } from './postprocess.js';
+import { applySteps, toRaw } from './postprocess.js';
+import { removeWatermarkDetailed } from './watermark.js';
 import { measureFill } from './tintMath.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -442,9 +443,10 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
 
   /**
    * Replace an asset with an uploaded image (optionally run the item's postprocess steps).
-   * `watermark: true` (manual Gemini-app imports, scripts/import-assets.js): backgrounds (kind bg / anchor) are
-   * flattened (always cover-cropped, never letterboxed) and lose ~4 % on the right and bottom before the resize;
-   * keyed kinds sample the backdrop from 3 corners and clear an isolated bottom-right sparkle.
+   * `watermark: true` (manual Gemini-app imports, scripts/import-assets.js): the Gemini-app sparkle is un-blended
+   * first (`removeWatermark`, no-op when none is found → `watermarkRemoved: {s, cx, cy, gain} | null` in the result);
+   * backgrounds (kind bg / anchor) are then flattened (always cover-cropped, never letterboxed); keyed kinds also
+   * sample the backdrop from 3 corners and clear an isolated bottom-right island as a safety net.
    */
   async function upload(id, buffer, { process = false, watermark = false } = {}) {
     const { m, item } = await mustItem(id);
@@ -460,8 +462,14 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
       throw new StudioError(`이미지 크기는 ${UPLOAD_MAX_PX}px 이하여야 합니다.`);
     }
     let png = await sharp(buffer).png().toBuffer();
-    const opaque = item.kind === 'bg' || item.kind === 'anchor';
-    if (watermark && opaque) png = await cropWatermark(await sharp(png).flatten({ background: '#ffffff' }).removeAlpha().png().toBuffer());
+    let removed = null;
+    if (watermark) {
+      // un-blend the sparkle first (no-op without one), then backgrounds are flattened so the resize always covers
+      const r = await removeWatermarkDetailed(png);
+      png = r.buffer;
+      removed = r.found;
+      if (item.kind === 'bg' || item.kind === 'anchor') png = await sharp(png).flatten({ background: '#ffffff' }).removeAlpha().png().toBuffer();
+    }
     if (process) {
       let ref;
       if (item.kind === 'pose') ref = (await resolveRefs(m, item).catch(() => [])).find((r) => r.kind === 'charLayer')?.raw;
@@ -475,7 +483,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
       it.status = 'accepted';
       const now = new Date().toISOString();
       it.accepted = { file: it.output, model: 'upload', promptUsed: null, generatedAt: now, acceptedAt: now, source: 'upload', width: out.width, height: out.height };
-      return summarize(mm, it);
+      return { ...summarize(mm, it), ...(watermark ? { watermarkRemoved: removed } : {}) };
     });
   }
 
