@@ -721,3 +721,58 @@
   expiry / runner deadline / re-validation, gifts, holidays incl. pot conservation / ties / config, lotto EV + draws,
   presentation + MC, a random lifetime game, restore + migration, HTTP). `test/helpers.js` `makeRoom` sets
   `holidays: false` so pre-Stage-7 rule tests keep their flow; Stage 7 tests turn it on.
+
+## Stage 7 — client (cards, items, interaction)
+- Pure `public/js/shared/cards.js` (no imports; `test/client-cards.test.js`): `cardDefs/cardInfo/itemInfo` (`/api/meta.cards|items`,
+  contract fallback names `DEFAULT_CARDS/DEFAULT_ITEMS`), `CARD_KINDS` (instant blue / passive green / sabotage red), `handOf`,
+  `itemsOf`, `cardPlayability(room, char, card, {meta, spectator})` → `{playable, reason, needsTarget}` (mine, its turn,
+  awaitSpin without prompt, `!turn.cardUsed`, not passive, `jobOnly` = current job, a sabotage needs a valid target),
+  `sabotageTargets` (other unfinished characters; invalid when `target.lastTargetedBy[attacker] >= round − 1`),
+  `validateTrade` / `validateGift` (mirror the server: no trades between own characters, both sides exactly one of money /
+  card, not money↔money, cash checked on both sides, cards still in hand, one open offer per character; gifts to own
+  characters OK) → `{ok, error, body}` (= the action), `openTrades/tradeLists/openTradeOf` (expiry by server clock),
+  `tradeSideText`, `TRADE_STATUS`, `spinModBadges` (⚡+2 / ✂️−3 / 🚕×2 / 📢×2↓), `spinNote(spun)` (what cards / 경차 did
+  to a roulette: "🚕 3·8 → 8칸" — spin hint, 2D float, 3D pop; military halving keeps its 🪖 note), `handLayout`, `handFull`, `holidayRows`
+  (세뱃돈 / 잔소리 stat + line / 고스톱 stake·card·net, `event.winners`), `lottoRows`, `holidayTitle`.
+- `public/js/ui/cardArt.js` (string builders, node-tested): `cardHtml` (SVG frame per kind + art `findAsset({kind:'card', card})`
+  or emoji + name, 「자동」 tag for passive), `itemIconHtml` (`{kind:'item', item}` or emoji), `hwatuSvg(n)` / `hwatuFlipHtml`
+  (화투 1..10 + red back, CSS 3D flip), `lottoBallHtml`, `shopOptionsHtml(p, who, {meta, artFor, btnClass})` (product cards:
+  art, kind tag, def desc, price, `basePrice` strike + 🎟️ 쿠폰 할인, disabled → 「돈이 부족해요」; `data-choose` like every option).
+- game2d: **hand row** `data-el="hand"` at the top of the spin dock (my current character, else my chosen / first one,
+  tabs when I own several; playable cards glow, others dimmed with the reason in the title; ≥ 700 px the hand sits beside
+  the spin button, phones shrink it while the dock is sticky; re-rendered only when its markup changes). Tap → **card
+  sheet** `data-el="cardsheet"` (desc, kind, jobOnly, sabotage target picker with portraits / reasons, 「사용」 →
+  `useCard {characterId, cardUid, targetId?}`). Side rows: spinMods badges, 🃏 hand count, item icons; detail card: hand
+  (public), items, next-roulette mods, 「🤝 거래 제안」 (others' characters) / 「🎁 선물」 (any other character when I own one
+  that can send) → **trade dialog** `data-el="tradedlg"` (sender select, 💰 money input / 🃏 card chips per side, live
+  validation, full-hand note; re-rendered when a card of either hand moves). **Inbox** `data-el="inbox"` (fixed under the top bar, z 24 = over cut-ins): incoming offers
+  for my characters with 수락/거절 + ⏳ countdown (`expiresAt`, server clock), my open offers with 취소; the compact
+  banner moves below it (`body.has-inbox`, `--inbox-h`). `tradeOffered` → toast for the receiver (not a board event).
+  Spectators: no hand / inbox / trade buttons. 409s go through `run()` (silent resync).
+- Cut-ins (`cutinMap` / `cutinPolicy` / `cutin2d`): anchors `STAGE7_ANCHORS` (cardBlocked itemBought holidayStarted
+  holidayResult lottoDraw) + `cardUsed` when `isCardAnchor` (sabotage / `targetId` / 공약, never `auto`); `cardGained`, plain
+  `cardUsed`, `gift` are follow-up chips (`g.cards`, `g.gifts`); lone cardGained / gift / tradeResolved / plain cardUsed →
+  own groups → banners (`BANNER_TYPES`, `isBannerGroup`). `g.targetId` (sabotage target / gift & trade receiver) → cast
+  (attacker cheer + target shock 💢 + the target's `targetLine` in the text; block: defender cheer 🛡️, attacker sweat), `isOwnGroup` counts a target of mine →
+  sabotage on me is full in compact. Big: holidayStarted/Result, lottoDraw; minor tiles + card, shop. `classifyGroup` →
+  `'defer'` for lottoDraw / holidayResult while my prompt is open (game2d `ui.deferred`, flushed on render). Tags 💢 뒤통수
+  카드 / 🗳️ 공약 카드 / 🛡️ 방어 성공 / 🛍️ 쇼핑 / 🧧 설날·🌕 추석 대잔치·정산 / 🎱 전국 로또 / 🃏 카드 획득 / 🎁 선물 / 🤝 거래.
+  cutin2d `stage7Look` (tone/scene/pose defaults), card / item badges (art image when accepted; card badges bottom-centre),
+  holidayResult = 화투 flip row in the window + result table in `.ci-extra` (세뱃돈, 잔소리 chip + quote, 판돈 / net, winner
+  outlined; generic money / stat chips suppressed), lottoDraw = `lottoSpec` (studio with the MCs when the group has
+  `studio`/`mc` lines, else kind `lotto`): balls drop one by one, entries with hit balls + prize chips; holiday prompt =
+  3 face-down 화투 + stake icons (🙅/🪙/💰 fallback); shop prompt = product cards (also in the 2D modal). Prompts of kind
+  shop / holiday default to scene shop / holiday. Job badges use `findAsset({kind:'icon', job})` when accepted (cut-in
+  badge, side rows, result).
+- Scene fallbacks: `cutinMap.resolveSceneBg(scene, {presentation, assetUrl, findBg})` → own bg > `sceneFallbacks` chain's bg
+  (`DEFAULT_SCENE_FALLBACKS` when the server has none) > SVG of the first drawable scene (`SVG_SCENES`; new SVG scenes
+  `shop` 「인생 마트」 and `holiday` 병풍 상차림). `.ci-bg[data-bg-scene]` tells which one was used. The studio draws the CSS
+  desk only without a generated `bg-studio` (with art: a soft floor shadow).
+- 3D: animator `ANIMATED_EVENTS` + the Stage 7 types; board3d pops 🃏 (cardGained) 🛍️ (itemBought) 🎁 (gift, over the
+  receiver) 💢 (sabotage target) 🛡️ (block) 🤝 (trade) 🎱 (lotto winners) 🎴 (gostop winners), 설날/추석 banner;
+  `c.tagBadge` (spinMods) is appended to the pawn name tag (`tagName`); `DEFAULT_TILE_GLYPH` card 🃏 / shop 🛍️.
+- Result rows: item icons (+ names ≥ 431 px) and 「아이템 N만원」 (ranking `items`). Admin: 「명절 대잔치」 checkbox
+  (`holidays`, sent only when off) + room detail. 390 px: the top bar stays one line (spectator badge → title drops to 🎲),
+  the game header's era · turn · 📰 line never wraps. CSS in `public/css/cards.css`.
+- E2E: session scratchpad `s7b/` (`inject.cjs` injected state/events, `game.cjs` natural 4-client game + 390 spectator on the
+  real server; screenshots `s7b-*.png`).

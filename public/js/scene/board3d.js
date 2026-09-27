@@ -25,6 +25,7 @@ import { makeTextSprite, disposeSprite, canvasHasEmoji, canvasTexture, FONT_STAC
 import { clamp, lerp, hopHeight, easeInOutCubic, catmullRom, arcLengths, pointAt, rouletteRegion } from './math.js';
 import { loadAssetIndex, findAsset } from '../assets.js';
 import { won } from '../format.js';
+import { spinNote } from '../shared/cards.js';
 
 const TILE_SIZE = 1.64;
 const TILE_TOP = 0.27;
@@ -770,6 +771,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       showNumber(e.value);
       // Stage 6: while serving the pawn moves only `steps` (half the roulette)
       if (e.halved && Number.isFinite(e.steps) && e.steps !== e.value) emotion.pop(e.charId, `🪖${e.steps}칸`, { dur: 1.6 });
+      else if (spinNote(e)) emotion.pop(e.charId, spinNote(e).text.replace(' ', ''), { dur: 1.6 }); // Stage 7 card / item
       await ctx.sleep(750);
       setRouletteMode('hidden');
     },

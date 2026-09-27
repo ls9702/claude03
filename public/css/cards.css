@@ -306,3 +306,6 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
 }
 .hand-row:empty { display: none; }
 .hand:has(.hand-row:empty) { padding-bottom: 4px; }
+.ti-t { display: flex; align-items: baseline; gap: 6px; }
+.ti-tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ti-t .deadline { flex: none; }

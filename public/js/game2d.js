@@ -37,6 +37,7 @@ import {
   validateTrade,
   holidayTitle,
   handFull,
+  spinNote,
 } from './shared/cards.js';
 import { HOLIDAY_OPTION_ICON, cardHtml, itemIconHtml, shopOptionsHtml } from './ui/cardArt.js';
 import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
@@ -638,7 +639,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (last && !spoiler) {
       const who = byId(last.charId);
       // Stage 6: while serving, the pawn moves `steps` (half), not the roulette value
-      const steps = Number.isFinite(last.steps) && last.steps !== last.value ? ` <small>(🪖 복무 중 ${last.steps}칸 이동)</small>` : '';
+      const note = spinNote(last);
+      const steps = last.halved && Number.isFinite(last.steps) && last.steps !== last.value ? ` <small>(🪖 복무 중 ${last.steps}칸 이동)</small>` : note ? ` <small>(${esc(note.text)} 이동)</small>` : '';
       hint = `<span class="last-spin">최근 룰렛: ${esc(who?.name ?? '')} ${last.value}${steps}</span><br>${hint}`;
     }
     el.hint.innerHTML = hint;
@@ -952,14 +954,14 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const rows = [
       ...lists.incoming.map((t) => {
         const s2 = sides(t);
-        return `<div class="ti-row in" data-trade="${esc(t.id)}"><span class="ti-t">🤝 <b>${esc(n(t.fromId))}</b> → <b>${esc(n(t.toId))}</b> 거래 제안${
-          t.expiresAt ? ` <span class="deadline" data-deadline="${Number(t.expiresAt)}" data-icon="⏳"></span>` : ''
+        return `<div class="ti-row in" data-trade="${esc(t.id)}"><span class="ti-t"><span class="ti-tt">🤝 <b>${esc(n(t.fromId))}</b> → <b>${esc(n(t.toId))}</b> 거래 제안</span>${
+          t.expiresAt ? `<span class="deadline" data-deadline="${Number(t.expiresAt)}" data-icon="⏳"></span>` : ''
         }</span><span class="ti-d">줄게 <b>${esc(s2.give)}</b> · 원해 <b>${esc(s2.want)}</b></span><span class="ti-a"><button type="button" class="btn tiny primary" data-trade-accept="${esc(t.id)}" data-char="${esc(t.toId)}">수락</button><button type="button" class="btn tiny" data-trade-reject="${esc(t.id)}" data-char="${esc(t.toId)}">거절</button></span></div>`;
       }),
       ...lists.outgoing.map((t) => {
         const s2 = sides(t);
-        return `<div class="ti-row out" data-trade="${esc(t.id)}"><span class="ti-t">⏳ <b>${esc(n(t.fromId))}</b> → ${esc(n(t.toId))}에게 제안 중${
-          t.expiresAt ? ` <span class="deadline" data-deadline="${Number(t.expiresAt)}"></span>` : ''
+        return `<div class="ti-row out" data-trade="${esc(t.id)}"><span class="ti-t"><span class="ti-tt">⏳ <b>${esc(n(t.fromId))}</b> → ${esc(n(t.toId))}에게 제안 중</span>${
+          t.expiresAt ? `<span class="deadline" data-deadline="${Number(t.expiresAt)}"></span>` : ''
         }</span><span class="ti-d">줄게 ${esc(s2.give)} · 원해 ${esc(s2.want)}</span><span class="ti-a"><button type="button" class="btn tiny ghost" data-trade-cancel="${esc(t.id)}" data-char="${esc(t.fromId)}">취소</button></span></div>`;
       }),
     ];
@@ -1542,8 +1544,15 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     renderBets(room, { hold: holdSpin });
     if (ui.cardSheet) renderCardSheet();
     if (ui.trade) {
+      const handsKey = [ui.trade.fromId, ui.trade.toId].map((id) => (byId(id)?.cards ?? []).map((k) => k.uid).join(',')).join('|');
       if (room.status !== 'playing' || !byId(ui.trade.toId)) closeTrade();
-      else refreshTradeCheck();
+      else if (ui.trade.handsKey != null && ui.trade.handsKey !== handsKey) {
+        ui.trade.handsKey = handsKey;
+        renderTradeDlg(); // a card moved → fresh card lists (the check names a card that's gone)
+      } else {
+        ui.trade.handsKey = handsKey;
+        refreshTradeCheck();
+      }
     }
     renderInbox(room);
     flushDeferred();
@@ -1862,6 +1871,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         case 'spun':
           if (!in3d) showRoulette(e.value, c?.name ?? '');
           if (e.halved && Number.isFinite(e.steps) && e.steps !== e.value) floatOn(e.charId, `🪖 ${e.steps}칸만 이동`, 'minus');
+          else if (spinNote(e)) floatOn(e.charId, spinNote(e).text, spinNote(e).steps < e.value ? 'minus' : 'plus');
           if (e.auto) toast(`⏰ 시간 초과! ${c?.name ?? ''}의 룰렛을 자동으로 돌렸어요.`);
           break;
         case 'moneyChanged':

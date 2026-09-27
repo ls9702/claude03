@@ -272,6 +272,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     let autoMs = autoAdvanceMs({ owner: !!ownerChar?.isMe || mineInvolved, reduced: isReduced() });
     if (holiday) autoMs = Math.max(autoMs, 5200 + holiday.rows.length * 450);
     const texts = g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)];
+    // sabotage: the victim's reaction line (server `targetLine`, pool `sabotaged`)
+    if (a.type === 'cardUsed' && a.targetId && a.targetLine) texts.splice(2, texts.length, `${nameOf(characters, a.targetId)}: “${a.targetLine}”`);
     if (holiday) {
       chips.length = 0; // the result table carries 세뱃돈 / 잔소리 / 고스톱 per character
       if (Number(a.pot) > 0) chips.push({ text: `🎴 판돈 ${won(Number(a.pot))}`, kind: 'plus' });

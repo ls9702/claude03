@@ -292,6 +292,22 @@ export function spinModBadges(spinMods) {
     .filter(Boolean);
 }
 
+const MOD_GLYPH = { plus: '⚡', minus: '✂️', max2: '🚕', min2: '📢' };
+/**
+ * What a card / item did to a roulette (`spun {value, steps?, rolls?, mods?, car?}`) → "🚕 3·8 → 8칸", "✂️ 2칸",
+ * "🚗 2칸" — null when nothing changed it (military halving has its own 🪖 note).
+ */
+export function spinNote(spun) {
+  if (!spun || spun.halved) return null;
+  const mods = Array.isArray(spun.mods) ? spun.mods : [];
+  const rolls = Array.isArray(spun.rolls) && spun.rolls.length > 1 ? spun.rolls : null;
+  const steps = Number.isFinite(Number(spun.steps)) ? Number(spun.steps) : Number(spun.value);
+  const moved = Number.isFinite(steps) && steps !== Number(spun.value);
+  if (!rolls && !moved && !spun.car) return null;
+  const icon = spun.car && !mods.length ? '🚗' : MOD_GLYPH[mods.find((m) => MOD_GLYPH[m?.kind])?.kind] ?? (spun.car ? '🚗' : '🎲');
+  return { text: `${icon} ${rolls ? `${rolls.join('·')} → ` : ''}${steps}칸`, steps, icon };
+}
+
 /**
  * Card row sizing: cards shrink from `max` to `min` px to fit `width`; below `min` the row scrolls.
  * @returns {{cardW: number, gap: number, scroll: boolean, total: number}}
