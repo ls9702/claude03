@@ -46,6 +46,23 @@ function lsSet(key, value) {
 }
 
 let token = lsGet(TOKEN_KEY);
+
+// network health (A9): every request that fails at the network level / reaches the server is reported
+const netListeners = new Set();
+/** fn(ok: boolean) for each HTTP request (false = network failure, true = the server answered). → unsubscribe */
+export function onNetwork(fn) {
+  netListeners.add(fn);
+  return () => netListeners.delete(fn);
+}
+function notifyNet(ok) {
+  for (const fn of [...netListeners]) {
+    try {
+      fn(ok);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 /** Server − local clock offset (from HTTP Date headers); deadlines (`deadlineAt`) are server ms. */
 let clock = null;
 export const clockOffset = () => clock?.offset ?? 0;
@@ -68,8 +85,10 @@ async function raw(method, path, body, withToken = true) {
   try {
     res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch {
+    notifyNet(false);
     throw new ApiError('서버에 연결할 수 없습니다.', 0);
   }
+  notifyNet(true);
   const date = res.headers?.get?.('Date');
   if (date) clock = clockBounds(clock, { date, sentAt, receivedAt: Date.now() });
   let data = null;

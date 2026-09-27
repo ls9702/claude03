@@ -17,6 +17,9 @@
 // lifetime games, bonus vs the average winner total), titles (every one reached?), 산신령 unlocks, the composition
 // of the final totals (cash / house / items / treasures / awards), highlights per character and a random MVP vote.
 //
+// Post-simulation fixes: the route block also prints each route relative to the SAME game (mean total vs the game's
+// mean, 1st-place share vs fair) — raw averages mix games with different start money / length.
+//
 // Stage 9-C: `--policy cpu` plays every character with the CPU heuristics (server/game/cpu.js `cpuDecide`), `--policy
 // mixed` only the odd-numbered ones (the rest stay random) and prints the 1st-place share per policy. CPU-policy
 // characters never bet, offer trades or gift (they still answer offers). `scripts/cpu-game.js` has the fixed

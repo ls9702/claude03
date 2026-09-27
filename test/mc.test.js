@@ -128,6 +128,31 @@ test('lines.json mc pools: ≥6 lines per speaker and ≥6 duo dialogues (2–3 
   }
 });
 
+test('MC siblings: 호야 = boy, older brother; 봄이 = girl, younger sister — how they address each other', () => {
+  assert.deepEqual([mc.profiles.hoya.gender, mc.profiles.bomi.gender], ['boy', 'girl']);
+  assert.match(mc.profiles.hoya.relation, /오빠/);
+  assert.match(mc.profiles.bomi.relation, /여동생/);
+  const text = (e) => (typeof e === 'string' ? e : e.t);
+  const all = [];
+  for (const pool of Object.values(lines.mc)) {
+    for (const id of MC_IDS) for (const e of pool[id]) all.push({ s: id, t: text(e) });
+    for (const d of pool.duo) for (const l of d) all.push({ s: l.s, t: l.t });
+  }
+  // the wrong sibling words never appear (호야 is not a younger brother, 봄이 is not an older sister)
+  const WRONG = /누나|언니|형아|형님|(^|[\s,!?.…])형([\s,!?.…]|$)/;
+  for (const l of all) assert.doesNotMatch(l.t, WRONG, `${l.s}: "${l.t}"`);
+  // 봄이 addresses / names 호야 as 오빠 ("호야 오빠"), never 호야 씨 / bare 호야
+  const bomiAboutHoya = all.filter((l) => l.s === 'bomi' && /호야|오빠/.test(l.t));
+  assert.ok(bomiAboutHoya.length >= 10, `${bomiAboutHoya.length} lines of 봄이 about 호야`);
+  for (const l of bomiAboutHoya) {
+    assert.doesNotMatch(l.t, /호야 씨/, l.t);
+    if (/호야/.test(l.t)) assert.match(l.t, /호야 오빠/, l.t);
+  }
+  // 호야 calls his sister by name (봄이 / 봄이야 / 동생)
+  assert.ok(all.some((l) => l.s === 'hoya' && /봄이야/.test(l.t)));
+  assert.ok(all.some((l) => l.s === 'hoya' && /동생/.test(l.t)));
+});
+
 // ---------- engine ----------
 
 test('MC attachment is deterministic and never touches the gameplay RNG', () => {

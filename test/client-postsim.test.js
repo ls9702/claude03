@@ -173,3 +173,17 @@ test('my turn / fast-forward keep shared shows I take part in (명절 정산 wit
   assert.equal(classifyGroup(lottoOthers, { mine, myTurn: true }), 'banner');
   assert.equal(classifyGroup({ anchor: { type: 'holidayStarted' } }, { mine, fastForward: true }), 'full');
 });
+
+test('scroll lock: a lock class without its open overlay is stale (result page never stays unscrollable)', async () => {
+  const { SCROLL_LOCKS, staleLocks, repairScrollLock } = await import('../public/js/ui/scrollLock.js');
+  assert.deepEqual(Object.keys(SCROLL_LOCKS).sort(), ['cutin-open', 'cz-open', 'photo-open', 'rshow-open']);
+  const open = new Set(['photo-open']);
+  assert.deepEqual(staleLocks(['photo-open', 'rshow-open', 'cutin-open', 'spectator', 'cz-open'], (c) => open.has(c)), ['rshow-open', 'cutin-open', 'cz-open']);
+  assert.deepEqual(staleLocks([], () => false), []);
+  // DOM-less fake document
+  const classes = new Set(['rshow-open', 'photo-open', 'spectator']);
+  const body = { classList: { [Symbol.iterator]: () => classes.values(), remove: (c) => classes.delete(c) } };
+  const doc = { body, querySelectorAll: (sel) => (sel === '.photo-dlg' ? [{ isConnected: true, getClientRects: () => [1] }] : [{ isConnected: true, getClientRects: () => [] }]) };
+  assert.deepEqual(repairScrollLock(doc), ['rshow-open']);
+  assert.deepEqual([...classes].sort(), ['photo-open', 'spectator']);
+});

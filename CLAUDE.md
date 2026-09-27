@@ -399,7 +399,10 @@
   level 0.75), cached < 0.5 ms, cold incl. image loading ≈ 180–370 ms. E2E: `s55c` scripts in the session scratchpad.
 
 ## MC NPCs (Stage 5.6)
-- 호야 (`hoya`, 리액션, 반말 "~멍!") & 봄이 (`bomi`, 진행, 짧은 존댓말 "…그렇습니다"/"흥") — the user's Shih Tzus. Photos live
+- 호야 (`hoya`, boy, the OLDER brother, 리액션, goofy 반말 "~멍!") & 봄이 (`bomi`, girl, his YOUNGER sister, 진행, chic deadpan
+  짧은 존댓말 "…그렇습니다"/"흥", teases her brother) — the user's Shih Tzus. 호야 calls her 봄이 / 봄이야 / 동생; 봄이 calls him
+  오빠 / 호야 오빠 (never 누나 / 형 / 언니 / 호야 씨 — `test/mc.test.js` checks it). mc.json profiles carry `gender` + `relation`;
+  gen-mc-manifest `DOG_DESC` says "a boy … the older brother" / "a girl … the younger sister". Photos live
   ONLY in `DATA_DIR/mc-refs/` (gitignored); never copy them into `public/` or tracked paths.
 - Data: `server/data/mc.json` (`getMc()`, in `gameData().mc`): `order`, `expressions` (neutral joy surprise sad angry proud
   sleepy), `poses` (idle wave clap mic), `profiles.<id>` {name, role, personality, speech, looks, colors}, `bigAmount`,
@@ -967,8 +970,9 @@
   card pushed out of a full hand counts); `jobScore` (rank salary + odds of the next two ranks − injury), `targetJob`,
   `jobDeficit`; `PERSONALITY` knobs (promotion / retake / propose thresholds, cash reserve, shop multiplier, sabotage
   ratio, trade margin, holiday stake style, route bias). CPUs never bet, offer trades or gift.
-- Heuristics: route = max of love (charm ×0.5, +1.5 dating, +1.5 charm ≥ 6 single) / career (2 + regular salary/100 +
-  int ×0.2) / money (cash/400 ≤ 6 + luck ×0.2 + 1 without a house) + personality bias; habit → the biggest requirement gap
+- Heuristics: route = max of love (charm ×0.4 + family: single 1.5 (+1 charm ≥ 6, 소개팅), dating 1.5 + affection/proposeAt,
+  married 1.5 while < max children else 0.5) / career (1.5 + min(3, regular salary/150) + int ×0.2) / money (min(3, 1.5 ×
+  cash / the room's average cash) + luck ×0.2 + 1 without a house) + personality bias (post-simulation fixes); habit → the biggest requirement gap
   of `targetJob`, else int before a degree job, else its rank-up stat; exam = higher `college + elite/2` of study/guess;
   career = college when admitted, 재수 when the retake pass chance ≥ threshold, else job; military = now/volunteer for
   str jobs (전역 체력 +2), else later/skip (bold volunteers); jobOffer = max `jobScore`; jobTile = change when the new job
@@ -1215,4 +1219,11 @@
 - A18: the 인생역전 casino SVG sign sits in the top-right light band (`.sm-sign`), clear of the cast and the race panel.
 - Trade dialog: neither hand has a card (money ↔ money is not a trade) → 「🃏 거래할 카드가 없어요」 + 🎁 선물하기; amount inputs are
   text + `inputmode=numeric`, digits only; `cards.js` amounts must be `^\d+$` strings (「1e3」, 「+5」, 「0x10」 → 「금액은 숫자로만…」).
+- Monkey flags (follow-up): `public/js/ui/scrollLock.js` — `SCROLL_LOCKS` (body class → overlay selector: cutin-open / rshow-open /
+  photo-open / cz-open), pure `staleLocks(classes, isOpen)`, `repairScrollLock(doc)` drops a lock class whose overlay isn't open; the
+  app runs it after a room teardown and every 2 s. Connection: api.js `onNetwork(fn(ok))` reports every HTTP request (a network
+  failure flips the badge at once), any SSE `state` / `events` message restores 「● 연결됨」 (`markAlive`). Browser back: in a room the
+  app keeps one extra history entry (`history.state.jinseiRoom`) — the first Back stays in the game with a toast 「한 번 더 누르면 페이지를
+  떠나요…」, a second Back within 3 s leaves (the room stays saved → forward / return resumes); `pageshow` from the bfcache reopens the
+  stream; leaving a room drops the guard entry.
 - Admin: 「시대 길이(칸)」 (was 시대별 턴 수) + 「총 N칸 · 예상 약 M분 (캐릭터 K명 기준)」 (19.5 s per character turn, 5.5 칸 per turn).

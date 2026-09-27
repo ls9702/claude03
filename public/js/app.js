@@ -5,6 +5,7 @@ import {
   ensureSession,
   getMeta,
   lastSseMessageAt,
+  onNetwork,
   savedName,
   sseConnected,
   storageMode,
@@ -20,6 +21,7 @@ import { openCustomizer, setPreviewRenderer } from './ui/customize.js';
 import { layeredPreviewRenderer } from './ui/avatarCompose.js';
 import { MC_NAMES, mcLinesFrom, renderMc } from './ui/mc.js';
 import { closePhotoDialogs } from './ui/groupPhoto.js';
+import { repairScrollLock } from './ui/scrollLock.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) =>
@@ -116,10 +118,51 @@ function reconnect() {
 }
 setInterval(() => watchdogTick(), 5000);
 window.addEventListener('offline', () => state.room && setConn('bad'));
+// a request that fails at the network level flips the badge at once; the next SSE message / answered probe restores it
+onNetwork((ok) => {
+  if (!state.room || state.screen === 'join') return;
+  if (!ok) setConn('bad');
+});
+/** Any SSE message proves the stream is alive (clears a 「재연결 중…」 left by a failed request / the watchdog). */
+function markAlive() {
+  if ($('#conn')?.dataset.kind !== 'ok' && navigator.onLine !== false && sseConnected()) setConn('ok');
+}
 window.addEventListener('online', () => {
   if (!state.room) return;
   setConn('bad');
   reconnect(); // a fresh stream (its first message is the current state)
+});
+
+// ---------- browser back / forward (A: back must not drop a player out of the game) ----------
+// In a room the page keeps one extra history entry. The first Back pops it and stays (toast: press again to leave);
+// a second Back within BACK_AGAIN_MS really leaves the page — the room is kept (saved id), so returning / reloading
+// resumes it. A page restored from the back-forward cache reconnects (its stream was closed) and re-arms the guard.
+const BACK_AGAIN_MS = 3000;
+let lastBackAt = 0;
+function armBackGuard() {
+  try {
+    if (!history.state?.jinseiRoom) history.pushState({ jinseiRoom: true }, '');
+  } catch {
+    /* history unavailable */
+  }
+}
+window.addEventListener('popstate', () => {
+  if (!state.room || state.screen === 'join') return;
+  const now = Date.now();
+  if (now - lastBackAt < BACK_AGAIN_MS) {
+    lastBackAt = 0;
+    history.back(); // second press: leave the page (the room stays saved)
+    return;
+  }
+  lastBackAt = now;
+  armBackGuard();
+  toast('한 번 더 누르면 페이지를 떠나요. 방은 그대로라 돌아오면 이어서 할 수 있어요. (방을 나가려면 「나가기」)', 'info', BACK_AGAIN_MS);
+});
+window.addEventListener('pageshow', (ev) => {
+  if (!ev.persisted || !state.room) return;
+  armBackGuard();
+  setConn('bad');
+  enterRoom(state.room); // fresh stream: its first message is the current state
 });
 
 // ---------- room lifecycle ----------
@@ -133,9 +176,13 @@ function tearDownRoomUi() {
   setSheet(false);
   state.waitingResult = false;
   state.resultWait = null;
-  document.body.classList.remove('cutin-open', 'spin-docked', 'has-inbox', 'spin-fab-on', 'photo-open');
+  document.body.classList.remove('spin-docked', 'has-inbox', 'spin-fab-on');
   $('#float-layer')?.replaceChildren();
+  // the cut-in closes its overlay on the next tick: recompute the scroll lock from what is really open then
+  setTimeout(repairScrollLock, 300);
 }
+// safety net: a scroll-lock class without its overlay (cut-in / result show / photo / customizer) never lingers
+setInterval(() => repairScrollLock(), 2000);
 
 function leaveRoom(message) {
   state.closeEvents?.();
@@ -144,6 +191,7 @@ function leaveRoom(message) {
   tearDownRoomUi();
   state.room = null;
   setSavedRoomId(null);
+  if (history.state?.jinseiRoom) history.back(); // drop the back-guard entry (popstate is a no-op without a room)
   showScreen('join');
   if (message) toast(message);
 }
@@ -153,6 +201,7 @@ function enterRoom(room) {
   setSavedRoomId(room.id);
   state.closeEvents?.();
   state.connectedAt = Date.now();
+  armBackGuard();
   // the top bar (with 나가기) is covered while a cut-in is open → the cut-in has its own exit button
   // (asked first: a tap meant to advance the cut-in must not throw anyone out of the game)
   state.game?.cutin?.setExit?.(() => {
@@ -164,9 +213,13 @@ function enterRoom(room) {
       setConn('ok');
     },
     state: (r) => {
+      markAlive();
       if (acceptRoom(r)) render();
     },
-    events: (payload) => state.game?.onEvents(payload),
+    events: (payload) => {
+      markAlive();
+      state.game?.onEvents(payload);
+    },
     log: () => {},
     reaction: (r) => floatReaction(r),
     deleted: () => leaveRoom('방이 삭제되었습니다.'),

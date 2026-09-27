@@ -19,14 +19,14 @@ export const MC_ITEM_POSES_GEN = ['wave', 'clap', 'mic'];
 /** Exact markings (from the reference photos) — the art must match these. */
 export const DOG_DESC = {
   hoya:
-    'HOYA, a young Shih Tzu dog as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a ' +
+    'HOYA, a boy Shih Tzu dog, the older brother, as a cute chibi TV-show mascot. Coat: almost entirely white and very fluffy, with a ' +
     'slightly creamy beige tint on top of the head; floppy ears that are dark brown-black with a warm tan patch where ' +
     'they join the head; light tan / caramel fur around both eyes; big round shiny dark eyes; small black button nose; ' +
     'short white beard; slight underbite with the pink tip of the tongue peeking out; goofy, cheerful, slightly derpy ' +
     'face. Wears a small orange bandana scarf around the neck. Huge round fluffy head, small round body, short legs, ' +
     'white fluffy plume tail.',
   bomi:
-    'BOMI, an adult Shih Tzu dog as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, ' +
+    'BOMI, a girl Shih Tzu dog, the younger sister, as a cute chibi TV-show mascot with a black-and-white coat: the sides of the head, ' +
     'both long floppy ears and a large mask around BOTH eyes are black; a clear white blaze stripe runs from between ' +
     'the eyes up the middle of the forehead to the top of the head; white muzzle with a slightly grey-beige beard and ' +
     'chin; white chest and white front legs; black back and shoulders; small black speckles on the white front paws; ' +
