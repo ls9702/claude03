@@ -9,7 +9,7 @@ import { EDUCATIONS, examChances, examOutcome } from '../server/game/growth.js';
 import { NEWS_DEFAULTS, drawNews, newsPool } from '../server/game/news.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { viewFor } from '../server/game/view.js';
-import { makeRoom } from './helpers.js';
+import { makeRoom, plainEra, toEra } from './helpers.js';
 
 const data = gameData();
 const BOY = { body: 'boy' };
@@ -54,11 +54,35 @@ function setTile(room, eraIndex, index, tile, route = 'main') {
   const track = route === 'main' ? era.tiles : era.routes[route].tiles;
   track[index] = { id: track[index].id, label: 'test', ...tile };
 }
-/** Put the current character on the last 고등학생 tile with a given 수능 result (next spin → young:0 갈림길). */
-function atYoungGate(room, patch = {}) {
-  const id = cur(room);
-  Object.assign(ch(room, id), { position: { eraIndex: 3, route: 'main', index: 4 }, era: 'high', examResult: 'college' }, patch);
+/**
+ * The first adult turn of the first character in order (loop maps: 진로 / 군 복무 / 취업 happen at the start of it,
+ * before the spin): everyone moves to the young era start, the others are settled, the admin `skip` of the last
+ * character starts `id`'s turn. @returns id
+ */
+function atYoungStart(room, patch = {}, id = room.turn.order[0]) {
+  const y = room.board.eras.findIndex((e) => e.id === 'young');
+  toEra(room, y);
+  plainEra(room, y, { type: 'loss', amount: 5 });
+  for (const c of room.characters) {
+    if (c.id === id) Object.assign(c, { examResult: 'college' }, patch);
+    else Object.assign(c, { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'chef', rank: 1, exp: 0, injured: 0 } });
+  }
+  const i = room.turn.order.indexOf(id);
+  room.turn.currentIndex = (i - 1 + room.turn.order.length) % room.turn.order.length;
   return id;
+}
+/** Start the next character's turn (admin skip of the current one). */
+const nextTurn = (room, rng = {}) => act(room, { type: 'skip' }, rng);
+/** Play `id`'s spin (value v) and answer its prompts with the first enabled option until the next turn. */
+function spinThrough(room, id, v = 1) {
+  room.turn.currentIndex = room.turn.order.indexOf(id);
+  let r = act(room, { type: 'spin', characterId: id }, { ints: [v] });
+  const events = [...r.events];
+  while (r.room.turn.pending && r.room.turn.pending.charId === id) {
+    r = choose(r.room, r.room.turn.pending.options.find((o) => !o.disabled).id);
+    events.push(...r.events);
+  }
+  return { room: r.room, events };
 }
 
 // ---------- init / stats ----------
@@ -120,7 +144,7 @@ test('addStat: clamped to 0..cap, emits the actual delta, nothing when clamped a
 test('habit tile → habit prompt; each option raises its stat (+bonus), costs / wins money; result anchor', () => {
   const room = started().room;
   const id = cur(room);
-  setTile(room, 0, 0, { type: 'habit' });
+  setTile(room, 0, 1, { type: 'habit' });
   let r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
   const p = r.room.turn.pending;
   assert.equal(p.kind, 'habit');
@@ -175,12 +199,18 @@ test('exam probability table: base + int×지력 + luck×운 (+news, +재수), c
   assert.equal(examOutcome({ elite: 0.2, college: 0.6 }, 0.6), 'fail');
 });
 
-test('수능 stop: seeded roll → examResult + promptResolved{result}; scholarship per result', () => {
+test('수능: the last high-school turn starts with the exam prompt (before the spin); seeded roll → examResult; scholarship', () => {
   const room = started().room;
-  const id = cur(room);
-  ch(room, id).position = { eraIndex: 2, route: 'main', index: 3 }; // last middle tile → next is high:0 (수능)
-  const r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
+  const hi = room.board.eras.findIndex((e) => e.id === 'high');
+  // the round before the last: skipping the last character in order starts the last high-school round
+  toEra(room, hi, { round: room.board.eras[hi].turns - 1 });
+  room.turn.currentIndex = room.turn.order.length - 1;
+  const id = room.turn.order[0];
+  for (const c of room.characters) c.schoolMet = true; // (the 고교 첫 만남 prompt is its own test)
+  const r = nextTurn(room);
+  assert.equal(cur(r.room), id);
   assert.equal(r.room.turn.pending.kind, 'exam');
+  assert.equal(r.room.turn.pending.charId, id);
   for (const [roll, result] of [[0.001, 'elite'], [0.3, null], [0.999, 'fail']]) {
     const out = choose(r.room, 'study', { nexts: [roll] });
     const pr = out.events.find((e) => e.type === 'promptResolved');
@@ -192,17 +222,36 @@ test('수능 stop: seeded roll → examResult + promptResolved{result}; scholars
     const reward = data.balance.exam.reward[want];
     const money = out.events.find((e) => e.type === 'moneyChanged' && e.reason === 'exam');
     assert.equal(money?.delta ?? 0, reward);
+    assert.equal(out.room.turn.phase, 'awaitSpin', 'then the spin');
   }
+  // not on an earlier high-school turn
+  const early = started().room;
+  toEra(early, hi, { round: 1 });
+  for (const c of early.characters) c.schoolMet = true;
+  early.turn.currentIndex = early.turn.order.length - 1;
+  const e = nextTurn(early); // → round 2 of 3
+  assert.equal(e.room.turn.eraRound, 2);
+  assert.notEqual(e.room.turn.pending?.kind, 'exam');
+  // a skip covering the last high-school turn → the exam right after the move that set it (no missed 수능)
+  const skipper = started().room;
+  toEra(skipper, hi, { round: skipper.board.eras[hi].turns - 1 });
+  plainEra(skipper, hi);
+  for (const c of skipper.characters) c.schoolMet = true;
+  const sid = cur(skipper);
+  ch(skipper, sid).skipTurns = 1;
+  const s1 = act(skipper, { type: 'spin', characterId: sid }, { ints: [1] });
+  assert.equal(s1.room.turn.pending?.kind, 'exam');
 });
 
 // ---------- 진로 ----------
 
-test('진로: college → tuition debt, 1 turn of school, graduation (+int, educationChanged) → job offer', () => {
+test('진로: college → tuition debt, collegeTurns of school, graduation (+int, educationChanged) → job offer', () => {
   let room = started({ chars: [['A', 'A1', GIRL], ['B', 'B1', GIRL]] }).room;
-  const id = atYoungGate(room, { stats: { int: 5, str: 2, charm: 2, luck: 2 } });
-  let r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
+  const id = atYoungStart(room, { stats: { int: 5, str: 2, charm: 2, luck: 2 } });
+  let r = nextTurn(room);
   let p = r.room.turn.pending;
   assert.equal(p.kind, 'career');
+  assert.equal(p.charId, id);
   assert.deepEqual(p.options.map((o) => o.id), ['college', 'job', 'retake']);
   const debt0 = ch(r.room, id).debt;
   r = choose(r.room, 'college');
@@ -211,39 +260,44 @@ test('진로: college → tuition debt, 1 turn of school, graduation (+int, educ
   assert.deepEqual(c.school, { tier: 'college', turnsLeft: data.balance.career.collegeTurns });
   assert.equal(c.military.status, 'exempt', 'girl with low 체력: no volunteer prompt');
   assert.equal(c.careerChoice, 'college');
-  assert.equal(r.room.turn.pending.kind, 'routeChoice', 'students get their job offer after graduating');
-  r = choose(r.room, 'career');
+  assert.equal(r.room.turn.pending, null, 'students get their job offer after graduating');
+  assert.equal(r.room.turn.phase, 'awaitSpin');
   room = r.room;
-  room.turn.currentIndex = room.turn.order.indexOf(id);
-  setTile(room, 4, 0, { type: 'loss', amount: 5 }, 'career');
-  r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
-  const edu = r.events.find((e) => e.type === 'educationChanged');
-  assert.deepEqual([edu.charId, edu.education, edu.cutin], [id, 'college', true]);
-  assert.equal(ch(r.room, id).education, 'college');
-  assert.equal(ch(r.room, id).stats.int, 5 + (data.balance.career.graduationStats.int ?? 0));
-  assert.equal(ch(r.room, id).school, null);
-  p = r.room.turn.pending;
+  let grad = null;
+  for (let i = 0; i < data.balance.career.collegeTurns; i++) {
+    room.turn.currentIndex = room.turn.order.indexOf(id);
+    r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
+    room = r.room;
+    grad ??= r.events.find((e) => e.type === 'educationChanged') ?? null;
+    if (!grad) assert.equal(ch(room, id).school.turnsLeft, data.balance.career.collegeTurns - 1 - i);
+  }
+  assert.deepEqual([grad.charId, grad.education, grad.cutin], [id, 'college', true]);
+  assert.equal(ch(room, id).education, 'college');
+  assert.equal(ch(room, id).stats.int, 5 + (data.balance.career.graduationStats.int ?? 0));
+  assert.equal(ch(room, id).school, null);
+  p = room.turn.pending;
   assert.equal(p.kind, 'jobOffer');
   assert.match(p.text, /졸업/);
   assert.ok(p.options.some((o) => data.jobs.jobs.find((j) => j.id === o.id)?.requires?.education), 'degree jobs on offer');
 });
 
-test('진로: 바로 취업 → job offer → 갈림길; 재수 once (skip a turn, retake, pass → enroll); elite has no 재수', () => {
+test('진로: 바로 취업 → job offer → the spin; 재수 once (skip a turn, retake, pass → enroll); elite has no 재수', () => {
   const room = started({ chars: [['A', 'A1', GIRL], ['B', 'B1', GIRL]] }).room;
-  const id = atYoungGate(room);
-  const r0 = act(room, { type: 'spin', characterId: id }, { ints: [1] });
+  const id = atYoungStart(room);
+  const r0 = nextTurn(room);
   const job = choose(r0.room, 'job');
   assert.equal(job.room.turn.pending.kind, 'jobOffer');
   const hired = choose(job.room, job.room.turn.pending.options[0].id);
   const jc = hired.events.find((e) => e.type === 'jobChanged');
   assert.deepEqual([jc.reason, jc.rank, jc.fromJobId], ['hire', 1, null]);
-  assert.equal(hired.room.turn.pending.kind, 'routeChoice');
+  assert.equal(hired.room.turn.phase, 'awaitSpin');
+  assert.equal(cur(hired.room), id);
   assert.deepEqual(ch(hired.room, id).jobHistory, [{ id: jc.jobId, rank: 1, era: 'young' }]);
 
   // 재수: fail → options job/retake; retake → skip next turn + retake exam; a pass enrolls at once
   const failed = structuredClone(room);
-  atYoungGate(failed, { examResult: 'fail' });
-  let r = act(failed, { type: 'spin', characterId: id }, { ints: [1] });
+  atYoungStart(failed, { examResult: 'fail' });
+  let r = nextTurn(failed);
   assert.deepEqual(r.room.turn.pending.options.map((o) => o.id), ['job', 'retake']);
   r = choose(r.room, 'retake');
   assert.equal(r.room.turn.pending.kind, 'exam');
@@ -253,55 +307,64 @@ test('진로: 바로 취업 → job offer → 갈림길; 재수 once (skip a tur
   r = choose(r.room, 'study', { nexts: [0] }); // elite this time
   assert.equal(ch(r.room, id).examResult, 'elite');
   assert.deepEqual(ch(r.room, id).school, { tier: 'elite', turnsLeft: data.balance.career.collegeTurns });
-  assert.equal(r.room.turn.pending.kind, 'routeChoice', 'no second 진로 prompt after a 재수');
-  r = choose(r.room, 'love');
+  assert.equal(r.room.turn.pending, null, 'no second 진로 prompt after a 재수');
+  assert.equal(r.room.turn.phase, 'awaitSpin', 'this turn still spins');
   // the 재수 costs the next turn: the other character plays twice in a row
   const other = r.room.turn.order.find((x) => x !== id);
-  assert.equal(cur(r.room), other);
-  const r2 = act(r.room, { type: 'spin', characterId: other }, { ints: [1] });
+  const r1 = act(r.room, { type: 'spin', characterId: id }, { ints: [1] });
+  assert.equal(cur(r1.room), other);
+  const r2 = act(r1.room, { type: 'spin', characterId: other }, { ints: [1] });
   assert.ok(r2.events.some((e) => e.type === 'log' && /재수 중/.test(e.text)));
   assert.equal(cur(r2.room), other);
   assert.equal(ch(r2.room, id).skipTurns, 0);
 
   // a second fail after 재수 goes straight to work (job offer); 재수 is never offered twice
-  const twice = structuredClone(failed);
-  atYoungGate(twice, { examResult: 'fail', retook: true });
-  const t = act(twice, { type: 'spin', characterId: id }, { ints: [1] });
+  const twice = structuredClone(room);
+  atYoungStart(twice, { examResult: 'fail', retook: true });
+  const t = nextTurn(twice);
   assert.equal(t.room.turn.pending.kind, 'jobOffer', 'only one choice left → applied without a prompt');
   // elite: college or job, no 재수
   const elite = structuredClone(room);
-  atYoungGate(elite, { examResult: 'elite' });
-  const e = act(elite, { type: 'spin', characterId: id }, { ints: [1] });
+  atYoungStart(elite, { examResult: 'elite' });
+  const e = nextTurn(elite);
   assert.deepEqual(e.room.turn.pending.options.map((o) => o.id), ['college', 'job']);
+  // a 수능 missed in high school is taken before the 진로 decision
+  const missed = structuredClone(room);
+  atYoungStart(missed, { examResult: null });
+  const m = nextTurn(missed);
+  assert.equal(m.room.turn.pending.kind, 'exam');
+  const m2 = choose(m.room, 'study', { nexts: [0] });
+  assert.equal(m2.room.turn.pending.kind, 'career');
 });
 
 // ---------- 군 복무 ----------
 
 test('군 복무: college boy chooses now → halved spins (+ pay) → 전역 (체력 +strGain); later → after graduation, job kept', () => {
   const room = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
-  const id = atYoungGate(room);
-  let r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
+  const id = atYoungStart(room);
+  let r = nextTurn(room);
   r = choose(r.room, 'college');
-  let p = r.room.turn.pending;
+  const p = r.room.turn.pending;
   assert.equal(p.kind, 'military');
   assert.deepEqual(p.options.map((o) => o.id), ['now', 'later']);
   const now = choose(r.room, 'now');
   const ms = now.events.find((e) => e.type === 'militaryStart');
   assert.deepEqual([ms.turns, ms.cutin], [data.balance.military.turns, true]);
   assert.equal(ch(now.room, id).military.status, 'serving');
-  assert.equal(now.room.turn.pending.kind, 'routeChoice');
-  let room2 = choose(now.room, 'career').room;
+  assert.equal(now.room.turn.pending, null);
+  let room2 = now.room;
   const str0 = ch(room2, id).stats.str;
   for (let i = 0; i < data.balance.military.turns; i++) {
     room2.turn.currentIndex = room2.turn.order.indexOf(id);
     const s = act(room2, { type: 'spin', characterId: id }, { ints: [8] });
     const spun = s.events.find((e) => e.type === 'spun');
     assert.deepEqual([spun.value, spun.steps, spun.halved], [8, 4, true]);
-    assert.equal(s.events.find((e) => e.type === 'moved').path.length, 4);
+    const mv = s.events.find((e) => e.type === 'moved');
+    if (!mv.halted) assert.equal(mv.path.length, 4);
     if (data.balance.military.pay) assert.ok(s.events.some((e) => e.type === 'moneyChanged' && e.reason === 'military' && e.delta === data.balance.military.pay));
     else assert.ok(!s.events.some((e) => e.type === 'moneyChanged' && e.reason === 'military'), 'no pay (balance.military.pay 0)');
     room2 = s.room;
-    if (s.room.turn.pending) room2 = choose(s.room, s.room.turn.pending.options[0].id).room;
+    while (room2.turn.pending?.charId === id) room2 = choose(room2, room2.turn.pending.options.find((o) => !o.disabled).id).room;
     if (i === data.balance.military.turns - 1) {
       const end = s.events.find((e) => e.type === 'militaryEnd');
       assert.ok(end, '전역 after the last served spin');
@@ -316,10 +379,13 @@ test('군 복무: college boy chooses now → halved spins (+ pay) → 전역 (�
   // later: deferred once; after graduation → job offer first, then 입대 (the job is kept)
   const later = choose(r.room, 'later');
   assert.equal(ch(later.room, id).military.deferred, true);
-  let room3 = choose(later.room, 'career').room;
-  room3.turn.currentIndex = room3.turn.order.indexOf(id);
-  setTile(room3, 4, 0, { type: 'loss', amount: 5 }, 'career');
-  const g = act(room3, { type: 'spin', characterId: id }, { ints: [1] });
+  let room3 = later.room;
+  let g = null;
+  for (let i = 0; i < data.balance.career.collegeTurns; i++) {
+    room3.turn.currentIndex = room3.turn.order.indexOf(id);
+    g = act(room3, { type: 'spin', characterId: id }, { ints: [1] });
+    room3 = g.room;
+  }
   assert.ok(g.events.some((e) => e.type === 'educationChanged'));
   assert.equal(g.room.turn.pending.kind, 'jobOffer');
   const h = choose(g.room, g.room.turn.pending.options[0].id);
@@ -331,19 +397,20 @@ test('군 복무: college boy chooses now → halved spins (+ pay) → 전역 (�
 
 test('군 복무: non-college boys serve after hiring (no prompt); girls volunteer only with 체력 ≥ min', () => {
   const room = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
-  const id = atYoungGate(room);
-  let r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
+  atYoungStart(room);
+  let r = nextTurn(room);
   r = choose(r.room, 'job');
   assert.equal(r.room.turn.pending.kind, 'jobOffer');
   r = choose(r.room, r.room.turn.pending.options[0].id);
   assert.ok(r.events.some((e) => e.type === 'militaryStart'));
-  assert.equal(r.room.turn.pending.kind, 'routeChoice');
+  assert.equal(r.room.turn.pending, null);
   assert.ok(!r.events.some((e) => e.type === 'prompt' && e.kind === 'military'));
 
-  const girlRoom = structuredClone(room);
-  girlRoom.turn.currentIndex = girlRoom.turn.order.findIndex((x) => ch(girlRoom, x).avatar.body === 'girl');
-  const gid = atYoungGate(girlRoom, { stats: { int: 3, str: data.balance.military.volunteerMinStr, charm: 2, luck: 2 } });
-  let g = act(girlRoom, { type: 'spin', characterId: gid }, { ints: [1] });
+  const girlRoom = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
+  const girl = girlRoom.characters.find((c) => c.avatar.body === 'girl').id;
+  const gid = atYoungStart(girlRoom, { stats: { int: 3, str: data.balance.military.volunteerMinStr, charm: 2, luck: 2 } }, girl);
+  assert.equal(ch(girlRoom, gid).avatar.body, 'girl');
+  let g = nextTurn(girlRoom);
   g = choose(g.room, 'job');
   const p = g.room.turn.pending;
   assert.equal(p.kind, 'military');
@@ -351,7 +418,7 @@ test('군 복무: non-college boys serve after hiring (no prompt); girls volunte
   assert.equal(p.defaultOptionId, 'skip');
   const vol = choose(g.room, 'volunteer');
   assert.equal(ch(vol.room, gid).military.status, 'serving');
-  assert.equal(vol.room.turn.pending.kind, 'routeChoice', 'job offer waits until 전역');
+  assert.equal(vol.room.turn.pending, null, 'job offer waits until 전역');
   const skip = choose(g.room, 'skip');
   assert.equal(ch(skip.room, gid).military.status, 'exempt');
   assert.equal(skip.room.turn.pending.kind, 'jobOffer');
@@ -359,30 +426,29 @@ test('군 복무: non-college boys serve after hiring (no prompt); girls volunte
 
 // ---------- news ----------
 
-test('news: drawn once per era by the first entrant (never baby), statBonus for every entrant, effects apply', () => {
+test('news: drawn once per era at the transition (never baby), statBonus for every character, effects apply', () => {
   const room = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
-  const [a, b] = room.turn.order;
-  ch(room, a).position = { eraIndex: 0, route: 'main', index: 2 };
-  setTile(room, 1, 0, { type: 'loss', amount: 5 });
-  const r = applyAction(room, { type: 'spin', characterId: a }, { rng: fixedRng({ ints: [1] }), now: 1 });
+  plainEra(room, 0);
+  room.turn.eraRound = room.turn.eraTurns;
+  room.turn.currentIndex = room.turn.order.length - 1;
+  const r = applyAction(room, { type: 'spin', characterId: cur(room) }, { rng: fixedRng({ ints: [1] }), now: 1 });
   const flash = r.events.filter((e) => e.type === 'newsFlash');
   assert.equal(flash.length, 1);
   assert.equal(r.room.news.elem, flash[0].newsId);
-  assert.ok(types(r.events).indexOf('eraChanged') < types(r.events).indexOf('newsFlash'));
+  assert.ok(types(r.events).indexOf('eraTransition') < types(r.events).indexOf('newsFlash'));
+  assert.ok(types(r.events).lastIndexOf('eraChanged') < types(r.events).indexOf('newsFlash'));
   assert.equal(flash[0].cutin, true);
   assert.equal(flash[0].mcKey, 'news');
   assert.equal(flash[0].mcStudio, true);
   const n = data.news.news.find((x) => x.id === flash[0].newsId);
   assert.ok(!n.eras || n.eras.includes('elem'));
-  // second entrant: no new draw; a statBonus news applies to it as well
-  const room2 = structuredClone(r.room);
-  room2.news.elem = 'coding_edu';
-  room2.turn.currentIndex = room2.turn.order.indexOf(b);
-  ch(room2, b).position = { eraIndex: 0, route: 'main', index: 2 };
-  const int0 = ch(room2, b).stats.int;
-  const r2 = applyAction(room2, { type: 'spin', characterId: b }, { rng: fixedRng({ ints: [1] }), now: 2 });
-  assert.equal(r2.events.filter((e) => e.type === 'newsFlash').length, 0);
-  assert.equal(ch(r2.room, b).stats.int, int0 + 1);
+  // a statBonus news applies to every character at the transition
+  const withBonus = structuredClone(room);
+  withBonus.news.elem = 'coding_edu';
+  const int0 = withBonus.characters.map((c) => c.stats.int);
+  const r2 = applyAction(withBonus, { type: 'spin', characterId: cur(withBonus) }, { rng: fixedRng({ ints: [1] }), now: 2 });
+  assert.equal(r2.events.filter((e) => e.type === 'newsFlash').length, 0, 'already drawn');
+  assert.deepEqual(r2.room.characters.map((c) => c.stats.int), int0.map((v) => Math.min(10, v + 1)));
   assert.ok(r2.events.some((e) => e.type === 'statChanged' && e.reason === 'news'));
   // baby / unknown eras never draw
   const tx = createTx(structuredClone(room), { rng: fixedRng(), now: 0, data });
@@ -391,9 +457,11 @@ test('news: drawn once per era by the first entrant (never baby), statBonus for 
   // lossMult: 물가 폭등 makes loss tiles × 1.3 for characters in that era
   const room3 = structuredClone(r.room);
   room3.news.elem = 'price_surge';
-  room3.turn.currentIndex = room3.turn.order.indexOf(a);
+  plainEra(room3, 1);
   setTile(room3, 1, 1, { type: 'loss', amount: 100 });
-  const r3 = act(room3, { type: 'spin', characterId: a }, { ints: [1] });
+  room3.turn.pending = null;
+  room3.turn.phase = 'awaitSpin';
+  const r3 = act(room3, { type: 'spin', characterId: cur(room3) }, { ints: [1] });
   assert.equal(r3.events.find((e) => e.type === 'moneyChanged').delta, -130);
   assert.deepEqual(Object.keys(NEWS_DEFAULTS).includes('housePriceMult'), true);
   // public: every session sees room.news
@@ -444,13 +512,15 @@ test('restore from a JSON snapshot mid-career continues identically (jobs, schoo
 
 test('군 복무: the last served spin reaching the goal still discharges (no finished character left serving)', () => {
   const room = started().room;
-  const id = cur(room);
   const last = room.board.eras.length - 1;
+  toEra(room, last);
+  plainEra(room, last);
+  const id = cur(room);
   const tiles = room.board.eras[last].tiles;
   Object.assign(ch(room, id), {
     position: { eraIndex: last, route: 'main', index: tiles.length - 2 },
-    era: room.board.eras[last].id,
     military: { status: 'serving', turnsLeft: 1 },
+    careerDone: true,
   });
   const r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
   const c = ch(r.room, id);

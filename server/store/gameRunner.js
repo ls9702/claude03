@@ -8,7 +8,7 @@
 //   the room waits on (an offer to a CPU, a prompt answer owed by a CPU, a CPU's spin) is acted on after
 //   `cpuDelayMs` (spin / prompt / trade) with `cpuDecide` and actor `{system: true, cpu: true}`.
 import { randomBytes } from 'node:crypto';
-import { EngineError, applyAction, endGame, startGame } from '../game/engine.js';
+import { EngineError, applyAction, endGame, isLoopBoard, migrateLoopBoard, startGame } from '../game/engine.js';
 import { CPU_OWNER, cpuDecide, cpuDue } from '../game/cpu.js';
 
 /** Random uint32 mixed into the RNG after the (public) board is built, so the board can't reveal spins. */
@@ -188,9 +188,19 @@ export class GameRunner {
     return { type: 'spin', characterId: due.charId };
   }
 
-  /** Re-arm timers for every restored room (boot). */
+  /**
+   * Re-arm timers for every restored room (boot). Games saved before the loop maps (linear board) are migrated first
+   * (engine `migrateLoopBoard`: rebuilt loop board, everyone at the most advanced era's start).
+   */
   restore() {
-    for (const room of this.store.listRooms()) this.schedule(room);
+    for (const room of this.store.listRooms()) {
+      if (room.status === 'playing' && room.board && !isLoopBoard(room.board)) {
+        const now = this.clock();
+        const r = this.store.transact(room.id, (live) => ({ ok: true, ...migrateLoopBoard(live, { now }) }), now);
+        if (r.ok) this.log(`순환 맵으로 옮긴 방: ${room.id}`);
+      }
+      this.schedule(this.store.getRoom(room.id) ?? room);
+    }
   }
 
   #clear(roomId) {

@@ -1,32 +1,237 @@
 {
-  "_comment": "엔딩 칭호(Stage 9): 돈 없는 별명. 게임이 끝날 때 캐릭터마다 조건(when)을 만족하는 칭호를 priority 높은 순으로 최대 perCharacter개. 하나도 없으면 fallback 칭호. 조건 = {fact, min?, max?, eq?} | {all: [...]} | {any: [...]} | {not: 조건}; fact 목록은 server/game/awards.js titleFacts (finalRank, rankPct, characters, place, lastPlace, worstRankPct, minNet, maxDebt, bankruptcies, married, children, geniusChildren, proposeFails, partners, houseValue, houseSwaps, treasures, treasureValue, fakes, luckWinnings, gambles, job, jobRank, jobChanges, hiddenJob, rankUps, overtime, sabotage, sabotaged, int, str, charm, luck, statMin, statSum, education, hometown, temple, jeju, wishes, adultLife, total).",
+  "_comment": "엔딩 칭호(Stage 9): 돈 없는 별명. 게임이 끝날 때 캐릭터마다 조건(when)을 만족하는 칭호를 priority 높은 순으로 최대 perCharacter개. 하나도 없으면 fallback 칭호. 조건 = {fact, min?, max?, eq?} | {all: [...]} | {any: [...]} | {not: 조건}; fact 목록은 server/game/awards.js titleFacts (finalRank, rankPct, characters, place, lastPlace, worstRankPct, minNet, maxDebt, bankruptcies, married, children, geniusChildren, proposeFails, partners, houseValue, houseSwaps, treasures, treasureValue, fakes, luckWinnings, gambles, job, jobRank, jobChanges, hiddenJob, rankUps, overtime, sabotage, sabotaged, int, str, charm, luck, statMin, statSum, education, hometown, temple, jeju, wishes, adultLife, total, retired (조기 은퇴), bust (올인 파산)).",
   "perCharacter": 2,
   "titles": [
-    { "id": "dirt_spoon", "name": "흙수저 신화", "icon": "🥄", "desc": "꼴찌권에서 시작해 최종 1위까지!", "priority": 95, "when": { "all": [{ "fact": "worstRankPct", "min": 0.75 }, { "fact": "finalRank", "max": 1 }, { "fact": "characters", "min": 3 }] } },
-    { "id": "lotto_life", "name": "로또 인생", "icon": "🎰", "desc": "로또·인생역전으로 500만원 넘게 번 행운아", "priority": 90, "when": { "fact": "luckWinnings", "min": 500 } },
-    { "id": "hidden_master", "name": "숨은 고수", "icon": "🌟", "desc": "숨은 직업에 오른 전설", "priority": 88, "when": { "fact": "hiddenJob", "min": 1 } },
-    { "id": "eternal_civil", "name": "만년 공무원", "icon": "🏛️", "desc": "한 우물만 판 공무원 인생", "priority": 85, "when": { "all": [{ "fact": "job", "eq": "civil_servant" }, { "fact": "jobChanges", "max": 1 }, { "fact": "jobRank", "max": 2 }] } },
-    { "id": "bankrupt_king", "name": "파산의 왕", "icon": "💸", "desc": "빚더미에 두 번 이상 깔려 본 사람", "priority": 80, "when": { "any": [{ "fact": "bankruptcies", "min": 2 }, { "fact": "maxDebt", "min": 800 }] } },
-    { "id": "big_family", "name": "대가족", "icon": "👨‍👩‍👧‍👦", "desc": "자녀 셋 이상, 북적북적한 집", "priority": 75, "when": { "fact": "children", "min": 3 } },
-    { "id": "real_estate", "name": "부동산 큰손", "icon": "🏙️", "desc": "집을 갈아타고 또 갈아탄 큰손", "priority": 70, "when": { "any": [{ "fact": "houseSwaps", "min": 2 }, { "fact": "houseValue", "min": 2000 }] } },
-    { "id": "all_rounder", "name": "육각형 인간", "icon": "🔷", "desc": "능력치가 전부 6 이상", "priority": 68, "when": { "fact": "statMin", "min": 6 } },
-    { "id": "treasure_hunter", "name": "보물 사냥꾼", "icon": "🗺️", "desc": "보물을 세 개 이상 모았다", "priority": 65, "when": { "fact": "treasures", "min": 3 } },
-    { "id": "dosa", "name": "도 닦는 사람", "icon": "🛕", "desc": "사찰을 두 번 이상 찾거나 소원을 두 번 이상 이뤘다", "priority": 62, "when": { "any": [{ "fact": "temple", "min": 2 }, { "fact": "wishes", "min": 2 }] } },
-    { "id": "love_zero", "name": "연애 고자", "icon": "💔", "desc": "끝내 결혼하지 못한 솔로", "priority": 60, "when": { "all": [{ "fact": "adultLife", "min": 1 }, { "fact": "married", "max": 0 }, { "any": [{ "fact": "proposeFails", "min": 1 }, { "fact": "partners", "max": 0 }] }] } },
-    { "id": "backstabber", "name": "뒤통수 장인", "icon": "🗡️", "desc": "뒤통수 카드를 두 번 이상 날렸다", "priority": 58, "when": { "fact": "sabotage", "min": 2 } },
-    { "id": "gambler", "name": "타짜", "icon": "🎲", "desc": "인생역전에 두 번 이상 도전한 승부사", "priority": 56, "when": { "fact": "gambles", "min": 2 } },
-    { "id": "workaholic", "name": "워커홀릭", "icon": "💼", "desc": "야근 두 번 이상 또는 승진 세 번 이상", "priority": 55, "when": { "any": [{ "fact": "overtime", "min": 2 }, { "fact": "rankUps", "min": 3 }] } },
-    { "id": "punching_bag", "name": "동네북", "icon": "🥁", "desc": "뒤통수를 두 번 이상 맞았다", "priority": 52, "when": { "fact": "sabotaged", "min": 2 } },
-    { "id": "fake_collector", "name": "짝퉁 수집가", "icon": "🎭", "desc": "보물인 줄 알았는데 가짜였다", "priority": 50, "when": { "fact": "fakes", "min": 1 } },
-    { "id": "job_hopper", "name": "프로 이직러", "icon": "🔄", "desc": "직업을 세 번 이상 바꿨다", "priority": 48, "when": { "fact": "jobChanges", "min": 3 } },
-    { "id": "filial", "name": "효자·효녀", "icon": "🏡", "desc": "고향 시골집을 두 번 이상 찾았다", "priority": 46, "when": { "fact": "hometown", "min": 2 } },
-    { "id": "jeju_lover", "name": "제주 러버", "icon": "🏝️", "desc": "제주도 여행을 두 번 이상 떠났다", "priority": 45, "when": { "fact": "jeju", "min": 2 } },
-    { "id": "bookworm", "name": "걸어다니는 백과사전", "icon": "🧠", "desc": "지력 9 이상", "priority": 42, "when": { "fact": "int", "min": 9 } },
-    { "id": "iron_body", "name": "강철 체력", "icon": "💪", "desc": "체력 9 이상", "priority": 41, "when": { "fact": "str", "min": 9 } },
-    { "id": "charmer", "name": "인간 비타민", "icon": "✨", "desc": "매력 9 이상", "priority": 40, "when": { "fact": "charm", "min": 9 } },
-    { "id": "lucky_star", "name": "럭키 가이", "icon": "🍀", "desc": "운 9 이상", "priority": 39, "when": { "fact": "luck", "min": 9 } },
-    { "id": "speedster", "name": "인생 급행열차", "icon": "🏁", "desc": "가장 먼저 골인했다", "priority": 35, "when": { "fact": "place", "max": 1 } },
-    { "id": "turtle", "name": "느긋한 거북이", "icon": "🐢", "desc": "맨 마지막으로 골인했다", "priority": 30, "when": { "all": [{ "fact": "lastPlace", "min": 1 }, { "fact": "characters", "min": 3 }] } },
-    { "id": "ordinary", "name": "평범한 인생", "icon": "🙂", "desc": "별일 없이 무난하게 살았다", "priority": 0, "fallback": true }
+    {
+      "id": "dirt_spoon",
+      "name": "흙수저 신화",
+      "icon": "🥄",
+      "desc": "꼴찌권에서 시작해 최종 1위까지!",
+      "priority": 95,
+      "when": {
+        "all": [
+          {"fact": "worstRankPct", "min": 0.75},
+          {"fact": "finalRank", "max": 1},
+          {"fact": "characters", "min": 3}
+        ]
+      }
+    },
+    {
+      "id": "lotto_life",
+      "name": "로또 인생",
+      "icon": "🎰",
+      "desc": "로또·인생역전으로 500만원 넘게 번 행운아",
+      "priority": 90,
+      "when": {"fact": "luckWinnings", "min": 500}
+    },
+    {
+      "id": "hidden_master",
+      "name": "숨은 고수",
+      "icon": "🌟",
+      "desc": "숨은 직업에 오른 전설",
+      "priority": 88,
+      "when": {"fact": "hiddenJob", "min": 1}
+    },
+    {
+      "id": "eternal_civil",
+      "name": "만년 공무원",
+      "icon": "🏛️",
+      "desc": "한 우물만 판 공무원 인생",
+      "priority": 85,
+      "when": {
+        "all": [{"fact": "job", "eq": "civil_servant"}, {"fact": "jobChanges", "max": 1}, {"fact": "jobRank", "max": 2}]
+      }
+    },
+    {
+      "id": "bankrupt_king",
+      "name": "파산의 왕",
+      "icon": "💸",
+      "desc": "빚더미에 두 번 이상 깔려 본 사람",
+      "priority": 80,
+      "when": {"any": [{"fact": "bankruptcies", "min": 2}, {"fact": "maxDebt", "min": 800}]}
+    },
+    {
+      "id": "big_family",
+      "name": "대가족",
+      "icon": "👨‍👩‍👧‍👦",
+      "desc": "자녀 셋 이상, 북적북적한 집",
+      "priority": 75,
+      "when": {"fact": "children", "min": 3}
+    },
+    {
+      "id": "real_estate",
+      "name": "부동산 큰손",
+      "icon": "🏙️",
+      "desc": "집을 갈아타고 또 갈아탄 큰손",
+      "priority": 70,
+      "when": {"any": [{"fact": "houseSwaps", "min": 3}, {"fact": "houseValue", "min": 2000}]}
+    },
+    {
+      "id": "all_rounder",
+      "name": "육각형 인간",
+      "icon": "🔷",
+      "desc": "능력치가 전부 7 이상",
+      "priority": 68,
+      "when": {"fact": "statMin", "min": 7}
+    },
+    {
+      "id": "treasure_hunter",
+      "name": "보물 사냥꾼",
+      "icon": "🗺️",
+      "desc": "보물을 세 개 이상 모았다",
+      "priority": 65,
+      "when": {"fact": "treasures", "min": 3}
+    },
+    {
+      "id": "dosa",
+      "name": "도 닦는 사람",
+      "icon": "🛕",
+      "desc": "사찰을 네 번 이상 찾거나 소원을 다섯 번 이상 이뤘다",
+      "priority": 62,
+      "when": {"any": [{"fact": "temple", "min": 4}, {"fact": "wishes", "min": 5}]}
+    },
+    {
+      "id": "love_zero",
+      "name": "연애 고자",
+      "icon": "💔",
+      "desc": "끝내 결혼하지 못한 솔로",
+      "priority": 60,
+      "when": {
+        "all": [
+          {"fact": "adultLife", "min": 1},
+          {"fact": "married", "max": 0},
+          {"any": [{"fact": "proposeFails", "min": 1}, {"fact": "partners", "max": 0}]}
+        ]
+      }
+    },
+    {
+      "id": "backstabber",
+      "name": "뒤통수 장인",
+      "icon": "🗡️",
+      "desc": "뒤통수 카드를 두 번 이상 날렸다",
+      "priority": 58,
+      "when": {"fact": "sabotage", "min": 2}
+    },
+    {
+      "id": "gambler",
+      "name": "타짜",
+      "icon": "🎲",
+      "desc": "인생역전에 두 번 이상 도전한 승부사",
+      "priority": 56,
+      "when": {"fact": "gambles", "min": 2}
+    },
+    {
+      "id": "workaholic",
+      "name": "워커홀릭",
+      "icon": "💼",
+      "desc": "야근 두 번 이상 또는 승진 세 번 이상",
+      "priority": 55,
+      "when": {"any": [{"fact": "overtime", "min": 2}, {"fact": "rankUps", "min": 3}]}
+    },
+    {
+      "id": "punching_bag",
+      "name": "동네북",
+      "icon": "🥁",
+      "desc": "뒤통수를 두 번 이상 맞았다",
+      "priority": 52,
+      "when": {"fact": "sabotaged", "min": 2}
+    },
+    {
+      "id": "fake_collector",
+      "name": "짝퉁 수집가",
+      "icon": "🎭",
+      "desc": "보물인 줄 알았는데 가짜였다",
+      "priority": 50,
+      "when": {"fact": "fakes", "min": 1}
+    },
+    {
+      "id": "job_hopper",
+      "name": "프로 이직러",
+      "icon": "🔄",
+      "desc": "직업을 세 번 이상 바꿨다",
+      "priority": 48,
+      "when": {"fact": "jobChanges", "min": 3}
+    },
+    {
+      "id": "filial",
+      "name": "효자·효녀",
+      "icon": "🏡",
+      "desc": "고향 시골집을 세 번 이상 찾았다",
+      "priority": 46,
+      "when": {"fact": "hometown", "min": 3}
+    },
+    {
+      "id": "jeju_lover",
+      "name": "제주 러버",
+      "icon": "🏝️",
+      "desc": "제주도 여행을 두 번 이상 떠났다",
+      "priority": 45,
+      "when": {"fact": "jeju", "min": 2}
+    },
+    {
+      "id": "bookworm",
+      "name": "걸어다니는 백과사전",
+      "icon": "🧠",
+      "desc": "지력 9 이상",
+      "priority": 42,
+      "when": {"fact": "int", "min": 9}
+    },
+    {
+      "id": "iron_body",
+      "name": "강철 체력",
+      "icon": "💪",
+      "desc": "체력 9 이상",
+      "priority": 41,
+      "when": {"fact": "str", "min": 9}
+    },
+    {
+      "id": "charmer",
+      "name": "인간 비타민",
+      "icon": "✨",
+      "desc": "매력 9 이상",
+      "priority": 40,
+      "when": {"fact": "charm", "min": 9}
+    },
+    {
+      "id": "lucky_star",
+      "name": "럭키 가이",
+      "icon": "🍀",
+      "desc": "운 9 이상",
+      "priority": 39,
+      "when": {"fact": "luck", "min": 9}
+    },
+    {
+      "id": "speedster",
+      "name": "인생 급행열차",
+      "icon": "🏁",
+      "desc": "가장 먼저 골인했다",
+      "priority": 35,
+      "when": {"fact": "place", "max": 1}
+    },
+    {
+      "id": "turtle",
+      "name": "느긋한 거북이",
+      "icon": "🐢",
+      "desc": "맨 마지막으로 골인했다",
+      "priority": 30,
+      "when": {"all": [{"fact": "lastPlace", "min": 1}, {"fact": "characters", "min": 3}]}
+    },
+    {
+      "id": "early_retiree",
+      "name": "여유로운 은퇴러",
+      "icon": "🏖️",
+      "desc": "인생역전섬에서 조기 은퇴했다",
+      "priority": 40,
+      "when": {"fact": "retired", "min": 1}
+    },
+    {
+      "id": "poor_farm",
+      "name": "빈곤 농장 주인",
+      "icon": "🌾",
+      "desc": "전 재산을 올인했다가 빈곤 농장으로 갔다",
+      "priority": 88,
+      "when": {"fact": "bust", "min": 1}
+    },
+    {"id": "ordinary", "name": "평범한 인생", "icon": "🙂", "desc": "별일 없이 무난하게 살았다", "priority": 0, "fallback": true}
   ]
 }

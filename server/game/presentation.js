@@ -26,6 +26,8 @@ export const EMOTIONS = ['joy', 'cry', 'angry', 'sweat', 'love', 'shock', 'neutr
 export const EVENT_TYPES = [
   'gameStarted', 'turnStarted', 'spun', 'moved', 'landed', 'moneyChanged', 'eraChanged', 'routeChosen', 'finished',
   'bonusSpin', 'betPlaced', 'betResolved', 'prompt', 'chose', 'promptResolved', 'gameOver', 'log',
+  // loop maps — the shared era transition + 찬스 광장 buffs (the goal race is back only in the final era)
+  'eraTransition', 'chanceBuff',
   // Stage 6 — stats, careers, jobs
   'statChanged', 'jobChanged', 'rankUp', 'salary', 'injured', 'hiddenJobUnlocked', 'newsFlash', 'militaryStart',
   'militaryEnd', 'educationChanged',
@@ -41,7 +43,7 @@ export const EVENT_TYPES = [
 
 /** Types that always get a full cut-in (landed only for `tones.cutinTiles`). statChanged / salary / militaryEnd are chips. */
 export const CUTIN_TYPES = new Set([
-  'eraChanged', 'routeChosen', 'finished', 'gameOver', 'prompt', 'promptResolved',
+  'eraTransition', 'routeChosen', 'finished', 'gameOver', 'prompt', 'promptResolved',
   'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'educationChanged',
   // Stage 7 (cardUsed only for sabotage / 공약 — see isCutinCardUse)
   'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw',
@@ -59,7 +61,7 @@ export const isCutinCardUse = (ev) => ev?.type === 'cardUsed' && !ev.auto && (ev
 
 /** Events whose follow-ups (money, stats, logs) belong to them; the scan for followers stops at the next one. */
 const BOUNDARY = new Set([
-  'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
+  'turnStarted', 'spun', 'moved', 'landed', 'eraTransition', 'eraChanged', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
   'promptResolved', 'gameOver', 'betPlaced',
   'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged',
   'cardBlocked', 'itemBought', 'tradeOffered', 'tradeResolved', 'gift', 'holidayStarted', 'holidayResult', 'lottoDraw',
@@ -78,22 +80,24 @@ const PROMPT_TONES = {
   routeChoice: 'good', exam: 'career', groupGift: 'holiday', habit: 'good', career: 'career', military: 'neutral',
   jobOffer: 'career', jobTile: 'career', hiddenJobOffer: 'result', shop: 'treasure', holiday: 'holiday',
   meet: 'love', date: 'love', propose: 'love', house: 'treasure',
-  hometown: 'good', temple: 'good', jeju: 'love', reversal: 'treasure',
+  hometown: 'good', temple: 'good', jeju: 'love', reversal: 'treasure', passTile: 'good', club: 'good', allIn: 'treasure',
 };
 const PROMPT_TAGS = {
   routeChoice: 'route_choice', exam: 'exam', groupGift: 'gift', habit: 'habit', career: 'career', military: 'military',
   jobOffer: 'job_offer', jobTile: 'job', hiddenJobOffer: 'hidden_job', shop: 'shop', holiday: 'holiday',
   meet: 'heart', date: 'date', propose: 'propose', house: 'house',
-  hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'reversal',
+  hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'reversal', passTile: 'pass_tile', club: 'club', allIn: 'reversal',
 };
 const PROMPT_EMOTIONS = {
   exam: 'sweat', groupGift: 'love', routeChoice: 'joy', habit: 'joy', career: 'sweat', military: 'sweat', jobOffer: 'joy',
   jobTile: 'neutral', hiddenJobOffer: 'shock', shop: 'joy', holiday: 'joy', meet: 'love', date: 'love', propose: 'love',
-  house: 'joy', hometown: 'love', temple: 'neutral', jeju: 'joy', reversal: 'shock',
+  house: 'joy', hometown: 'love', temple: 'neutral', jeju: 'joy', reversal: 'shock', passTile: 'joy', club: 'joy', allIn: 'shock',
 };
+/** loop maps: 찬스 광장 results → line tag (buy → the chained shop speaks, passed → quiet). */
+const PASS_TAGS = { wishOk: 'pass_wish_ok', wishFail: 'pass_wish_fail', wishAll: 'pass_wish_all', changed: 'pass_job', buy: 'shop', passed: 'pass_tile' };
 const PROMPT_SCENES = {
   shop: 'shop', holiday: 'holiday', meet: 'park', date: 'park', propose: 'park', house: 'house',
-  hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino',
+  hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino', club: 'school', allIn: 'casino',
 };
 /** Stage 9: submap → cut-in scene; submapResult result → line tag. */
 export const SUBMAP_SCENES = { hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino' };
@@ -103,6 +107,8 @@ const SUBMAP_TAGS = {
   'jeju:trip': 'jeju_trip', 'jeju:skip': 'jeju_skip',
   'reversal:jackpot': 'reversal_jackpot', 'reversal:lottoWin': 'reversal_win', 'reversal:horseWin': 'reversal_win',
   'reversal:lottoLose': 'reversal_lose', 'reversal:horseLose': 'reversal_lose', 'reversal:skip': 'reversal_skip',
+  // the final race's 인생역전섬
+  'reversal:allInWin': 'reversal_allin_win', 'reversal:allInLose': 'reversal_allin_lose', 'reversal:retire': 'retire_early',
 };
 const treasureOf = (data, id) => (id ? (data?.treasures ?? getTreasures()).treasures?.find((t) => t.id === id) ?? null : null);
 const awardName = (data, id) => (id ? (data?.awards ?? getAwards()).awards?.find((a) => a.id === id)?.name ?? '' : '');
@@ -274,7 +280,7 @@ export function presentationFor(ev, ctx) {
   const chars = room?.characters ?? [];
   const charId = ev.charId ?? ev.fromId ?? ev.results?.[0]?.charId ?? ev.entries?.[0]?.charId ?? null;
   const c = charId ? chars.find((x) => x.id === charId) : null;
-  const era = ev.type === 'eraChanged' ? ev.era : charId ? ctx.eraOf?.(charId) ?? c?.era ?? null : null;
+  const era = ev.type === 'eraChanged' ? ev.era : ev.type === 'eraTransition' ? ev.toEraId : charId ? ctx.eraOf?.(charId) ?? c?.era ?? null : null;
   const eraName = (id) => room?.board?.eras?.find((e) => e.id === id)?.name ?? ctx.data?.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
   const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '', ...familyVars(ev, c), house: houseName(ctx.data, ev.houseId ?? c?.house?.id), treasure: treasureOf(ctx.data, ev.treasureId)?.name ?? '', award: '' };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
@@ -346,10 +352,11 @@ export function presentationFor(ev, ctx) {
       } else if (tt === 'salary') {
         tag = o.delta > 0 ? 'salary' : 'neutral';
         tone ??= 'career';
+        bland = 'rare'; // loop maps: paydays come every few spins — a bubble only now and then
       } else {
         tag = ['heart', 'job', 'card', 'shop', 'treasure', 'house', 'stop', 'merge', 'goal', 'hometown', 'temple', 'jeju', 'reversal'].includes(tt) ? tt : 'neutral';
         if (SUBMAP_SCENES[tt]) scene = SUBMAP_SCENES[tt];
-        tone ??= (tt !== 'goal' && tt !== 'merge' ? routeTone(route, tones) : null) ?? normalizeTone(tones.tileTones?.[tt], tones) ?? 'neutral';
+        tone ??= (!['goal', 'merge', 'start'].includes(tt) ? routeTone(route, tones) : null) ?? normalizeTone(tones.tileTones?.[tt], tones) ?? 'neutral';
       }
       emotion ??= o.emotion && EMOTIONS.includes(o.emotion) ? o.emotion : null;
       if (o.delta) vars.amount = wonText(o.delta);
@@ -372,26 +379,44 @@ export function presentationFor(ev, ctx) {
       emotion ??= d > 0 ? 'joy' : d < 0 ? (debt ? 'shock' : 'cry') : null;
       break;
     }
-    case 'eraChanged':
+    case 'eraTransition':
+      // the whole table moves on together: {name} lines address everyone
+      vars.name = '모두';
+      tag = ctx.lines?.tags?.[`era_${ev.toEraId}`] ? `era_${ev.toEraId}` : 'era_change';
+      tone ??= 'good';
+      emotion ??= 'joy';
+      route = null;
+      break;
+    case 'eraChanged': // one per character inside the transition group (a follow-up; the transition speaks)
       tag = ctx.lines?.tags?.[`era_${ev.era}`] ? `era_${ev.era}` : 'era_change';
       tone ??= 'good';
       route = null;
+      bland = 'always';
+      break;
+    case 'finished': // final era: goal order (or 조기 은퇴 / 올인 파산 = retired)
+      tag = ev.retired === 'bust' ? 'retire_bust' : ev.retired === 'early' ? 'retire_early' : ev.place === 1 ? 'goal_first' : 'goal';
+      tone ??= ev.retired === 'bust' ? 'bad' : 'result';
+      emotion ??= ev.retired === 'bust' ? 'cry' : 'joy';
+      if (ev.prize) vars.amount = wonText(ev.prize);
+      if (ev.retired) cutin = false; // the 인생역전섬 result (submapResult) is the cut-in; this is its follow-up
+      break;
+    case 'bonusSpin':
+      tag = 'bonus';
+      tone ??= 'result';
+      if (ev.amount) vars.amount = wonText(ev.amount);
+      break;
+    case 'chanceBuff': // 찬스 광장 「그냥 지나가기」 buff gained / expired (a chip, never a cut-in)
+      tag = 'chance_buff';
+      tone ??= 'good';
+      emotion ??= ev.action === 'gained' ? 'joy' : 'neutral';
+      cutin = false;
+      if (ev.action !== 'gained') bland = 'always';
       break;
     case 'routeChosen':
       route = ev.route;
       tag = `route_${ev.route}`;
       tone ??= routeTone(ev.route, tones) ?? 'good';
       scene = tones.routeScenes?.[ev.route] ?? null;
-      break;
-    case 'finished':
-      tag = ev.place === 1 ? 'goal_first' : 'goal';
-      tone ??= 'result';
-      if (ev.prize) vars.amount = wonText(ev.prize);
-      break;
-    case 'bonusSpin':
-      tag = 'bonus';
-      tone ??= 'result';
-      if (ev.amount) vars.amount = wonText(ev.amount);
       break;
     case 'betResolved': {
       const won = (ev.results ?? []).some((r) => r.won);
@@ -400,8 +425,11 @@ export function presentationFor(ev, ctx) {
       emotion ??= won ? 'joy' : 'sweat';
       break;
     }
-    case 'prompt':
+    case 'prompt': {
       tag = PROMPT_TAGS[ev.kind] ?? 'prompt_wait';
+      // job prompts (hidden job offer / job offer / 이직): the first offered job names {job}
+      const jid = ev.options?.find((o) => o.jobId)?.jobId;
+      if (!vars.job && jid) vars.job = jobOf(ctx.data, jid)?.name ?? '';
       if (ev.kind === 'holiday') {
         const pk = room?.turn?.pending?.promptId === ev.promptId ? room.turn.pending.context?.kind : null;
         vars.holiday = (pk ? holidayName(ctx.data, pk) : '') || String(ev.title ?? '').replace(/^\S+\s+/, '').replace(/\s*대잔치$/, '');
@@ -410,6 +438,7 @@ export function presentationFor(ev, ctx) {
       emotion ??= PROMPT_EMOTIONS[ev.kind] ?? null;
       scene = PROMPT_SCENES[ev.kind] ?? null;
       break;
+    }
     case 'promptResolved': {
       const { list } = followersOf(ctx.events, ctx.index);
       if (ev.kind === 'exam') {
@@ -454,6 +483,22 @@ export function presentationFor(ev, ctx) {
         tone ??= 'treasure';
         emotion ??= ev.result === 'noMoney' ? 'sweat' : 'neutral';
         scene = 'house';
+      } else if (ev.kind === 'passTile') {
+        // loop maps: 찬스 광장 — a wish result gets its own cut-in; 이직 anchors on jobChanged, 구입 on the shop prompt
+        const o = outcome(list, charId);
+        tag = PASS_TAGS[ev.result] ?? 'pass_tile';
+        tone ??= ev.result === 'wishFail' ? 'neutral' : ev.result === 'changed' ? 'career' : 'good';
+        emotion ??= ev.result === 'wishOk' ? 'joy' : ev.result === 'wishFail' ? 'sweat' : 'neutral';
+        cutin = ['wishOk', 'wishFail', 'wishAll'].includes(ev.result);
+        if (!cutin) bland = 'always';
+        if (o.delta) vars.amount = wonText(o.delta);
+      } else if (ev.kind === 'club') {
+        tag = 'club';
+        tone ??= 'good';
+        emotion ??= 'joy';
+        scene = 'school';
+        const def = (ctx.data?.balance?.clubs?.options ?? []).find((o) => o.id === ev.clubId);
+        vars.stat = STAT_LABELS[Object.keys(def?.stats ?? {})[0]] ?? '';
       } else if (ev.kind === 'groupGift') {
         const g = outcome(list, charId);
         tag = g.gifts ? 'gift' : 'gift_none';
@@ -695,12 +740,13 @@ export function presentationFor(ev, ctx) {
     case 'submapResult': {
       tag = SUBMAP_TAGS[`${ev.submap}:${ev.result}`] ?? ev.submap;
       const amt = ev.amount ?? 0;
-      if (ev.submap === 'reversal') tone = amt > 0 ? 'treasure' : amt < 0 ? 'bad' : 'neutral';
+      if (ev.submap === 'reversal') tone = ev.result === 'retire' ? 'result' : amt > 0 ? 'treasure' : amt < 0 ? 'bad' : 'neutral';
       else tone ??= PROMPT_TONES[ev.submap] ?? 'good';
       emotion ??= amt > 0 ? 'joy' : amt < 0 ? 'sweat' : 'neutral';
       scene = SUBMAP_SCENES[ev.submap] ?? null;
       vars.stat = STAT_LABELS[ev.stat] ?? '';
       if (amt) vars.amount = wonText(amt);
+      else if (ev.prize != null) vars.amount = wonText(ev.prize); // 조기 은퇴: the retirement prize
       cutin = !['skip', 'leave'].includes(ev.result); // a pass is a banner, not a cut-in
       route = null;
       break;
@@ -862,7 +908,7 @@ function decorateRows(ev, { lines, room, data, seed, vars, history = null }) {
 //
 // Qualifying events get `mc: [{speaker: 'hoya'|'bomi', line, expression, pose, part?}]` (1 line, or a 2–3 line
 // duo dialogue), `mcWeight` (big|medium|minor) and `mcStudio: true` for the full-screen MC cut-in (game start,
-// first character entering an era). Big events always get the MCs (unless the room's `config.mcFrequency` is
+// every era transition). Big events always get the MCs (unless the room's `config.mcFrequency` is
 // 'off'); medium/minor ones roll a chance and respect a cooldown (`room.mcState.cool` = candidates to skip after
 // any appearance) so the MCs never talk over consecutive minor events. Picked with a separate sub-RNG → the
 // gameplay stream is untouched and every client sees the same lines.
@@ -933,10 +979,11 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
     case 'turnStarted':
       if (!state.firstSpin && c) key = 'firstSpin';
       break;
-    case 'eraChanged':
-      vars.era = ev.eraName ?? eraName(ev.era);
-      if (!state.eras.includes(ev.era) && mc?.eraSituations?.[ev.era]) {
-        key = mc.eraSituations[ev.era];
+    case 'eraTransition':
+      // loop maps: the whole table moves on together → the MC studio of the new era (once per era)
+      vars.era = ev.eraName ?? eraName(ev.toEraId);
+      if (!state.eras.includes(ev.toEraId) && mc?.eraSituations?.[ev.toEraId]) {
+        key = mc.eraSituations[ev.toEraId];
         studio = true;
       } else key = 'eraChange';
       break;
@@ -963,6 +1010,7 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       }
       break;
     case 'promptResolved':
+      if (ev.kind === 'club') key = 'club';
       if (ev.kind === 'exam') {
         const o = outcome(followersOf(events, index).list, ev.charId);
         key = (ev.result ? ev.result !== 'fail' : o.delta > 0) ? 'examPass' : 'examFail';
@@ -991,6 +1039,8 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       studio = true;
       break;
     case 'finished': {
+      // final era goal race (조기 은퇴 / 올인 파산 speak through their reversal result instead)
+      if (ev.retired) break;
       vars.place = ev.place ?? '';
       if (ev.prize) vars.amount = wonText(ev.prize);
       key = ev.place === 1 ? 'goalFirst' : ev.place === chars.length ? 'goalLast' : 'goal';
@@ -1073,7 +1123,7 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       if (amt) vars.amount = wonText(amt);
       if (ev.submap === 'temple' && ev.result !== 'leave') key = 'temple';
       else if (ev.submap === 'jeju' && ev.result === 'trip') key = 'jeju';
-      else if (ev.submap === 'reversal' && ev.result !== 'skip') key = amt > 0 ? 'reversalWin' : 'reversalLose';
+      else if (ev.submap === 'reversal' && !['skip', 'retire'].includes(ev.result)) key = amt > 0 ? 'reversalWin' : 'reversalLose';
       break;
     }
     case 'treasureFound':
@@ -1164,7 +1214,7 @@ export function attachMc(events, { room, data = {}, seed = 0, lines = data.lines
     if (sit.studio) ev.mcStudio = true;
     state.cool = freq.cooldown ?? 0;
     if (ev.type === 'turnStarted') state.firstSpin = true;
-    if (ev.type === 'eraChanged' && !state.eras.includes(ev.era)) state.eras.push(ev.era);
+    if (ev.type === 'eraTransition' && !state.eras.includes(ev.toEraId)) state.eras.push(ev.toEraId);
     if (ev.type === 'gameOver' && room.result) room.result.mc = list;
   });
   return events;

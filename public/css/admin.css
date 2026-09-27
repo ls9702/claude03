@@ -64,3 +64,8 @@ pre.json { max-width: 100%; }
 .growth-hint { margin: -8px 0 12px; }
 .cpu-badge { display: inline-block; font-size: 0.68rem; font-weight: 900; color: #334155; background: #e2e8f0; border-radius: 999px; padding: 0 6px; line-height: 1.5; white-space: nowrap; }
 .cpu-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 12px; }
+
+/* loop maps: map size per era, final race row, long-game warning */
+.era-row .map { color: #2446a8; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+.era-row.final-row { border-top: 1px dashed var(--line); padding-top: 6px; }
+.era-est.warn { color: #b45309; }

@@ -13,6 +13,7 @@
 import { STAT_KEYS, addLog, addStats, changeMoney, charById, emit, josa, round5, statCap, statName, statText, won } from './effects.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 import { findTreasure } from './treasures.js';
+import { finishCharacter, nextPlace } from './finish.js';
 
 export const SUBMAPS = ['hometown', 'temple', 'jeju', 'reversal'];
 export const SUBMAP_NAMES = { hometown: '고향 시골집', temple: '사찰 템플스테이', jeju: '제주도 여행', reversal: '인생역전' };
@@ -68,6 +69,12 @@ export function reversalLottoEv(data) {
   return (cfgOf(data).reversal?.lotto?.prizes ?? []).reduce((s, p) => s + p.chance * p.amount, 0);
 }
 
+/** 전 재산 올인 odds: {mult, chance} (a number 1–10, plain random even in skill rooms). */
+export function allInOdds(data) {
+  const ai = cfgOf(data).reversal?.allIn ?? {};
+  return { mult: ai.mult ?? 7, chance: 0.1 };
+}
+
 /** Land on a submap tile → `submapEntered` + the submap prompt. @returns true (a prompt opened) */
 export function resolveSubmapTile(tx, c, tile) {
   const submap = tile.type;
@@ -83,6 +90,43 @@ function result(tx, c, submap, optionId, res, extra = {}, { tone = 'good', emoti
 // ---------- prompts ----------
 
 registerPrompts({
+  /** 인생역전섬 「전 재산 올인」: pick a number 1–10 → hit = cash × mult, miss = cash 0 + 빈곤 농장 (retired, last place). */
+  allIn: {
+    build(tx, c) {
+      const { mult } = allInOdds(tx.data);
+      const cash = Math.max(0, c.money ?? 0);
+      const options = Array.from({ length: 10 }, (_, i) => ({ id: String(i + 1), number: i + 1, label: `${i + 1}`, icon: '🎯', desc: `${i + 1}이 나오면 ${won(cash * mult)}!` }));
+      return {
+        forCharacterIds: [c.id],
+        title: '🎯 전 재산 올인',
+        text: `${c.name}, 현금 ${won(cash)}을 전부 건다! 룰렛 숫자 하나를 골라요 (맞히면 ×${mult}, 틀리면 빈곤 농장)`,
+        options,
+        defaultOptionId: String(1 + (tx.room.turn?.turnNo ?? 0) % 10),
+        context: { stake: cash, mult },
+      };
+    },
+    resolve(tx, p) {
+      const c = charById(tx.room, p.charId);
+      const pick = Number(p.answers[c.id]);
+      const { min, max } = tx.data.balance.spin;
+      const roll = tx.rng.int(min, max); // always a plain random roll
+      const cash = Math.max(0, c.money ?? 0);
+      const mult = p.context?.mult ?? allInOdds(tx.data).mult;
+      if (roll === pick && cash > 0) {
+        const amount = cash * (mult - 1);
+        result(tx, c, 'reversal', 'allIn', 'allInWin', { amount, pick, roll, stake: cash, mult }, { tone: 'treasure', emotion: 'shock' });
+        changeMoney(tx, c, amount, 'reversal', { tone: 'treasure', emotion: 'joy' });
+        addLog(tx, `🎯💥 ${c.name} 전 재산 올인 대성공! ${pick} 적중 → +${won(amount)}`, { tone: 'money', charId: c.id, emotion: 'shock' });
+        return { result: 'allInWin' };
+      }
+      result(tx, c, 'reversal', 'allIn', 'allInLose', { amount: -cash, pick, roll, stake: cash, mult }, { tone: 'bad', emotion: 'cry' });
+      if (cash > 0) changeMoney(tx, c, -cash, 'reversal', { tone: 'bad', emotion: 'cry' });
+      addLog(tx, `🎯 ${c.name} 올인 실패… (${pick}을 골랐지만 ${roll}) 전 재산을 잃었다`, { tone: 'bad', charId: c.id, emotion: 'cry' });
+      finishCharacter(tx, c, { retired: 'bust' });
+      return { result: 'allInLose' };
+    },
+  },
+
   /** 고향 시골집: 푹 쉬기 (다음 룰렛 1번 쉼 · 체력 · 부모님 용돈) / 안부 인사 (작은 용돈 · 매력). */
   hometown: {
     build(tx, c) {
@@ -214,7 +258,7 @@ registerPrompts({
     },
   },
 
-  /** 인생역전 (노년): 로또 한 장 / 경마 (배당 2·5·10배) / 그냥 지나가기. */
+  /** 인생역전 (노년): 로또 한 장 / 경마 (배당 2·5·10배) / 그냥 지나가기; the final race adds 전 재산 올인 / 조기 은퇴. */
   reversal: {
     build(tx, c) {
       const cfg = cfgOf(tx.data).reversal ?? {};
@@ -230,13 +274,24 @@ registerPrompts({
         if (stake > cash) Object.assign(opt, { disabled: true, desc: `${won(stake)} 필요 · 돈이 부족해요` });
         return opt;
       });
+      // the final era's 인생역전섬: 전 재산 올인 (cash > 0) / 조기 은퇴
+      const extra = [];
+      const final = tx.room.board?.eras?.[c.position?.eraIndex ?? 0]?.final;
+      if (final && !c.finished) {
+        const ai = cfg.allIn ?? {};
+        const mult = ai.mult ?? 7;
+        if (cash > 0) extra.push({ id: 'allIn', label: '🎯 전 재산 올인', icon: '🎯', desc: `현금 ${won(cash)} 전부! 숫자 하나(1~10)를 맞히면 ×${mult}, 틀리면 빈곤 농장으로 은퇴 (확률 10%)`, stake: cash, cost: cash, price: cash, mult, chance: 0.1, ev: Math.round(0.1 * mult * 100) / 100 });
+        const place = nextPlace(tx.room);
+        const prize = Math.round(((tx.data.balance.goalPrizes?.[place - 1] ?? 0) * (tx.data.balance.retirePrizeMult ?? 0.5)) / 5) * 5;
+        extra.push({ id: 'retire', label: '🏖️ 조기 은퇴', icon: '🏖️', desc: `지금 ${place}등으로 인생 마무리 · 은퇴 상금 ${won(prize)} (골인 상금의 절반) · 더는 룰렛을 돌리지 않아요`, place, prize });
+      }
       return {
         forCharacterIds: [c.id],
-        title: '🎰 인생역전',
-        text: `노년의 ${josa(c.name, '이/가')} 인생역전 한 방을 노려 볼까?`,
-        options: [lotto, ...horses, { id: 'skip', label: '🍵 욕심 버리기', icon: '🍵', desc: '지금 가진 것에 만족해요' }],
+        title: final ? '🏝️ 인생역전섬' : '🎰 인생역전',
+        text: final ? `${josa(c.name, '이/가')} 인생역전섬에 도착했다! 인생 마지막 한 방을 노려 볼까?` : `노년의 ${josa(c.name, '이/가')} 인생역전 한 방을 노려 볼까?`,
+        options: [lotto, ...horses, ...extra, { id: 'skip', label: '🍵 욕심 버리기', icon: '🍵', desc: '지금 가진 것에 만족해요' }],
         defaultOptionId: 'skip',
-        context: { stake },
+        context: { stake, final: !!final },
       };
     },
     resolve(tx, p) {
@@ -263,6 +318,17 @@ registerPrompts({
           changeMoney(tx, c, prize.amount, 'reversal', { tone: 'treasure', emotion: 'joy' });
           addLog(tx, `${prize.id === 'jackpot' ? '💥 인생역전 1등!!!' : '🎟️ 로또 당첨!'} ${c.name} +${won(prize.amount)}`, { tone: 'money', charId: c.id, emotion: prize.id === 'jackpot' ? 'shock' : 'joy' });
         } else addLog(tx, `🎟️ ${c.name}: 로또 꽝… (−${won(cost)})`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
+        return;
+      }
+      if (answer === 'allIn' && p.context?.final && cash > 0 && !c.finished) {
+        openPrompt(tx, 'allIn', c, {});
+        return;
+      }
+      if (answer === 'retire' && p.context?.final && !c.finished) {
+        const place = nextPlace(tx.room);
+        const prize = Math.round(((tx.data.balance.goalPrizes?.[place - 1] ?? 0) * (tx.data.balance.retirePrizeMult ?? 0.5)) / 5) * 5;
+        result(tx, c, 'reversal', 'retire', 'retire', { place, prize }, { tone: 'result', emotion: 'joy' });
+        finishCharacter(tx, c, { retired: 'early' });
         return;
       }
       if (answer?.startsWith('horse:')) {

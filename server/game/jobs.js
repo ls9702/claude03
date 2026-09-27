@@ -4,7 +4,7 @@
 // character.job = {id, rank (1-based), exp, injured (remaining turns)} | null
 // character.jobHistory = [{id, rank (highest reached), era (hired in)}] — every job held, the current one last
 // character.hiddenUnlocked = [jobId] — hidden jobs whose conditions were met (offered at once, again on job tiles)
-import { STAT_KEYS, addLog, addStats, changeMoney, emit, josa, netWorth, round5, won } from './effects.js';
+import { STAT_KEYS, addLog, addStats, changeMoney, emit, hasBuff, josa, netWorth, round5, won } from './effects.js';
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 import { itemSalaryMult, salaryCardMult, tryAmulet } from './cards.js';
@@ -61,15 +61,35 @@ export function eligibleJobs(tx, c, { exclude = [] } = {}) {
  * Offer weight of a job: demanding jobs (more required stat points, a degree) are offered more often to those
  * who qualify — `1 + perReq × (Σ required stats − 3) + education` (balance.jobs.offerWeight).
  */
-export function offerWeight(def, data) {
+export function offerWeight(def, data, c = null) {
   const w = data.balance.jobs?.offerWeight ?? { perReq: 0, education: 0 };
   const req = Object.values(def?.requires?.stats ?? {}).reduce((a, b) => a + b, 0);
-  return 1 + (w.perReq ?? 0) * Math.max(0, req - 3) + (def?.requires?.education ? w.education ?? 0 : 0);
+  const club = clubDef(data, c?.club)?.jobs?.includes(def?.id) ? data.balance.clubs?.jobBonus ?? 0 : 0; // 동아리 출신
+  return 1 + (w.perReq ?? 0) * Math.max(0, req - 3) + (def?.requires?.education ? w.education ?? 0 : 0) + club;
+}
+
+// ---------- 동아리 (middle school club) ----------
+
+/** A club of `balance.clubs.options` (`character.club` = its id). */
+export const clubDef = (data, id) => (id ? (data.balance.clubs?.options ?? []).find((o) => o.id === id) ?? null : null);
+
+/** Club training on a middle / high school payday: +trainGain of the club's next `train` stat (cycled). */
+export function clubTraining(tx, c) {
+  const cfg = tx.data.balance.clubs ?? {};
+  const def = clubDef(tx.data, c.club);
+  if (!def || !(cfg.trainEras ?? ['middle', 'high']).includes(c.era)) return [];
+  const list = def.train?.length ? def.train : Object.keys(def.stats ?? {});
+  if (!list.length) return [];
+  const stat = list[(c.clubTrained ?? 0) % list.length];
+  c.clubTrained = (c.clubTrained ?? 0) + 1;
+  const changes = addStats(tx, c, { [stat]: cfg.trainGain ?? 1 }, 'club', { clubId: def.id });
+  if (changes.length) addLog(tx, `${def.icon} ${c.name}: ${def.name} 활동으로 실력이 늘었다!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+  return changes;
 }
 
 /** Up to `count` distinct eligible jobs, seeded (weighted by `offerWeight`, without replacement). */
 export function offerCandidates(tx, c, { exclude = [], count = tx.data.balance.jobs?.offerCount ?? 3 } = {}) {
-  const pool = eligibleJobs(tx, c, { exclude }).map((def) => ({ id: def.id, weight: offerWeight(def, tx.data) }));
+  const pool = eligibleJobs(tx, c, { exclude }).map((def) => ({ id: def.id, weight: offerWeight(def, tx.data, c) }));
   const out = [];
   while (pool.length && out.length < count) {
     const pick = tx.rng.weighted(pool);
@@ -129,6 +149,9 @@ export function rankUpChance(tx, c, { exam = false } = {}) {
   return clamp(p, cfg.minChance ?? 0.05, cfg.maxChance ?? 0.9);
 }
 
+/** Paydays of experience a passive rank-up roll needs: jobs.json `rankUp.expNeeded` × balance `jobs.expNeededMult`. */
+export const expNeeded = (data, def) => Math.max(1, Math.round((def?.rankUp?.expNeeded ?? 2) * (data.balance.jobs?.expNeededMult ?? 1)));
+
 /**
  * Rank-up roll. Passive (salary / overtime) only when exp ≥ expNeeded; an injury blocks it.
  * @returns 'up' | 'fail' | 'blocked' | 'max' | 'notReady'
@@ -139,7 +162,7 @@ export function tryRankUp(tx, c, { exam = false } = {}) {
   const def = jobDef(data, job?.id);
   if (!def) return 'notReady';
   if (job.rank >= maxRank(def)) return 'max';
-  if (!exam && job.exp < (def.rankUp?.expNeeded ?? 2)) return 'notReady';
+  if (!exam && job.exp < expNeeded(data, def)) return 'notReady';
   if (job.injured > 0) {
     addLog(tx, `🤕 ${c.name}: 부상 때문에 승진 심사를 받지 못했다…`, { tone: 'bad', charId: c.id, emotion: 'cry' });
     return 'blocked';
@@ -192,11 +215,12 @@ export function militaryPay(tx, c, why = '군 월급') {
 export function paySalary(tx, c) {
   if (c.military?.status === 'serving') return militaryPay(tx, c, '복무 중이라 군 월급만');
   const job = c.job;
-  const amount = round5(salaryAmount(tx, c) * salaryCardMult(tx, c)); // Stage 7: 성과급 봉투 ×2
+  const buff = hasBuff(c, 'salaryX2') ? 2 : 1; // 💵 월급 두 배 (찬스 광장 buff): salary + spouse salary
+  const amount = round5(salaryAmount(tx, c) * salaryCardMult(tx, c) * buff); // Stage 7: 성과급 봉투 ×2
   const def = jobDef(tx.data, job?.id ?? PART_TIME_ID);
   const rank = job?.rank ?? 1;
-  const spouseAmount = spouseSalary(tx, c); // Stage 8: 맞벌이
-  emit(tx, 'salary', { charId: c.id, jobId: def.id, rank, amount, ...(spouseAmount ? { spouseAmount } : {}), tone: 'career', emotion: 'joy' });
+  const spouseAmount = round5(spouseSalary(tx, c) * buff); // Stage 8: 맞벌이
+  emit(tx, 'salary', { charId: c.id, jobId: def.id, rank, amount, ...(spouseAmount ? { spouseAmount } : {}), ...(buff > 1 ? { buff: 'salaryX2' } : {}), tone: 'career', emotion: 'joy' });
   changeMoney(tx, c, amount, 'salary', { emotion: 'joy', tone: 'career', jobId: def.id });
   const who = job ? `${def.name} ${rankName(def, rank)}` : c.school ? '대학생 알바' : def.name;
   addLog(tx, `💵 ${c.name} 월급날! (${who}) +${won(amount)}${job?.injured > 0 ? ' (부상으로 감액)' : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
@@ -209,6 +233,27 @@ export function paySalary(tx, c) {
   job.exp += tx.data.balance.jobs.expPerSalary ?? 1;
   tryRankUp(tx, c);
   rollInjury(tx, c);
+  return amount;
+}
+
+/**
+ * 월급날 (loop maps: the `salary` tile, a forced stop). Kids eras (not a job era) without a job → 용돈 (pocket money,
+ * `balance.salary.pocketMoney[era]` × news salaryMult); otherwise the job salary (`paySalary`: 알바 pay for students,
+ * military pay while serving, spouse salary, children's 용돈, 성과급 봉투, injury ×0.5 …).
+ */
+export function payday(tx, c) {
+  if (inJobEra(tx.data, c) || c.job) return paySalary(tx, c);
+  const base = tx.data.balance.salary?.pocketMoney?.[c.era] ?? 0;
+  const buff = hasBuff(c, 'salaryX2') ? 2 : 1; // 💵 월급 두 배 doubles 용돈 too
+  const amount = round5(base * effectsFor(tx, c).salaryMult * buff);
+  clubTraining(tx, c); // 중·고등학생 동아리 활동: +1 of the club's stat on every payday
+  if (amount <= 0) {
+    addLog(tx, `💵 ${c.name}: 월급날이지만 아직 용돈은 없다`, { charId: c.id });
+    return 0;
+  }
+  emit(tx, 'salary', { charId: c.id, jobId: null, rank: 0, amount, pocket: true, ...(buff > 1 ? { buff: 'salaryX2' } : {}), tone: 'good', emotion: 'joy' });
+  changeMoney(tx, c, amount, 'salary', { emotion: 'joy', tone: 'good', pocket: true });
+  addLog(tx, `💵 ${c.name} 용돈날! 부모님께 용돈 +${won(amount)}`, { tone: 'good', charId: c.id, emotion: 'joy' });
   return amount;
 }
 

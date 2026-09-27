@@ -3,9 +3,9 @@
 // (family.js), house (houses.js); event tiles draw
 // from events.json (conditions on job / education / route; money and stat effects).
 import { ROUTE_KEYS } from './board.js';
-import { addLog, addStats, changeMoney, charById, emit, josa, round5, statText, won } from './effects.js';
+import { addLog, addStats, changeMoney, charById, emit, hasBuff, josa, round5, statText, won } from './effects.js';
 import { resolveHabitTile } from './growth.js';
-import { PART_TIME_ID, paySalary, resolveJobTile } from './jobs.js';
+import { PART_TIME_ID, payday, resolveJobTile } from './jobs.js';
 import { effectsFor } from './news.js';
 import { PROMPTS, openPrompt, promptComplete, registerPrompts, resolvePrompt } from './prompts.js';
 import { applyLoss, cardDef, gainCard, guardStats, resolveCardTile, resolveShopTile, tryAmulet } from './cards.js';
@@ -13,6 +13,7 @@ import { loveRouteChosen, resolveHeartTile } from './family.js';
 import { resolveHouseTile } from './houses.js';
 import { SUBMAPS, resolveSubmapTile } from './submaps.js';
 import { resolveTreasureTile } from './treasures.js';
+import { resolvePassTile } from './passTile.js';
 
 export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
@@ -30,7 +31,7 @@ registerPrompts({
       return {
         forCharacterIds: [c.id],
         title: '인생 갈림길',
-        text: `${josa(c.name, '은/는')} 어느 길로 갈까요? 시대가 끝나면 다시 합류해요.`,
+        text: `${josa(c.name, '은/는')} 어느 길로 갈까요? 루트 끝의 합류 지점에서 다시 만나요. (한 바퀴마다 다시 골라요)`,
         options: ROUTE_KEYS.map((k) => ({ id: k, label: routes[k].name, icon: routes[k].icon })),
         defaultOptionId: 'career',
       };
@@ -110,13 +111,17 @@ export function eventPool(data, eraId, c) {
   return list.filter((e) => (!e.eras || e.eras.includes(eraId)) && eventConditionsMet(e, c));
 }
 
+/** A good (never harmful) event — the final race's event tiles draw only these. */
+const goodEvent = (e) => e.kind !== 'groupGift' && e.tone !== 'bad' && !(e.money && e.money.min < 0) && !Object.values(e.stats ?? {}).some((v) => v < 0);
+
 function runEvent(tx, c, era) {
-  const pool = eventPool(tx.data, era.id, c);
+  let pool = eventPool(tx.data, era.id, c);
+  if (era.final) pool = pool.filter(goodEvent).length ? pool.filter(goodEvent) : pool; // the goal race: good things only
   const ev = tx.rng.weighted(pool);
   if (ev.kind === 'groupGift') {
-    // Nobody left to invite (everyone else reached the goal) → the party resolves at once, no prompt / wait
+    // Nobody left to invite → the party resolves at once, no prompt / wait
     if (!giftGuests(tx.room, c).length) {
-      addLog(tx, `🎂 ${c.name}의 생일! 다들 골인해서 혼자 조용히 케이크를 먹었다`, { tone: 'info', charId: c.id, emotion: 'sweat', eventId: ev.id });
+      addLog(tx, `🎂 ${c.name}의 생일! 초대할 사람이 없어 혼자 조용히 케이크를 먹었다`, { tone: 'info', charId: c.id, emotion: 'sweat', eventId: ev.id });
       return null;
     }
     return openPrompt(tx, 'groupGift', c, { event: ev });
@@ -125,6 +130,7 @@ function runEvent(tx, c, era) {
   if (ev.money) {
     const scale = ev.scale ? (tx.data.balance.eventScale[era.id] ?? 1) : 1;
     delta = tx.rng.int(ev.money.min, ev.money.max) * scale * effectsFor(tx, c).eventMoneyMult;
+    if (delta > 0 && hasBuff(c, 'moneyX15')) delta *= 1.5; // 💰 행운 주머니 (찬스 광장 buff)
     delta = Math.abs(delta) < 5 ? Math.round(delta) : round5(delta);
   }
   const text = ev.text.replaceAll('{name}', c.name);
@@ -149,10 +155,12 @@ function runEvent(tx, c, era) {
 // ---------- tiles ----------
 
 /**
- * Resolve landing on `tile`. May open a prompt (turn.pending); may finish the character.
- * The 인생 갈림길 (routeChoice stop) is opened by the turn epilogue (growth.lifeStep) so 진로 / 취업
- * decisions come first.
- * @returns {'goal'|'prompt'|null}
+ * Resolve landing on `tile`. May open a prompt (turn.pending).
+ * The 인생 갈림길 (routeChoice stop) is opened by the turn epilogue (growth.lifeStep) so life decisions come first.
+ * Loop maps: `start` does nothing, `salary` = 월급날 (payday: 용돈 in kids eras, the job salary in adult eras),
+ * `pass` = 찬스 광장 (landing exactly on it opens its prompt; passing it is handled by the engine's walk).
+ * Final era: `goal` → `onGoal` (goal order, prizes).
+ * @returns {'prompt'|null}
  */
 export function resolveTile(tx, c, tile, { onGoal } = {}) {
   const era = tx.room.board.eras[c.position.eraIndex];
@@ -160,7 +168,7 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
   switch (tile.type) {
     case 'money': {
       const tone = routeTone ?? 'good';
-      const amount = round5(tile.amount * effectsFor(tx, c).moneyTileMult);
+      const amount = round5(tile.amount * effectsFor(tx, c).moneyTileMult * (hasBuff(c, 'moneyX15') ? 1.5 : 1)); // 💰 행운 주머니
       changeMoney(tx, c, amount, 'tile', { tileId: tile.id, emotion: 'joy', tone });
       addLog(tx, `💰 ${c.name}: ${tile.label}! +${won(amount)}`, { tone, charId: c.id, emotion: 'joy' });
       return null;
@@ -180,8 +188,12 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
     case 'habit':
       resolveHabitTile(tx, c);
       return 'prompt';
-    case 'salary':
-      paySalary(tx, c);
+    case 'salary': // loop maps: 월급날 (a forced stop)
+      payday(tx, c);
+      return null;
+    case 'pass': // loop maps: 찬스 광장
+      return resolvePassTile(tx, c, tile) ? 'prompt' : null;
+    case 'start':
       return null;
     case 'job':
       return resolveJobTile(tx, c) ? 'prompt' : null;
@@ -212,9 +224,9 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
     case 'merge':
       addLog(tx, `🔗 ${josa(c.name, '이/가')} 합류 지점에 도착했다.`, { charId: c.id });
       return null;
-    case 'goal':
+    case 'goal': // final era: the goal race
       onGoal?.(c);
-      return 'goal';
+      return null;
     default: {
       // a tile type listed in board.json `placeholders` (none since Stage 9) only logs its text
       if (SUBMAPS.includes(tile.type)) return null;

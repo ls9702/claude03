@@ -60,6 +60,20 @@ import { aimShort, aimText, isSkillRoom } from './ui/rouletteSkill.js';
 import { createSkillPanel } from './ui/skillPanel.js';
 import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
 import {
+  buffText,
+  clubLabel,
+  currentEraIndex,
+  eraClock,
+  eraClockText,
+  haltNote,
+  isLoopBoard,
+  lapsOf,
+  lastTurnHint,
+  passOptionExtras,
+  racetrack,
+  tileIdForPosition as loopTileId,
+} from './shared/loop.js';
+import {
   STAT_INFO,
   characterEra,
   displayCharacters,
@@ -89,13 +103,16 @@ const STAGE7_CUTIN_TYPES = ['cardUsed', 'cardBlocked', 'itemBought', 'holidaySta
 const STAGE8_CUTIN_TYPES = ['met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'houseBought', 'houseValueChanged'];
 /** Stage 9 cut-in anchors (3D: shown after their board step). */
 const STAGE9_CUTIN_TYPES = ['submapResult', 'treasureFound'];
-const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, ...STAGE9_CUTIN_TYPES];
+const CUTIN_TYPES = ['landed', 'eraChanged', 'eraTransition', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, ...STAGE9_CUTIN_TYPES];
 /** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
-const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold', ...STAGE9_CUTIN_TYPES, 'submapEntered'];
+const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'eraTransition', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold', ...STAGE9_CUTIN_TYPES, 'submapEntered'];
 /** Stage 6 tile types the server may send before board.json knows them (meta wins). */
 const CLIENT_TILE_TYPES = {
+  start: { name: '출발', icon: '🚩', color: '#9aa5b1' },
   habit: { name: '습관', icon: '📚', color: '#20a39e' },
-  salary: { name: '월급', icon: '💵', color: '#3fae5a' },
+  salary: { name: '월급날', icon: '💵', color: '#2f9e57' },
+  pass: { name: '찬스 광장', icon: '🎪', color: '#ff8a3d' }, // loop maps
+  goal: { name: '골인', icon: '🏁', color: '#2d2a32' },
   job: { name: '직업', icon: '💼', color: '#4f8ee0' },
   card: { name: '카드', icon: '🃏', color: '#9a6ad6' },
   shop: { name: '상점', icon: '🛍️', color: '#f39a3d' },
@@ -150,11 +167,9 @@ const MAX_TILE_PAWNS = 4;
 const FINISH_BOARD_MS = 1500; // 3D at game over: the board may animate this long before the result screen (A8)
 const TURN_GRACE_MS = 700; // new turn → spin/bet controls wait for the previous turn's events (cut-ins) // 2D tile: more pawns overlap + "+N"
 
+/** Tile id of a position (loop maps: index < 0 → the era's start tile). */
 function tileIdAt(board, pos) {
-  if (!pos || pos.index < 0) return 'start';
-  const era = board.eras[pos.eraIndex];
-  const track = pos.route === 'main' ? era?.tiles : era?.routes?.[pos.route]?.tiles;
-  return track?.[pos.index]?.id ?? 'start';
+  return loopTileId(board, pos) ?? 'start';
 }
 
 /**
@@ -415,6 +430,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   /** Banner of one group; later entrants of an era merge into one strip (「민수·지영 청년 시대 진입」). */
   function bannerSpec(g) {
     const base = cutin.specFromGroup(g, cutinOpts(g));
+    if (g.anchor?.type === 'eraTransition') {
+      const names = (g.entrants ?? []).map((id) => byId(id)?.name).filter(Boolean);
+      return { ...base, tag: `🗺️ ${g.eraName || ''} 시대 개막`.trim(), text: [`모두 함께 ${g.eraName || '새'} 시대로!${names.length ? ` (${names.length}명)` : ''}`], chips: base.chips.slice(0, 2) };
+    }
     if (!(g.eraId && g.anchor?.type === 'eraChanged')) return base;
     const mk = (names) => ({
       ...base,
@@ -462,17 +481,20 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     // my events / shared shows I take part in are "own": my turn never pre-empts them (A3 catch-up)
     const own = involvesMe(g, myIds()) || undefined;
     if (g.news) noteNews(g.news);
-    if (g.studio && mcOn()) jobs.push(cutin.show(studioSpecFor(g.studio, g.anchor, g.news), { own }));
+    if (g.studio && mcOn()) jobs.push(cutin.show(studioSpecFor(g.studio, g.anchor, g.news, g), { own }));
     else if (g.news && g.anchor?.type !== 'newsFlash') jobs.push(cutin.show({ anchor: { type: 'newsFlash', ...g.news, cutin: true }, charId: null, texts: [], money: [], delta: 0, involved: [], mc: null, studio: null, mcEvents: [], news: g.news }, cutinOpts()));
-    // a news flash that opened its own studio cut-in is not repeated as a news cut-in
-    if (!(g.anchor?.type === 'newsFlash' && g.studio && mcOn())) jobs.push(cutin.show(mcOn() ? g : { ...g, mc: null }, { ...cutinOpts(g), own }));
+    // a news flash that opened its own studio cut-in is not repeated as a news cut-in; the era transition's studio IS
+    // its cut-in (the board has toured the new map already)
+    if (!((g.anchor?.type === 'newsFlash' || g.anchor?.type === 'eraTransition') && g.studio && mcOn())) jobs.push(cutin.show(mcOn() ? g : { ...g, mc: null }, { ...cutinOpts(g), own }));
     return Promise.all(jobs);
   }
 
-  function studioSpecFor(lines, anchor, news = null) {
-    const era = anchor?.type === 'eraChanged' ? anchor.eraName ?? '' : '';
+  function studioSpecFor(lines, anchor, news = null, g = null) {
+    const transition = anchor?.type === 'eraTransition';
+    const toName = transition ? g?.eraName || anchor.toEraName || ui.room?.board?.eras?.find((e) => e.id === anchor.toEraId)?.name || '' : '';
+    const era = anchor?.type === 'eraChanged' ? anchor.eraName ?? '' : toName;
     return cutin.studioSpec(lines, {
-      key: `${anchor?.type ?? 'mc'}:${anchor?.era ?? ''}:${anchor?.charId ?? ''}`,
+      key: `${anchor?.type ?? 'mc'}:${anchor?.era ?? anchor?.toEraId ?? ''}:${anchor?.charId ?? ''}`,
       tone: anchor?.type === 'gameStarted' || anchor?.type === 'holidayStarted' || anchor?.type === 'holidayResult' ? 'holiday' : 'good',
       title:
         anchor?.type === 'gameStarted'
@@ -529,9 +551,16 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   // ---------- header ----------
   function renderTop(room) {
     const cur = currentChar();
-    const era = room.board.eras[cur?.position?.eraIndex ?? 0];
+    // loop maps: everyone is in the same era; 「청년 7/15턴」 (the final race: 「노년 · 골인 경쟁」)
+    const clock = eraClock(room);
+    const era = room.board.eras[clock.index];
     el.era.textContent = `${era?.name ?? ''} 시대`;
-    el.turninfo.textContent = `턴 ${room.turn.turnNo} · ${room.turn.round}라운드`;
+    const hint = lastTurnHint(clock);
+    el.turninfo.innerHTML =
+      clock.round != null || clock.race
+        ? `<span class="era-clock${clock.last ? ' last' : ''}${clock.race ? ' race' : ''}">${esc(clock.race ? '🏁 골인 경쟁' : `⏳ ${Math.min(clock.round, clock.turns)}/${clock.turns}턴`)}</span>${hint ? ` <span class="era-last">${esc(clock.final ? '마지막 턴! 끝나면 결과 발표' : '이번 시대 마지막 턴!')}</span>` : ''}`
+        : esc(`턴 ${room.turn.turnNo} · ${room.turn.round}라운드`);
+    el.turninfo.title = clock.round != null ? `${eraClockText(clock)} · 전체 ${room.turn.round}라운드` : '';
     renderNews(room, era?.id);
     if (!cur) {
       el.now.textContent = '';
@@ -593,15 +622,29 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   }
 
   // ---------- board ----------
+  /**
+   * Era tabs = the life's progress (loop maps: everyone is in the same era): past eras ✓, the current one with its
+   * round counter (「7/15」, the final race 🏁), later ones dimmed. In 2D a tab previews that era's map.
+   */
   function renderTabs(room, shownEra) {
+    const now = currentEraIndex(room);
+    const clock = eraClock(room);
+    const loop = isLoopBoard(room.board);
     const counts = room.board.eras.map(() => 0);
-    for (const c of chars()) if (!c.finished) counts[c.position?.eraIndex ?? 0]++;
-    el.tabs.innerHTML = room.board.eras
-      .map(
-        (e, i) => `<button type="button" role="tab" class="era-tab${i === shownEra ? ' on' : ''}" data-era="${i}" aria-selected="${i === shownEra}">
-          ${esc(e.name)}${counts[i] ? `<span class="era-count">${counts[i]}</span>` : ''}</button>`,
-      )
+    if (!loop) for (const c of chars()) if (!c.finished) counts[c.position?.eraIndex ?? 0]++;
+    const html = room.board.eras
+      .map((e, i) => {
+        const state = !loop ? '' : i < now ? ' past' : i === now ? ' now' : ' next';
+        const badge = !loop ? (counts[i] ? String(counts[i]) : '') : i < now ? '✓' : i === now ? (clock.race ? '🏁' : clock.round != null ? `${Math.min(clock.round, clock.turns)}/${clock.turns}` : '●') : '';
+        return `<button type="button" role="tab" class="era-tab${state}${i === shownEra ? ' on' : ''}" data-era="${i}" aria-selected="${i === shownEra}"${
+          i === now && loop ? ' aria-current="step"' : ''
+        }>${esc(e.name)}${badge ? `<span class="era-count">${esc(badge)}</span>` : ''}</button>`;
+      })
       .join('');
+    if (el.tabs.dataset.html !== html) {
+      el.tabs.dataset.html = html;
+      el.tabs.innerHTML = html;
+    }
   }
 
   function pawnsHtml(list, curId) {
@@ -619,23 +662,27 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       .join('')}${rest > 0 ? `<span class="pawn-more" title="${esc(sorted.slice(MAX_TILE_PAWNS - 1).map((c) => c.name).join(', '))}">+${rest}</span>` : ''}</div>`;
   }
 
-  function tileHtml(t, pawns, curId, style = '') {
+  function tileHtml(t, pawns, curId, style = '', extraClass = '') {
     const meta = tileTypeMeta(t.type);
     const amt =
       t.type === 'money'
         ? `<span class="t-amt plus">+${won(t.amount)}</span>`
         : t.type === 'loss'
           ? `<span class="t-amt minus">-${won(t.amount)}</span>`
-          : t.type === 'salary'
-            ? '<span class="t-amt plus">월급날</span>'
-            : '';
-    return `<div class="tile t-${esc(t.type)}${t.route ? ` r-${esc(t.route)}` : ''}${pawns?.length ? ' occupied' : ''}" data-tile="${esc(t.id)}" style="--tc:${esc(meta.color ?? '#ccc')};${style}" title="${esc(t.label)}">
-      <span class="t-icon">${esc(t.icon ?? meta.icon ?? '')}</span>
+          : '';
+    return `<div class="tile t-${esc(t.type)}${t.route ? ` r-${esc(t.route)}` : ''}${pawns?.length ? ' occupied' : ''}${extraClass}" data-tile="${esc(t.id)}" style="--tc:${esc(meta.color ?? '#ccc')};${style}" title="${esc(t.label)}">
+      <span class="t-icon">${esc(t.icon || meta.icon || '')}</span>
       <span class="t-label">${esc(t.label)}</span>${amt}${pawnsHtml(pawns, curId)}</div>`;
   }
 
+  /**
+   * 2D board: the era's loop as a hairpin racetrack (shared/loop.js `racetrack`): top row → right turn → bottom row ←
+   * → left turn back to 🚩 출발; route eras put the three-lane branch zone (fork → 💕/💼/💰 → rejoin) in the top row.
+   * The final race (노년) has no closing turn: the bottom row ends at the goal.
+   */
   function renderTrack(room, e) {
     const era = room.board.eras[e];
+    if (!era) return;
     const cur = currentChar();
     const at = new Map();
     for (const c of chars()) {
@@ -645,27 +692,28 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       at.get(id).push(c);
     }
     const curId = cur?.id;
-    if (!era.routes) {
-      const start = e === 0 ? tileHtml({ id: 'start', type: 'start', label: '출발', icon: '🚩' }, at.get('start'), curId) : '';
-      el.track.className = 'track lane';
-      el.track.style.removeProperty('--cols');
-      el.track.innerHTML = start + era.tiles.map((t) => tileHtml(t, at.get(t.id), curId)).join('');
-      return;
+    const byTile = new Map([...(era.tiles ?? []), ...Object.values(era.routes ?? {}).flatMap((r) => r.tiles ?? [])].map((t) => [t.id, t]));
+    const g = racetrack(era);
+    el.track.className = `track loop${g.laneRows ? ' has-routes' : ''}${g.linear ? ' linear' : ''}`;
+    el.track.style.setProperty('--cols', String(g.cols - 2));
+    el.track.style.setProperty('--rows', String(g.rows));
+    let html = '';
+    for (const cap of g.caps) {
+      const style = `grid-column:${cap.col};grid-row:${cap.row} / span ${cap.rowSpan}`;
+      html += `<div class="loop-cap ${cap.side}" style="${style}" aria-hidden="true"><span>${cap.side === 'right' ? '⤵' : '⤴'}</span>${cap.side === 'left' ? '<small>🔁</small>' : ''}</div>`;
     }
-    const keys = Object.keys(era.routes);
-    const L = era.routes[keys[0]].tiles.length;
-    el.track.className = 'track routes';
-    el.track.style.setProperty('--cols', String(L));
-    const rows = keys.length;
-    let html = tileHtml(era.tiles[0], at.get(era.tiles[0].id), curId, `grid-column:1;grid-row:1 / span ${rows}`);
-    keys.forEach((key, r) => {
-      const info = routes()[key] ?? { name: key, icon: '' };
-      html += `<div class="route-label r-${esc(key)}" style="grid-column:2;grid-row:${r + 1}">${esc(info.icon)} ${esc(info.name)}</div>`;
-      era.routes[key].tiles.forEach((t, i) => {
-        html += tileHtml(t, at.get(t.id), curId, `grid-column:${i + 3};grid-row:${r + 1}`);
-      });
-    });
-    html += tileHtml(era.tiles[1], at.get(era.tiles[1].id), curId, `grid-column:${L + 3};grid-row:1 / span ${rows}`);
+    if (g.road) html += `<div class="loop-road" style="grid-column:${g.road.col} / span ${g.road.colSpan};grid-row:${g.road.row}" aria-hidden="true"><span>${g.linear ? '' : '← ← 🚩 출발로'}</span></div>`;
+    for (const l of g.labels) {
+      const info = routes()[l.route] ?? { name: l.route, icon: '' };
+      html += `<div class="route-label r-${esc(l.route)}" style="grid-column:${l.col};grid-row:${l.row}">${esc(info.icon)} ${esc(info.name)}</div>`;
+    }
+    for (const cell of g.cells) {
+      const t = byTile.get(cell.id);
+      if (!t) continue;
+      const style = `grid-column:${cell.col};grid-row:${cell.row}${cell.rowSpan ? ` / span ${cell.rowSpan}` : ''}`;
+      const cls = `${cell.dir === 'l' ? ' dir-l' : ''}${cell.start ? ' is-start' : ''}${cell.fork ? ' is-fork' : ''}${cell.rejoin ? ' is-rejoin' : ''}`;
+      html += tileHtml(cell.start && t.type !== 'start' ? { ...t } : t, at.get(t.id), curId, style, cls);
+    }
     el.track.innerHTML = html;
   }
 
@@ -721,6 +769,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       hint = skill
         ? `내 차례예요! 🎯 흔들기나 버튼으로 목표 숫자를 정해요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`
         : `내 차례예요! 룰렛을 돌리세요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
+      if (cur?.finished) hint = `🏁 골인했어요! 보너스 룰렛으로 상금을 더 받아요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
     } else if (cur) {
       hint = `${esc(cur.ownerName)}님이 「${esc(cur.name)}」의 룰렛을 ${skill ? '🎯 조준하는' : '돌리기를 기다리는'} 중…${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
     }
@@ -734,6 +783,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       const aim = aimText(last); // 룰렛 실력 모드: 「🎯 목표 7 → 결과 8」
       hint = `<span class="last-spin">최근 룰렛: ${esc(who?.name ?? '')} ${aim ? `<span class="aim-note">${esc(aim)}</span>` : last.value}${steps}</span><br>${hint}`;
     }
+    // loop maps: the era's last round (everyone moves to the next map after it)
+    const lastHint = room.status === 'playing' ? lastTurnHint(eraClock(room)) : '';
+    if (lastHint) hint = `<span class="era-last">${esc(lastHint)}</span><br>${hint}`;
     el.hint.innerHTML = hint;
   }
 
@@ -1089,6 +1141,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const cur = currentChar();
     const order = room.turn.order.map(byId).filter(Boolean);
     const eraName = (c) => room.board.eras[c.position?.eraIndex ?? 0]?.name ?? '';
+    const loop = isLoopBoard(room.board);
+    const race = eraClock(room).race;
     const jobs = getMeta()?.jobs;
     const cap = statCap(getMeta());
     if (ui.openChar && !order.some((c) => c.id === ui.openChar)) ui.openChar = null;
@@ -1099,7 +1153,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     let prev = null;
     for (const c of order) {
       const r = c.route ? routes()[c.route] : null;
-      const status = c.finished ? `🏁 ${c.place}등 골인` : `${esc(eraName(c))}${r ? ` · ${esc(r.icon)} ${esc(r.name)}` : ''}`;
+      // loop maps: everyone shares the era → the row shows laps on this map (+ the lap's route); the final race: goal order
+      const done = c.finished ? (c.retired === 'early' ? `🏖️ 조기 은퇴${c.place ? ` (${c.place}등)` : ''}` : c.retired === 'bust' ? '🌾 빈곤 농장' : c.place ? `🏁 ${c.place}등 골인` : '🏁 완주') : '';
+      const where = loop ? (race ? '🏁 골인 경쟁 중' : lapsOf(c) ? `🔁 ${lapsOf(c)}바퀴` : '🚶 첫 바퀴') : esc(eraName(c));
+      const status = done || `${where}${r ? ` · ${esc(r.icon)} ${esc(r.name)}` : ''}`;
       const open = ui.openChar === c.id;
       const stats = statRows(c, cap);
       const tags = charTagsHtml(c, jobs);
@@ -1169,10 +1226,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       );
       if (jb.injured) out.push(`<span class="gc-tag bad" title="부상">🤕 ${jb.injured}턴</span>`);
     }
+    // loop maps (ADDENDUM A1): the 찬스 광장 buff until the next 찬스 광장
+    if (c.chanceBuff) out.push(`<span class="gc-tag buff" title="${esc(`찬스 버프 · ${c.chanceBuff.desc ?? c.chanceBuff.name ?? ''} (다음 찬스 광장까지)`)}">${esc(buffText(c.chanceBuff))}</span>`);
     const edu = educationLabel(c.education);
     if (edu) out.push(`<span class="gc-tag">🎓 ${esc(edu)}</span>`);
     const mil = militaryLabel(c.military);
     if (mil && c.military?.status === 'serving') out.push(`<span class="gc-tag mil">🪖 ${esc(mil)}</span>`);
+    if (c.club && !c.job) out.push(`<span class="gc-tag club" title="동아리">${esc(clubLabel(c.club, getMeta()))}</span>`);
     // Stage 8: 💕 partner / 💍 spouse + children, 🏠 house
     const fam = familyIcons(c);
     if (fam) out.push(`<span class="gc-tag fam" title="${esc(familySummary(c, getMeta()) || '연애 중')}">${esc(fam)}</span>`);
@@ -1224,6 +1284,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         }</span>${jb.rankName ? ` <small>${esc(jb.rankName)} (${jb.rank}/${jb.maxRank})</small>` : ''}${jb.injured ? ` <span class="gc-tag bad">🤕 부상 ${jb.injured}턴</span>` : ''}</span></div>`,
       );
     } else if ('job' in c) facts.push('<div class="gd-fact"><span class="gd-k">직업</span><span class="gd-v muted">아직 없음</span></div>');
+    if (c.chanceBuff) facts.push(`<div class="gd-fact"><span class="gd-k">찬스 버프</span><span class="gd-v gd-buff">${esc(buffText(c.chanceBuff))}${c.chanceBuff.desc ? ` <small>${esc(c.chanceBuff.desc)}</small>` : ''} <small class="muted">· 다음 찬스 광장까지</small></span></div>`);
+    if (c.club) facts.push(`<div class="gd-fact"><span class="gd-k">동아리</span><span class="gd-v">${esc(clubLabel(c.club, getMeta()))}</span></div>`);
+    if (Number.isFinite(Number(c.laps)) && isLoopBoard(ui.room?.board)) facts.push(`<div class="gd-fact"><span class="gd-k">바퀴 수</span><span class="gd-v">🔁 ${lapsOf(c)}바퀴</span></div>`);
     if ('education' in c) facts.push(`<div class="gd-fact"><span class="gd-k">학력</span><span class="gd-v">${edu ? `🎓 ${esc(edu)}` : '<span class="muted">-</span>'}</span></div>`);
     if (mil) facts.push(`<div class="gd-fact"><span class="gd-k">군 복무</span><span class="gd-v">🪖 ${esc(mil)}</span></div>`);
     if (hist.length) {
@@ -1420,8 +1483,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
                 : `<div class="choice-list">${p.options
           .map((o) => {
             const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
-            const badges = [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges];
-            const icon = o.icon || x.icon || (p.kind === 'holiday' ? HOLIDAY_OPTION_ICON[o.id] ?? '' : '');
+            const px = passOptionExtras(p, o, { won }); // loop maps: 찬스 광장 (시주 / 확률 / 찬스 버프)
+            const badges = [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges, ...px.badges];
+            const icon = o.icon || x.icon || px.icon || (p.kind === 'holiday' ? HOLIDAY_OPTION_ICON[o.id] ?? '' : '');
             return `<button type="button" class="btn choice" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"${o.disabled ? ' disabled' : ''}>
                 <span class="c-icon">${esc(icon)}</span><span class="c-label">${esc(optionLabel({ ...o, icon }))}${
                   routeOptionInfo(p, o) ? `<small class="c-desc">${esc(routeOptionInfo(p, o))}</small>` : ''
@@ -1520,13 +1584,14 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const tab = t.closest('[data-era]');
     if (tab) {
       const i = Number(tab.dataset.era);
-      const cur = currentChar();
-      ui.viewEra = i === (cur?.position?.eraIndex ?? 0) ? null : i;
+      const now = ui.room ? currentEraIndex(ui.room) : 0;
       ui.lastScrollKey = null;
       if (ui.b3) {
-        if (ui.viewEra == null) ui.b3.resetCamera();
-        else ui.b3.focusEra(i);
-      }
+        // loop maps: the 3D board only builds the current era's map
+        ui.viewEra = null;
+        if (i === now) ui.b3.focusEra(i);
+        else toast('3D 보드는 지금 시대 지도만 보여요. 「2D 보기」에서 다른 시대 지도를 미리 볼 수 있어요.', 'info');
+      } else ui.viewEra = i === now ? null : i;
       return render(ui.room);
     }
     if (t.closest('[data-el="modebtn"]')) {
@@ -1772,7 +1837,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         if (at > 0) ui.deadlineTimer = setTimeout(() => ui.room?.status === 'playing' && render(ui.room), Math.max(0, at - (Date.now() + clockOffset()) - DEADLINE_RESERVE_MS + 50));
       }
     }
-    const shown = Math.min(ui.viewEra ?? cur?.position?.eraIndex ?? 0, room.board.eras.length - 1);
+    const shown = Math.min(ui.viewEra ?? currentEraIndex(room), room.board.eras.length - 1);
     if (!ui.b3 && !ui.b3Loading && !ui.b3Failed && wants3D()) ensureBoard3D();
     // 3D: keep the header / character panel / log on the previous state until the board has played the
     // events (no spoilers while the roulette spins); onIdle and the grace timer render again.
@@ -1791,7 +1856,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       }
     }
     const holdHud = !myTurnFree && ui.b3 && ui.hudShown && (ui.b3.isBusy() || cutin.busyEvents() || performance.now() - ui.lastStateAt < 400);
-    const bgmEra = room.board.eras[cur?.position?.eraIndex ?? 0]?.id;
+    const bgmEra = room.board.eras[currentEraIndex(room)]?.id;
     if (bgmEra) audio.setEra(bgmEra);
     preloadLayers();
     root.classList.toggle('spectator', isSpectator());
@@ -1991,6 +2056,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (!cur) return '';
     const p = room.turn.pending;
     if (cur.finished) return `🏁 ${cur.name} 골인 · 보너스 룰렛`;
+    const last = lastTurnHint(eraClock(room));
+    if (last && !p) return `${last} · ${cur.isMe ? `⭐ ${cur.name}의 룰렛을 돌리세요` : `${cur.name}의 차례`}`;
     if (p) {
       const waiting = p.forCharacterIds.filter((id) => !p.answered?.includes(id)).map((id) => byId(id)?.name ?? id);
       return `${cur.isMe ? '내 차례' : `${cur.name}의 차례`} · ${p.title ?? '선택'} (${waiting.join(', ')} 선택 중)`;
@@ -2002,12 +2069,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   function sync3D(room) {
     const b3 = ui.b3;
     const cur = currentChar();
-    b3.setBoard(room.board);
+    b3.setBoard(room.board, { eraIndex: currentEraIndex(room) }); // loop maps: only the shared era's loop
     // Stage 7: roulette modifiers ride on the pawn's name tag (「✂️−3」「⚡+2」)
-    // Stage 8: 💍 / 👶n / 🏠 ride on it too (no extra draw calls: the name tag is one sprite)
+    // Stage 8: 💍 / 👶n / 🏠 ride on it too (no extra draw calls: the name tag is one sprite); loop maps: 찬스 버프 icon
     b3.setCharacters(
       chars().map((c) => {
-        const badge = [...spinModBadges(c.spinMods).map((b) => b.text), familyTagBadge(c)].filter(Boolean).join(' ');
+        const badge = [...spinModBadges(c.spinMods).map((b) => b.text), familyTagBadge(c), c.chanceBuff?.icon ?? ''].filter(Boolean).join(' ');
         return badge ? { ...c, tagBadge: badge } : c;
       }),
     );
@@ -2220,7 +2287,27 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           floatOn(e.charId, `${EMOTION[e.emotion] ?? ''}${e.delta > 0 ? '+' : ''}${won(e.delta)}`, e.delta > 0 ? 'plus' : 'minus');
           break;
         case 'eraChanged':
-          if (c?.isMe && !in3d && !cutinsOn()) toast(`🌱 ${c.name}: ${e.eraName} 시대 시작!`);
+          if (c?.isMe && !in3d && !cutinsOn() && !ui.transitionToast) toast(`🌱 ${c.name}: ${e.eraName} 시대 시작!`);
+          break;
+        // ---------- loop maps ----------
+        case 'moved': {
+          const note = haltNote(e);
+          if (note) floatOn(e.charId, note.text, note.kind);
+          break;
+        }
+        case 'eraTransition': {
+          const name = ui.room?.board?.eras?.find((x) => x.id === e.toEraId)?.name ?? e.toEraName ?? '';
+          ui.lastScrollKey = null;
+          ui.viewEra = null;
+          if (!cutinsOn()) {
+            ui.transitionToast = true;
+            setTimeout(() => (ui.transitionToast = false), 1500);
+            toast(`🗺️ 모두 함께 ${name} 시대로!${Number(e.turns) > 0 ? ` (${Number(e.turns)}턴)` : ' 🏁 골인 경쟁!'}`);
+          }
+          break;
+        }
+        case 'chanceBuff':
+          if (e.buff) floatOn(e.charId, `${buffText(e.buff)}${e.action === 'expired' ? ' 끝' : ''}`, e.action === 'expired' ? 'info' : 'plus');
           break;
         case 'routeChosen': {
           const r = routes()[e.route];
@@ -2246,7 +2333,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           break;
         }
         case 'salary':
-          floatOn(e.charId, '💵 월급날!', 'plus');
+          floatOn(e.charId, e.pocket ? '💵 용돈날!' : '💵 월급날!', 'plus');
           break;
         case 'newsFlash':
           noteNews(e);

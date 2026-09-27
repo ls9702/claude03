@@ -1,17 +1,18 @@
 {
+  "_comment": "시대 정의. defaultTurns = 그 시대의 턴 수(원작식 순환 맵: 시대마다 모두가 이 횟수만큼 룰렛을 돌린다). modes.<mode>.finalEra = 턴 제한이 없는 마지막 시대(골인 경주, 길이는 방 설정 finalLength칸) — 그 시대의 defaultTurns는 쓰지 않는다.",
   "eras": [
     { "id": "baby", "name": "아기", "defaultTurns": 3 },
-    { "id": "elem", "name": "초등학생", "defaultTurns": 5 },
-    { "id": "middle", "name": "중학생", "defaultTurns": 4 },
-    { "id": "high", "name": "고등학생", "defaultTurns": 5 },
+    { "id": "elem", "name": "초등학생", "defaultTurns": 3 },
+    { "id": "middle", "name": "중학생", "defaultTurns": 3 },
+    { "id": "high", "name": "고등학생", "defaultTurns": 3 },
     { "id": "young", "name": "청년", "defaultTurns": 15 },
     { "id": "middle_age", "name": "중년", "defaultTurns": 15 },
     { "id": "senior", "name": "노년", "defaultTurns": 6 }
   ],
   "modes": {
-    "lifetime": { "name": "인생 전체", "eras": ["baby", "elem", "middle", "high", "young", "middle_age", "senior"] },
+    "lifetime": { "name": "인생 전체", "eras": ["baby", "elem", "middle", "high", "young", "middle_age", "senior"], "finalEra": "senior" },
     "kids": { "name": "어린 시절", "eras": ["baby", "elem", "middle", "high"] },
-    "adult": { "name": "어른 인생", "eras": ["young", "middle_age", "senior"] }
+    "adult": { "name": "어른 인생", "eras": ["young", "middle_age", "senior"], "finalEra": "senior" }
   },
-  "limits": { "minTurns": 1, "maxTurns": 40 }
+  "limits": { "minTurns": 1, "maxTurns": 40, "finalLength": { "min": 20, "max": 80, "default": 40 } }
 }

@@ -14,6 +14,8 @@
 export const ANIMATED_EVENTS = new Set([
   'turnStarted', 'spun', 'betResolved', 'moved', 'eraChanged', 'landed', 'moneyChanged',
   'routeChosen', 'finished', 'bonusSpin', 'gameOver', 'promptResolved',
+  // Loop maps: the shared era transition (fade → the new era's map → camera tour)
+  'eraTransition',
   // Stage 6: stats / jobs / growth (cut-in anchors play after their board step; stat / salary = floats)
   'statChanged', 'salary', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd',
   'educationChanged',

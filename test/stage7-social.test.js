@@ -13,7 +13,7 @@ import { viewFor } from '../server/game/view.js';
 import { GameRunner } from '../server/store/gameRunner.js';
 import { startServer } from '../server/index.js';
 import { randomCardAction } from '../scripts/simulate.js';
-import { httpCall, makeRoom, tempDir } from './helpers.js';
+import { atEraEnd, httpCall, makeRoom, plainEra, tempDir, toEra } from './helpers.js';
 
 const data = gameData();
 const lines = data.lines;
@@ -144,25 +144,26 @@ test('gifts: money / card, own characters allowed (family), validation; allowed 
 
 // ---------- 명절 대잔치 ----------
 
-/** The current character stands on the last 초등 tile; the first 중등 tile is a plain money tile. */
+/** The last turn of 초등 (the last character in order spins next) → the shared transition into 중등. */
 function holidayRoom(config = { holidays: true }) {
   const room = structuredClone(started({ config }));
+  toEra(room, 1);
+  plainEra(room, 1);
+  atEraEnd(room);
   const me = ch(room, cur(room));
-  me.position = { eraIndex: 1, route: 'main', index: room.board.eras[1].tiles.length - 1 };
-  me.era = 'elem';
-  for (const c of room.characters) if (c.id !== me.id) Object.assign(c, { era: 'young', money: 300 });
-  me.money = 300;
+  for (const c of room.characters) Object.assign(c, { money: 300, clubAsked: true }); // (the 동아리 prompt is its own test)
   room.erasOpened = ['baby', 'elem'];
-  Object.assign(room.board.eras[2].tiles[0], { type: 'money', amount: 10, label: '용돈' });
   return { room, me };
 }
 
-test('holiday: first entrant of 중등 opens one simultaneous prompt for everyone; sebae / nagging / 고스톱 pot conserved', () => {
+test('holiday: the transition into 중등 opens one simultaneous prompt for everyone; sebae / nagging / 고스톱 pot conserved', () => {
   const { room, me } = holidayRoom();
   ch(room, me.id).cards = [{ uid: 'k70', id: 'lotto' }];
   const r = act(room, { type: 'spin', characterId: me.id }, { ints: [1] }, 1000);
   const types = r.events.map((e) => e.type);
+  assert.ok(types.indexOf('eraTransition') < types.indexOf('newsFlash'), types.join(','));
   assert.ok(types.indexOf('newsFlash') < types.indexOf('lottoDraw') && types.indexOf('lottoDraw') < types.indexOf('holidayStarted'), types.join(','));
+  assert.ok(!types.includes('turnStarted'), 'the next turn starts after the holiday prompt');
   const hs = r.events.find((e) => e.type === 'holidayStarted');
   assert.deepEqual([hs.eraId, hs.kind, hs.cutin, hs.scene, hs.mcStudio, hs.mcKey], ['middle', 'seol', true, 'holiday', true, 'holiday']);
   const p = r.room.turn.pending;
@@ -191,6 +192,7 @@ test('holiday: first entrant of 중등 opens one simultaneous prompt for everyon
   assert.deepEqual([row[a].nagging.delta, row[b].nagging.delta], [1, -1]);
   for (const x of hr.results) assert.ok(lines.tags[x.lineTag] && x.line && !/\{\w+\}/.test(x.line));
   assert.equal(done.room.turn.pending, null);
+  assert.ok(done.events.some((e) => e.type === 'turnStarted'), 'then the first turn of 중등');
   // a second entrant of 중등 → nothing; the next holiday era alternates to 추석
   const tx = createTx(structuredClone(done.room), { rng: fixedRng(), now: 0, data });
   assert.equal(openHoliday(tx, 'middle'), false);
@@ -325,7 +327,7 @@ test('full random lifetime game with holidays, cards, shops and gifts: known eve
   const seen = new Set();
   // a few seeded games (one short game may miss a card tile); every one must end with the holidays of its eras
   for (const seed of [21, 22, 23, 24, 25]) {
-    let room = started({ seed, config: { holidays: true } });
+    let room = started({ seed, config: { holidays: true, eraTurns: { baby: 1, elem: 1, middle: 2, high: 1, young: 4, middle_age: 3 }, finalLength: 20 } });
     const rng = createRng(seed - 16);
     for (let i = 0; i < 3000 && room.status === 'playing'; i++) {
       const p = room.turn.pending;
@@ -406,7 +408,7 @@ test('HTTP: card / trade / gift actions, spectators 403, /api/meta cards·items�
     const login = await call('POST', '/admin/api/login', { body: { password: 'pw' } });
     const cookie = login.headers.get('set-cookie').split(';')[0];
     assert.equal((await call('POST', '/admin/api/rooms', { cookie, body: { holidays: 'x' } })).status, 400);
-    const created = await call('POST', '/admin/api/rooms', { cookie, body: { mode: 'adult', eraTurns: { young: 5, middle_age: 5, senior: 3 }, holidays: false } });
+    const created = await call('POST', '/admin/api/rooms', { cookie, body: { mode: 'kids', holidays: false } });
     assert.equal(created.json.room.config.holidays, false);
     const { id, code } = created.json.room;
     const A = (await call('POST', '/api/session')).json.token;

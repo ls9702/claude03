@@ -20,7 +20,7 @@ import { parseTrustProxy } from '../server/config.js';
 import { RoomStore } from '../server/store/roomStore.js';
 import { GameRunner } from '../server/store/gameRunner.js';
 import { startServer } from '../server/index.js';
-import { httpCall, makeRoom, tempDir } from './helpers.js';
+import { atEraEnd, httpCall, makeRoom, plainEra, tempDir, toEra } from './helpers.js';
 
 const data = gameData();
 
@@ -297,37 +297,41 @@ test('pension: recipients and the gap use total assets (cash − debt + house + 
   ch(room, poorB).money = 200;
   ch(room, mid).money = 1500;
   assert.equal(pensionWorth(ch(room, rich), data), 3150);
-  ch(room, rich).position = { eraIndex: seniorIdx - 1, route: 'main', index: 1 };
-  room.turn.currentIndex = room.turn.order.indexOf(rich);
-  const r = act(room, { type: 'spin', characterId: rich }, [1]);
+  toEra(room, seniorIdx - 1);
+  plainEra(room, seniorIdx - 1);
+  for (const c of room.characters) Object.assign(c, { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'chef', rank: 1, exp: 0, injured: 0 } });
+  atEraEnd(room);
+  const r = act(room, { type: 'spin', characterId: cur(room) }, [1]);
   assert.deepEqual([...r.room.pension.recipients].sort(), [poorA, poorB].sort(), 'the cash-poor house owner is not a recipient');
   assert.ok(!r.events.some((e) => e.type === 'moneyChanged' && e.reason === 'pension' && e.charId === rich));
 });
 
-test('board: per-era route pool overrides (young career money tiles) only touch that era', () => {
-  const bd = data.board;
+test('board: per-era route pool overrides (e.g. young career money tiles) only touch that era', () => {
+  // the mechanism, on a synthetic override (board.json may or may not carry one after a retune)
+  const bd = structuredClone(data.board);
+  bd.routePools.career.eraOverrides = { young: { money: { weight: 9, scale: 1.8 } } };
   const young = routePool(bd, 'career', 'young');
   const mid = routePool(bd, 'career', 'middle_age');
-  const ov = bd.routePools.career.eraOverrides?.young?.money;
-  assert.ok(ov, 'board.json routePools.career.eraOverrides.young.money');
+  const ov = bd.routePools.career.eraOverrides.young.money;
   assert.deepEqual(routePool(bd, 'career', 'no_such_era'), bd.routePools.career.pool);
   const m = young.find((e) => e.type === 'money');
-  assert.deepEqual([m.weight, m.scale], [ov.weight ?? m.weight, ov.scale ?? m.scale]);
+  assert.deepEqual([m.weight, m.scale], [ov.weight, ov.scale]);
   const base = bd.routePools.career.pool.find((e) => e.type === 'money');
   assert.deepEqual(mid.find((e) => e.type === 'money'), base, 'middle_age keeps the base money tiles');
-  // every override names a real era and a pool entry
-  for (const [route, rp] of Object.entries(bd.routePools)) {
+  // every override in the real data names a real era and a pool entry
+  for (const [route, rp] of Object.entries(data.board.routePools)) {
     for (const [era, types] of Object.entries(rp.eraOverrides ?? {})) {
       if (era.startsWith('_')) continue;
-      assert.ok(bd.routeEras.includes(era), `${route}.${era}`);
+      assert.ok(data.board.routeEras.includes(era), `${route}.${era}`);
       for (const t of Object.keys(types)) assert.ok(rp.pool.some((e) => e.type === t), `${route}.${era}.${t}`);
     }
   }
   // built boards: over many seeds the young career route has more money tiles than middle_age
+  const d2 = { ...data, board: bd };
   let y = 0;
   let a = 0;
   for (let s = 0; s < 40; s++) {
-    const board = buildBoard({ mode: 'lifetime', eraTurns: { young: 15, middle_age: 15 } }, createRng(s), data);
+    const board = buildBoard({ mode: 'lifetime', eraTurns: { young: 15, middle_age: 15 } }, createRng(s), d2);
     const count = (id) => board.eras.find((e) => e.id === id).routes.career.tiles.filter((t) => t.type === 'money').length;
     y += count('young');
     a += count('middle_age');

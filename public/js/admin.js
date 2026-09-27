@@ -1,6 +1,7 @@
 // Admin page: login, create room (per-era turns), room list, lobby detail, start/end/delete.
 import { renderAvatar, setAvatarDefs } from './ui/avatar2d.js';
 import { ownerHtml } from './format.js';
+import { LONG_GAME_TURNS, SEC_PER_TURN, lapSize, loopConfig } from './shared/loop.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) =>
@@ -8,9 +9,30 @@ const esc = (s) =>
 const STATUS = { lobby: '대기 중', playing: '진행 중', finished: '종료' };
 const MC_FREQ_LABEL = { many: '많이', normal: '보통', few: '적게', off: '끄기' };
 const PHASE_LABEL = { awaitSpin: '룰렛 대기', resolveSpace: '칸 처리 중', awaitDecision: '선택 대기', endTurn: '턴 정리', gameOver: '게임 끝' };
-/** Route eras (갈림길 + 합류 + ≥1 route tile) and fixed stops of a mode's last era (kids: 수능 at 고등 index 0). */
+/** Route eras (갈림길 + 합류 + ≥1 route tile). Loop maps: the 수능 is a turn-start step (no fixed stop tile any more). */
 const ROUTE_ERAS = ['young', 'middle_age'];
-const FIXED_STOPS = { high: [0] };
+const FIXED_STOPS = {};
+/** ADDENDUM A2: the final era of lifetime / adult mode is a race to the goal of `finalLength` tiles (no turn limit). */
+const FINAL_ERA = 'senior';
+const FINAL_DEFAULTS = { min: 20, max: 80, default: 40 };
+/** Average roulette move (1–10) → turns to finish the final race (+ a few post-goal bonus spins for the last ones). */
+const TILES_PER_TURN = 5.5;
+const finalCfg = () => {
+  const f = meta?.board?.finalLength ?? meta?.finalLength ?? meta?.limits?.finalLength ?? {};
+  const d = meta?.defaults?.finalLength;
+  return {
+    min: Number.isFinite(f.min) ? f.min : FINAL_DEFAULTS.min,
+    max: Number.isFinite(f.max) ? f.max : FINAL_DEFAULTS.max,
+    default: Number.isFinite(d) ? d : Number.isFinite(f.default) ? f.default : FINAL_DEFAULTS.default,
+  };
+};
+/** The mode ends with the final race (lifetime / adult: … → 노년 골인 경쟁; kids ends after 고등학생's turns). */
+const raceMode = (mode) => {
+  const eras = meta?.eras?.modes?.[mode]?.eras ?? [];
+  const last = eras.at(-1);
+  const def = meta?.eras?.eras?.find((e) => e.id === last);
+  return def?.final === true || def?.race === true || last === FINAL_ERA;
+};
 
 /** Server `/admin/api/meta` minTurns[mode][era] when present, else a mirror of server/game/config.js minEraTurns. */
 function minTurnsFor(eraId, mode) {
@@ -99,14 +121,31 @@ function buildCreateForm() {
     .map(
       (e) => `
       <label class="era-row" data-era="${esc(e.id)}">
-        <span>${esc(e.name)} <span class="def">기본 ${e.defaultTurns}</span></span>
+        <span>${esc(e.name)} <span class="def">기본 ${e.defaultTurns}턴</span> <span class="map" data-map></span></span>
         <input type="number" name="era_${esc(e.id)}" min="${minTurns}" max="${maxTurns}" step="1" value="${e.defaultTurns}">
       </label>`,
     )
     .join('');
+  // ADDENDUM A2: 노년 = 골인 경쟁 (no turn limit) → its length in tiles instead of turns
+  const fc = finalCfg();
+  $('#era-rows').insertAdjacentHTML(
+    'beforeend',
+    `<label class="era-row final-row" data-final>
+      <span>🏁 노년 길이(칸) <span class="def">기본 ${fc.default}칸 · 턴 제한 없는 골인 경쟁</span></span>
+      <input type="number" name="finalLength" min="${fc.min}" max="${fc.max}" step="1" value="${fc.default}">
+    </label>`,
+  );
   const syncMode = () => {
     const included = new Set(meta.eras.modes[sel.value].eras);
-    for (const row of document.querySelectorAll('.era-row')) {
+    const race = raceMode(sel.value);
+    const fr = document.querySelector('.era-row.final-row');
+    if (fr) {
+      fr.hidden = !race;
+      fr.querySelector('input').disabled = !race;
+    }
+    if (race) included.delete(FINAL_ERA);
+    for (const row of document.querySelectorAll('.era-row[data-era]')) {
+      row.hidden = race && row.dataset.era === FINAL_ERA;
       const on = included.has(row.dataset.era);
       row.classList.toggle('off', !on);
       const input = row.querySelector('input');
@@ -121,6 +160,8 @@ function buildCreateForm() {
   syncMode();
   $('#era-reset').addEventListener('click', () => {
     for (const e of meta.eras.eras) $(`[name="era_${e.id}"]`).value = e.defaultTurns;
+    const fl = $('#create-form [name=finalLength]');
+    if (fl) fl.value = finalCfg().default;
     checkEraMins();
   });
   $('#create-form').addEventListener('submit', onCreate);
@@ -135,7 +176,16 @@ function buildCreateForm() {
 function checkEraMins() {
   const mode = $('#mode-select').value;
   const included = new Set(meta.eras.modes[mode].eras);
+  if (raceMode(mode)) included.delete(FINAL_ERA);
   const problems = [];
+  if (raceMode(mode)) {
+    const fc = finalCfg();
+    const fl = $('#create-form [name=finalLength]');
+    const v = fl?.value === '' ? fc.default : Number(fl?.value);
+    const bad = !Number.isInteger(v) || v < fc.min || v > fc.max;
+    fl?.closest('.era-row')?.classList.toggle('bad', bad);
+    if (bad) problems.push(`노년 길이는 ${fc.min}~${fc.max}칸이어야 해요.`);
+  }
   for (const e of meta.eras.eras) {
     const row = document.querySelector(`.era-row[data-era="${e.id}"]`);
     if (!row) continue;
@@ -155,9 +205,7 @@ function checkEraMins() {
     } else tag?.remove();
     if (bad) {
       problems.push(
-        ROUTE_ERAS.includes(e.id)
-          ? `${e.name}: 갈림길·합류 칸이 있어 ${min}턴 이상이어야 해요.`
-          : `${e.name}: 이 모드에서는 ${min}턴 이상이어야 해요. (수능 칸과 골인 칸이 겹치지 않게)`,
+        ROUTE_ERAS.includes(e.id) ? `${e.name}: 갈림길이 있어 ${min}턴 이상이어야 해요.` : `${e.name}: 이 모드에서는 ${min}턴 이상이어야 해요.`,
       );
     }
   }
@@ -166,25 +214,45 @@ function checkEraMins() {
   return problems;
 }
 
-// Playtest: lifetime mode, default lengths (53 칸), 8 characters ≈ 25 min → ≈ 19.5 s per character turn and a turn
-// moves ≈ 5.5 칸 on average (roulette 1–10).
-const SEC_PER_TURN = 19.5;
-const TILES_PER_TURN = 5.5;
-/** 「예상 약 N분」 for the chosen mode / era lengths / max characters. */
+/**
+ * Loop maps: every era lasts its number of TURNS (each character spins once per round); the map of an era is
+ * lap = clamp(round(turns × lapPerTurn), lapMin, lapMax) tiles (`meta.board.loop`, fallback 5.4 / 18 / 100). Estimate =
+ * Σ turns × characters × ~15 s, plus the final race (노년 길이 ÷ 5.5 칸 per turn, +30 % for the post-goal bonus spins).
+ */
 function updateEstimate() {
   const out = $('#era-est');
   if (!out) return;
   const mode = $('#mode-select').value;
   const eras = meta.eras.modes[mode]?.eras ?? [];
-  let tiles = 0;
+  const race = raceMode(mode);
+  const cfg = loopConfig(meta);
+  let turns = 0;
   for (const id of eras) {
     const e = meta.eras.eras.find((x) => x.id === id);
+    const row = document.querySelector(`.era-row[data-era="${id}"]`);
+    if (race && id === FINAL_ERA) continue;
     const raw = $(`[name="era_${id}"]`)?.value;
-    tiles += raw === '' || raw == null ? e?.defaultTurns ?? 0 : Number(raw) || 0;
+    const t = raw === '' || raw == null ? e?.defaultTurns ?? 0 : Number(raw) || 0;
+    turns += t;
+    const map = row?.querySelector('[data-map]');
+    if (map) map.textContent = `🗺️ ${lapSize(t, cfg)}칸 순환`;
+  }
+  let raceTurns = 0;
+  if (race) {
+    const raw = $('#create-form [name=finalLength]')?.value;
+    const len = raw === '' || raw == null ? finalCfg().default : Number(raw) || 0;
+    raceTurns = Math.round((len / TILES_PER_TURN) * 1.3);
   }
   const chars = Math.min(8, Math.max(2, Number($('#create-form [name=maxCharacters]')?.value) || 8));
-  const min = Math.round(((tiles / TILES_PER_TURN) * chars * SEC_PER_TURN) / 60);
-  out.textContent = tiles ? `총 ${tiles}칸 · 예상 약 ${Math.max(1, min)}분 (캐릭터 ${chars}명 기준)` : '';
+  const all = turns + raceTurns;
+  const min = Math.max(1, Math.round((all * chars * SEC_PER_TURN) / 60));
+  const long = all >= LONG_GAME_TURNS;
+  out.classList.toggle('warn', long);
+  out.textContent = all
+    ? `캐릭터당 ${turns}턴${race ? ` + 노년 골인 경쟁 약 ${raceTurns}턴` : ''} · 예상 약 ${min}분 (캐릭터 ${chars}명, 턴당 약 ${SEC_PER_TURN}초 기준)${
+        long ? ' ⚠️ 꽤 긴 게임이에요 — 시간이 부족하면 청년·중년 턴이나 캐릭터 수를 줄여 보세요.' : ''
+      }`
+    : '';
 }
 
 async function onCreate(ev) {
@@ -193,6 +261,8 @@ async function onCreate(ev) {
   const errEl = f.querySelector('.form-error');
   errEl.textContent = '';
   const included = new Set(meta.eras.modes[f.mode.value].eras);
+  const race = raceMode(f.mode.value);
+  if (race) included.delete(FINAL_ERA); // the final race has no turn limit (its length is `finalLength`)
   const eraTurns = {};
   for (const e of meta.eras.eras) {
     if (!included.has(e.id)) continue;
@@ -212,6 +282,7 @@ async function onCreate(ev) {
     turnOrder: f.turnOrder.value,
     mcFrequency: f.mcFrequency.value,
   };
+  if (race && f.finalLength) body.finalLength = f.finalLength.value === '' ? finalCfg().default : Number(f.finalLength.value);
   const timeout = Number(f.turnTimeoutSec?.value ?? 0);
   if (timeout > 0) body.turnTimeoutSec = timeout;
   // Stage 6 「성장 의상」 (default on; only sent when turned off → older servers keep working)
@@ -273,7 +344,11 @@ async function renderDetail() {
   const eras = meta.eras;
   const included = eras.modes[room.config.mode].eras;
   const eraText = included
-    .map((id) => `${eras.eras.find((e) => e.id === id)?.name ?? id} ${room.config.eraTurns[id]}`)
+    .map((id) =>
+      id === FINAL_ERA && raceMode(room.config.mode)
+        ? `${eras.eras.find((e) => e.id === id)?.name ?? id} 골인 경쟁 ${room.config.finalLength ?? finalCfg().default}칸`
+        : `${eras.eras.find((e) => e.id === id)?.name ?? id} ${room.config.eraTurns?.[id] ?? '-'}턴`,
+    )
     .join(' · ');
   const byId = new Map(room.characters.map((c) => [c.id, c]));
   const players = room.players.filter((p) => p.role !== 'spectator');
@@ -291,7 +366,7 @@ async function renderDetail() {
     ${mvpTools(room, byId)}
     <dl class="kv">
       <dt>모드</dt><dd>${esc(eras.modes[room.config.mode].name)}</dd>
-      <dt>시대 길이(칸)</dt><dd>${esc(eraText)}</dd>
+      <dt>시대 길이(턴)</dt><dd>${esc(eraText)}</dd>
       <dt>최대 캐릭터</dt><dd>${room.config.maxCharacters}</dd>
       <dt>초기 자금</dt><dd>${room.config.startingMoney.toLocaleString()}만원</dd>
       <dt>턴 순서</dt><dd>${room.config.turnOrder === 'family' ? '가문 순' : '캐릭터 번호 순'}</dd>

@@ -30,8 +30,8 @@ const HEX = /^#[0-9a-f]{6}$/i;
 
 function started({ seed = 5, mode = 'kids', mcFrequency, eraTurns } = {}) {
   let room = makeRoom({ seed });
-  const turns = eraTurns ?? (mode === 'adult' ? { young: 4, middle_age: 4, senior: 2 } : { baby: 1, elem: 2, middle: 2, high: 2 });
-  room.config = { ...room.config, mode, eraTurns: { ...room.config.eraTurns, ...turns }, ...(mcFrequency ? { mcFrequency } : {}) };
+  const turns = eraTurns ?? (mode === 'adult' ? { young: 3, middle_age: 3 } : { baby: 1, elem: 2, middle: 2, high: 2 });
+  room.config = { ...room.config, mode, eraTurns: { ...room.config.eraTurns, ...turns }, finalLength: 20, ...(mcFrequency ? { mcFrequency } : {}) };
   room = joinRoom(room, 'A', '에이', 0).room;
   room = joinRoom(room, 'B', '비', 0).room;
   for (const [o, n] of [['A', '지우'], ['B', '민준'], ['A', '하은']]) room = addCharacter(room, o, { name: n }, 0).room;
@@ -170,7 +170,7 @@ test('MC attachment is deterministic and never touches the gameplay RNG', () => 
 });
 
 test('MC lines: valid shape, no unfilled placeholders; big moments always hosted; off = none', () => {
-  for (const [seed, mode] of [[3, 'kids'], [8, 'adult'], [21, 'kids']]) {
+  for (const [seed, mode] of [[3, 'kids'], [8, 'adult'], [21, 'adult']]) {
     for (const f of ['few', 'normal', 'many']) {
       const { events, room } = playAll({ seed, mode, mcFrequency: f });
       for (const e of events.filter((x) => x.mc)) {
@@ -185,11 +185,14 @@ test('MC lines: valid shape, no unfilled placeholders; big moments always hosted
       const start = events.find((e) => e.type === 'gameStarted');
       assert.ok(start.mc?.length >= 2 && start.mcStudio, `${f}: game start studio duo`);
       assert.equal(events.find((e) => e.type === 'turnStarted').mcKey, 'firstSpin');
-      const first = events.find((e) => e.type === 'finished' && e.place === 1);
-      assert.equal(first.mcKey, 'goalFirst');
-      // every era after the first opens with a studio cut-in exactly once
-      const studios = events.filter((e) => e.type === 'eraChanged' && e.mcStudio).map((e) => e.era);
+      // the final race (adult / lifetime): the first goal is hosted
+      const first = events.find((e) => e.type === 'finished' && e.place === 1 && !e.retired);
+      if (mode !== 'kids' && first) assert.equal(first.mcKey, 'goalFirst');
+      assert.equal(mode === 'kids', !events.some((e) => e.type === 'finished'), 'kids mode has no goal race');
+      // loop maps: every era after the first opens with ONE studio cut-in on the shared transition
+      const studios = events.filter((e) => e.type === 'eraTransition' && e.mcStudio).map((e) => e.toEraId);
       assert.deepEqual(studios, room.board.eras.slice(1).map((x) => x.id));
+      assert.ok(!events.some((e) => e.type === 'eraChanged' && (e.mc || e.cutin)), 'per-character eraChanged are quiet follow-ups');
       const go = events.find((e) => e.type === 'gameOver');
       // Stage 9: 보물 감정 / 특별상 parts when there is something to show, the MVP call while the vote is open
       const parts = [...new Set(go.mc.map((l) => l.part))];

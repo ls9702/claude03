@@ -105,6 +105,7 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
         <div class="sk-body" data-sk="body">${body}</div>
         <p class="sk-result" data-sk="result" aria-live="assertive" hidden></p>
         <p class="small muted sk-odds">목표 숫자 → ${esc(jitterHint(getMeta()))}</p>
+        <p class="small muted sk-loop">💡 큰 숫자일수록 멀리 가서 💵 월급날·🎪 찬스 광장을 더 자주 만나요.</p>
         <p class="sk-warn" data-sk="warn" hidden>⏰ 곧 자동으로 돌아가요! 서둘러요</p>
       </div>`;
     if (S.input === 'gauge') startGauge();

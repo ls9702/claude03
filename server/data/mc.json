@@ -52,70 +52,461 @@
   },
   "bigAmount": 100,
   "frequency": {
-    "many":   { "label": "많이", "medium": 1,    "minor": 0.6,  "cooldown": 1, "duoChance": 0.5 },
-    "normal": { "label": "보통", "medium": 0.7,  "minor": 0.3,  "cooldown": 2, "duoChance": 0.35 },
-    "few":    { "label": "적게", "medium": 0.35, "minor": 0,    "cooldown": 4, "duoChance": 0.2 },
-    "off":    { "label": "끄기", "medium": 0,    "minor": 0,    "cooldown": 0, "duoChance": 0 }
+    "many": {"label": "많이", "medium": 1, "minor": 0.6, "cooldown": 1, "duoChance": 0.5},
+    "normal": {"label": "보통", "medium": 0.7, "minor": 0.3, "cooldown": 2, "duoChance": 0.35},
+    "few": {"label": "적게", "medium": 0.35, "minor": 0, "cooldown": 4, "duoChance": 0.2},
+    "off": {"label": "끄기", "medium": 0, "minor": 0, "cooldown": 0, "duoChance": 0}
   },
   "situations": {
-    "gameStart":    { "weight": "big",    "lead": "bomi", "duo": true,  "vars": [],                  "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "firstSpin":    { "weight": "big",    "lead": "bomi", "duo": false, "vars": ["name"],            "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "eraChange":    { "weight": "medium", "lead": "any",  "duo": false, "vars": ["name", "era"],     "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "eraBaby":      { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "era"],     "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "eraElem":      { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "era"],     "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "eraMiddle":    { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "era"],     "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "eraHigh":      { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "era"],     "hoya": { "expression": "surprise", "pose": "idle" }, "bomi": { "expression": "neutral", "pose": "mic" } },
-    "eraYoung":     { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "era"],     "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "proud", "pose": "mic" } },
-    "eraMiddleAge": { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "era"],     "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "eraSenior":    { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "era"],     "hoya": { "expression": "sleepy", "pose": "idle" },  "bomi": { "expression": "neutral", "pose": "mic" } },
-    "routeChoice":  { "weight": "medium", "lead": "bomi", "duo": "chance", "vars": ["name"],         "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "marriage":     { "weight": "big",    "lead": "hoya", "duo": true,  "vars": ["name"],            "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "proud", "pose": "idle" } },
-    "birth":        { "weight": "big",    "lead": "hoya", "duo": true,  "vars": ["name"],            "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "proud", "pose": "idle" } },
-    "job":          { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "job"],     "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "proud", "pose": "mic" } },
-    "promotion":    { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name", "job", "rank"], "hoya": { "expression": "joy", "pose": "clap" }, "bomi": { "expression": "proud", "pose": "mic" } },
-    "hiddenJob":    { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "job"],     "hoya": { "expression": "surprise", "pose": "clap" }, "bomi": { "expression": "surprise", "pose": "mic" } },
-    "injury":       { "weight": "medium", "lead": "bomi", "duo": "chance", "vars": ["name", "job"],  "hoya": { "expression": "sad", "pose": "idle" },     "bomi": { "expression": "sad", "pose": "mic" } },
-    "military":     { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name"],         "hoya": { "expression": "proud", "pose": "wave" },   "bomi": { "expression": "neutral", "pose": "mic" } },
-    "news":         { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["news"],            "hoya": { "expression": "surprise", "pose": "idle" }, "bomi": { "expression": "neutral", "pose": "mic" } },
-    "bankrupt":     { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "amount"],  "hoya": { "expression": "sad", "pose": "idle" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "treasure":     { "weight": "big",    "lead": "hoya", "duo": true,  "vars": ["name", "treasure"],         "hoya": { "expression": "surprise", "pose": "clap" }, "bomi": { "expression": "proud", "pose": "idle" } },
-    "bigWin":       { "weight": "big",    "lead": "hoya", "duo": true,  "vars": ["name", "amount"],  "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "surprise", "pose": "idle" } },
-    "bigLoss":      { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "amount"],  "hoya": { "expression": "sad", "pose": "idle" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "goalFirst":    { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "place", "amount"], "hoya": { "expression": "joy", "pose": "clap" }, "bomi": { "expression": "proud", "pose": "mic" } },
-    "goalLast":     { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "place"],   "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "goal":         { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name", "place"], "hoya": { "expression": "joy", "pose": "clap" },    "bomi": { "expression": "neutral", "pose": "mic" } },
-    "betWin":       { "weight": "medium", "lead": "hoya", "duo": "chance", "vars": ["name"],         "hoya": { "expression": "surprise", "pose": "clap" }, "bomi": { "expression": "neutral", "pose": "idle" } },
-    "pension":      { "weight": "medium", "lead": "bomi", "duo": "chance", "vars": ["name", "amount"], "hoya": { "expression": "joy", "pose": "clap" },   "bomi": { "expression": "neutral", "pose": "mic" } },
-    "examPass":     { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name"],         "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "proud", "pose": "idle" } },
-    "examFail":     { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name"],         "hoya": { "expression": "sad", "pose": "idle" },     "bomi": { "expression": "neutral", "pose": "idle" } },
-    "smallWin":     { "weight": "minor",  "lead": "hoya", "duo": false, "vars": ["name", "amount"],  "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "neutral", "pose": "idle" } },
-    "smallLoss":    { "weight": "minor",  "lead": "any",  "duo": false, "vars": ["name", "amount"],  "hoya": { "expression": "sad", "pose": "idle" },     "bomi": { "expression": "neutral", "pose": "idle" } },
-    "resultIntro":  { "weight": "big",    "lead": "bomi", "duo": true,  "vars": [],                  "hoya": { "expression": "surprise", "pose": "clap" }, "bomi": { "expression": "neutral", "pose": "mic" } },
-    "resultWinner": { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name", "amount"],  "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "proud", "pose": "mic" } },
-    "resultLast":   { "weight": "big",    "lead": "any",  "duo": false, "vars": ["name"],            "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "penalty":      { "weight": "big",    "lead": "bomi", "duo": false, "vars": ["name"],            "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "proud", "pose": "mic" } },
-    "sabotage":     { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name", "target", "card"], "hoya": { "expression": "surprise", "pose": "idle" }, "bomi": { "expression": "neutral", "pose": "mic" } },
-    "blocked":      { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name", "target", "card"], "hoya": { "expression": "joy", "pose": "clap" }, "bomi": { "expression": "proud", "pose": "mic" } },
-    "shopping":     { "weight": "minor",  "lead": "any",  "duo": "chance", "vars": ["name", "item"],   "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "holiday":      { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["holiday"],         "hoya": { "expression": "joy", "pose": "wave" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "lotto":        { "weight": "big",    "lead": "bomi", "duo": true,  "vars": ["name"],            "hoya": { "expression": "surprise", "pose": "clap" }, "bomi": { "expression": "neutral", "pose": "mic" } },
-    "gift":         { "weight": "minor",  "lead": "any",  "duo": "chance", "vars": ["name", "target"], "hoya": { "expression": "joy", "pose": "clap" },   "bomi": { "expression": "neutral", "pose": "mic" } },
-    "proposeFail":  { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name", "partner"], "hoya": { "expression": "sad", "pose": "idle" },   "bomi": { "expression": "neutral", "pose": "mic" } },
-    "house":        { "weight": "medium", "lead": "any",  "duo": "chance", "vars": ["name", "house"], "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "proud", "pose": "mic" } },
-    "market":       { "weight": "big",    "lead": "bomi", "duo": true,  "vars": [],                  "hoya": { "expression": "surprise", "pose": "idle" }, "bomi": { "expression": "neutral", "pose": "mic" } },
-    "schoolMeet":   { "weight": "medium", "lead": "any",  "duo": "chance", "vars": [],               "hoya": { "expression": "joy", "pose": "clap" },     "bomi": { "expression": "neutral", "pose": "mic" } },
-    "temple": { "weight": "medium", "lead": "any", "duo": "chance", "vars": ["name"], "hoya": {"expression": "proud", "pose": "idle"}, "bomi": {"expression": "neutral", "pose": "mic"} },
-    "jeju": { "weight": "medium", "lead": "hoya", "duo": "chance", "vars": ["name"], "hoya": {"expression": "joy", "pose": "wave"}, "bomi": {"expression": "neutral", "pose": "mic"} },
-    "reversalWin": { "weight": "big", "lead": "hoya", "duo": true, "vars": ["name", "amount"], "hoya": {"expression": "surprise", "pose": "clap"}, "bomi": {"expression": "surprise", "pose": "mic"} },
-    "reversalLose": { "weight": "medium", "lead": "bomi", "duo": "chance", "vars": ["name", "amount"], "hoya": {"expression": "sad", "pose": "idle"}, "bomi": {"expression": "neutral", "pose": "mic"} },
-    "appraisal": { "weight": "big", "lead": "bomi", "duo": true, "vars": ["name", "treasure", "amount"], "hoya": {"expression": "surprise", "pose": "clap"}, "bomi": {"expression": "neutral", "pose": "mic"} },
-    "award": { "weight": "big", "lead": "bomi", "duo": true, "vars": ["name", "award", "amount"], "hoya": {"expression": "joy", "pose": "clap"}, "bomi": {"expression": "proud", "pose": "mic"} },
-    "mvp": { "weight": "big", "lead": "bomi", "duo": true, "vars": ["name"], "hoya": {"expression": "joy", "pose": "clap"}, "bomi": {"expression": "proud", "pose": "mic"} },
-    "mvpVote": { "weight": "big", "lead": "bomi", "duo": false, "vars": [], "hoya": {"expression": "joy", "pose": "wave"}, "bomi": {"expression": "neutral", "pose": "mic"} }
+    "gameStart": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": [],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "firstSpin": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": false,
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "eraChange": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": false,
+      "vars": ["name", "era"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "eraBaby": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "era"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "eraElem": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "era"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "eraMiddle": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "era"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "eraHigh": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "era"],
+      "hoya": {"expression": "surprise", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "eraYoung": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "era"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "eraMiddleAge": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "era"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "eraSenior": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "era"],
+      "hoya": {"expression": "sleepy", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "routeChoice": {
+      "weight": "medium",
+      "lead": "bomi",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "marriage": {
+      "weight": "big",
+      "lead": "hoya",
+      "duo": true,
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "idle"}
+    },
+    "birth": {
+      "weight": "big",
+      "lead": "hoya",
+      "duo": true,
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "idle"}
+    },
+    "job": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "job"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "promotion": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "job", "rank"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "hiddenJob": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "job"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "surprise", "pose": "mic"}
+    },
+    "injury": {
+      "weight": "medium",
+      "lead": "bomi",
+      "duo": "chance",
+      "vars": ["name", "job"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "sad", "pose": "mic"}
+    },
+    "military": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "proud", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "news": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["news"],
+      "hoya": {"expression": "surprise", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "bankrupt": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "treasure": {
+      "weight": "big",
+      "lead": "hoya",
+      "duo": true,
+      "vars": ["name", "treasure"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "idle"}
+    },
+    "bigWin": {
+      "weight": "big",
+      "lead": "hoya",
+      "duo": true,
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "surprise", "pose": "idle"}
+    },
+    "bigLoss": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "goalFirst": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "place", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "goalLast": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "place"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "goal": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "place"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "betWin": {
+      "weight": "medium",
+      "lead": "hoya",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "idle"}
+    },
+    "pension": {
+      "weight": "medium",
+      "lead": "bomi",
+      "duo": "chance",
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "examPass": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "idle"}
+    },
+    "examFail": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "idle"}
+    },
+    "smallWin": {
+      "weight": "minor",
+      "lead": "hoya",
+      "duo": false,
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "idle"}
+    },
+    "smallLoss": {
+      "weight": "minor",
+      "lead": "any",
+      "duo": false,
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "idle"}
+    },
+    "resultIntro": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": [],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "resultWinner": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "resultLast": {
+      "weight": "big",
+      "lead": "any",
+      "duo": false,
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "penalty": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": false,
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "sabotage": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "target", "card"],
+      "hoya": {"expression": "surprise", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "blocked": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "target", "card"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "shopping": {
+      "weight": "minor",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "item"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "holiday": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["holiday"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "lotto": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "gift": {
+      "weight": "minor",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "target"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "proposeFail": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "partner"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "house": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "house"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "market": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": [],
+      "hoya": {"expression": "surprise", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "schoolMeet": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": [],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "temple": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "proud", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "jeju": {
+      "weight": "medium",
+      "lead": "hoya",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "reversalWin": {
+      "weight": "big",
+      "lead": "hoya",
+      "duo": true,
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "surprise", "pose": "mic"}
+    },
+    "reversalLose": {
+      "weight": "medium",
+      "lead": "bomi",
+      "duo": "chance",
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "appraisal": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "treasure", "amount"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "award": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "award", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "mvp": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "mvpVote": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": false,
+      "vars": [],
+      "hoya": {"expression": "joy", "pose": "wave"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "club": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    }
   },
   "eraSituations": {
-    "baby": "eraBaby", "elem": "eraElem", "middle": "eraMiddle", "high": "eraHigh",
-    "young": "eraYoung", "middle_age": "eraMiddleAge", "senior": "eraSenior"
+    "baby": "eraBaby",
+    "elem": "eraElem",
+    "middle": "eraMiddle",
+    "high": "eraHigh",
+    "young": "eraYoung",
+    "middle_age": "eraMiddleAge",
+    "senior": "eraSenior"
   },
   "tileSituations": {}
 }

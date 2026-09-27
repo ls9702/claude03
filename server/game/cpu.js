@@ -10,10 +10,12 @@
 // offers accepted when what the CPU gets is worth at least what it gives. CPUs never bet, never offer trades and
 // never give gifts. Each CPU has a personality (cautious / normal / bold) that nudges the thresholds.
 import { gameData } from '../data/index.js';
-import { nextPosition, tileAt } from './board.js';
+import { HALT_TYPES, nextPosition, tileAt } from './board.js';
 import { STAT_KEYS, statCap } from './effects.js';
 import { examChances } from './growth.js';
-import { PART_TIME_ID, jobDef, jobRequirements, rankUpChance, regularJobs, salaryAmount } from './jobs.js';
+import { PART_TIME_ID, clubDef, inJobEra, jobDef, jobRequirements, rankUpChance, regularJobs, salaryAmount } from './jobs.js';
+import { spouseSalary } from './family.js';
+import { nextPlace } from './finish.js';
 import { effectsFor } from './news.js';
 import { cardDef, handLimit, itemDef } from './cards.js';
 import { computeRanking } from './result.js';
@@ -422,7 +424,7 @@ function answerHometown(ctx, c, p) {
   const rest = opts.find((o) => o.id === 'rest');
   const visit = opts.find((o) => o.id === 'visit');
   if (!rest || !visit) return null;
-  if (cpuPersonality(c, ctx.room) === 'bold' || stepsToGoal(ctx.room, c) <= 12) return 'visit';
+  if (cpuPersonality(c, ctx.room) === 'bold' || nearEnd(ctx.room, c)) return 'visit';
   const statGain = (o) => Object.entries(o.stats ?? {}).reduce((s, [k, v]) => s + (v > 0 ? (statUseful(ctx, c, k) ? 60 : 15) * v : 0), 0);
   const restScore = num(rest.money) + statGain(rest) - spinWorth(ctx, c) * num(rest.skipTurns, 1);
   const visitScore = num(visit.money) + statGain(visit);
@@ -440,7 +442,7 @@ function answerTemple(ctx, c, p) {
   const wishOk = wish && (c.money ?? 0) - priceOf(wish) >= k.reserve * 0.3;
   const bold = cpuPersonality(c, ctx.room) === 'bold';
   if (wishOk && ((c.wishes ?? 0) >= 1 || (bold && num(wish.chance) >= 0.4))) return 'wish';
-  if (!bold && stepsToGoal(ctx.room, c) > 12) {
+  if (!bold && !nearEnd(ctx.room, c)) {
     const trains = opts.filter((o) => o.id.startsWith('train:') && o.stat && statUseful(ctx, c, o.stat));
     const best = byMax(trains, (o) => (o.stat === keyStat(ctx, c) ? 2 : 1) - statOf(c, o.stat) * 0.01);
     if (best) return best.id;
@@ -477,6 +479,12 @@ function answerReversal(ctx, c, p) {
   const leader = Math.max(...ctx.room.characters.map((x) => tot.get(x.id) ?? 0));
   const gap = leader - mine;
   const cash = c.money ?? 0;
+  // the final race's 인생역전섬: 조기 은퇴 to lock in a comfortable lead (the trouble spots / gambles are behind);
+  // 전 재산 올인 only when far behind with a gap the rest of the race cannot close
+  const second = Math.max(-Infinity, ...ctx.room.characters.filter((x) => x.id !== c.id).map((x) => tot.get(x.id) ?? 0));
+  if (has('retire') && persona !== 'bold' && mine > 0 && mine >= second * (persona === 'cautious' ? 1.3 : 1.5) + 300) return 'retire';
+  const ai = opts.find((o) => o.id === 'allIn');
+  if (ai && gap > Math.max(persona === 'bold' ? 600 : 1000, cash * (persona === 'bold' ? 3 : 5)) && stepsToGoal(ctx.room, c) < 25) return 'allIn';
   if (persona === 'bold') {
     const h10 = opts.find((o) => o.id === 'horse:10');
     if (h10 && gap > num(h10.stake) * 4) return 'horse:10';
@@ -486,6 +494,99 @@ function answerReversal(ctx, c, p) {
   }
   if (has('lotto') && gap > 0 && cash >= k.reserve) return 'lotto';
   return 'skip';
+}
+
+// ---------- loop maps ----------
+
+/** Worth (만원) of a 「그냥 지나가기」 buff until the next 찬스 광장 (~27 tiles ≈ one or two paydays). */
+function buffWorth(ctx, c, buff) {
+  switch (buff?.id) {
+    case 'salaryX2':
+      return paydayWorth(ctx, c) * 1.1;
+    case 'moneyX15':
+      return 45;
+    case 'lossShield':
+      return 40;
+    case 'statUp':
+      return 30;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * 찬스 광장: the option with the best expected worth — 소원 (chance × (money + 운)) − 시주 (+ a push toward 산신령 once
+ * a couple of wishes came true), 모두를 위한 소원 (운 for sure; the gifts help rivals), 구입 (the best listing's shop
+ * worth), 이직 (a clearly better job), 지나가기 (the buff). Personality: cautious leans on the buff, bold on wishes.
+ */
+function answerPassTile(ctx, c, p) {
+  return byMax(passScores(ctx, c, p), (x) => x.v)?.id ?? null;
+}
+
+/** 찬스 광장 option scores [{id, v}] (enabled options the CPU would consider; see answerPassTile). */
+export function cpuPassScores(room, charId, data = gameData()) {
+  const p = room.turn?.pending;
+  const c = room.characters.find((x) => x.id === charId);
+  if (!p || p.kind !== 'passTile' || !c) return [];
+  return passScores(view(room, data), c, p);
+}
+
+function passScores(ctx, c, p) {
+  const k = knobs(c, ctx.room);
+  const persona = cpuPersonality(c, ctx.room);
+  const opts = enabled(p);
+  const cash = c.money ?? 0;
+  const luckWorth = statUseful(ctx, c, 'luck') ? 60 : 20;
+  const spirit = ctx.data.jobs?.jobs?.find((j) => j.id === 'mountain_spirit')?.unlock?.wishes ?? 99;
+  const pursuit = (c.wishes ?? 0) >= spirit - 2 && inJobEra(ctx.data, c) ? 60 : 0;
+  const scores = [];
+  for (const o of opts) {
+    let v = null;
+    if (o.id === 'wish' && cash - priceOf(o) >= k.reserve * 0.2) v = num(o.chance) * (num(o.money) + luckWorth + pursuit) - priceOf(o) + (persona === 'bold' ? 10 : 0);
+    else if (o.id === 'wishAll' && cash - priceOf(o) >= k.reserve * 0.2) v = luckWorth + pursuit - priceOf(o) - num(o.gift) * num(o.others) * 0.5;
+    else if (o.id === 'buy') {
+      const tot = totals(ctx.room, ctx.data);
+      const mine = tot.get(c.id) ?? 0;
+      const rival = Math.max(...ctx.room.characters.filter((x) => x.id !== c.id).map((x) => tot.get(x.id) ?? 0), -Infinity);
+      const best = byMax(
+        (o.offers ?? []).filter((x) => cash - num(x.price) >= k.reserve).map((x) => shopWorth(ctx, c, { ...(x.kind === 'item' ? { itemId: x.id } : { cardId: x.id }), price: x.price }, mine - rival) * k.shopMult - num(x.price)),
+        (g) => g,
+      );
+      if (best != null && best > 0) v = best * 0.9;
+    } else if (o.id === 'jobChange' && o.jobId && c.job) {
+      const nd = jobDef(ctx.data, o.jobId);
+      const cur = jobDef(ctx.data, c.job.id);
+      const curScore = c.job.id === PART_TIME_ID ? 0 : jobScore(ctx, c, cur, { rank: c.job.rank });
+      const gain = jobScore(ctx, c, nd) - curScore * 1.15;
+      if (gain > 0) v = gain * 2;
+    } else if (o.id === 'pass') v = buffWorth(ctx, c, o.buff) * (persona === 'cautious' ? 1.2 : 1);
+    if (v != null) scores.push({ id: o.id, v });
+  }
+  return scores;
+}
+
+/** 동아리: the club training the stat the CPU's target job needs most (else its key stat). */
+function answerClub(ctx, c, p) {
+  const opts = enabled(p);
+  const t = targetJob(ctx, c);
+  let want = keyStat(ctx, c);
+  if (t) {
+    const req = jobRequirements(t, effectsFor(ctx, c));
+    const gap = Object.entries(req).map(([st, v]) => [st, v - statOf(c, st)]).filter(([, g]) => g > 0).sort((a, b) => b[1] - a[1])[0];
+    if (gap) want = gap[0];
+  }
+  const score = (o) => {
+    const def = clubDef(ctx.data, o.id);
+    const stats = [...Object.keys(def?.stats ?? o.stats ?? {}), ...(def?.train ?? o.train ?? [])];
+    return stats.filter((st) => st === want).length * 2 + (t && (def?.jobs ?? o.jobs ?? []).includes(t.id) ? 1.5 : 0);
+  };
+  return byMax(opts, score)?.id ?? null;
+}
+
+/** 전 재산 올인: any number is as good as another (a plain random roll) — a stable pick from the sub-RNG. */
+function answerAllIn(ctx, c, p) {
+  const opts = enabled(p);
+  return opts.length ? opts[subRng(ctx.room, c, 'allIn').int(0, opts.length - 1)].id : null;
 }
 
 /** kind → (ctx, c, pending) → optionId | null (null = the prompt's default). Unknown kinds use the default. */
@@ -510,6 +611,10 @@ export const CPU_ANSWERS = {
   temple: answerTemple,
   jeju: answerJeju,
   reversal: answerReversal,
+  // loop maps
+  passTile: answerPassTile,
+  club: answerClub,
+  allIn: answerAllIn,
 };
 
 /** The option a CPU character picks for the pending prompt (always an enabled option id). */
@@ -545,12 +650,25 @@ export function cpuTradeAccept(room, trade, data = gameData()) {
 
 // ---------- cards & spin ----------
 
+/** Worth (만원) of the character's next payday (용돈 in kids eras, else salary + spouse salary; 월급 두 배 buff). */
+function paydayWorth(ctx, c) {
+  const buff = c.chanceBuff?.id === 'salaryX2' ? 2 : 1;
+  if (!inJobEra(ctx.data, c) && !c.job) return ((ctx.data.balance.salary?.pocketMoney?.[c.era] ?? 0) + (c.club ? 25 : 0)) * buff;
+  if (c.military?.status === 'serving') return 10;
+  return (salaryAmount(ctx, c) + (c.spouse ? spouseSalary(ctx, c) : 0)) * buff;
+}
+
+/** Rough worth of a 찬스 광장 visit (a choice: at worst a buff). */
+const PASS_WORTH = 35;
+
 /** Rough worth of landing on a tile (for the energy / taxi decision). */
 function tileWorth(ctx, c, tile) {
   if (!tile) return 0;
   switch (tile.type) {
     case 'salary':
-      return c.military?.status === 'serving' ? 30 : salaryAmount(ctx, c);
+      return paydayWorth(ctx, c);
+    case 'pass':
+      return PASS_WORTH;
     case 'money':
       return tile.amount ?? 50;
     case 'loss':
@@ -565,41 +683,58 @@ function tileWorth(ctx, c, tile) {
     case 'temple':
       return 30;
     case 'goal':
-      return 150;
+      return (ctx.data.balance.goalPrizes?.[nextPlace(ctx.room) - 1] ?? 0) + 60;
     case 'event':
     case 'habit':
       return 20;
+    case 'start':
+      return 0;
     default:
       return 10;
   }
 }
 
-/** Expected tile worth of the next spin (`kind`: plain | plus2 | max2), stops / goal halt the walk. */
+/** Expected tile worth of the next spin (`kind`: plain | plus2 | max2): the engine's walk (landingFor). */
 function expectedLanding(ctx, c, kind) {
-  const board = ctx.room.board;
   const { min, max } = ctx.data.balance.spin;
-  const serving = c.military?.status === 'serving';
-  const landing = (move) => {
-    const steps = serving ? Math.max(1, Math.ceil(move / 2)) : move;
-    let pos = c.position;
-    for (let s = 0; s < steps; s++) {
-      const np = nextPosition(board, pos, c.route);
-      if (!np) break;
-      pos = np;
-      const t = tileAt(board, pos);
-      if (t?.type === 'stop' || t?.type === 'goal') break;
-    }
-    return tileWorth(ctx, c, tileAt(board, pos));
+  const worthOf = (move) => {
+    const l = walkFor(ctx, c, move);
+    return tileWorth(ctx, c, l.tile) + l.passes * PASS_WORTH;
   };
   const vals = [];
   for (let v = min; v <= max; v++) vals.push(v);
   if (kind === 'max2') {
     let sum = 0;
-    for (const a of vals) for (const b of vals) sum += landing(Math.max(a, b));
+    for (const a of vals) for (const b of vals) sum += worthOf(Math.max(a, b));
     return sum / (vals.length * vals.length);
   }
   const add = kind === 'plus2' ? 2 : 0;
-  return vals.reduce((s, v) => s + landing(v + add), 0) / vals.length;
+  return vals.reduce((sum, v) => sum + worthOf(v + add), 0) / vals.length;
+}
+
+/**
+ * Where a move of `move` tiles (after spin mods) takes `c` — the engine's walk: military halving, the loop wraps,
+ * paydays / the fork / the goal end the move, 찬스 광장 tiles passed with steps left pause it (counted in `passes`).
+ * @returns {{tile, steps, passes}}
+ */
+function walkFor(ctx, c, move) {
+  const board = ctx.room.board;
+  const steps = c.military?.status === 'serving' ? Math.max(1, Math.ceil(move / 2)) : move;
+  let pos = c.position;
+  let n = 0;
+  let passes = 0;
+  for (; n < steps; n++) {
+    const np = nextPosition(board, pos, c.route);
+    if (!np) break;
+    pos = np;
+    const t = tileAt(board, pos);
+    if (HALT_TYPES.includes(t?.type)) {
+      n++;
+      break;
+    }
+    if (t?.type === 'pass' && n < steps - 1) passes++;
+  }
+  return { tile: tileAt(board, pos), steps: n, passes };
 }
 
 // ---------- 룰렛 실력 모드: the CPU's target ----------
@@ -630,7 +765,6 @@ function aimTileWorth(ctx, c, tile) {
  * @returns {{tile, steps}}
  */
 function landingFor(ctx, c, value) {
-  const board = ctx.room.board;
   let move = value;
   for (const m of c.spinMods ?? []) {
     if (m.kind === 'plus') move += m.value ?? 0;
@@ -638,25 +772,23 @@ function landingFor(ctx, c, value) {
   }
   move = Math.max(1, move);
   if (move === 1 && (c.items ?? []).some((id) => (itemDef(ctx.data, id)?.effect?.carMin ?? 0) > 1)) move = 2;
-  const steps = c.military?.status === 'serving' ? Math.max(1, Math.ceil(move / 2)) : move;
-  let pos = c.position;
-  let n = 0;
-  for (; n < steps; n++) {
-    const np = nextPosition(board, pos, c.route);
-    if (!np) break;
-    pos = np;
-    const t = tileAt(board, pos);
-    if (t?.type === 'stop' || t?.type === 'goal') {
-      n++;
-      break;
-    }
-  }
-  return { tile: tileAt(board, pos), steps: n };
+  return walkFor(ctx, c, move);
 }
 
 /**
- * Expected worth of every target 1..10 under the server's jitter: {target: worth}. A landing = its tile worth
- * (losses × the personality's `lossAversion`) + `aimSpeed` per tile moved (bold CPUs like distance).
+ * Worth of one tile of progress: loop eras = the share of the next payday / 찬스 광장 a tile brings closer (18–25 tiles
+ * per payday, ~27 per 찬스 광장); the final race also brings the goal (prize + bonus spins) closer.
+ */
+function progressWorth(ctx, c) {
+  const era = ctx.room.board?.eras?.[c.position?.eraIndex ?? 0];
+  const loop = paydayWorth(ctx, c) / 21.5 + (era?.final ? 0 : PASS_WORTH / 27);
+  return era?.final ? loop + 60 / Math.max(10, stepsToGoal(ctx.room, c)) : loop;
+}
+
+/**
+ * Expected worth of every target 1..10 under the server's jitter: {target: worth}. A landing = its tile worth + the
+ * 찬스 광장 passed (losses × the personality's `lossAversion`) + `aimSpeed` × the worth of a tile of progress per tile
+ * moved (paydays / 찬스 광장 / the goal come closer; bold CPUs like distance more).
  */
 export function cpuAimScores(room, charId, data = gameData()) {
   const c = room.characters.find((x) => x.id === charId);
@@ -664,11 +796,12 @@ export function cpuAimScores(room, charId, data = gameData()) {
   const ctx = view(room, data);
   const k = knobs(c, room);
   const { min, max } = data.balance.spin;
+  const speed = progressWorth(ctx, c);
   const worth = {};
   for (let v = min; v <= max; v++) {
-    const { tile, steps } = landingFor(ctx, c, v);
-    const w = aimTileWorth(ctx, c, tile);
-    worth[v] = (w < 0 ? w * (k.lossAversion ?? 1) : w) + (k.aimSpeed ?? 0) * steps;
+    const { tile, steps, passes } = landingFor(ctx, c, v);
+    const w = aimTileWorth(ctx, c, tile) + passes * PASS_WORTH;
+    worth[v] = (w < 0 ? w * (k.lossAversion ?? 1) : w) + (k.aimSpeed ?? 0) * speed * steps;
   }
   const jitter = data.balance.roulette?.skill?.jitter;
   const scores = {};
@@ -699,16 +832,20 @@ export function cpuSkillTarget(room, charId, data = gameData()) {
   return best;
 }
 
-/** Tiles left to the goal (following the chosen / default route). */
+/** Tiles left to the goal of the final race (loop eras have no goal → Infinity). */
 function stepsToGoal(room, c) {
-  let pos = c.position;
-  let n = 0;
-  for (; n < 200; n++) {
-    const np = nextPosition(room.board, pos, c.route);
-    if (!np) break;
-    pos = np;
-  }
-  return n;
+  const era = room.board?.eras?.[c.position?.eraIndex ?? 0];
+  if (!era?.final) return Infinity;
+  return Math.max(0, era.tiles.length - 1 - (c.position?.index ?? 0));
+}
+
+/** Near the end of the game: ≤ 12 tiles from the goal (final race), or the last round of a mode without one. */
+function nearEnd(room, c) {
+  const i = c.position?.eraIndex ?? 0;
+  const era = room.board?.eras?.[i];
+  if (era?.final) return stepsToGoal(room, c) <= 12;
+  const last = i + 1 >= (room.board?.eras?.length ?? 0);
+  return last && (room.turn?.eraTurns ?? 0) - (room.turn?.eraRound ?? 0) <= 0;
 }
 
 /** Other unfinished characters `c` may sabotage now (engine rule: not the same target this or last round). */
@@ -765,7 +902,7 @@ export function cpuCardAction(room, charId, data = gameData()) {
     if (x.def.kind === 'instant' && st && (statUseful(ctx, c, st) || (full && statOf(c, st) < statCap(data)))) return use(x);
   }
 
-  const near = stepsToGoal(room, c) <= 12;
+  const near = nearEnd(room, c);
   const base = expectedLanding(ctx, c, 'plain');
   for (const [id, kind] of [['taxi', 'max2'], ['energy', 'plus2']]) {
     const x = find(id);

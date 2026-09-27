@@ -47,6 +47,9 @@ const OPTION_LOOK = {
   trip: { icon: '✈️', label: '제주 여행' },
   skip: { icon: '🚶', label: '지나가기' },
   lotto: { icon: '🎱', label: '로또 한 장' },
+  // ADDENDUM A2 (final race 인생역전섬)
+  allIn: { icon: '🎯', label: '전 재산 올인' },
+  retire: { icon: '🏖️', label: '조기 은퇴' },
 };
 
 /** Drop a leading copy of the option icon from its label (「😴 푹 쉬다 가기」 + icon 😴 → 「푹 쉬다 가기」). */
@@ -135,8 +138,8 @@ export function submapOptions(p, { meta = null } = {}) {
 }
 
 // server results (9-A): rest visit train wishOk wishFail leave trip skip jackpot lottoWin lottoLose horseWin horseLose
-const SUCCESS = new Set(['win', 'won', 'success', 'jackpot', 'bigwin', 'big', 'hit', 'ok', 'granted', 'unlock', 'unlocked', 'pass', 'lucky', 'wishok', 'lottowin', 'horsewin']);
-const FAIL = new Set(['lose', 'lost', 'fail', 'failed', 'miss', 'none', 'bust', 'nothing', 'wishfail', 'lottolose', 'horselose']);
+const SUCCESS = new Set(['win', 'won', 'success', 'jackpot', 'bigwin', 'big', 'hit', 'ok', 'granted', 'unlock', 'unlocked', 'pass', 'lucky', 'wishok', 'lottowin', 'horsewin', 'allinwin']);
+const FAIL = new Set(['lose', 'lost', 'fail', 'failed', 'miss', 'none', 'bust', 'nothing', 'wishfail', 'lottolose', 'horselose', 'allinlose']);
 /** Results that are a pass (지나가기 / 그냥 나가기): a banner, never a full cut-in. */
 export const PASS_RESULTS = new Set(['skip', 'leave']);
 export const isSubmapPass = (e) => e?.type === 'submapResult' && (e.cutin === false || PASS_RESULTS.has(String(e.result ?? '')) || PASS_RESULTS.has(String(e.optionId ?? '')));
@@ -174,7 +177,7 @@ export function isSubmapBig(e, meta = null) {
   if (e?.type !== 'submapResult') return false;
   if (e.big === true) return true;
   const r = String(e.result ?? '').toLowerCase();
-  if (r === 'jackpot' || r === 'bigwin') return true;
+  if (r === 'jackpot' || r === 'bigwin' || r === 'allinwin' || r === 'allinlose') return true; // 올인: a show either way
   if (isWishUnlock(e, meta)) return true;
   return submapOf(e) === 'reversal' && submapSuccess(e) === true && Number(e.amount) >= BIG_REVERSAL;
 }

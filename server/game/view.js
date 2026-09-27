@@ -80,6 +80,7 @@ export function viewFor(room, sessionId = null) {
     characters: publicCharacters(room, sessionId),
     turn: publicTurn(room, mine),
     board: room.board ? structuredClone(room.board) : null, // public; static per game
+    eraIndex: room.eraIndex ?? null, // loop maps: the shared era (turn.eraRound / eraTurns = its clock; null in the final race)
     bets: publicBets(room, mine),
     news: structuredClone(room.news ?? {}), // Stage 6: {eraId: newsId} (public, news.json in /api/meta)
     // Stage 7: hands / items (on characters), open trade offers, holidays held and lotto draws are public

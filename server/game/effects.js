@@ -103,8 +103,12 @@ export const statName = (data, stat) => data?.balance?.stats?.names?.[stat] ?? S
  * Change one stat, clamped to 0..cap. Emits `statChanged {charId, stat, delta, value, reason}` with the ACTUAL
  * change (nothing when clamped away). @returns the actual delta
  */
+/** 찬스 광장 「그냥 지나가기」 buff held by a character (`character.chanceBuff.id`, until its next 찬스 광장). */
+export const hasBuff = (c, id) => c?.chanceBuff?.id === id;
+
 export function addStat(tx, c, stat, delta, reason, extra = {}) {
   if (!delta || !STAT_KEYS.includes(stat)) return 0;
+  if (delta > 0 && hasBuff(c, 'statUp')) delta += 1; // 📈 성장 버프: +1 more on every stat gain
   c.stats ??= { int: 0, str: 0, charm: 0, luck: 0 };
   const before = c.stats[stat] ?? 0;
   const value = Math.max(0, Math.min(statCap(tx.data), before + delta));

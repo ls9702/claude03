@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getEras } from '../data/index.js';
-import { TURN_TIMEOUTS, defaultRoomConfig, minEraTurns, validateRoomConfig } from '../game/config.js';
+import { TURN_TIMEOUTS, defaultRoomConfig, finalLengthLimits, loopMeta, minTurnsTable, validateRoomConfig } from '../game/config.js';
 import { adminSummary, adminView } from '../game/view.js';
 import { addCpuCharacter, removeCpuCharacter } from '../game/lobby.js';
 import { clientIp, createRateLimiter, sendFail } from './common.js';
@@ -141,9 +141,9 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
 
   router.get('/meta', requireAdmin, (req, res) => {
     const eras = getEras();
-    // Form hints: minimum turns per era for each mode (route eras ≥ 3, kids 고등학생 ≥ 2) + turn timer choices.
-    const minTurns = Object.fromEntries(Object.entries(eras.modes).map(([mode, m]) => [mode, Object.fromEntries(m.eras.map((id) => [id, minEraTurns(id, mode)]))]));
-    res.json({ eras, defaults: defaultRoomConfig(), turnTimeouts: TURN_TIMEOUTS, minTurns });
+    // Form hints: minimum turns per era for each mode (route eras ≥ 3; the final era = goal race, no turn limit) +
+    // turn timer choices + loop map sizes (admin estimate) + the final race length limits.
+    res.json({ eras, defaults: defaultRoomConfig(), turnTimeouts: TURN_TIMEOUTS, minTurns: minTurnsTable(), loop: loopMeta(), finalLength: finalLengthLimits() });
   });
 
   router.get('/rooms', requireAdmin, (req, res) => {

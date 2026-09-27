@@ -112,7 +112,9 @@ test('host tools over HTTP: forceSpin / skipTurn / timeout phases; spectators jo
     const meta = (await call('GET', '/admin/api/meta', { cookie })).json;
     assert.deepEqual(meta.turnTimeouts, [0, 30, 60, 90, 120]);
     assert.equal(meta.defaults.turnTimeoutSec, 0);
-    assert.deepEqual([meta.minTurns.lifetime.young, meta.minTurns.kids.high, meta.minTurns.lifetime.high], [3, 2, 1]);
+    assert.deepEqual([meta.minTurns.lifetime.young, meta.minTurns.kids.high, meta.minTurns.lifetime.high, meta.minTurns.lifetime.senior], [3, 1, 1, null]);
+    assert.equal(meta.loop.lapPerTurn, 5.4);
+    assert.deepEqual(meta.finalLength, { min: 20, max: 80, default: 40 });
     const created = await call('POST', '/admin/api/rooms', { cookie, body: { mode: 'adult', eraTurns: { young: 5, middle_age: 5, senior: 3 }, turnTimeoutSec: 60 } });
     assert.equal(created.status, 201);
     assert.equal(created.json.room.config.turnTimeoutSec, 60);
@@ -135,7 +137,9 @@ test('host tools over HTTP: forceSpin / skipTurn / timeout phases; spectators jo
     assert.equal(j.json.room.me.role, 'spectator');
     assert.equal(j.json.room.players.find((p) => p.isMe).role, 'spectator');
     const cur = j.json.room.turn.order[j.json.room.turn.currentIndex];
-    assert.equal(typeof j.json.room.turn.spinDeadlineAt, 'number');
+    // adult mode (loop maps): the first turn opens the job offer before the spin (single prompt → the 60 s timer)
+    assert.equal(j.json.room.turn.pending.kind, 'jobOffer');
+    assert.equal(typeof j.json.room.turn.pending.deadlineAt, 'number');
     for (const body of [{ type: 'spin', characterId: cur }, { type: 'bet', characterId: cur, kind: 'oddEven', pick: 'odd', amount: 5 }, { type: 'choose', characterId: cur, promptId: 'pr1', optionId: 'x' }]) {
       const r = await call('POST', `/api/rooms/${id}/actions`, { token: W, body });
       assert.equal(r.status, 403, body.type);
@@ -149,30 +153,33 @@ test('host tools over HTTP: forceSpin / skipTurn / timeout phases; spectators jo
 
     // unknown admin action
     assert.equal((await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'nope' } })).status, 400);
-    // timeout with nothing pending
-    assert.equal((await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } })).status, 409);
-    // skipTurn: next character, no movement
-    const skip = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'skipTurn' } });
-    assert.equal(skip.status, 200, skip.text);
-    assert.notEqual(skip.json.room.turn.order[skip.json.room.turn.currentIndex], cur);
-    assert.deepEqual(skip.json.room.characters.find((c) => c.id === cur).position, { eraIndex: 0, route: 'main', index: -1 });
-    // forceSpin: spins for the current character → lands on the 갈림길 stop (adult mode: job offer, then routeChoice)
-    const fs = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'forceSpin' } });
-    assert.equal(fs.status, 200, fs.text);
-    assert.ok(fs.json.events.some((e) => e.type === 'spun'));
-    assert.equal(fs.json.room.turn.pending.kind, 'jobOffer');
-    assert.equal(typeof fs.json.room.turn.pending.deadlineAt, 'number', 'single prompt gets the 60 s turn timer');
+    // forceSpin / skipTurn only while waiting for the roulette
     for (const type of ['forceSpin', 'skipTurn']) {
       const r = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type } });
       assert.equal(r.status, 409, type);
       assert.match(r.json.error, /룰렛을 기다리는 중에만/);
     }
+    // timeout → the default offer is taken → the roulette (fresh spin deadline)
     const to1 = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
     assert.equal(to1.status, 200);
-    assert.equal(to1.json.room.turn.pending.kind, 'routeChoice');
-    const to = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
-    assert.equal(to.status, 200);
-    assert.equal(to.json.room.turn.phase, 'awaitSpin');
+    assert.equal(to1.json.room.turn.pending, null);
+    assert.equal(to1.json.room.turn.phase, 'awaitSpin');
+    assert.equal(typeof to1.json.room.turn.spinDeadlineAt, 'number');
+    // timeout with nothing pending
+    assert.equal((await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } })).status, 409);
+    // skipTurn: next character, no movement (its own pre-spin job offer opens)
+    const skip = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'skipTurn' } });
+    assert.equal(skip.status, 200, skip.text);
+    const next = skip.json.room.turn.order[skip.json.room.turn.currentIndex];
+    assert.notEqual(next, cur);
+    assert.deepEqual(skip.json.room.characters.find((c) => c.id === cur).position, { eraIndex: 0, route: 'main', index: 0 });
+    assert.equal(skip.json.room.turn.pending?.kind, 'jobOffer');
+    const to2 = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
+    assert.equal(to2.json.room.turn.phase, 'awaitSpin');
+    // forceSpin: spins for the current character
+    const fs = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'forceSpin' } });
+    assert.equal(fs.status, 200, fs.text);
+    assert.ok(fs.json.events.some((e) => e.type === 'spun' && e.charId === next));
   } finally {
     await srv.close();
     await tmp.cleanup();
@@ -290,27 +297,28 @@ test('turn timer: the runner auto-spins after turnTimeoutSec and defaults a sing
     store.put(room);
     assert.equal(runner.start(room.id).ok, true);
     const first = store.getRoom(room.id);
-    assert.equal(first.turn.spinDeadlineAt, 1_000_000 + 30_000);
+    // adult mode: the first turn opens the job offer (single prompt → the same timer) → default answer on timeout
+    assert.equal(first.turn.pending?.kind, 'jobOffer');
+    assert.equal(first.turn.pending.deadlineAt, 1_000_000 + 30_000);
+    t.mock.timers.tick(29_000);
+    assert.equal(store.getRoom(room.id).turn.pending?.kind, 'jobOffer', 'not yet');
+    t.mock.timers.tick(1_100);
+    const hired = store.getRoom(room.id);
+    assert.equal(hired.turn.pending, null);
+    assert.ok(hired.characters.find((c) => c.id === first.turn.order[0]).job, 'default option');
+    // back at the roulette with a fresh deadline → auto spin after 30 s
+    assert.equal(hired.turn.spinDeadlineAt, hired.updatedAt + 30_000);
     t.mock.timers.tick(29_000);
     assert.equal(store.getRoom(room.id).turn.lastSpin, null, 'not yet');
     t.mock.timers.tick(1_100);
     const spun = store.getRoom(room.id);
     assert.equal(spun.turn.lastSpin?.charId, first.turn.order[0], 'auto spin for the current character');
     assert.ok(spun.log.some((l) => /자동으로 돌렸어요/.test(l.text)));
-    // landed on the 갈림길 stop → single prompts with the same timer (adult mode: job offer, then the route)
-    // → default answers on timeout
-    assert.equal(spun.turn.pending?.kind, 'jobOffer');
-    assert.equal(spun.turn.pending.deadlineAt, spun.updatedAt + 30_000);
-    t.mock.timers.tick(30_100);
-    const routed = store.getRoom(room.id);
-    assert.equal(routed.turn.pending?.kind, 'routeChoice');
-    assert.equal(routed.turn.pending.deadlineAt, routed.updatedAt + 30_000);
-    t.mock.timers.tick(30_100);
+    // whatever the move opened is defaulted on timeout too, until the next character's turn
+    for (let i = 0; i < 6 && store.getRoom(room.id).turn.order[store.getRoom(room.id).turn.currentIndex] === first.turn.order[0]; i++) t.mock.timers.tick(30_100);
     const after = store.getRoom(room.id);
-    assert.equal(after.turn.pending, null);
-    assert.equal(after.characters.find((c) => c.id === first.turn.order[0]).route, 'career', 'default option');
     assert.equal(after.turn.order[after.turn.currentIndex], first.turn.order[1]);
-    assert.equal(typeof after.turn.spinDeadlineAt, 'number');
+    assert.ok(after.turn.pending?.deadlineAt || after.turn.spinDeadlineAt, 'the next turn has a deadline');
     runner.stop();
     t.mock.timers.reset();
     await store.close();

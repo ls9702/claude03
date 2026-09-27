@@ -18,6 +18,7 @@ import {
   paySalary,
   rankUpChance,
   rollInjury,
+  expNeeded,
   salaryAmount,
   tryRankUp,
   unlockMet,
@@ -38,9 +39,11 @@ const OUTFITS = new Set(avatars.parts.outfit.map((o) => o.id));
 const ERA_IDS = loadData('eras').eras.map((e) => e.id);
 const TONE_OK = (t) => TONES.includes(data.tones.toneAliases?.[t] ?? t);
 
-function started({ mode = 'lifetime', eraTurns = {}, chars = [['A', 'A1'], ['B', 'B1']], seed = 7 } = {}) {
+/** Short eras for whole-game tests (loop maps: every character spins Σ eraTurns + the final race). */
+const SHORT = { baby: 1, elem: 1, middle: 1, high: 1, young: 6, middle_age: 4 };
+function started({ mode = 'lifetime', eraTurns = {}, chars = [['A', 'A1'], ['B', 'B1']], seed = 7, finalLength = 20 } = {}) {
   let room = makeRoom({ seed });
-  room.config = { ...room.config, mode, eraTurns: { ...room.config.eraTurns, ...eraTurns } };
+  room.config = { ...room.config, mode, eraTurns: { ...room.config.eraTurns, ...eraTurns }, finalLength };
   room = joinRoom(room, 'A', '에이', 0).room;
   room = joinRoom(room, 'B', '비', 0).room;
   for (const [owner, name, avatar] of chars) room = addCharacter(room, owner, { name, avatar }, 0).room;
@@ -287,8 +290,10 @@ test('rank-up: chance formula, passive at expNeeded (seeded), stat +1, history; 
   c.era = 'young';
   assert.ok(rankUpChance(tx, c) <= Math.min(J.maxChance, want)); // restructuring is middle_age only → no change in young
   tx.room.news = {};
-  assert.equal(tryRankUp(tx, c), ru.expNeeded > 0 ? 'notReady' : 'fail');
-  c.job.exp = ru.expNeeded;
+  const need = expNeeded(data, jobDef(data, 'office_worker')); // jobs.json expNeeded × balance expNeededMult
+  assert.equal(need, Math.max(1, Math.round(ru.expNeeded * (J.expNeededMult ?? 1))));
+  assert.equal(tryRankUp(tx, c), need > 0 ? 'notReady' : 'fail');
+  c.job.exp = need;
   tx.rng = fixedRng({ nexts: [0.999] });
   assert.equal(tryRankUp(tx, c), 'fail');
   assert.equal(c.job.rank, 1);
@@ -424,8 +429,9 @@ test('hidden jobs: all 6 unlock conditions (boundaries), unlock event once, offe
   check('mountain_spirit', { wishes: W - 1 }, false);
   check('mountain_spirit', { ...S({ luck: 9 }), badEvents: 3 }, false);
   // 건물주 (Stage 8): 부동산 갈아타기 3회 이상, 또는 펜트하우스 / 제주 별장 보유 (any job era)
-  check('landlord', { houseSwaps: 3 }, true, 'young');
-  check('landlord', { houseSwaps: 2, house: { id: 'hanok', price: 1800, value: 1800, boughtTurn: 1 } }, false, 'middle_age');
+  const swaps = def('landlord').unlock.anyOf.find((x) => x.houseSwaps != null).houseSwaps;
+  check('landlord', { houseSwaps: swaps }, true, 'young');
+  check('landlord', { houseSwaps: swaps - 1, house: { id: 'hanok', price: 1800, value: 1800, boughtTurn: 1 } }, false, 'middle_age');
   check('landlord', { houseSwaps: 0, house: { id: 'penthouse', price: 3000, value: 3000, boughtTurn: 1 } }, true, 'senior');
   check('landlord', { houseSwaps: 0, house: { id: 'jeju_villa', price: 1500, value: 2500, boughtTurn: 1 } }, true, 'young');
   check('landlord', { money: 99999 }, false, 'middle_age');
@@ -536,7 +542,7 @@ test('MC: job / promotion / hiddenJob / injury / military / news only on real ou
 test('full random lifetime games: every event type / line tag is known; no unfilled placeholders', () => {
   const seen = new Set();
   for (const seed of [2, 11]) { // (Stage 9 board pools: seed 3 → 2 keeps a graduation in the sample)
-    let room = started({ seed, chars: [['A', 'A1', { body: 'boy' }], ['B', 'B1', { body: 'girl' }], ['A', 'A2', { body: 'girl' }]] });
+    let room = started({ seed, eraTurns: SHORT, chars: [['A', 'A1', { body: 'boy' }], ['B', 'B1', { body: 'girl' }], ['A', 'A2', { body: 'girl' }]] });
     for (let i = 0; i < 2000 && room.status === 'playing'; i++) {
       const p = room.turn.pending;
       const action = p

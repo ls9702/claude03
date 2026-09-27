@@ -11,6 +11,8 @@
 // or sabotage are minor; lone card / gift / trade events are banners; a lotto draw that arrives while my prompt waits
 // is deferred ('defer') until I have answered.
 // Stage 8: 결혼식 / 출산 / 고교 첫 만남 / 부동산 시세 are big, a date is minor, 용돈 / 보상판매 / 입학 are chips.
+// Loop maps: the shared era transition is ONE big show everyone takes part in; a payday landing (💵 월급날) is a banner
+// unless it's big; 찬스 광장 「그냥 지나가기」 results and 찬스 버프 changes are banners.
 // Stage 9: a submap result is big for jackpots / big 인생역전 wins / a wish that opens 산신령 (else minor → a banner for
 // others in 「간단히」); a treasure find is minor unless it's mine.
 import { isCardAnchor } from './cutinMap.js';
@@ -42,16 +44,25 @@ export const DEADLINE_RESERVE_MS = 12000;
 
 /** Tiles that will become marriage / job events (Stage 6) — always full cut-ins. */
 export const BIG_TILE_TYPES = ['heart', 'job'];
-const BIG_TYPES = new Set(['finished', 'eraChanged', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash', 'holidayStarted', 'holidayResult', 'lottoDraw',
+const BIG_TYPES = new Set(['finished', 'eraChanged', 'eraTransition', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash', 'holidayStarted', 'holidayResult', 'lottoDraw',
   // Stage 8: 결혼식, 출산, 고교 첫 만남, 부동산 시세 (full even in 「간단히」)
   'married', 'childBorn', 'schoolMeet', 'houseValueChanged']);
 /** Stage 8 minor anchors: never full for other players in 「간단히」 (whatever their line tag says). */
 export const MINOR_TYPES = ['dated', 'treasureFound'];
 const BIG_TAG = /marriage|wedding|job|promotion|birth/;
 /** Stage 6 minor tiles: never full cut-ins for other players (whatever their line tag says). */
-export const MINOR_TILE_TYPES = ['habit', 'salary', 'card', 'shop'];
+export const MINOR_TILE_TYPES = ['habit', 'salary', 'card', 'shop', 'pass'];
+/** Loop maps: a payday landing this big (net 만원 for its character) is still a full cut-in for me. */
+export const PAYDAY_BIG = 300;
+/** A 💵 월급날 landing group (forced stop) — a banner unless big (also for my own characters). */
+export function isPaydayGroup(g) {
+  const anchors = g?.anchors ?? [g?.anchor];
+  return anchors.length > 0 && anchors.every((a) => a?.type === 'landed' && a.tileType === 'salary');
+}
+/** 찬스 광장: 「그냥 지나가기」 / 나가기 results. */
+export const isPassSkip = (a) => a?.type === 'promptResolved' && a.kind === 'passTile' && ['passed', 'left', 'pass', 'skip'].includes(String(a.result ?? ''));
 /** Always a small banner (also for my own characters): 전역 (Stage 6); card gained / plain card use / gift / trade (Stage 7). */
-export const BANNER_TYPES = ['militaryEnd', 'cardGained', 'gift', 'tradeResolved'];
+export const BANNER_TYPES = ['militaryEnd', 'cardGained', 'gift', 'tradeResolved', 'chanceBuff'];
 /** Stage 7: global shows that wait until my pending prompt is answered instead of shrinking to a banner. */
 export const DEFER_TYPES = ['lottoDraw', 'holidayResult'];
 
@@ -60,6 +71,7 @@ export function isBannerGroup(g) {
   const a = g?.anchor;
   if (!a) return false;
   if (isSubmapPass(a)) return true; // Stage 9: 지나가기 / 그냥 나가기 at a submap
+  if (isPassSkip(a)) return true; // loop maps: 찬스 광장 그냥 지나가기
   if (a.type === 'cardUsed') return !isCardAnchor(a);
   return BANNER_TYPES.includes(a.type);
 }
@@ -121,6 +133,8 @@ export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptF
   if (promptForMe && DEFER_TYPES.includes(g.anchor.type)) return 'defer';
   if (promptForMe) return own || mode !== 'off' ? 'banner' : 'skip';
   if (isBannerGroup(g) && !g.studio?.length) return own || normalizeCutinMode(mode) !== 'off' ? 'banner' : 'skip';
+  // 💵 월급날: the board shows the pay (float / banner); only a big payday of mine takes the screen
+  if (isPaydayGroup(g) && !(own && Number(g.delta) >= PAYDAY_BIG)) return own || normalizeCutinMode(mode) !== 'off' ? 'banner' : 'skip';
   if (own) return 'full';
   const m = normalizeCutinMode(mode);
   if (m === 'off') return 'skip';
@@ -139,7 +153,7 @@ export function involvesMe(g, mine) {
   const set = toSet(mine);
   const a = g?.anchor;
   if (!a) return false;
-  if (a.type === 'holidayStarted') return true; // everyone's holiday
+  if (a.type === 'holidayStarted' || a.type === 'eraTransition') return true; // everyone's holiday / the shared new era
   const ids = [g.charId, g.targetId, a.charId, a.targetId, a.toId, ...(a.results ?? []), ...(a.entries ?? []), ...(a.winners ?? []), ...(a.pairs ?? []), ...(a.gifts ?? [])]
     .map((x) => (x && typeof x === 'object' ? x.charId ?? x.fromId ?? null : x))
     .filter(Boolean);
@@ -198,7 +212,7 @@ export function eraBannerText(names = [], eraName = '') {
 }
 
 const ANCHOR_RANK = {
-  hiddenJobUnlocked: 9, jobChanged: 8, rankUp: 8, finished: 6, eraChanged: 5, militaryStart: 4, educationChanged: 4,
+  hiddenJobUnlocked: 9, jobChanged: 8, rankUp: 8, finished: 6, eraTransition: 9, eraChanged: 5, militaryStart: 4, educationChanged: 4,
   injured: 3, routeChosen: 3, promptResolved: 2, landed: 1, militaryEnd: 0,
   cardBlocked: 6, cardUsed: 5, itemBought: 3, gift: 0, cardGained: 0, tradeResolved: 0,
   // Stage 8

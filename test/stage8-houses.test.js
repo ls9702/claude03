@@ -13,6 +13,7 @@ import { computeRanking } from '../server/game/result.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { startServer } from '../server/index.js';
 import { httpCall, makeRoom, tempDir } from './helpers.js';
+import { atEraEnd, plainEra, toEra } from './helpers.js';
 
 const data = gameData();
 const H = data.houses;
@@ -183,7 +184,7 @@ test('house tile → prompt: buy / pass, cash-only (disabled), one net moneyChan
   assert.equal(others.length, 2);
 });
 
-test('노년 시세: drawn once by the first senior entrant (× senior news, clamped), every house value × mult', () => {
+test('노년 시세: drawn once at the transition into senior (× senior news, clamped), every house value × mult', () => {
   const { tx, c, others } = sandbox({ era: 'senior', rng: { ints: [120] }, news: { senior: 'redevelopment' } });
   c.house = { id: 'villa', price: 700, value: 700, boughtTurn: 1 };
   others[0].house = { id: 'apartment', price: 1200, value: 1300, boughtTurn: 2 };
@@ -205,13 +206,16 @@ test('노년 시세: drawn once by the first senior entrant (× senior news, cla
   assert.equal(drawHousingMarket(lo.tx, 'senior').mult, H.market.min);
   // later senior listings use the market price
   assert.equal(priceMult(tx, c), want);
-  // engine: the first entrant of senior triggers it
+  // engine: the shared transition into senior triggers it
   const room = structuredClone(started());
   room.erasOpened = room.board.eras.map((e) => e.id).filter((e) => e !== 'senior');
   room.config.holidays = false;
-  const mover = ch(room, cur(room));
   const mid = room.board.eras.findIndex((e) => e.id === 'middle_age');
-  Object.assign(mover, { era: 'middle_age', route: 'career', position: { eraIndex: mid, route: 'main', index: 1 }, careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'teacher', rank: 1, exp: 0, injured: 0 } });
+  toEra(room, mid);
+  plainEra(room, mid);
+  for (const x of room.characters) Object.assign(x, { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'teacher', rank: 1, exp: 0, injured: 0 } });
+  atEraEnd(room);
+  const mover = ch(room, cur(room));
   mover.house = { id: 'hanok', price: 1800, value: 1800, boughtTurn: 1 };
   const r = applyAction(room, { type: 'spin', characterId: mover.id }, { rng: fixedRng({ ints: [1, 100] }), now: 5 });
   const hv = r.events.find((e) => e.type === 'houseValueChanged');
@@ -233,13 +237,16 @@ test('ranking adds the house value: total = money − debt + items + house', () 
   assert.equal(rows.find((r) => r.charId === b.id).house, 0);
 });
 
-test('건물주: unlocked after the 3rd swap (or owning 펜트하우스 / 제주 별장)', () => {
+test('건물주: unlocked after the n-th swap (jobs.json, 4 since the loop maps) or owning 펜트하우스 / 제주 별장', () => {
+  const need = data.jobs.jobs.find((j) => j.id === 'landlord').unlock.anyOf.find((x) => x.houseSwaps != null).houseSwaps;
   const { tx, c } = sandbox({ money: 99999 });
-  for (const id of ['oneroom', 'villa', 'apartment']) buyHouse(tx, c, { houseId: id, price: def(id).price, basePrice: def(id).price, value: def(id).value });
-  assert.equal(c.houseSwaps, 2);
+  const ladder = ['oneroom', 'villa', 'apartment', 'hanok', 'oneroom', 'villa', 'apartment', 'hanok'];
+  for (const id of ladder.slice(0, need)) buyHouse(tx, c, { houseId: id, price: def(id).price, basePrice: def(id).price, value: def(id).value });
+  assert.equal(c.houseSwaps, need - 1);
   assert.deepEqual(checkHiddenUnlocks(tx, c), []);
-  buyHouse(tx, c, { houseId: 'hanok', price: 1800, basePrice: 1800, value: 1800 });
-  assert.equal(c.houseSwaps, 3);
+  const last = ladder[need];
+  buyHouse(tx, c, { houseId: last, price: def(last).price, basePrice: def(last).price, value: def(last).value });
+  assert.equal(c.houseSwaps, need);
   assert.deepEqual(checkHiddenUnlocks(tx, c), ['landlord']);
   assert.ok(tx.events.some((e) => e.type === 'hiddenJobUnlocked' && e.jobId === 'landlord'));
   const s = sandbox({ money: 99999 });

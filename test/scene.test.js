@@ -4,10 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { defaultEraTurns } from '../server/data/index.js';
-import { buildBoard, ROUTE_KEYS } from '../server/game/board.js';
-import { createRng } from '../server/game/rng.js';
-import { layoutBoard, planProps, slotOffset, eraSweepPoints, ROUTE_SIDE, PROP_RADIUS, TALL_PROPS } from '../public/js/scene/layout.js';
+import { slotOffset } from '../public/js/scene/layout.js';
 import { pickQuality, renderSize, shouldFallback, particleCount, QUALITY_PRESETS } from '../public/js/scene/quality.js';
 import {
   catmullRom, resample, arcLengths, rouletteRestAngle, rouletteTargetAngle, rouletteValueAt, rouletteRegion, hopHeight,
@@ -17,79 +14,8 @@ import { pawnSpecs, resolveAvatar, PAWN_DEFAULT } from '../public/js/scene/pawnP
 import { tempDir } from './helpers.js';
 import { vendor, THREE_FILES } from '../scripts/vendor.js';
 
-const board = (mode, turns = {}) => buildBoard({ mode, eraTurns: { ...defaultEraTurns(), ...turns } }, createRng(5));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-/** Distance from p to segment ab. */
-function segDist(p, a, b) {
-  const vx = b.x - a.x;
-  const vz = b.z - a.z;
-  const t = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.z - a.z) * vz) / (vx * vx + vz * vz || 1)));
-  return Math.hypot(p.x - a.x - vx * t, p.z - a.z - vz * t);
-}
-const allTiles = (b) => b.eras.flatMap((e) => [...e.tiles, ...Object.values(e.routes ?? {}).flatMap((r) => r.tiles)]);
-
-test('layout: every tile placed; main path evenly spaced along the curve', () => {
-  const b = board('kids');
-  const L = layoutBoard(b);
-  for (const t of allTiles(b)) assert.ok(L.tiles[t.id], `missing ${t.id}`);
-  assert.ok(L.tiles.start);
-  const main = ['start', ...b.eras.flatMap((e) => e.tiles.map((t) => t.id))].map((id) => L.tiles[id]);
-  for (let i = 1; i < main.length; i++) {
-    const d = dist(main[i - 1], main[i]);
-    assert.ok(Math.abs(d - L.spacing) < 0.12, `spacing ${i}: ${d}`); // chord ≈ arc on a gentle curve
-    assert.ok(Math.abs(main[i].s - main[i - 1].s - L.spacing) < 1e-9);
-  }
-  // eras are contiguous and ordered
-  L.eras.forEach((e, i) => {
-    assert.equal(e.id, b.eras[i].id);
-    if (i) assert.ok(e.s0 > L.eras[i - 1].s1);
-    assert.ok(e.bounds.minX < e.center.x && e.center.x < e.bounds.maxX);
-  });
-});
-
-test('layout: route ribbons start at the stop tile and end at the merge tile; sides as configured', () => {
-  const b = board('lifetime', { young: 12, middle_age: 9 });
-  const L = layoutBoard(b);
-  for (const [i, era] of b.eras.entries()) {
-    if (!era.routes) continue;
-    const e = L.eras[i];
-    const stop = L.tiles[era.tiles[0].id];
-    const merge = L.tiles[era.tiles[1].id];
-    assert.ok(Math.abs(merge.s - stop.s - (era.routes.love.tiles.length + 1) * L.spacing) < 1e-9);
-    for (const key of ROUTE_KEYS) {
-      const r = e.routes[key];
-      assert.ok(dist(r.start, stop) < 1e-9, `${key} start`);
-      assert.ok(dist(r.end, merge) < 1e-9, `${key} end`);
-      assert.equal(r.tileIds.length, era.routes[key].tiles.length);
-      // tiles evenly spaced along the ribbon, first one a bit after the stop
-      const pts = r.tileIds.map((id) => L.tiles[id]);
-      const gaps = [dist(stop, pts[0]), ...pts.slice(1).map((p, j) => dist(pts[j], p)), dist(pts.at(-1), merge)];
-      assert.ok(Math.max(...gaps) - Math.min(...gaps) < 0.35, `${key} gaps ${gaps}`);
-      // the middle tile bulges to the route's side (career stays on the centerline)
-      const mid = L.tiles[r.tileIds[Math.floor(r.tileIds.length / 2)]];
-      const off = Math.min(...L.centerline.slice(1).map((c, j) => segDist(mid, L.centerline[j], c)));
-      if (ROUTE_SIDE[key] === 0) assert.ok(off < 0.05, `career offset ${off}`);
-      else assert.ok(off > L.routeWidth * 0.85, `${key} offset ${off}`);
-    }
-  }
-  // no two tiles overlap (tile 1.64 wide)
-  const tiles = Object.values(L.tiles);
-  for (let i = 0; i < tiles.length; i++) for (let j = i + 1; j < tiles.length; j++) assert.ok(dist(tiles[i], tiles[j]) > 1.7, `${tiles[i].id} vs ${tiles[j].id}`);
-  // camera sweep over a route era: stop → three labels → merge
-  const ri = b.eras.findIndex((e) => e.routes);
-  const sw = eraSweepPoints(L, ri);
-  assert.equal(sw.length, 5);
-  assert.deepEqual(sw[1], L.eras[ri].routes.love.label);
-});
-
-test('layout: min route length (turns 3 → L=1) and long eras still lay out', () => {
-  for (const turns of [1, 3, 40]) {
-    const b = board('adult', { young: turns, middle_age: turns, senior: turns });
-    const L = layoutBoard(b);
-    assert.equal(Object.keys(L.tiles).length, allTiles(b).length + 1);
-    for (const t of Object.values(L.tiles)) assert.ok(Number.isFinite(t.x) && Number.isFinite(t.z) && Number.isFinite(t.yaw));
-  }
-});
+// The loop-map layout (one era per board view) is tested in test/client-loop.test.js.
 
 test('layout: pawn slot offsets are distinct and small', () => {
   assert.deepEqual(slotOffset(0, 1), { x: 0, z: 0 });
@@ -98,32 +24,6 @@ test('layout: pawn slot offsets are distinct and small', () => {
     for (const o of offs) assert.ok(Math.hypot(o.x, o.z) <= 0.63);
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) assert.ok(dist(offs[i], offs[j]) > 0.3);
   }
-});
-
-test('props: deterministic, off the track, density scales the count', () => {
-  const b = board('lifetime');
-  const L = layoutBoard(b);
-  const a = planProps(L, { seed: 3 });
-  assert.deepEqual(planProps(L, { seed: 3 }), a);
-  assert.ok(a.length > 40);
-  for (const p of a) {
-    const r = PROP_RADIUS[p.type] ?? 1;
-    for (const t of Object.values(L.tiles)) assert.ok(dist(p, t) >= r + 1.9 - 1e-9, `${p.type} too close to ${t.id}`);
-  }
-  // tall buildings stay behind the track (the camera looks from the +normal side)
-  for (const p of a.filter((x) => TALL_PROPS.has(x.type))) {
-    let bi = 0;
-    for (let i = 1; i < L.centerline.length; i++) if (dist(L.centerline[i], p) < dist(L.centerline[bi], p)) bi = i;
-    const c = L.centerline[bi];
-    const n = L.centerline[Math.min(bi + 1, L.centerline.length - 1)];
-    const q = L.centerline[Math.max(bi - 1, 0)];
-    const tx = n.x - q.x;
-    const tz = n.z - q.z;
-    assert.ok((p.x - c.x) * -tz + (p.z - c.z) * tx < 0, `${p.type} on the near side`);
-  }
-  const low = planProps(L, { seed: 3, density: 0.4 });
-  assert.ok(low.length < a.length);
-  assert.ok(a.some((p) => p.type === 'school') && a.some((p) => p.type === 'temple'));
 });
 
 test('quality presets: param > stored > device heuristic; tv renders at 720p', () => {

@@ -1,7 +1,11 @@
 // Three.js board scene (Stage 4): town + track + route ribbons, pawns, roulette overlay, event animations.
+// Loop maps (원작식 순환 맵): only the current shared era's loop is built (`setBoard(board, {eraIndex})`); an
+// `eraTransition` event fades out, rebuilds the static board for the new era (the old geometry is disposed), puts every
+// pawn on the start tile and tours the new loop with the camera. Hops follow wraps (last tile → start), route branches,
+// the pass pause (`moved.halted: 'pass'` then a second `moved {resumed: true}`) and forced stops (payday / fork).
 //
 //   const b3 = createBoard3D(canvas, { quality: 'high'|'low'|'tv', meta, hooks });
-//   b3.setBoard(room.board, key); b3.setCharacters(room.characters); b3.setCurrent(charId, {mine, subtitle});
+//   b3.setBoard(room.board, {eraIndex}); b3.setCharacters(room.characters); b3.setCurrent(charId, {mine, subtitle});
 //   await b3.playEvents(events);   // SSE `events` → animator queue (returns when the queue drains)
 //   b3.onIdle(cb) / b3.isBusy()    // the 2D UI shows decision modals only after animations finish
 //   b3.animator.pause()/resume()/enqueue(fn)  // Stage 5 cut-ins take over the screen between steps
@@ -11,6 +15,7 @@
 // Throws when WebGL is unavailable (the caller falls back to the 2D board).
 import * as THREE from 'three';
 import { layoutBoard, planProps, slotOffset, eraSweepPoints, ROUTE_ORDER, ROUTE_COLORS, themeFor, boundsOf } from './layout.js';
+import { haltNote, tileIdForPosition as loopTileId } from '../shared/loop.js';
 import { QUALITY_PRESETS, renderSize, particleCount } from './quality.js';
 import { createMascots } from './mascots.js';
 import { createAnimator } from './animator.js';
@@ -32,11 +37,15 @@ const TILE_SIZE = 1.64;
 const TILE_TOP = 0.27;
 const NARROW_TAGS_PX = 700; // canvas CSS width below which only current / mine / moving pawns show name tags
 /** Asset-studio icon ids (manifest meta.tile) per tile type. */
-const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal', habit: 'school', salary: 'money' };
-const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '정지', merge: '합류', goal: '골', habit: '습관', salary: '월급', hometown: '고향', temple: '산사', jeju: '제주', reversal: '역전' };
-const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#3fae5a', hometown: '#7cb342', temple: '#8d6e63', jeju: '#26a69a', reversal: '#d4a017' };
-/** Stage 6 tile glyphs before board.json knows the type (meta icon wins). */
-const DEFAULT_TILE_GLYPH = { habit: '📚', salary: '💵', job: '💼', card: '🃏', shop: '🛍️', hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', treasure: '💎' };
+const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal', habit: 'school', salary: 'money', pass: 'shop' };
+const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '갈림길', merge: '합류', goal: '골', habit: '습관', salary: '월급날', pass: '광장', hometown: '고향', temple: '산사', jeju: '제주', reversal: '역전' };
+const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#2f9e57', pass: '#ff8a3d', hometown: '#7cb342', temple: '#8d6e63', jeju: '#26a69a', reversal: '#d4a017' };
+/** Stage 6 tile glyphs before board.json knows the type (meta icon wins). Loop maps: 💵 월급날, 🎪 찬스 광장. */
+const DEFAULT_TILE_GLYPH = { start: '🚩', habit: '📚', salary: '💵', pass: '🎪', job: '💼', card: '🃏', shop: '🛍️', hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', treasure: '💎' };
+/** Ribbon text drawn under the icon of these tile types (atlas). */
+const RIBBON = { salary: '월급날', pass: '찬스 광장' };
+/** Loop maps: tiles that stand out (bigger tile + marker): forced-stop paydays, pass tiles, the fork. */
+const BIG_TILE = { salary: 1.2, pass: 1.14, stop: 1.12, start: 1.1, goal: 1.3 };
 /** Stage 9 board reactions: submap arrival / outcome, treasure find. */
 const SUBMAP_POP = { hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', casino: '🎰' };
 /** Stage 6 board reactions over the pawn (the cut-in follows). */
@@ -51,12 +60,9 @@ const CHILD_GROW_POP = { dol: '🎂', school: '🎒', exam: '📝', job: '💼' 
 /** Name tag text: name + Stage 7 roulette-modifier badge (`tagBadge`, e.g. 「✂️−3」). */
 const tagName = (c) => (c?.tagBadge ? `${c.name} ${c.tagBadge}` : c?.name ?? '');
 
-/** tile id for a character position (same rule as server board.tileIdAt). */
+/** tile id for a character position (same rule as server board.tileIdAt; loop maps: index < 0 → the start tile). */
 export function tileIdForPosition(board, pos) {
-  if (!pos || pos.index < 0) return 'start';
-  const era = board?.eras?.[pos.eraIndex];
-  const track = pos.route === 'main' ? era?.tiles : era?.routes?.[pos.route]?.tiles;
-  return track?.[pos.index]?.id ?? 'start';
+  return loopTileId(board, pos) ?? 'start';
 }
 
 function createTweens() {
@@ -109,11 +115,12 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   const wrap = canvas.parentElement;
   const overlay = document.createElement('div');
   overlay.className = 'b3-overlay';
-  overlay.innerHTML = '<div class="b3-sub" hidden></div><div class="b3-banner" hidden></div><div class="b3-num" hidden></div>';
+  overlay.innerHTML = '<div class="b3-fade"></div><div class="b3-sub" hidden></div><div class="b3-banner" hidden></div><div class="b3-num" hidden></div>';
   wrap.appendChild(overlay);
   const elSub = overlay.querySelector('.b3-sub');
   const elBanner = overlay.querySelector('.b3-banner');
   const elNum = overlay.querySelector('.b3-num');
+  const elFade = overlay.querySelector('.b3-fade');
 
   const scene = new THREE.Scene();
   const SKY = new THREE.Color('#bfe6ff');
@@ -136,6 +143,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     board: null,
     boardKey: null,
     layout: null,
+    eraIndex: 0, // the era whose loop is built
+    wantEra: null, // the state's era (switched when the eraTransition animation plays, else once idle)
     staticGroup: null,
     labels: { routes: {}, eras: [] },
     pawns: new Map(), // charId → { pawn, tileId, moving, order, target: Vector3, finished }
@@ -207,11 +216,9 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   const mascots = createMascots(scene, { material: vcMat });
   const mascotState = { on: false, era: null };
 
-  function mascotSpot(eraIndex) {
+  function mascotSpot() {
     const L = S.layout;
-    const e = L?.eras[eraIndex];
-    if (!e) return null;
-    const t = eraIndex === 0 ? L.tiles.start : L.tiles[e.tileIds[0]];
+    const t = L?.tiles[L.startId];
     if (!t) return null;
     const dx = Math.sin(t.yaw);
     const dz = Math.cos(t.yaw);
@@ -223,9 +230,9 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
 
   function updateMascots(dt, t) {
     if (!mascotState.on || !S.layout) return;
-    const era = eraOfChar(S.shownCurrent ?? S.current);
+    const era = `${S.boardKey}:${S.eraIndex}`;
     if (era !== mascotState.era) {
-      const spot = mascotSpot(era);
+      const spot = mascotSpot();
       if (spot) mascots.setTarget(spot.x, spot.z, spot.yaw, mascotState.era == null);
       mascotState.era = era;
       mascots.setVisible(true);
@@ -246,8 +253,9 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   const routeInfo = (key) => meta?.board?.routes?.[key] ?? { name: key, icon: '' };
   const tileColor = (type) => tileTypes()[type]?.color ?? DEFAULT_TILE_COLORS[type] ?? '#cccccc';
 
+  const startTileId = () => S.layout?.startId ?? 'start';
   function tileWorld(id, out = new THREE.Vector3()) {
-    const t = S.layout?.tiles[id] ?? S.layout?.tiles.start;
+    const t = S.layout?.tiles[id] ?? S.layout?.tiles[startTileId()];
     return t ? out.set(t.x, TILE_TOP, t.z) : out.set(0, TILE_TOP, 0);
   }
 
@@ -289,33 +297,34 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       ctx.beginPath();
       ctx.arc(x + CELL / 2, y + CELL / 2, CELL * 0.44, 0, Math.PI * 2);
       ctx.fill();
+      const ribbon = RIBBON[type];
       if (img) {
         const s = CELL * 0.7;
-        ctx.drawImage(img, x + (CELL - s) / 2, y + (CELL - s) / 2, s, s);
-        if (type === 'salary') {
-          // pay day = the money icon in a green ring + a "월급" ribbon (same atlas cell, no extra draw call)
-          ctx.lineWidth = 8;
-          ctx.strokeStyle = tileColor('salary');
-          ctx.beginPath();
-          ctx.arc(x + CELL / 2, y + CELL / 2, CELL * 0.4, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.fillStyle = tileColor('salary');
-          ctx.fillRect(x + CELL * 0.18, y + CELL * 0.7, CELL * 0.64, CELL * 0.22);
-          ctx.font = `900 ${Math.round(CELL * 0.17)}px ${FONT_STACK}`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#fff';
-          ctx.fillText('월급', x + CELL / 2, y + CELL * 0.815);
-        }
-        return;
+        ctx.drawImage(img, x + (CELL - s) / 2, y + (CELL - s) / 2 - (ribbon ? CELL * 0.06 : 0), s, s);
+      } else {
+        const glyph = emoji ? key : TEXT_ICON[type] ?? key;
+        const size = [...glyph].length <= 1 ? (ribbon ? 56 : 64) : [...glyph].length <= 2 ? 44 : 30;
+        ctx.font = `900 ${size}px ${FONT_STACK}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = tileColor(type);
+        ctx.fillText(glyph, x + CELL / 2, y + CELL / 2 + (ribbon ? -8 : 4));
       }
-      const glyph = emoji ? key : TEXT_ICON[type] ?? key;
-      const size = [...glyph].length <= 1 ? 64 : [...glyph].length <= 2 ? 44 : 30;
-      ctx.font = `900 ${size}px ${FONT_STACK}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = tileColor(type);
-      ctx.fillText(glyph, x + CELL / 2, y + CELL / 2 + 4);
+      if (ribbon) {
+        // 💵 월급날 / 🎪 찬스 광장: a coloured ring + a ribbon in the same atlas cell (no extra draw call)
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = tileColor(type);
+        ctx.beginPath();
+        ctx.arc(x + CELL / 2, y + CELL / 2, CELL * 0.4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = tileColor(type);
+        ctx.fillRect(x + CELL * 0.12, y + CELL * 0.7, CELL * 0.76, CELL * 0.22);
+        ctx.font = `900 ${Math.round(CELL * 0.16)}px ${FONT_STACK}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(ribbon, x + CELL / 2, y + CELL * 0.815);
+      }
     };
     const typeOf = new Map(entries.map((e) => [e.key, e.type]));
     keys.forEach((k, i) => draw(i, k, typeOf.get(k)));
@@ -351,35 +360,21 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   function buildStatic() {
     const L = S.layout;
     const g = new THREE.Group();
-    const props = planProps(L, { density: preset.props, seed: 11 });
+    const props = planProps(L, { density: preset.props, seed: 11 + S.eraIndex });
     const pb = boundsOf([...Object.values(L.tiles), ...props], 0);
+    const eraId = L.era.id;
 
-    // ground: vertex colors per era (x ranges), faded between eras
-    const margin = 60;
+    // ground: one tinted plane under this era's town (vertex colours → the grass texture only shifts the hue)
+    const margin = 46;
     const W = pb.maxX - pb.minX + margin * 2;
     const D = pb.maxZ - pb.minZ + margin * 2;
-    const segX = Math.min(200, Math.ceil(W / 4));
-    const ground = new THREE.PlaneGeometry(W, D, segX, 1);
+    const ground = new THREE.PlaneGeometry(W, D, 1, 1);
     ground.rotateX(-Math.PI / 2);
     ground.translate((pb.minX + pb.maxX) / 2, 0, (pb.minZ + pb.maxZ) / 2);
-    const eraX = L.eras.map((e) => ({ x0: e.bounds.minX, x1: e.bounds.maxX, c: new THREE.Color(themeFor(e.id).ground) }));
     const gp = ground.attributes.position;
     const gc = new Float32Array(gp.count * 3);
-    const tmp = new THREE.Color();
-    for (let i = 0; i < gp.count; i++) {
-      const x = gp.getX(i);
-      let best = eraX[0];
-      let bd = Infinity;
-      for (const e of eraX) {
-        const d = x < e.x0 ? e.x0 - x : x > e.x1 ? x - e.x1 : 0;
-        if (d < bd) {
-          bd = d;
-          best = e;
-        }
-      }
-      tmp.copy(best.c);
-      gc.set([tmp.r, tmp.g, tmp.b], i * 3);
-    }
+    const tmp = new THREE.Color(themeFor(eraId).ground);
+    for (let i = 0; i < gp.count; i++) gc.set([tmp.r, tmp.g, tmp.b], i * 3);
     ground.setAttribute('color', new THREE.BufferAttribute(gc, 3));
     const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
     const white3 = new THREE.Color(1, 1, 1);
@@ -388,11 +383,11 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     loadAssetIndex()
       .then(() => {
         const a = findAsset({ kind: 'texture', surface: 'grass' });
-        if (!a?.url || S.disposed) return;
+        if (!a?.url || S.disposed || S.staticGroup !== g) return;
         const img = new Image();
         img.onload = () => {
-          if (S.disposed) return;
-          // soften the generated texture (low contrast "detail" layer under the era tints)
+          if (S.disposed || S.staticGroup !== g) return;
+          // soften the generated texture (low contrast "detail" layer under the era tint)
           const cv = document.createElement('canvas');
           cv.width = img.naturalWidth || 512;
           cv.height = img.naturalHeight || 512;
@@ -405,7 +400,6 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
           tex.minFilter = THREE.LinearMipmapLinearFilter;
           tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
           tex.repeat.set(W / 9, D / 9);
-          // the texture carries the green → soften the era tints so they only shift the hue slightly
           const col = ground.attributes.color;
           for (let i = 0; i < col.count; i++) {
             tmp.setRGB(col.getX(i), col.getY(i), col.getZ(i)).lerp(white3, 0.55);
@@ -419,32 +413,30 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       })
       .catch(() => {});
 
-    // roads: main path (curb + sand) and route ribbons — one merged mesh
-    const sStart = L.lead - L.spacing * 0.7;
-    const sEnd = L.lead + Math.max(...Object.values(L.tiles).filter((t) => t.route === 'main' && t.s != null).map((t) => t.s)) + L.spacing * 0.7;
-    const acc = arcLengths(L.centerline);
-    const main = [];
-    for (let s = sStart; s <= sEnd; s += 0.6) main.push(pointAt(L.centerline, s, acc));
-    const roadParts = [stripGeometry(main, 2.5, 0.012, '#fffaf0'), stripGeometry(main, 2.05, 0.02, '#e3d3b4')];
-    for (const e of L.eras) {
-      for (const key of ROUTE_ORDER) {
-        const r = e.routes?.[key];
-        if (!r) continue;
-        roadParts.push(stripGeometry(r.ribbon, 2.3, 0.03, '#ffffff'), stripGeometry(r.ribbon, 1.9, 0.038, ROUTE_COLORS[key]));
-      }
+    // roads: the closed ring (curb + sand) and the route ribbons — one merged mesh
+    const ring = [];
+    for (let i = 0; i < L.ring.length - 1; i += 2) ring.push(L.ring[i]);
+    if (L.closed !== false) ring.push(L.ring[0], L.ring[2] ?? L.ring[0]); // closed: overlap the seam
+    else ring.push(L.ring.at(-1));
+    const roadParts = [stripGeometry(ring, 2.5, 0.012, '#fffaf0'), stripGeometry(ring, 2.05, 0.02, '#e3d3b4')];
+    for (const key of ROUTE_ORDER) {
+      const r = L.era.routes?.[key];
+      if (!r) continue;
+      roadParts.push(stripGeometry(r.ribbon, 2.3, 0.03, '#ffffff'), stripGeometry(r.ribbon, 1.9, 0.038, ROUTE_COLORS[key]));
     }
     g.add(new THREE.Mesh(mergeColored(roadParts), vcMat));
 
-    // tiles: instanced base + colored top
+    // tiles: instanced base + coloured top (paydays / pass tiles / the fork a bit bigger)
     const list = Object.values(L.tiles);
     const base = new THREE.InstancedMesh(new THREE.BoxGeometry(TILE_SIZE + 0.2, 0.12, TILE_SIZE + 0.2), tileMat, list.length);
     const top = new THREE.InstancedMesh(new THREE.BoxGeometry(TILE_SIZE, 0.16, TILE_SIZE), tileMat, list.length);
     const c = new THREE.Color();
     const white = new THREE.Color('#fffaf0');
     list.forEach((t, i) => {
-      base.setMatrixAt(i, mat4(t.x, 0.07, t.z, 0, t.yaw, 0));
-      top.setMatrixAt(i, mat4(t.x, 0.19, t.z, 0, t.yaw, 0));
-      base.setColorAt(i, t.route && t.route !== 'main' ? c.set(ROUTE_COLORS[t.route]).lerp(white, 0.35) : white);
+      const k = BIG_TILE[t.type] ?? 1;
+      base.setMatrixAt(i, mat4(t.x, 0.07, t.z, 0, t.yaw, 0, [k, 1, k]));
+      top.setMatrixAt(i, mat4(t.x, 0.19, t.z, 0, t.yaw, 0, [k, 1, k]));
+      base.setColorAt(i, t.route && t.route !== 'main' ? c.set(ROUTE_COLORS[t.route]).lerp(white, 0.35) : t.type === 'salary' ? c.set('#fff3b0') : white);
       top.setColorAt(i, c.set(tileColor(t.type)));
     });
     for (const m of [base, top]) {
@@ -453,16 +445,48 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       g.add(m);
     }
 
+    // markers (one merged mesh): 💵 payday = gold coin ring + sign post, 🎪 pass tile = a little striped tent
+    const flat = [...(S.board.eras[S.eraIndex]?.tiles ?? []), ...Object.values(S.board.eras[S.eraIndex]?.routes ?? {}).flatMap((r) => r.tiles)];
+    const marks = [];
+    for (const t of flat) {
+      const lt = L.tiles[t.id];
+      if (!lt) continue;
+      const nx = -Math.cos(lt.yaw); // outwards (+normal of the walking direction)
+      const nz = Math.sin(lt.yaw);
+      if (t.type === 'salary') {
+        marks.push(colored(new THREE.TorusGeometry(1.12, 0.09, 5, 22), '#f2c94c', mat4(lt.x, 0.3, lt.z, Math.PI / 2, 0, 0)));
+        const px = lt.x + nx * 1.45;
+        const pz = lt.z + nz * 1.45;
+        marks.push(colored(new THREE.CylinderGeometry(0.06, 0.06, 1.3, 5), '#8a5a3c', mat4(px, 0.65, pz)));
+        marks.push(colored(new THREE.BoxGeometry(0.7, 0.42, 0.08), tileColor('salary'), mat4(px, 1.25, pz, 0, lt.yaw + Math.PI / 2, 0)));
+      } else if (t.type === 'pass') {
+        const px = lt.x + nx * 1.55;
+        const pz = lt.z + nz * 1.55;
+        marks.push(colored(new THREE.CylinderGeometry(0.55, 0.62, 0.55, 8), '#ffffff', mat4(px, 0.28, pz)));
+        marks.push(colored(new THREE.ConeGeometry(0.72, 0.75, 8), '#e2504c', mat4(px, 0.92, pz)));
+        marks.push(colored(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4), '#8a5a3c', mat4(px, 1.5, pz)));
+        marks.push(colored(new THREE.BoxGeometry(0.3, 0.18, 0.03), '#ffcf3f', mat4(px + 0.15, 1.66, pz)));
+      } else if (t.type === 'goal') {
+        // 🏁 finish gate: two posts + a chequered bar
+        for (const side of [-1, 1]) marks.push(colored(new THREE.CylinderGeometry(0.08, 0.08, 2.2, 6), '#2d2a32', mat4(lt.x + nx * 1.25 * side, 1.1, lt.z + nz * 1.25 * side)));
+        marks.push(colored(new THREE.BoxGeometry(2.7, 0.36, 0.12), '#ffffff', mat4(lt.x, 2.1, lt.z, 0, lt.yaw + Math.PI / 2, 0)));
+        marks.push(colored(new THREE.BoxGeometry(2.72, 0.12, 0.14), '#2d2a32', mat4(lt.x, 2.1, lt.z, 0, lt.yaw + Math.PI / 2, 0)));
+      } else if (t.type === 'start') {
+        marks.push(colored(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5), '#6b6f76', mat4(lt.x - nx * 1.2, 0.8, lt.z - nz * 1.2)));
+        marks.push(colored(new THREE.BoxGeometry(0.6, 0.38, 0.04), '#e2504c', mat4(lt.x - nx * 1.2 + 0.3, 1.4, lt.z - nz * 1.2)));
+      }
+    }
+    if (marks.length) g.add(new THREE.Mesh(mergeColored(marks), vcMat));
+
     // icons: one merged quad mesh on an atlas
-    const flat = S.board.eras.flatMap((e) => [...e.tiles, ...Object.values(e.routes ?? {}).flatMap((r) => r.tiles)]);
-    const entries = [{ id: 'start', key: '🚩', type: 'start' }, ...flat.map((t) => ({ id: t.id, key: iconKey(t), type: t.type }))];
+    const entries = flat.map((t) => ({ id: t.id, key: iconKey(t), type: t.type }));
     const atlas = buildAtlas(entries);
     const pos = [];
     const uv = [];
-    const Q = 0.58;
     for (const e of entries) {
       const t = L.tiles[e.id];
       if (!t) continue;
+      const Q = 0.58 * (BIG_TILE[e.type] ?? 1);
       const [u0, v0, u1, v1] = atlas.cellOf(e.key);
       // world-aligned quads (u → +x, v → −z) so icons read upright from the default camera
       const y = TILE_TOP + 0.005;
@@ -481,43 +505,76 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     // props
     g.add(buildProps(props, vcMat));
 
-    // labels: era signs, stops / merge / goal, route names
-    L.eras.forEach((e) => {
-      const first = L.tiles[e.tileIds[0]];
-      const th = themeFor(e.id);
-      const sp = makeTextSprite(`${th.sign} ${e.name} 시대`, { height: 0.85, size: 44, color: '#ffffff', bg: 'rgba(45,42,50,0.88)', pad: 18, renderOrder: 14 });
-      sp.position.set(first.x, 3.6, first.z);
+    // labels: era sign at the start, fork / rejoin, paydays, route names
+    const st = L.tiles[L.startId];
+    if (st) {
+      const th = themeFor(eraId);
+      const sp = makeTextSprite(`${th.sign} ${L.era.name} 시대 · ${L.closed === false ? '🏁 골인 경쟁' : '🚩 출발'}`, { height: 0.8, size: 44, color: '#ffffff', bg: 'rgba(45,42,50,0.88)', pad: 18, renderOrder: 14 });
+      sp.position.set(st.x, 3.4, st.z);
       g.add(sp);
       S.labels.eras.push(sp);
-    });
+    }
     for (const t of flat) {
-      if (!['stop', 'goal', 'merge'].includes(t.type)) continue;
+      if (!['stop', 'merge', 'salary', 'goal'].includes(t.type)) continue;
       const lt = L.tiles[t.id];
-      const isMerge = t.type === 'merge';
-      const sp = makeTextSprite(`${t.icon ?? ''} ${t.label}`.trim(), {
-        height: isMerge ? 0.42 : 0.52,
+      if (!lt) continue;
+      const kind = t.type;
+      const text = kind === 'salary' ? `💵 ${t.label || '월급날'}` : `${t.icon ?? ''} ${t.label}`.trim();
+      const sp = makeTextSprite(text, {
+        height: kind === 'merge' ? 0.42 : kind === 'salary' ? 0.46 : kind === 'goal' ? 0.7 : 0.52,
         size: 40,
         color: '#ffffff',
-        bg: t.type === 'goal' ? 'rgba(45,42,50,0.92)' : isMerge ? 'rgba(141,153,174,0.95)' : 'rgba(226,80,76,0.95)',
+        bg: kind === 'salary' ? 'rgba(47,158,87,0.95)' : kind === 'merge' ? 'rgba(141,153,174,0.95)' : kind === 'goal' ? 'rgba(45,42,50,0.92)' : 'rgba(226,80,76,0.95)',
         pad: 14,
         renderOrder: 13,
       });
-      sp.position.set(lt.x, isMerge ? 1.4 : 2.1, lt.z);
+      sp.position.set(lt.x, kind === 'merge' ? 1.4 : kind === 'salary' ? 1.9 : kind === 'goal' ? 2.9 : 2.1, lt.z);
       g.add(sp);
     }
-    for (const e of L.eras) {
-      for (const key of ROUTE_ORDER) {
-        const r = e.routes?.[key];
-        if (!r) continue;
-        const info = routeInfo(key);
-        const sp = makeTextSprite(`${info.icon} ${info.name}`, { height: 0.8, size: 42, color: '#ffffff', bg: ROUTE_COLORS[key], pad: 16, renderOrder: 13, border: '#ffffff' });
-        sp.position.set(r.label.x, 2.3, r.label.z);
-        g.add(sp);
-        (S.labels.routes[e.index] ??= {})[key] = sp;
-      }
+    for (const key of ROUTE_ORDER) {
+      const r = L.era.routes?.[key];
+      if (!r) continue;
+      const info = routeInfo(key);
+      const sp = makeTextSprite(`${info.icon} ${info.name}`, { height: 0.8, size: 42, color: '#ffffff', bg: ROUTE_COLORS[key], pad: 16, renderOrder: 13, border: '#ffffff' });
+      sp.position.set(r.label.x, 2.3, r.label.z);
+      g.add(sp);
+      (S.labels.routes[S.eraIndex] ??= {})[key] = sp;
     }
     scene.add(g);
     S.staticGroup = g;
+  }
+
+  /** (Re)build the static board for era `i` of S.board; every pawn stands on the start tile. */
+  function buildEra(i) {
+    disposeStatic();
+    const n = S.board?.eras?.length ?? 1;
+    S.eraIndex = clamp(Number.isInteger(i) ? i : 0, 0, Math.max(0, n - 1));
+    S.wantEra = null;
+    S.layout = layoutBoard(S.board, { eraIndex: S.eraIndex });
+    buildStatic();
+    mascotState.era = null;
+    for (const P of S.pawns.values()) {
+      P.moving = false;
+      placeAt(P, S.layout.startId, true);
+    }
+    const st = S.layout.tiles[S.layout.startId] ?? { x: 0, z: 0 };
+    rig.target.set(st.x, 0, st.z);
+  }
+
+  /** Era transition: fade out → rebuild for the new era → fade in → camera tour of the new loop. */
+  async function switchEra(i, { animate = true } = {}) {
+    const fade = animate && !document.hidden;
+    if (fade) {
+      elFade.classList.add('on');
+      await new Promise((r) => setTimeout(r, 380));
+    }
+    if (S.disposed) return;
+    buildEra(i);
+    reconcile();
+    if (!fade) return;
+    elFade.classList.remove('on');
+    if (preset.fixedCamera) return new Promise((r) => setTimeout(r, 900));
+    await sweep(eraSweepPoints(S.layout), 2.6, clamp(fitRadius(S.layout.era.bounds) * 0.62, 18, 46));
   }
 
   // ---------- pawns ----------
@@ -544,7 +601,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   }
 
   function placeAt(P, tileId, snap = true) {
-    P.tileId = S.layout?.tiles[tileId] ? tileId : 'start';
+    P.tileId = S.layout?.tiles[tileId] ? tileId : startTileId();
     arrange();
     if (snap) P.pawn.group.position.copy(P.target);
   }
@@ -560,10 +617,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     return clamp(Math.max(needW, needD) * 1.05, 12, 90);
   }
 
-  function eraOfChar(charId) {
-    const P = S.pawns.get(charId);
-    return S.layout?.tiles[P?.tileId]?.eraIndex ?? 0;
-  }
+  /** Loop maps: every character is in the shown era. */
+  const eraBounds = () => S.layout?.era?.bounds ?? { minX: -10, maxX: 10, minZ: -6, maxZ: 6 };
 
   function followChar(charId) {
     rig.follow = charId;
@@ -571,7 +626,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   }
 
   function autoRadius() {
-    if (preset.fixedCamera) return Math.max(24, fitRadius(S.layout?.eras[eraOfChar(rig.follow)]?.bounds ?? { minX: -10, maxX: 10, minZ: -6, maxZ: 6 }));
+    if (preset.fixedCamera) return Math.max(24, fitRadius(eraBounds()));
     if (rig.focus) return rig.focusRadius ?? 24;
     const base = defaultOrbit().radius;
     return S.mine ? base : base * 0.68; // spectator spotlight: close-up on the current pawn
@@ -593,7 +648,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       }
     } else {
       if (preset.fixedCamera) {
-        const e = S.layout?.eras[eraOfChar(rig.follow)];
+        const e = S.layout?.era;
         desired = e ? rig.goal.set(e.center.x, 0, e.center.z) : rig.goal.set(0, 0, 0);
       } else if (rig.focus) {
         desired = rig.goal.copy(rig.focus);
@@ -669,6 +724,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   function applyCurrent() {
     const id = S.current;
     if (!animator.busy()) {
+      // the state moved on to another era without an eraTransition animation (reload / missed events) → rebuild now
+      if (S.wantEra != null && S.wantEra !== S.eraIndex) buildEra(S.wantEra);
       S.shownCurrent = id;
       S.animSubtitle = '';
       renderSubtitle();
@@ -686,9 +743,10 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     for (const c of S.chars) {
       const P = S.pawns.get(c.id);
       if (!P || P.moving) continue;
+      if ((c.position?.eraIndex ?? S.eraIndex) !== S.eraIndex) continue; // still showing the previous era's map
       const want = tileIdForPosition(S.board, c.position);
       if (P.tileId !== want) {
-        P.tileId = S.layout?.tiles[want] ? want : 'start';
+        P.tileId = S.layout?.tiles[want] ? want : startTileId();
         changed = true;
       }
     }
@@ -715,14 +773,15 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     S.shownCurrent = e.charId;
     cameraOn(e.charId);
     const name = S.chars.find((c) => c.id === e.charId)?.name ?? '';
-    S.animSubtitle = `🚶 ${name} ${e.path.length}칸 이동`;
+    S.animSubtitle = e.resumed ? `🚶 ${name} 이어서 ${e.path.length}칸` : `🚶 ${name} ${e.path.length}칸 이동`;
     renderSubtitle();
     if (e.from && S.layout.tiles[e.from] && P.tileId !== e.from) placeAt(P, e.from, true);
-    const path = e.path.filter((id) => S.layout.tiles[id]);
+    const path = (e.path ?? []).filter((id) => S.layout.tiles[id]);
     if (ctx.instant || !path.length) {
       if (path.length) placeAt(P, path.at(-1), true);
       return;
     }
+    const startId = startTileId();
     P.moving = true;
     arrange();
     const hopSec = preset.name === 'high' ? 0.3 : 0.26;
@@ -739,6 +798,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         P.pawn.holder.scale.set(0.82 / Math.sqrt(sq), 0.82 * sq, 0.82 / Math.sqrt(sq));
       });
       P.tileId = id;
+      if (id === startId && path.length > 1) emotion.pop(e.charId, '🔁', { dur: 1.1 }); // wrapped past the start
     }
     P.pawn.holder.scale.setScalar(0.82);
     P.pawn.holder.position.y = 0;
@@ -791,16 +851,30 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       setRouletteMode('hidden');
     },
     betResolved: (e) => hooks.onStep?.(e),
-    moved: (e, ctx) => hopPath(e, ctx),
-    eraChanged: async (e, ctx) => {
-      hooks.onStep?.(e);
-      const i = S.layout?.eras.findIndex((x) => x.id === e.era) ?? -1;
-      if (i < 0) return;
-      banner(`${themeFor(e.era).sign} ${e.eraName} 시대!`);
+    moved: async (e, ctx) => {
+      await hopPath(e, ctx);
+      hooks.onStep?.(e); // halted / resumed / wrapped notes (side panel floats)
       if (ctx.instant) return;
-      if (preset.fixedCamera) return ctx.sleep(900);
-      const pts = S.layout.eras[i].tileIds.map((id) => S.layout.tiles[id]);
-      await sweep(pts.length > 1 ? [pts[0], pts.at(-1)] : pts, 1.5, clamp(fitRadius(S.layout.eras[i].bounds) * 0.7, 16, 40));
+      const note = haltNote(e);
+      if (!note || !e.halted) return;
+      emotion.pop(e.charId, note.icon, { dur: 1.6 });
+      banner(e.halted === 'salary' ? '💵 월급날! 여기서 멈춰요' : e.halted === 'pass' ? '🎪 찬스 광장! 잠깐 멈춤' : '🔀 인생 갈림길!', 1500);
+      await ctx.sleep(e.halted === 'pass' ? 450 : 300);
+    },
+    // Loop maps: the whole table moves to the next era's map together (one transition per era)
+    eraTransition: async (e, ctx) => {
+      hooks.onStep?.(e);
+      const eras = S.board?.eras ?? [];
+      let i = eras.findIndex((x) => x.id === e.toEraId);
+      if (i < 0) i = Number.isInteger(e.eraIndex) ? e.eraIndex : S.eraIndex + 1;
+      const era = eras[i];
+      banner(`${themeFor(era?.id).sign} ${era?.name ?? ''} 시대! 모두 새 지도로`, 2200);
+      await switchEra(i, { animate: !ctx.instant });
+    },
+    eraChanged: (e, ctx) => {
+      hooks.onStep?.(e);
+      // per-character entries of a transition: a small sparkle (the transition itself tours the new map)
+      if (!ctx.instant) emotion.pop(e.charId, '✨', { dur: 1.1 });
     },
     landed: async (e, ctx) => {
       if (ctx.instant) return;
@@ -815,11 +889,10 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     },
     routeChosen: async (e, ctx) => {
       hooks.onStep?.(e);
-      const i = S.layout?.eras.findIndex((x) => x.id === e.era) ?? -1;
       const info = routeInfo(e.route);
       banner(`${info.icon} ${info.name} 루트!`);
-      if (ctx.instant || i < 0) return;
-      const labels = S.labels.routes[i] ?? {};
+      if (ctx.instant || !S.layout?.era?.routes) return;
+      const labels = S.labels.routes[S.eraIndex] ?? {};
       const chosen = labels[e.route];
       if (chosen) {
         const h = chosen.userData.baseHeight;
@@ -829,12 +902,20 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         });
       }
       if (preset.fixedCamera) return ctx.sleep(1400);
-      await sweep(eraSweepPoints(S.layout, i), 2.4, clamp(fitRadius(S.layout.eras[i].bounds) * 0.55, 16, 34));
+      // a quick look over the branch zone: fork → the chosen lane → rejoin
+      const L = S.layout;
+      const r = L.era.routes[e.route];
+      const fork = L.tiles[S.board.eras[S.eraIndex]?.tiles?.[L.era.fork]?.id];
+      const rejoin = L.tiles[S.board.eras[S.eraIndex]?.tiles?.[L.era.rejoin]?.id];
+      const pts = [fork, r?.label, rejoin].filter(Boolean);
+      await sweep(pts, 1.8, clamp(fitRadius(L.era.bounds) * 0.4, 16, 30));
+      followChar(e.charId);
     },
     finished: async (e, ctx) => {
       hooks.onStep?.(e);
       const name = S.chars.find((c) => c.id === e.charId)?.name ?? '';
-      banner(`🏁 ${name} ${e.place}등 골인!`, 2000);
+      // final era (노년 골인 경쟁): goal order is back; 빈곤 농장 / 조기 은퇴 finish without the goal
+      banner(e.retired === 'early' ? `🏖️ ${name} 조기 은퇴!` : e.retired === 'bust' ? `🌾 ${name} 빈곤 농장행…` : `🏁 ${name} ${e.place}등 골인!`, 2000);
       if (ctx.instant) return;
       const P = S.pawns.get(e.charId);
       if (P && preset.particles > 0) {
@@ -1174,21 +1255,33 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       return preset.name;
     },
 
-    /** Build the scene for a board (no-op when `key` is unchanged). */
-    setBoard(board, key = null) {
-      const k = key ?? JSON.stringify(board.eras.map((e) => [e.id, e.tiles.map((t) => t.type), Object.values(e.routes ?? {}).map((r) => r.tiles.map((t) => t.type))]));
-      if (k === S.boardKey) return;
-      S.boardKey = k;
+    /**
+     * Build the scene for a board: only the loop of era `eraIndex` (the room's shared era). A new board rebuilds at
+     * once; a new era of the same board waits for its `eraTransition` animation (else it switches once idle).
+     * @param {object} board  room.board
+     * @param {string|{key?: string, eraIndex?: number}} opts  (a string = the old `key` argument)
+     */
+    setBoard(board, opts = {}) {
+      const o = typeof opts === 'string' ? { key: opts } : opts ?? {};
+      const k = o.key ?? JSON.stringify(board.eras.map((e) => [e.id, e.tiles.map((t) => t.type), Object.values(e.routes ?? {}).map((r) => r.tiles.map((t) => t.type))]));
+      const era = Number.isInteger(o.eraIndex) ? o.eraIndex : 0;
+      if (k !== S.boardKey) {
+        S.boardKey = k;
+        S.board = board;
+        animator.clear();
+        tweens.finishAll();
+        buildEra(era);
+        return;
+      }
       S.board = board;
-      animator.clear();
-      tweens.finishAll();
-      disposeStatic();
-      S.layout = layoutBoard(board);
-      buildStatic();
-      mascotState.era = null;
-      for (const P of S.pawns.values()) placeAt(P, 'start', true);
-      const st = S.layout.tiles.start;
-      rig.target.set(st.x, 0, st.z);
+      if (era !== S.eraIndex) {
+        S.wantEra = era;
+        if (!animator.busy()) scheduleSync();
+      } else S.wantEra = null;
+    },
+    /** Index of the era whose loop is shown. */
+    get eraIndex() {
+      return S.eraIndex;
     },
 
     /** Sync pawns with room.characters (positions glide unless an animation is pending). */
@@ -1203,7 +1296,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
           const pawn = createPawn({ avatar: c.avatar, defs: meta?.avatars, name: tagName(c), isMe: !!c.isMe });
           if (S.template) pawn.useTemplate(S.template);
           scene.add(pawn.group);
-          P = { pawn, tileId: 'start', moving: false, order, target: new THREE.Vector3(), yaw: 0, isMe: !!c.isMe, crowded: false, avatar: c.avatar, avatarKey: JSON.stringify(c.avatar) };
+          P = { pawn, tileId: startTileId(), moving: false, order, target: new THREE.Vector3(), yaw: 0, isMe: !!c.isMe, crowded: false, avatar: c.avatar, avatarKey: JSON.stringify(c.avatar) };
           S.pawns.set(c.id, P);
           placeAt(P, tileIdForPosition(S.board, c.position), true);
         } else {
@@ -1254,9 +1347,9 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       followChar(charId);
     },
 
-    /** Look at a whole era (era tabs). The next turn / reset returns to following. */
-    focusEra(eraIndex) {
-      const e = S.layout?.eras[eraIndex];
+    /** Look at the whole shown era (loop maps: other eras aren't built). The next turn / reset returns to following. */
+    focusEra(eraIndex = S.eraIndex) {
+      const e = eraIndex === S.eraIndex ? S.layout?.era : null;
       if (!e) return;
       rig.follow = null;
       rig.focus = new THREE.Vector3(e.center.x, 0, e.center.z);
@@ -1314,10 +1407,10 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       if (S.board) {
         const board = S.board;
         const shown = new Map([...S.pawns].map(([id, P]) => [id, P.tileId]));
-        disposeStatic();
-        S.layout = layoutBoard(board);
-        buildStatic();
-        mascotState.era = null;
+        const want = S.wantEra;
+        S.board = board;
+        buildEra(S.eraIndex);
+        S.wantEra = want;
         for (const [id, P] of S.pawns) placeAt(P, shown.get(id), true);
       }
     },

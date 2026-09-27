@@ -48,26 +48,30 @@ test('runner: a CPU spins after 1.6 s, answers its prompt after 1.2 s and a trad
     room = addCharacter(room, 'H', { name: '사람' }).room; // c2
     store.put(room);
     assert.equal(runner.start(room.id).ok, true);
-    assert.equal(store.getRoom(room.id).turn.lastSpin, null);
+    // adult mode (loop maps): the CPU's first turn starts with the job offer, answered after the prompt delay
+    const first = store.getRoom(room.id);
+    assert.equal(first.turn.pending?.kind, 'jobOffer');
+    assert.deepEqual(first.turn.pending.answers, {});
+    t.mock.timers.tick(1150);
+    assert.equal(store.getRoom(room.id).turn.pending?.kind, 'jobOffer');
+    t.mock.timers.tick(100);
+    const hired = store.getRoom(room.id);
+    assert.ok(hired.characters.find((c) => c.id === 'c1').job, 'hired');
+    assert.equal(hired.turn.phase, 'awaitSpin');
+    assert.equal(hired.turn.lastSpin, null);
     t.mock.timers.tick(1500);
     assert.equal(store.getRoom(room.id).turn.lastSpin, null, 'not before the spin delay');
     t.mock.timers.tick(150);
     const spun = store.getRoom(room.id);
     assert.equal(spun.turn.lastSpin?.charId, 'c1', 'the CPU spun');
     assert.ok(!spun.log.some((l) => /자동으로 돌렸어요|관리자가/.test(l.text)), 'no timeout / admin log for a CPU spin');
-    // adult mode: the 갈림길 stop → job offer for the CPU, answered after the prompt delay
-    assert.equal(spun.turn.pending?.kind, 'jobOffer');
-    assert.deepEqual(spun.turn.pending.answers, {});
-    t.mock.timers.tick(1150);
-    assert.equal(store.getRoom(room.id).turn.pending?.kind, 'jobOffer');
-    t.mock.timers.tick(100);
-    const hired = store.getRoom(room.id);
-    assert.ok(hired.characters.find((c) => c.id === 'c1').job, 'hired');
-    // routeChoice next (another 1.2 s), then the human's turn: nothing is scheduled for a human
-    t.mock.timers.tick(1250);
+    // whatever the move opened (찬스 광장 / tile prompts) is answered 1.2 s apart, then the human's turn: nothing is
+    // scheduled for a human
+    for (let i = 0; i < 12 && store.getRoom(room.id).turn.order[store.getRoom(room.id).turn.currentIndex] === 'c1'; i++) t.mock.timers.tick(1250);
     const human = store.getRoom(room.id);
-    assert.equal(human.turn.pending, null);
     assert.equal(human.turn.order[human.turn.currentIndex], 'c2');
+    // (the human's own pre-spin job offer may be open; it is not the CPU's)
+    assert.ok(!human.turn.pending || human.turn.pending.charId === 'c2');
     assert.equal(runner.cpuTimers.size, 0);
     // a trade offer to the CPU is answered after the trade delay
     const live = structuredClone(store.getRoom(room.id));
@@ -104,18 +108,20 @@ test('runner: after a cut-in event the CPU waits the extra cut-in delay', async 
     room = addCpuCharacter(room, {}, 0).room;
     store.put(room);
     const r = runner.start(room.id);
-    const wait = 1600 + (r.events.some((e) => e.cutin) ? 2500 : 0);
-    t.mock.timers.tick(wait - 50);
-    assert.equal(store.getRoom(room.id).turn.lastSpin, null);
-    t.mock.timers.tick(100);
-    const spun = store.getRoom(room.id);
-    assert.ok(spun.turn.lastSpin, 'spun after spin (+ cut-in) delay');
-    // the spin opened a prompt (a cut-in anchor) → 1200 + 2500 before the answer
-    assert.ok(spun.turn.pending);
+    // the first turn opens the CPU's job offer (a prompt = a cut-in anchor) → 1200 + 2500 before the answer
+    const pending = store.getRoom(room.id).turn.pending;
+    assert.equal(pending?.kind, 'jobOffer');
+    assert.ok(r.events.some((e) => e.cutin));
     t.mock.timers.tick(3600);
-    assert.ok(store.getRoom(room.id).turn.pending?.promptId === spun.turn.pending.promptId, 'still showing the prompt cut-in');
+    assert.equal(store.getRoom(room.id).turn.pending?.promptId, pending.promptId, 'still showing the prompt cut-in');
     t.mock.timers.tick(200);
-    assert.notEqual(store.getRoom(room.id).turn.pending?.promptId, spun.turn.pending.promptId, 'answered');
+    const hired = store.getRoom(room.id);
+    assert.notEqual(hired.turn.pending?.promptId, pending.promptId, 'answered');
+    // the hire (jobChanged, a cut-in) → spin delay + cut-in delay
+    t.mock.timers.tick(1600 + 2500 - 150);
+    assert.equal(store.getRoom(room.id).turn.lastSpin, null);
+    t.mock.timers.tick(200);
+    assert.ok(store.getRoom(room.id).turn.lastSpin, 'spun after spin + cut-in delay');
     runner.stop();
     t.mock.timers.reset();
     await store.close();

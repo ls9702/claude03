@@ -44,7 +44,7 @@ import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { createRng } from '../server/game/rng.js';
 import { lottoExpectedValue } from '../server/game/holidays.js';
-import { cpuDecide, cpuSkillTarget, cpuTradeAccept } from '../server/game/cpu.js';
+import { cpuDecide, cpuPassScores, cpuSkillTarget, cpuTradeAccept } from '../server/game/cpu.js';
 import { ROULETTE_MODES } from '../server/game/roulette.js';
 
 function arg(name, def) {
@@ -66,6 +66,7 @@ const ROULETTE = String(arg('roulette', 'random')); // random | skill (룰렛 �
 if (!ROULETTE_MODES.includes(ROULETTE)) throw new Error(`--roulette random|skill (got ${ROULETTE})`);
 const AIM = String(arg('aim', 'random')); // --bias --roulette skill: random | cpu target per spin
 const AIM_DUEL = !!arg('aim-duel', false);
+const PASS_DUEL = !!arg('pass-duel', false);
 const MAX_ACTIONS = 20000;
 
 const data = gameData();
@@ -107,13 +108,18 @@ export function randomCardAction(room, c, rng, chance = 0.5) {
 function makeLobbyRoom(meta, gameNo) {
   const eraTurns = {};
   const mode = meta.pick(MODES);
+  // loop maps: mostly the default era lengths (±30 %), sometimes very short or long eras
+  const defaults = Object.fromEntries(data.eras.eras.map((e) => [e.id, e.defaultTurns]));
   for (const id of ERA_IDS) {
     const r = meta.next();
-    eraTurns[id] = Math.max(minEraTurns(id, mode), r < 0.1 ? meta.int(1, 3) : r < 0.9 ? meta.int(3, 16) : meta.int(16, 40));
+    const d = defaults[id];
+    eraTurns[id] = Math.max(minEraTurns(id, mode), r < 0.1 ? meta.int(1, 3) : r < 0.9 ? meta.int(Math.max(1, Math.round(d * 0.7)), Math.round(d * 1.3)) : meta.int(d, d + 10));
   }
+  const fl = data.eras.limits.finalLength;
   const v = validateRoomConfig({
     mode,
     eraTurns,
+    finalLength: meta.next() < 0.7 ? fl.default : meta.int(fl.min, fl.max),
     maxCharacters: 8,
     startingMoney: meta.pick([0, 500, 1000, 3000]),
     turnOrder: meta.pick(['family', 'index']),
@@ -207,6 +213,8 @@ const stats = {
     mvp: { games: 0, first: 0, noVotes: 0 },
   },
   news: {},
+  // loop maps
+  loop: { paydays: {}, pocket: 0, laps: 0, halts: {}, passChoices: {}, buffs: {}, clubs: {}, final: {}, byMode: {}, lifeIncome: { all: 0, payday: 0, noBet: 0 }, byReason: {} },
   rankUps: 0,
   injuries: 0,
   // Stage 7
@@ -281,8 +289,34 @@ function playGame(g) {
     const before = room;
     const r = applyAction(room, action, { now });
     room = r.room;
+    room.log = []; // the engine clones the room per action; the log is not needed here (much faster)
     actions++;
     for (const ev of r.events) {
+      // loop maps: paydays, 찬스 광장 choices, buffs, laps, clubs, the final race's 인생역전섬
+      const L = stats.loop;
+      if (ev.type === 'salary') {
+        L.paydays[room.config.mode] = (L.paydays[room.config.mode] ?? 0) + 1;
+        if (ev.pocket) L.pocket++;
+      }
+      if (ev.type === 'moved' && ev.wrapped) L.laps += ev.laps ?? 1;
+      if (ev.type === 'moved' && ev.halted) L.halts[ev.halted] = (L.halts[ev.halted] ?? 0) + 1;
+      if (ev.type === 'promptResolved' && ev.kind === 'passTile') {
+        const who = cpuPolicy(room.characters.find((x) => x.id === ev.charId)) ? 'cpu' : 'random';
+        const row = (L.passChoices[who] ??= {});
+        row[ev.result] = (row[ev.result] ?? 0) + 1;
+        if (ev.buff) L.buffs[ev.buff] = (L.buffs[ev.buff] ?? 0) + 1;
+      }
+      if (ev.type === 'promptResolved' && ev.kind === 'club') L.clubs[ev.clubId] = (L.clubs[ev.clubId] ?? 0) + 1;
+      if (ev.type === 'submapResult' && ['allIn', 'retire'].includes(ev.optionId)) L.final[ev.result] = (L.final[ev.result] ?? 0) + 1;
+      if (ev.type === 'moneyChanged' && room.config.mode === 'lifetime') {
+        const k = ev.reason === 'tile' ? (ev.delta > 0 ? 'tile+' : 'tile-') : ev.reason;
+        L.byReason[k] = (L.byReason[k] ?? 0) + ev.delta;
+      }
+      if (ev.type === 'moneyChanged' && ev.delta > 0 && room.config.mode === 'lifetime') {
+        L.lifeIncome.all += ev.delta;
+        if (ev.reason !== 'bet' && ev.reason !== 'betRefund') L.lifeIncome.noBet += ev.delta; // side-bet payouts return the held stake
+        if (ev.reason === 'salary' || ev.reason === 'spouseSalary' || ev.reason === 'allowance') L.lifeIncome.payday += ev.delta;
+      }
       if (ev.type === 'moneyChanged' && ev.delta > 0) {
         const ci = charIncome.get(ev.charId) ?? { all: 0, spouse: 0, allowance: 0 };
         ci.all += ev.delta;
@@ -517,9 +551,15 @@ function playGame(g) {
     stats.s7.itemsPerChar += c.items.length;
     for (const it of c.items) stats.s7.items[it] = (stats.s7.items[it] ?? 0) + 1;
   }
-  const sp = (stats.spins[mode] ??= [0, 0]);
+  const sp = (stats.spins[mode] ??= [0, 0, 0]);
   sp[0] += spins;
   sp[1]++;
+  sp[2] += room.characters.length;
+  const lm = (stats.loop.byMode[mode] ??= { games: 0, chars: 0, rounds: 0, laps: 0, finalRounds: 0 });
+  lm.games++;
+  lm.chars += room.characters.length;
+  lm.rounds += room.turn.round;
+  lm.laps += room.characters.reduce((a, c) => a + (c.laps ?? 0), 0);
   if (mode === 'lifetime') stats.lifePrompts.chars += room.characters.length;
   const total = new Map(room.result.ranking.map((r) => [r.charId, r.total]));
   // route metrics relative to the SAME game (start money / game length differ a lot between games)
@@ -679,13 +719,13 @@ function interactAnswers(live, rng, apply) {
  * characters, random decisions, no bets; Stage 7: random card plays unless `cards: false`, holidays on).
  * @returns {{games, winShare: number[], avgRank: number[], avgGoalPlace: number[]}} per turn position
  */
-export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true, onGame = null, roulette = 'random', aim = 'random' } = {}) {
+export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true, onGame = null, roulette = 'random', aim = 'random', eraTurns = undefined, finalLength = undefined } = {}) {
   const wins = Array(characters).fill(0);
   const rankSum = Array(characters).fill(0);
   const placeSum = Array(characters).fill(0);
   for (let g = 0; g < games; g++) {
     const meta = createRng(seed * 7919 + g * 104729 + 1);
-    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', rouletteMode: roulette });
+    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', rouletteMode: roulette, ...(eraTurns ? { eraTurns } : {}), ...(finalLength ? { finalLength } : {}) });
     let room = { id: `bias${g}`, code: 'BIASXX', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
     for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
     for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}` }, 0).room;
@@ -800,13 +840,79 @@ export function simulateAim({ games = 200, seed = 1, characters = 8, strategies 
   return { games, characters, rows };
 }
 
+/** 찬스 광장 strategies: the CPU's pick, always 「그냥 지나가기」 (the buff), never (the best other enabled option). */
+export const PASS_STRATEGIES = {
+  cpu: (room, c, p, d) => cpuDecide(room, c.id, d)?.optionId,
+  always: () => 'pass',
+  never: (room, c, p, d) => {
+    const scores = cpuPassScores(room, c.id, d).filter((x) => x.id !== 'pass');
+    const best = scores.sort((a, b) => b.v - a.v)[0]?.id;
+    return best ?? p.options.find((o) => o.id !== 'pass' && !o.disabled)?.id ?? 'pass';
+  },
+};
+
+/**
+ * 찬스 광장 fixed-strategy check: 8-character lifetime games, CPU decisions everywhere except the 찬스 광장 answer,
+ * which follows the seat's strategy (rotated over the seats). @returns {{games, rows: {[strategy]: {n, wins, rankSum,
+ * totalSum, relSum, passes}}}}
+ */
+export function simulatePass({ games = 200, seed = 1, characters = 8, strategies = ['cpu', 'always', 'never'], data: simData = data, eraTurns = undefined } = {}) {
+  const rows = Object.fromEntries(strategies.map((k) => [k, { n: 0, wins: 0, rankSum: 0, totalSum: 0, relSum: 0, passes: 0 }]));
+  for (let g = 0; g < games; g++) {
+    const meta = createRng(seed * 32452843 + g * 7919 + 5);
+    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', ...(eraTurns ? { eraTurns } : {}) });
+    let room = { id: `pass${g}`, code: 'PASSPS', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
+    for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
+    for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}`, avatar: { body: meta.next() < 0.5 ? 'boy' : 'girl' } }, 0).room;
+    const strat = new Map(room.characters.map((c, i) => [c.id, strategies[(i + g) % strategies.length]]));
+    let now = 1_000_000;
+    room = startGame(room, { now, data: simData }).room;
+    let n = 0;
+    while (room.status === 'playing') {
+      if (++n > MAX_ACTIONS) throw new Error(`pass game ${g} stuck`);
+      now += 1000;
+      const p = room.turn.pending;
+      const id = p ? p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)) : room.turn.order[room.turn.currentIndex];
+      let action = cpuDecide(room, id, simData);
+      if (p?.kind === 'passTile') {
+        const c = room.characters.find((x) => x.id === id);
+        action = { type: 'choose', characterId: id, promptId: p.promptId, optionId: PASS_STRATEGIES[strat.get(id)](room, c, p, simData) };
+        rows[strat.get(id)].passes++;
+      }
+      room = applyAction(room, action, { now, data: simData }).room;
+      room.log = [];
+    }
+    const mean = room.result.ranking.reduce((a, x) => a + x.total, 0) / room.result.ranking.length;
+    for (const r of room.result.ranking) {
+      const row = rows[strat.get(r.charId)];
+      row.n++;
+      row.rankSum += r.rank;
+      row.totalSum += r.total;
+      row.relSum += mean ? r.total / mean - 1 : 0;
+      if (r.rank === 1) row.wins++;
+    }
+  }
+  return { games, characters, rows };
+}
+
+function mainPass() {
+  const t0 = performance.now();
+  const r = simulatePass({ games: GAMES, seed: SEED });
+  const pct = (n, d) => `${d ? ((100 * n) / d).toFixed(1) : '0.0'}%`;
+  console.log(`\n=== 찬스 광장 전략 대결 (${r.characters}캐릭터 인생 전체, CPU 결정 + 찬스 광장 답만 다름) ${r.games}판 · seed ${SEED} · ${(performance.now() - t0).toFixed(0)}ms ===`);
+  console.log(`공정 1위 비율 ${pct(1, r.characters)}`);
+  for (const [k, x] of Object.entries(r.rows)) {
+    console.log(`${k.padEnd(7)} ${String(x.n).padStart(5)}명 · 1위 ${pct(x.wins, x.n).padStart(6)} · 평균 순위 ${(x.rankSum / x.n).toFixed(2)} · 총자산 ${(x.totalSum / x.n).toFixed(0)} (판 평균 대비 ${(100 * (x.relSum / x.n)).toFixed(1)}%) · 찬스 광장 ${(x.passes / x.n).toFixed(1)}회`);
+  }
+}
+
 function mainAim() {
   const t0 = performance.now();
   const r = simulateAim({ games: GAMES, seed: SEED });
   const pct = (n, d) => `${d ? ((100 * n) / d).toFixed(1) : '0.0'}%`;
   console.log(`\n=== 룰렛 실력 모드 전략 대결 (${r.characters}캐릭터 인생 전체, CPU 결정 + 조준 전략만 다름) ${r.games}판 · seed ${SEED} · ${(performance.now() - t0).toFixed(0)}ms ===`);
   console.log(`공정 1위 비율 ${pct(1, r.characters)}`);
-  const TYPES = ['salary', 'money', 'loss', 'job', 'event', 'card', 'heart', 'house', 'treasure', 'stop', 'goal'];
+  const TYPES = ['salary', 'pass', 'money', 'loss', 'job', 'event', 'card', 'heart', 'house', 'treasure', 'stop', 'goal'];
   for (const [k, x] of Object.entries(r.rows)) {
     const land = Object.values(x.landings).reduce((a, b) => a + b, 0);
     console.log(
@@ -877,9 +983,27 @@ function mainRandom() {
     }
   }
 
+  // ---------- loop maps ----------
+  {
+    const L = stats.loop;
+    console.log(`\n--- 순환 맵 (원작식): 시대 턴 수 제한 · 월급날 · 찬스 광장 ---`);
+    for (const [mode, m] of Object.entries(L.byMode)) {
+      console.log(`  ${mode.padEnd(8)} 판당 라운드 ${(m.rounds / m.games).toFixed(1)} · 캐릭터당 한 바퀴 ${(m.laps / Math.max(1, m.chars)).toFixed(2)}회 · 월급날 캐릭터당 ${((L.paydays[mode] ?? 0) / Math.max(1, m.chars)).toFixed(2)}회`);
+    }
+    console.log(`이동이 멈춘 이유: ${JSON.stringify(L.halts)} · 용돈 ${L.pocket}회`);
+    for (const [who, row] of Object.entries(L.passChoices)) {
+      const tot = Object.values(row).reduce((a, b) => a + b, 0);
+      console.log(`찬스 광장 선택 (${who === 'cpu' ? 'CPU' : '랜덤'} ${tot}회): ${Object.entries(row).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${pct(n, tot)}`).join(' · ')}`);
+    }
+    console.log(`지나가기 버프: ${JSON.stringify(L.buffs)} · 동아리: ${JSON.stringify(L.clubs)} · 인생역전섬 올인/은퇴: ${JSON.stringify(L.final)}`);
+    console.log(`인생 전체 수입 중 월급날(급여 + 맞벌이, 용돈 포함) 비중 ${pct(L.lifeIncome.payday, L.lifeIncome.all)} · 훈수 베팅 제외 ${pct(L.lifeIncome.payday, L.lifeIncome.noBet)}`);
+    const lifeChars = L.byMode.lifetime?.chars ?? 0;
+    if (lifeChars) console.log(`인생 전체 캐릭터당 돈 흐름(사유별): ${Object.entries(L.byReason).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([k, v]) => `${k} ${(v / lifeChars).toFixed(0)}`).join(' · ')}`);
+  }
+
   // ---------- Stage 6 ----------
   console.log(`\n--- 6단계: 능력치·직업·성장 ---`);
-  console.log(`평균 룰렛 횟수: ${Object.entries(stats.spins).map(([m, [s, n]]) => `${m} ${(s / n).toFixed(1)}`).join(' · ')}`);
+  console.log(`평균 룰렛 횟수(판당 · 캐릭터당): ${Object.entries(stats.spins).map(([m, [s, n, c]]) => `${m} ${(s / n).toFixed(1)} · ${(s / Math.max(1, c)).toFixed(1)}`).join(' | ')}`);
   const lp = stats.lifePrompts;
   console.log(
     `인생 전체 캐릭터당 선택 ${(lp.total / Math.max(1, lp.chars)).toFixed(2)}회 (자기 선택 ${(lp.own / Math.max(1, lp.chars)).toFixed(2)} + 남의 생일 등 동시 선택): ${Object.entries(lp.byKind)
@@ -977,6 +1101,7 @@ function mainRandom() {
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain) {
   if (AIM_DUEL) mainAim();
+  else if (PASS_DUEL) mainPass();
   else if (BIAS) mainBias();
   else mainRandom();
 }

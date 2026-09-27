@@ -1,0 +1,93 @@
+/* Loop maps (원작식 순환 맵) — client: 2D racetrack board, era clock, era progress tabs, pass / payday tiles,
+   찬스 버프 badges. Linked after roulette.css. */
+
+/* ---------- 2D racetrack (shared/loop.js racetrack) ---------- */
+.track.loop {
+  display: grid; gap: 5px; width: max-content;
+  grid-template-columns: 30px repeat(var(--cols, 1), 66px) 30px;
+  grid-auto-rows: minmax(74px, auto);
+  padding: 2px 0;
+}
+.track.loop .tile {
+  width: auto; min-height: 74px; padding: 4px 3px 26px; font-size: 0.66rem; border-radius: 11px;
+}
+.track.loop .t-icon { font-size: 1.05rem; }
+.track.loop .t-label { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.track.loop .tile.is-fork, .track.loop .tile.is-rejoin { justify-content: center; }
+/* walking direction hint in the corner (→ top row / ← bottom row) */
+.track.loop .tile::after {
+  content: '›'; position: absolute; top: 1px; right: 5px; font-weight: 900; font-size: 0.8rem; color: color-mix(in srgb, var(--tc, #999) 60%, #fff);
+}
+.track.loop .tile.dir-l::after { content: '‹'; right: auto; left: 5px; }
+.track.loop .tile.is-start { border-width: 3px; background: color-mix(in srgb, var(--tc, #9aa5b1) 18%, #fff); }
+.track.loop .tile.is-start .t-label::before { content: '🚩 '; }
+.track.loop .tile.t-start .t-label::before { content: ''; }
+/* payday: forced stop — gold coin ring + ribbon */
+.tile.t-salary {
+  background: linear-gradient(180deg, #fffbe0, #fff);
+  box-shadow: 0 0 0 2px #f2c94c, inset 0 -4px 0 color-mix(in srgb, var(--tc, #2f9e57) 35%, transparent);
+}
+.tile.t-salary .t-label { color: #1f7a45; font-weight: 900; }
+.tile.t-salary::before {
+  content: '멈춤'; position: absolute; top: -7px; left: 50%; transform: translateX(-50%);
+  background: #2f9e57; color: #fff; font-size: 0.56rem; font-weight: 900; padding: 0 5px; border-radius: 6px; line-height: 1.4;
+}
+/* 찬스 광장: striped tent colours */
+.tile.t-pass {
+  background: repeating-linear-gradient(135deg, #fff3e6 0 8px, #ffe2c7 8px 16px);
+}
+.tile.t-pass .t-label { color: #c2410c; font-weight: 900; }
+.tile.t-goal { background: repeating-conic-gradient(#2d2a32 0 25%, #fff 0 50%) 0 0 / 12px 12px; }
+.tile.t-goal .t-icon, .tile.t-goal .t-label { background: #fff; border-radius: 6px; padding: 0 3px; }
+.loop-cap {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 2px dashed #d9cbb3; border-radius: 14px; color: #a08c6c; font-weight: 900; font-size: 1.1rem; background: #fffaf0;
+}
+.loop-cap.right { border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.loop-cap.left { border-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.loop-cap small { font-size: 0.7rem; }
+.loop-road {
+  display: flex; align-items: center; justify-content: center; border-radius: 12px;
+  background: repeating-linear-gradient(90deg, #efe4cf 0 14px, #f7efe0 14px 28px); color: #a08c6c; font-weight: 800; font-size: 0.75rem;
+}
+.track.loop .route-label { font-size: 0.68rem; padding: 3px; }
+.track.loop.has-routes .tile.r-love { background: #fff3f8; }
+.track.loop.has-routes .tile.r-career { background: #f1f6fe; }
+.track.loop.has-routes .tile.r-money { background: #fff9e8; }
+.track.loop .pawns { bottom: 1px; }
+.track.loop .pawn svg { width: 22px; height: 22px; }
+@media (max-width: 480px) {
+  .track.loop { grid-template-columns: 24px repeat(var(--cols, 1), 56px) 24px; grid-auto-rows: minmax(66px, auto); gap: 4px; }
+  .track.loop .tile { min-height: 66px; font-size: 0.6rem; padding-bottom: 24px; }
+  .track.loop .t-icon { font-size: 0.95rem; }
+  .track.loop .route-label { font-size: 0.6rem; }
+}
+
+/* ---------- era clock (header) + progress tabs ---------- */
+.era-clock {
+  display: inline-flex; align-items: center; gap: 3px; font-weight: 900; color: var(--ink);
+  background: #fff3e0; border: 1px solid #ffd9b0; border-radius: 999px; padding: 1px 8px; font-size: 0.8rem;
+}
+.era-clock.last { background: #ffe1e1; border-color: #ffb3b3; color: #b3261e; animation: era-last 1.4s ease-in-out infinite; }
+.era-clock.race { background: #2d2a32; border-color: #2d2a32; color: #fff; }
+.era-last { font-weight: 800; color: #b3261e; font-size: 0.78rem; white-space: nowrap; }
+@keyframes era-last { 50% { transform: scale(1.06); } }
+.era-tab.past { opacity: 0.62; }
+.era-tab.past .era-count { background: rgba(31, 122, 69, 0.18); color: #1f7a45; }
+.era-tab.next { opacity: 0.8; border-style: dashed; }
+.era-tab.now:not(.on) { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+
+/* ---------- 찬스 버프 / lap badges ---------- */
+.gc-tag.buff { background: #fff1e0; color: #b45309; border-color: #ffd6a8; }
+.gc-tag.laps { background: #eef6ff; color: #2446a8; }
+.gc-tag.club { background: #f0f7ec; color: #2f6b2a; }
+.gd-buff { display: inline-flex; gap: 4px; align-items: center; font-weight: 800; }
+.spin-hint .era-last, .hint .era-last { display: inline-block; margin-bottom: 2px; }
+.gc-float.info { color: #2446a8; }
+
+/* ADDENDUM A2: 🎯 전 재산 올인 number pad */
+.sm-allin { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.sm-allin .sm-num { min-height: 52px; justify-content: center; font-size: 1.3rem; }
+.sm-allin .sm-num b { font-size: 1.35rem; }
+.sm-allin-info { margin: 0 0 8px; font-weight: 700; font-size: 0.9rem; }
+.ci-options .sm-allin-info { color: #fff; }

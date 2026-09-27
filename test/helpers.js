@@ -16,7 +16,8 @@ export function makeRoom(overrides = {}) {
     status: 'lobby',
     config: {
       mode: 'lifetime',
-      eraTurns: { baby: 3, elem: 5, middle: 4, high: 5, young: 15, middle_age: 15, senior: 6 },
+      eraTurns: { baby: 3, elem: 3, middle: 3, high: 3, young: 15, middle_age: 15, senior: 6 },
+      finalLength: 40,
       maxCharacters: 8,
       startingMoney: 1000,
       allowCpu: false,
@@ -34,6 +35,39 @@ export function makeRoom(overrides = {}) {
     createdAt: 0,
     ...overrides,
   };
+}
+
+// ---------- loop maps (room mutators for engine tests; call on a started room before applyAction) ----------
+
+/** Every tile of an era (main ring + routes) except start / fork / merge / goal becomes `tile` (default: money 10). */
+export function plainEra(room, eraIndex, tile = { type: 'money', amount: 10 }) {
+  const era = room.board.eras[eraIndex];
+  const keep = new Set(['start', 'stop', 'merge', 'goal']);
+  const tracks = [era.tiles, ...Object.values(era.routes ?? {}).map((r) => r.tiles)];
+  for (const track of tracks) track.forEach((t, i) => !keep.has(t.type) && (track[i] = { id: t.id, label: 'test', ...(t.route ? { route: t.route } : {}), ...tile }));
+  return room;
+}
+
+/** Jump the shared era clock to `eraIndex` (round 1; everyone on that era's start; a pending prompt is dropped). */
+export function toEra(room, eraIndex, { round = 1 } = {}) {
+  const era = room.board.eras[eraIndex];
+  room.eraIndex = eraIndex;
+  Object.assign(room.turn, { pending: null, phase: 'awaitSpin', spun: false, move: null });
+  room.turn.eraRound = era.final ? null : round;
+  room.turn.eraTurns = era.final ? null : era.turns;
+  for (const c of room.characters) {
+    c.era = era.id;
+    c.route = null;
+    c.position = { eraIndex, route: 'main', index: 0 };
+  }
+  return room;
+}
+
+/** The last turn of the current era: eraRound = eraTurns and the last character in order to move. */
+export function atEraEnd(room) {
+  room.turn.eraRound = room.turn.eraTurns;
+  room.turn.currentIndex = room.turn.order.length - 1;
+  return room;
 }
 
 /** JSON HTTP call against a test server. */

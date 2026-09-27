@@ -255,7 +255,7 @@ test('HTTP: spin {target, input} reaches the engine; /api/meta carries balance.r
     const cookie = login.headers.get('set-cookie').split(';')[0];
     const bad = await call('POST', '/admin/api/rooms', { cookie, body: { rouletteMode: 'x' } });
     assert.equal(bad.status, 400);
-    const created = await call('POST', '/admin/api/rooms', { cookie, body: { mode: 'adult', eraTurns: { young: 5, middle_age: 5, senior: 3 }, rouletteMode: 'skill' } });
+    const created = await call('POST', '/admin/api/rooms', { cookie, body: { mode: 'kids', rouletteMode: 'skill' } });
     assert.equal(created.status, 201);
     assert.equal(created.json.room.config.rouletteMode, 'skill');
     const { id, code } = created.json.room;

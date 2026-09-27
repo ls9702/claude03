@@ -189,6 +189,38 @@ export function schoolMeet(tx, eraId) {
   return ev;
 }
 
+/**
+ * Loop maps: 고교 첫 만남 is a choice — each character's first high-school turn opens a `meet` prompt with two ★1
+ * classmates (`schoolMeetDue` / `openSchoolMeet`). Once every character had theirs (or when high school ends), ONE
+ * `schoolMeet {eraId, pairs, summary: true}` recap event lists the couples (`room.schoolMeetPairs`).
+ */
+export const schoolMeetDue = (tx, c) => c.era === 'high' && !c.schoolMet && !c.finished;
+
+export function openSchoolMeet(tx, c) {
+  ensureFamily(c);
+  c.schoolMet = true;
+  if (c.love.partner || c.spouse) {
+    schoolMeetSummary(tx);
+    return false;
+  }
+  openPrompt(tx, 'meet', c, { school: true });
+  return true;
+}
+
+/** The 고교 첫 만남 recap (once): when every character had its meeting, or `force` (high school is over). */
+export function schoolMeetSummary(tx, { force = false } = {}) {
+  const room = tx.room;
+  if (room.schoolMeetDone) return null;
+  if (!force && !room.characters.every((x) => x.schoolMet || x.finished)) return null;
+  room.schoolMeetDone = true;
+  const pairs = (room.schoolMeetPairs ?? []).map((p) => ({ ...p, partner: personSpec(p.partner) }));
+  if (!pairs.length) return null;
+  const ev = emit(tx, 'schoolMeet', { eraId: 'high', pairs, summary: true, tone: 'love', emotion: 'love' });
+  const names = pairs.map((p) => `${charById(room, p.charId)?.name}♥${p.partner.name}`).join(' · ');
+  addLog(tx, `🏫 고교 첫 만남 결산! 설레는 커플 탄생 (${names})`, { tone: 'love' });
+  return ev;
+}
+
 // ---------- heart tiles ----------
 
 const inEra = (list, era) => !list || list.includes(era);
@@ -525,10 +557,12 @@ registerPrompts({
   /** 만남 (heart tile, no partner): 2 candidates (weighted trait / ★) or pass. */
   meet: {
     resultCutin: 'auto',
-    build(tx, c) {
+    build(tx, c, { school = false } = {}) {
       const cfg = cfgOf(tx.data);
       const taken = usedNames(tx.room);
-      const candidates = [makePartner(tx, c, { taken }), makePartner(tx, c, { taken })];
+      // 고교 첫 만남 (loop maps: the first high-school turn): two ★1 classmates
+      const stars = school ? 1 : null;
+      const candidates = [makePartner(tx, c, { taken, stars }), makePartner(tx, c, { taken, stars })];
       c.love.candidates = candidates.map(personSpec);
       const bonus = cfg.affection?.matchBonus ?? 0;
       const options = candidates.map((p) => {
@@ -551,11 +585,11 @@ registerPrompts({
       options.push({ id: 'pass', label: '🙅 다음 기회에', icon: '🙅', desc: '이번 만남은 그냥 지나쳐요' });
       return {
         forCharacterIds: [c.id],
-        title: '💘 운명의 만남',
-        text: `${josa(c.name, '이/가')} 설레는 두 사람을 만났다! 누구와 사귀어 볼까?`,
+        title: school ? '🏫 고교 첫 만남' : '💘 운명의 만남',
+        text: school ? `고등학생이 된 ${josa(c.name, '이/가')} 설레는 두 친구를 만났다! 누구와 사귀어 볼까?` : `${josa(c.name, '이/가')} 설레는 두 사람을 만났다! 누구와 사귀어 볼까?`,
         options,
         defaultOptionId: best.id,
-        context: { candidates: candidates.map(personSpec) },
+        context: { candidates: candidates.map(personSpec), ...(school ? { school: true } : {}) },
       };
     },
     resolve(tx, p) {
@@ -564,16 +598,22 @@ registerPrompts({
       const answer = p.answers[c.id];
       const partner = (p.context?.candidates ?? []).find((x) => `meet:${x.id}` === answer);
       c.love.candidates = [];
+      const school = !!p.context?.school;
       if (!partner || c.love.partner || c.spouse) {
         addLog(tx, `🙅 ${josa(c.name, '은/는')} 이번 인연은 그냥 보내기로 했다`, { tone: 'info', charId: c.id, emotion: 'neutral' });
-        return { result: 'pass' };
+        if (school) schoolMeetSummary(tx);
+        return { result: 'pass', ...(school ? { school: true } : {}) };
       }
       const match = traitMatch(c, partner.trait);
       c.love.partner = personSpec(partner);
       c.love.affection = Math.min(aff.max ?? 100, (aff.meet ?? 25) + (match ? aff.matchBonus ?? 0 : 0));
       c.love.dates = 0;
-      emit(tx, 'met', { charId: c.id, partner: personSpec(partner), affection: c.love.affection, match, tone: 'love', emotion: 'love' });
-      addLog(tx, `💘 ${josa(c.name, '과/와')} ${partner.name}(${traitName(tx.data, partner.trait)} ${starsText(partner.stars)}) 사귀기 시작!${match ? ' 찰떡궁합!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
+      emit(tx, 'met', { charId: c.id, partner: personSpec(partner), affection: c.love.affection, match, ...(school ? { school: true } : {}), tone: 'love', emotion: 'love' });
+      addLog(tx, `${school ? '🏫' : '💘'} ${josa(c.name, '과/와')} ${partner.name}(${traitName(tx.data, partner.trait)} ${starsText(partner.stars)}) 사귀기 시작!${match ? ' 찰떡궁합!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
+      if (school) {
+        (tx.room.schoolMeetPairs ??= []).push({ charId: c.id, partner: personSpec(partner) });
+        schoolMeetSummary(tx);
+      }
       return { result: 'met' };
     },
   },

@@ -101,21 +101,19 @@ test('actions endpoint: start → spin/choose loop → finished (HTTP + SSE)', a
 });
 
 test('admin force-timeout and force-end keep a ranking', async () => {
-  const { cookie, id, A, a1 } = await setupRoom({ mode: 'adult', eraTurns: { young: 5, middle_age: 5, senior: 3 } });
-  await call('POST', `/admin/api/rooms/${id}/start`, { cookie });
-  // adult mode: first step lands on the 갈림길 stop → Stage 6: the job offer comes first, then routeChoice
-  const r = await call('POST', `/api/rooms/${id}/actions`, { token: A, body: { type: 'spin', characterId: a1 } });
-  assert.equal(r.json.room.turn.pending.kind, 'jobOffer');
+  const { cookie, id, A, a1 } = await setupRoom({ mode: 'adult', eraTurns: { young: 5, middle_age: 5 } });
+  const st = await call('POST', `/admin/api/rooms/${id}/start`, { cookie });
+  // adult mode (loop maps): the first turn starts with the job offer, before the spin
+  assert.equal(st.json.room.turn.pending.kind, 'jobOffer');
+  assert.equal(st.json.room.turn.pending.charId, a1);
+  // no spin while the pre-spin decision is open
+  assert.equal((await call('POST', `/api/rooms/${id}/actions`, { token: A, body: { type: 'spin', characterId: a1 } })).status, 409);
   // players can't time out a prompt without a deadline
   assert.equal((await call('POST', `/api/rooms/${id}/actions`, { token: A, body: { type: 'timeout' } })).status, 409);
   const t0 = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
   assert.equal(t0.status, 200, t0.text);
-  assert.equal(t0.json.room.turn.pending.kind, 'routeChoice');
   assert.ok(t0.json.room.characters.find((c) => c.id === a1).job?.id, 'hired with the default offer');
-  const t = await call('POST', `/admin/api/rooms/${id}/actions`, { cookie, body: { type: 'timeout' } });
-  assert.equal(t.status, 200, t.text);
-  assert.equal(t.json.room.turn.pending, null);
-  assert.equal(t.json.room.characters.find((c) => c.id === a1).route, 'career');
+  assert.equal(t0.json.room.turn.phase, 'awaitSpin', 'then the roulette');
   const end = await call('POST', `/admin/api/rooms/${id}/end`, { cookie });
   assert.equal(end.json.room.status, 'finished');
   assert.equal(end.json.room.result.forced, true);

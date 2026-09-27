@@ -82,8 +82,10 @@ test('data: cards.json / items.json / holidays.json schemas, fixed ids, manifest
   for (const j of data.jobs.jobs) assert.equal(byId.get(`icon-job-${j.id.replaceAll('_', '-')}`)?.meta.job, j.id);
   // board: card / shop tiles are live (no placeholder text any more)
   assert.ok(!('card' in data.board.placeholders) && !('shop' in data.board.placeholders));
-  assert.ok(data.board.routePools.money.pool.some((t) => t.type === 'shop'));
-  assert.ok(data.board.eras.senior.pool.some((t) => t.type === 'shop'));
+  // loop maps: shop tiles are folded into the 찬스 광장 (「구입」 → the shop prompt); no pool draws them any more
+  const pools = [...Object.values(data.board.eras).map((e) => e.pool), ...Object.values(data.board.routePools).map((r) => r.pool), data.board.finalTrack.pool];
+  assert.ok(pools.every((p) => !p.some((t) => t.type === 'shop')));
+  assert.equal(data.board.tileTypes.pass.name, '찬스 광장');
 });
 
 // ---------- useCard validation ----------

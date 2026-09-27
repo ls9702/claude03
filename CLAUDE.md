@@ -57,8 +57,9 @@
 ## Layout (Stage 2 — engine core)
 - `server/game/rng.js` — `createRng(seed)` mulberry32: `next/int/pick/weighted`, `.state` (uint32). The room keeps
   `rngState`; the engine resumes from it, so a restored game continues deterministically.
-- `server/game/board.js` — `buildBoard(config, rng, data)` from `board.json` + `eras.json`; nav helpers
-  (`nextPosition`, `tileAt`, `tileIdAt`, `findTile`, `eraPathLength`, `startPosition`).
+- `server/game/board.js` — `buildBoard(config, rng, data)` from `board.json` + `eras.json` (loop maps + the final race,
+  see "Loop maps (원작식 순환 맵) — server"); nav helpers (`nextPosition` (wraps), `wrapsAt`, `lapPositions`, `tileAt`,
+  `tileIdAt`, `findTile`, `eraPathLength` (= lap), `startPosition(eraIndex)`, `lapSize`, `paydayCount`, `passCount`).
 - `server/game/engine.js` — `startGame(room, ctx)`, `endGame(room, ctx)`, `applyAction(room, action, ctx) →
   {room, events, logs}`; ctx = `{rng?, now?, data?}` (rng defaults to `createRng(room.rngState)`). Throws
   `EngineError{status}` (400/403/404/409). `action.actor` = `{sessionId}` | `{admin:true}` | `{system:true}`;
@@ -93,35 +94,39 @@
   nextPlayerSeq, nextCharSeq, createdAt, updatedAt}` (+ `artRequests {[sessionId]: n}`, `artRequestTotal` — never
   sent to clients). Config: `mode, eraTurns, maxCharacters, startingMoney, allowCpu, turnOrder, mcFrequency,
   turnTimeoutSec` (`TURN_TIMEOUTS` 0 = off (default) | 30 | 60 | 90 | 120), `rouletteMode` random | skill (see "Roulette skill mode"). `minEraTurns(eraId, mode)`: route eras
-  (young/middle_age) ≥ 3 ("청년 턴 수는 갈림길·합류 칸이 있어 3 이상이어야 합니다."), the mode's last era ≥ its last fixed
-  stop index + 2 (kids 고등학생 ≥ 2 so 수능 and the goal never share a tile); checked on the merged config.
+  (young/middle_age) ≥ 3 ("청년 턴 수는 갈림길·합류 칸이 있어 3 이상이어야 합니다."), every other era ≥ `limits.minTurns` (1);
+  checked on the merged config; the mode's final era (goal race) is skipped — `finalLength` (20–80, default 40, "노년 길이는
+  20~80칸 사이의 정수여야 합니다.") is validated instead. `minTurnsTable()` → `/api/meta.minTurns` (final era → null).
 - Player: `{id, sessionId, name, role: 'player'|'spectator', connected, lastSeen, ready, joinedAt}`. Spectators
   (`POST /api/rooms/join {code, name, spectator: true}`, `joinRoom(..., {spectator})`) may join lobby/playing/finished
   rooms (max `MAX_SPECTATORS` 20), do not count toward `MAX_PLAYERS` (4), cannot create characters / ready / spin /
   bet / choose (403 `spectatorFail()`), can send reactions and open SSE. A session keeps its first role. `viewFor`
   exposes `players[].role` and `me.role`; `adminSummary` has `spectators`.
 - Character ids `c<seq>` and player ids `p<seq>` are per-room counters; `seq` = creation order.
-- Playing room adds: `board {eras:[{id,name,turns,tiles[],routes?:{love|career|money:{tiles}}}]}`, `rngState`,
+- Playing room adds: `board {eras:[{id,name,turns,loop,lap,tiles[],routes?:{love|career|money:{tiles}},fork?,rejoin?} |
+  {id,name,turns:null,loop:false,final:true,length,tiles[]}]}`, `eraIndex` (the shared era), `rngState`,
   `bets {[turnNo]: {[charId]: {kind,pick,amount,target,resolved,staked?,won?,delta?,refunded?}}}`, `promptSeq`, `result {ranking, forced}`,
   `pension {recipients[], decidedAt, turnNo} | null`.
 - Side bets (`balance.bets`): `ranges {"1-3":[1,3], "4-6":[4,6], "7-10":[7,10]}`, `payouts` per pick (stake
   included) `{odd:2, even:2, "1-3":3, "4-6":3, "7-10":2.5}`; winnings `betWinDelta` = floor(amount × (payout − 1))
   → no pick has a positive expected value (tested for every stake). `/api/meta.balance.bets` carries both. The stake is
   HELD at bet time (see "Post-simulation fixes (server)").
-- 기초연금 (`balance.pension`): recipients are decided ONCE when the first character enters the pension era — bottom
+- 기초연금 (`balance.pension`): recipients are decided ONCE at the transition into the pension era — bottom
   `bottomN` by total assets (`pensionWorth` = cash − debt + house + items; ≥ `minCharacters`) → `room.pension`; each
-  recipient is paid on their own entry (amount = base + asset gap to the richest × gapRatio, ≤ max). Never more than
-  `bottomN` payouts.
-- Turn-order balance: `goalPrizes [60,50,45,40,35,30,25,20]`, `bonusSpinUnit` 2 since the post-simulation fixes (kids
-  mode seat 1 won 40 %; history: 500/300/… unit 10 → 200/150/… unit 5 → now; numbers in "Post-simulation fixes").
-- Board: tile ids `${eraId}:${main|love|career|money}:${index}` are stable. Route eras (young/middle_age) have
-  `tiles = [routeChoice stop, merge]` and three route tracks of equal length `turns − 2` (path length = turns; config
-  validation keeps route eras ≥ 3 turns — `buildBoard` itself still clamps routes to ≥ 1 tile for direct callers).
-  Fixed stops come from `board.json.fixedStops` (high:0 = 수능). Last tile of the last era = `goal`.
-- Character (in game): `money, debt, position {eraIndex, route:'main'|route, index (-1 = start)}, era, route,
-  routeHistory[{era, route, completed}], finished, place, goalBonus, pensionGiven`.
+  recipient is paid at once (amount = base + asset gap to the richest × gapRatio, ≤ max). Never more than `bottomN`
+  payouts.
+- Goal race (final era only since the loop maps): `goalPrizes [60,50,45,40,35,30,25,20]`, `bonusSpinUnit` 2,
+  `retirePrizeMult` 0.5 (조기 은퇴).
+- Board: tile ids `${eraId}:${main|love|career|money}:${index}` are stable. Every era but the final one is a loop map
+  (`tiles[0]` = start; route eras: fork `stop` + `merge` inside the ring, three equal route tracks); the final era is a
+  linear goal race ending at `goal` — details in "Loop maps (원작식 순환 맵) — server" (there is no `fixedStops` / 수능
+  tile any more).
+- Character (in game): `money, debt, position {eraIndex, route:'main'|route, index (0 = the era start)}, era, route
+  (the route of the current lap, null off-route), routeHistory[{era, route, completed}] (one per lap), laps, finished,
+  place, goalBonus, retired?, pensionGiven, chanceBuff, club`.
 - Turn: `{order, currentIndex, phase: awaitSpin|resolveSpace|awaitDecision|endTurn|gameOver, pending, turnNo, round,
-  lastSpin, spinDeadlineAt}`. `pending = {promptId, kind, charId, title, text, forCharacterIds[], options[],
+  eraRound, eraTurns, move, spun, lastSpin, spinDeadlineAt}` (`eraRound`/`eraTurns` null in the final race; `move` =
+  a paused move; `spun` / `announce` are internal). `pending = {promptId, kind, charId, title, text, forCharacterIds[], options[],
   defaultOptionId, simultaneous, answers{}, deadlineAt|null, context}`. Multi-character prompts get
   `balance.prompts.multiTimeoutMs` (40000); single-character ones `decisionTimeoutMs` (null) else the room's turn
   timer. Host turn timer (`config.turnTimeoutSec` > 0): every `turnStarted` sets `turn.spinDeadlineAt = now +
@@ -518,8 +523,8 @@
   `balance.json`: `stats` (cap 10, start 2 + 1 seeded point; adult mode +5), `habits`, `exam` (probability table), `career`
   (tuition, collegeTurns, 재수), `military`, `jobs` (offer count/weights, salary era mult, rank-up/education/exam bonuses,
   injury, overtime, max-rank 성과급). `avatars.json.eraOutfits` = contract table (client `effectiveAvatar`).
-- Board: new tile types `habit` (kids eras, weight 3), `salary` (routes: career 4 / love 3 / money 2, senior main 3),
-  `job` (career route 3, senior 1); `board.json.placeholders` no longer has `job`. tones.json `cutinTiles` + habit,
+- Board (tile pools superseded by "Loop maps" below: `salary` is now the forced-stop 월급날, placed by `placePaydays`, never in a
+  pool): new tile types `habit` (kids eras), `salary`, `job` (career route, main pools of the loop eras); `board.json.placeholders` no longer has `job`. tones.json `cutinTiles` + habit,
   `tileTones` salary→career / habit→good, new `tagScenes` and `sfx` keys (rankUp, salary, newsFlash…).
 - Modules: `prompts.js` (registry `PROMPTS` + `registerPrompts`, `openPrompt`, `resolvePrompt`; `resultCutin: true` always
   emits a `promptResolved` anchor, `'auto'` only when the resolution emitted no other anchor (`ANCHOR_TYPES`); a plain object
@@ -537,9 +542,9 @@
   {tier, turnsLeft} | null` (enrolled), `careerDone`, `careerChoice college|job|retake`, `retook`, `skipTurns`, `badEvents`.
   Room: `news {eraId: newsId}` (in `viewFor`), config `growthOutfits` (bool, default true).
 - Turn flow: `continueTurn` resolves prompts, then runs `lifeStep` for the current character until it opens nothing:
-  전역 (turnsLeft 0) → 졸업 (`educationChanged`, int +1) → 진로 prompt (lifetime, on the 청년 갈림길) → 군 복무 decision →
+  전역 (turnsLeft 0) → 졸업 (`educationChanged`, int +1) → 진로 prompt (lifetime; since the loop maps it comes BEFORE the spin via `preSpinStep`, see "Loop maps") → 군 복무 decision →
   job offer (`jobOffer`, or 알바 at once when nothing is eligible) → automatic 입대 (mandatory body, not enrolled) →
-  `routeChoice` (the 갈림길 stop no longer opens it in `resolveTile`) → hidden-job unlocks (`hiddenJobUnlocked` +
+  `routeChoice` (only when the character stands on its era's fork stop; the stop tile itself never opens it) → hidden-job unlocks (`hiddenJobUnlocked` +
   `hiddenJobOffer`). Loop guard 64. `endTurn` skips characters with `skipTurns` (재수) with a log line.
 - Rules: habit prompt (4 options, stat +gain (+1 at `bonusChance`), money cost/roll × era scale × news). 수능: `r = rng.next()`
   vs `examChances` (base + int×지력 + luck×운 + news `examBonus` (+ `retakeBonus`)), the better result is kept. 진로: college
@@ -559,7 +564,8 @@
   (decremented per spin). Hidden unlocks (data `unlock`, all must hold, job eras only; values since the post-simulation
   fixes): 우주비행사 int 8 & str 8; 국민 MC max rank of 개그맨/배우/유튜버 (now or history) & charm 8; 재벌 총수 max 대기업 &
   net worth ≥ 3,000; 트로트 스타 senior & charm 7 & luck 7; 산신령 (Stage 9) 사찰 소원 성취 `wishes` ≥ 2; 건물주 (Stage 8)
-  houseSwaps ≥ 3 or penthouse / jeju_villa. News: first entrant of an era (not baby; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
+  houseSwaps ≥ 3 or penthouse / jeju_villa (loop-map values: 우주비행사 9/9, 국민 MC charm 9, 재벌 총수 net worth ≥ 2,000, 트로트
+  스타 charm 9 & luck 9, 산신령 wishes ≥ 8 (찬스 광장 소원 count too), 건물주 houseSwaps ≥ 4). News: every era transition (loop maps: `eraTransition`, not a first entrant; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
   (global, no charId; MC studio `news`), `statBonus` for every entrant; effects via `effectsFor(tx, c)` (character's era).
 - Events: `statChanged {charId, stat, delta, value, reason}` (habit/event/news/military/graduation/rankUp/overtime),
   `jobChanged {charId, jobId, fromJobId, rank, reason: hire|change|hidden|parttime}`, `rankUp {charId, jobId, rank, rankName}`,
@@ -661,9 +667,9 @@
   `holidays.json` (eras, kinds seol/chuseok, names/icons, sebae ranges per era, nagging, stakes × stakeScale, hwatu 1..10),
   `balance.json` `lotto {pool 20, pick 3, prizes {3:1000, 2:100, 1:10}, keepDraws}`, `shop {cards 2, items 1}`, `trades
   {ttlMs 60000, maxMoney}`; `gameData().cards/items/holidays` (`getCards/getItems/getHolidays`); `/api/meta` adds `cards`,
-  `items`, `holidays`, `balance.lotto|shop|trades`. events.json: `card` reward on 6 events. Board: card tiles in elem/
-  middle/high (habit 2 / card 2), every route (career 2), senior (card 2, shop 1); shop on the money route (2); card/shop
-  left `placeholders`.
+  `items`, `holidays`, `balance.lotto|shop|trades`. events.json: `card` reward on 6 events. Board: card tiles in the kids
+  eras, the loop eras' main pools and every route; `shop` tiles are gone since the loop maps (the 찬스 광장 「🛍️ 쇼핑」 option opens
+  the same `shop` prompt with its own `offers`).
 - Modules: `server/game/cards.js` (hands, passive helpers, spin mods, `useCard`, card tile, `shop` prompt, trades, gifts),
   `server/game/holidays.js` (era openings, lotto, `holiday` prompt). `assertOwner` moved to effects.js.
 - Character (public): `cards [{uid, id}]` (uid `k<seq>` from `room.nextCardSeq`; hand limit → the oldest is discarded with
@@ -703,7 +709,7 @@
   +10 % salary for webtoonist/youtuber/esports via `itemSalaryMult`), gym_pass str +1, designer_bag charm +1 (resale 0.9),
   lucky_cat luck +1, massage_chair (`guardStats`: no str loss from senior events). `computeRanking(room, {data})` rows add
   `items` (Σ floor(price × resale)) and `total = money − debt + items`.
-- Era openings: the first entrant of an era (not the mode's first) queues it (`queueEraOpening` in `enterEra`, after
+- Era openings: every `eraTransition` (loop maps; was: the first entrant of an era) queues it (`queueEraOpening`, after
   news/pension); `continueTurn` runs `runEraOpenings` whenever no prompt is open, before the current character's
   `lifeStep`: ① lotto draw (holders of a `lotto` card use one each; 3 seeded numbers of 1..20 each, 3 drawn → `lottoDraw
   {eraId, numbers, entries [{charId, numbers, matches, prize}]}` + moneyChanged `lotto`; skipped without tickets; exact EV
@@ -798,7 +804,7 @@
 ## Stage 8 — romance, family, real estate (server)
 - Data (`loadData` / `gameData().partners|houses|avatars`, `/api/meta.partners|houses`): `server/data/partners.json` — `traits`
   (int 지력형 / str 체력형 / charm 매력형 / luck 운형 `{name, icon, desc, weight}`), `stars` 1..4 `{salary, allowanceMult, weight}`
-  (190/270/370/500 만원 per salary tile; 고교 전원 만남 is always ★1), `names.boy|girl` (24 each), `meetEras`, `affection {meet 30,
+  (30/45/65/85 만원 per payday since the loop maps; 고교 전원 만남 is always ★1), `names.boy|girl` (24 each), `meetEras`, `affection {meet 30,
   dateGain, matchBonus 8, proposeAt 60, max 100, failDrop 15, steadyGain 10, familyGain 10, eraGain 5, loveRoute 30}`, `propose {base 0.45, perAffection, charm,
   luck, match, min, max, eras}`, `dates[]` (walk 5 / library int 12 / hiking str 12 / concert charm 16 / amusement luck 16: `{cost, gain}`), `costs
   {scale per era, wedding, weddingGift, birth}`, `birth {eras young/middle_age, base 0.6, perAffection, perChild, max, perSpin 0.15}`, `children {max 4,
@@ -823,12 +829,14 @@
   growth 0..4, turns}]` (max 4); `house {id, price, value, boughtTurn}` | null; `houseSwaps`. Room: `nextPartnerSeq`,
   `nextChildSeq`, `schoolMeetDone`, `houseOwners {houseId: [charId]}` (kept in sync), `housingMarket {eraId, mult}` | null — the last
   two in `viewFor`. Older saves migrate in `applyAction` (a save already past 고등학생 never gets a late 전원 만남).
-- Rules: 고교 전원 만남 = the first character entering `high` (enterEra) gives every unfinished single character a ★1 partner
-  (affection meet + matchBonus on 찰떡궁합) → ONE `schoolMeet {eraId, pairs [{charId, partner}]}` (no prompt). Heart tile: single →
+- Rules: 고교 첫 만남 (loop maps, ADDENDUM A3): at each character's FIRST high-school turn (`preSpinStep`) a single character gets a
+  `meet` prompt with ★1 school candidates (`context.school`, `met {school: true}`, `c.schoolMet`); once everyone had theirs (or on
+  leaving `high`) ONE recap `schoolMeet {eraId: 'high', pairs [{charId, partner}], summary: true}` (`room.schoolMeetPairs`). (Was: the
+  first entrant of `high` gave every single a ★1 partner without a prompt.) Heart tile: single →
   `meet` prompt (meetEras: high+, earlier eras only a log); partner → `date` prompt, or `propose` when affection ≥ proposeAt in a
   propose era (young+; a date that reaches it opens the propose prompt at once); married → birth roll (`birthChance`, birth eras,
   < 4 children) else a family outing (outings money × scale, stats, affection + familyGain). Love route (`loveRouteChosen`): single →
-  소개팅 = a partner at once (`met {blindDate: true}`, no prompt); dating → affection + `loveRoute`. Era entries add `eraGain` to a
+  소개팅 = a partner at once (`met {blindDate: true}`, no prompt); dating → affection + `loveRoute`. Era entries (every `eraTransition`) add `eraGain` to a
   dating couple. Epilogue proposal (`proposeStep`, end of `lifeStep`): a dating couple at ≥ proposeAt in a propose era gets ONE
   `propose` prompt per era (`love.askedEra`, set by every propose prompt; heart tiles may still ask again). Proposal: `proposeChance` = base + (affection − proposeAt) ×
   perAffection + charm × 매력 + luck × 운 (+ match), clamped → success = wedding, fail = affection − failDrop. Wedding: spouse (salary = ★
@@ -845,7 +853,7 @@
   last pick for 제주 별장; 청약 roll discounts the apartment's price (value unchanged); prices / values × `priceMult` (the drawn market
   in its era, else news housePriceMult). Buy = cash only (price − trade-in ≤ cash, else `disabled`), trade-in = value × 0.7 →
   `houseSwaps` +1, one net moneyChanged `house`. Resolve re-checks capacity / cash (→ promptResolved `noMoney`). 노년 시세: the
-  first character entering senior draws `int(80..150)/100 × senior news housePriceMult`, clamped → every house value × mult →
+  transition into senior draws `int(80..150)/100 × senior news housePriceMult`, clamped → every house value × mult →
   `houseValueChanged {eraId, mult, changes [{charId, houseId, before, after}], reason: 'market'}`. Ranking: `house` = value, total =
   money − debt + items + house. 건물주 unlock (jobs.json `unlock.anyOf`): `houseSwaps ≥ 3` or owning penthouse / jeju_villa
   (`unlockMet` also knows `houseSwaps`, `house`, `anyOf`).
@@ -1012,7 +1020,7 @@
   `awards.json` (10 `{id, name, icon, desc, metric, route?, min, bonus, tie: all|split|place|qualify}`), `titles.json`
   (`perCharacter` 2, 25 titles `{id, name, icon, desc, priority, when}` + the `fallback` 평범한 인생), `balance.json` `submaps`
   (era `scale`, hometown / temple / jeju / reversal numbers) and `result` (`mvpVoteMs` 180000 (the result show takes ~60–80 s), `mvpSettleMs` 5000, `highlights
-  {keep 8, show 5, bigMoney 300}`). jobs.json 산신령 `unlock {wishes: 2}` (3 before the post-simulation fixes) (`unlockMet` knows `wishes`; the Stage 6 interim rule is
+  {keep 8, show 5, bigMoney 300}`). jobs.json 산신령 `unlock {wishes: 8}` (loop maps; 2 after the post-simulation fixes, 3 before) (`unlockMet` knows `wishes`; the Stage 6 interim rule is
   gone). board.json: tile types `hometown 🏡 / temple 🛕 / jeju 🏝️ / reversal 🎰`, pools: hometown elem/middle/high/senior main +
   love route, temple middle 2 / high 2 / senior 4 + money route 3, jeju love / money routes, reversal senior 5, treasure money route
   4 + senior 2; `placeholders` is `{}` (resolveTile's default branch stays for future types).
@@ -1318,7 +1326,7 @@ the data files) and the MC sibling test in `test/mc.test.js`.
 - **No number deck (user decision, 「덱모드 삭제」)**: there used to be a per-character number deck (`character.aimUsed`: a used number
   snapped to the nearest free one until all ten were used, `spun.wanted`, greyed cells, `balance.roulette.skill.deck`). It was removed
   completely — any number 1..10 can be aimed at every turn, no used-number tracking; a leftover `aimUsed` in an old save is ignored.
-- **Known consequence — low-number aiming is strong**: every landing pays on average, so aiming small = more tiles stepped on. Measured
+- **Known consequence — low-number aiming was strong (fixed by the loop maps: always-1 11–13 %, see "Loop maps — server")**: every landing pays on average, so aiming small = more tiles stepped on. Measured
   without the deck (`node scripts/simulate.js --aim-duel --games 400`, 8-character lifetime, CPU decisions, only the aim differs, fair
   12.5 %), seeds 1 / 2: **always-1 55.3 / 53.9 %** 1st place (avg rank 1.83 / 1.84, +89 / +82 % total vs the game mean, 33.9 spins vs ~12,
   goal place 7.6 — the game drags for them), CPU aim 5.5 / 7.7 %, random aim 1.1 / 0.3 %, always-10 0.0 / 0.2 % (reaches the goal first,
@@ -1362,3 +1370,144 @@ the data files) and the MC sibling test in `test/mc.test.js`.
   the same target twice in a row / leftover `aimUsed` ignored / log / lastSpin, 160 seeded spins through applyAction, invalid / random / auto / admin, bets 409, presentation tags, CPU target on a
   crafted board + legality + RNG untouched, HTTP spin + meta + admin), `test/client-roulette.test.js`. E2E: session scratchpad
   `skill/e2e.cjs` (screenshots `skill-*.png`); deck removal check `nodeck/e2e.cjs` (2D desktop, 3 own turns: all 10 cells enabled, the same target kept, 0 console errors).
+
+## Loop maps (원작식 순환 맵) — server
+Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A, which wins); deviations in `loop-deviations.md`. Tests:
+`test/loop-board.test.js` (+ rewritten `test/board.test.js`, era / goal-race cases in `test/engine.test.js`). Roadmap row 11 in
+`docs/PLAN.md`.
+- Eras are turn-limited: every character spins `era.turns` times per era (defaults `eras.json` baby / elem / middle / high 3,
+  young / middle_age 15, senior 6 — the final era's turns are ignored), then EVERYONE moves together (`room.eraIndex`,
+  `turn.eraRound` 1..`turn.eraTurns`). `endTurn`: when the order wraps and `eraRound ≥ eraTurns` → `eraTransition` (or
+  `gameOver` after the last era of a mode without a final race, i.e. kids). Skipped turns (재수 / 고향 휴식 / 산사 수련) still
+  consume rounds.
+- Map (`board.js`): `loopConfig()` = `board.json.loop`; `lapSize(turns)` = clamp(round(turns × 5.4), 18, 100) (15 turns → 81, 3 → 18);
+  `tiles[0]` = `start`; `paydayCount(lap)` / `placePaydays` = forced-stop `salary` tiles every 18–25 tiles on every lap path (each
+  route and across the wrap; laps that cannot be split use the nearest count: ≤ 27 → 1, 32 → 2); `placePasses` = round(lap / 27)
+  (2–4) `pass` tiles (찬스 광장), never next to a payday; blocked slots = start, fork ± 1, merge ± 1. Route eras (young /
+  middle_age): `fork` (a `stop` with `promptId: 'routeChoice'`) and `rejoin` (`merge`) inside the ring, three equal route tracks
+  (≈ 40–50 % of the lap) that carry their paydays / passes at the same indexes. `nextPosition` wraps (`wrapsAt`), `lapPositions`,
+  `eraPathLength` = lap (or the final length), `HALT_TYPES` salary / stop / goal. Tile pools: no `salary` / `shop` in pools.
+- Final era (lifetime / adult: `eras.json.modes.<mode>.finalEra` senior; `finalEra` absent = no race): `buildFinalTrack` = linear
+  `config.finalLength` tiles (20–80, default 40, `/api/meta.finalLength`), start → goal, paydays from the start every 18–25 (the last
+  ≥ `paydayTail` 7 before the goal), trouble (`loss` × `troubleScale` 1.5) only at 3 spots (before the last payday, 5 after it, just
+  before the goal), 2–3 `reversal` (인생역전섬), events filtered to good ones, no pass / shop. Goal order, `goalPrizes`, bonus spins
+  only here; `turn.eraRound/eraTurns` null; the game ends when everyone finished. Without a race (kids) places = final ranking
+  (`result.hasGoalRace`, awards / titles skip goal-place facts).
+- Turn loop (`continueTurn`): pending prompt → resume a paused move (`turn.move`) → era openings (lotto / 명절) → `announceTurn`
+  (`turnStarted {eraRound, eraTurns, eraIndex}`) → `preSpinStep` (중학생 `club` on the first middle turn, 고교 첫 만남 `meet` on the
+  first high turn, 수능 on the last high turn (`examDue`), `careerStep` = 전역 / 졸업 / 진로 / 군 / 취업) → roulette → `walk` →
+  `lifeStep` (careerStep, a missed 수능, `routeChoice` when standing on the fork, hidden jobs, 프러포즈) → `endTurn`. Internal flags
+  `turn.announce`, `turn.spun`.
+- `walk`: counts laps (`c.laps`, `moved.wrapped/laps`, log), reaching the merge ends the route (`c.route = null`, routeHistory
+  completed), stops on HALT tiles; passing a `pass` with steps left pauses the move (`turn.move = {charId, remaining, tileId}`, the
+  prompt opens, then `moved {resumed: true}` continues). Landing: `resolveTile(tx, c, tile, {onGoal})` — `salary` → `jobs.payday`
+  (job salary + spouse + 용돈; kids = `balance.salary.pocketMoney[era]` → `salary {jobId: null, rank: 0, pocket: true}` + 동아리
+  training), `start` nothing, `pass` → the 찬스 광장 prompt too.
+- 찬스 광장 (`passTile.js`, prompt `passTile`, resultCutin true; always opens — landing or passing): options `wish {cost, price, chance,
+  money}` (offering × `passTile.scale[era]`, chance base 0.3 + 0.04 × 운 ∈ [0.1, 0.7] → 운 +1 + money, `wishes` +1), `wishAll {cost,
+  price, gift, others}` (offering, every other unfinished character gets `gift` × scale, 운 +1, `wishes` +1), `buy {price, offers}`
+  (→ the `shop` prompt with those offers; disabled when nothing is affordable), `jobChange {jobId, salary, requires}` (one eligible
+  other job, adult job eras; disabled with a Korean reason otherwise) and `pass {buff}` (default). The buff is rolled when the prompt
+  opens (`balance.chanceBuffs` weights salaryX2 4 / moneyX15 3 / lossShield 3 / statUp 2) and becomes `character.chanceBuff` until the
+  next 찬스 광장 (expired first: `chanceBuff {charId, buff, action: 'expired'}`, gained: `action: 'gained'`). Effects via
+  `effects.hasBuff`: paydays ×2 (`salary.buff`), money tiles / good events ×1.5, `applyLoss` halves, stat gains +1.
+- Final race 인생역전섬: `reversal` adds `allIn` (→ prompt `allIn`, options '1'..'10', ALWAYS a plain random draw, hit → cash ×
+  `submaps.reversal.allIn.mult` 7, miss → cash 0 + retired bust = the last free place, no prize) and `retire` (→ the next free place,
+  prize × `retirePrizeMult` 0.5, no more turns / bonus spins). `finish.js` `nextPlace` / `finishCharacter(tx, c, {retired})` →
+  `finished {place, prize, retired?: 'early' | 'bust'}` (`character.retired`).
+- Era transition (`eraTransition`): `eraTransition {fromEraId, toEraId, eraIndex, turns, lap, final?, length?, eraName}` (cut-in anchor,
+  MC studio `eraSituations`) → `eraChanged {era, eraId, from}` per character (`cutin: false`, bland) → news → 기초연금 (all bottomN at
+  once, `grantPensions`) → 고교 첫 만남 recap (leaving high) → 노년 시세 → per character news statBonus + children / 용돈 / affection →
+  queued lotto + 명절. Positions reset to `startPosition(eraIndex)` (index 0), `c.route = null`.
+- Kids eras (A3): `balance.clubs` (5 clubs: joining stat +1, a training stat +1 on middle / high paydays, related jobs × `jobBonus` 1.5
+  in `offerWeight`), events `school_trip` / `sports_day`, 고교 첫 만남 = per-character `meet` prompt (★1 school candidates,
+  `met {school: true}`), then one `schoolMeet {summary: true}` recap.
+- Migration: `migrateLoopBoard(room)` (called by `applyAction` and `GameRunner.restore()` for playing rooms whose board isn't
+  loop-shaped): board rebuilt from `room.seed` with the room's eraTurns / finalLength, `eraIndex` = the most advanced character's era,
+  everyone at its start (finished characters stay finished / at the goal), `eraRound` 1, a pending `routeChoice` dropped, log
+  「🔄 새 순환 맵으로 옮겼어요!…」. Lobby / finished rooms need nothing.
+- Balance (data): salaries ≈ ×0.17 of the pre-loop values (jobs.json, e.g. 공무원 30/40/55/75; `jobs.expNeededMult` 3), partner ★
+  salaries 30/45/65/85, tile money ×0.3 (kids) / ≈ ×0.18 (adult eras: young 20–70, middle_age 25–110, senior 20–90); route pools
+  love heart 6 / money 4 ×1.2 (middle_age ×1.5 via `eraOverrides`), career job 3 / money 2 ×1.0 / loss 2, money route unchanged; `submaps.scale` / event scale adult ×0.5 / ×0.4, `partners.children.growTurns` 6, `birth.perSpin` 0.03,
+  `military.turns` 4, `career.collegeTurns` 3; hidden unlocks raised (see Stage 6); titles thresholds + 「여유로운 은퇴러」 / 「빈곤 농장
+  주인」 (retired / bust).
+- CPU (`cpu.js`): `walkFor` / `expectedLanding` follow HALT tiles and pass tiles, `tileWorth` knows salary (`paydayWorth`) / pass
+  (`PASS_WORTH` 35) / goal / start, `progressWorth` in aim scores (final race only); `answerPassTile` (`cpuPassScores`: wish EV,
+  wishAll, shop EV, job change by `jobScore`, pass = buff worth), `answerClub` (the target job's stat), `answerAllIn` (any number),
+  reversal: `retire` when comfortably ahead of the runner-up (not bold), `allIn` only when far behind the leader within 25 tiles
+  of the goal.
+- `scripts/simulate.js`: random eraTurns around the defaults (±30 %) + random finalLength; loop block (rounds, laps, paydays per
+  character, halt reasons, 찬스 광장 choices per policy, buffs, clubs, allIn / retire, payday share, money flow per reason);
+  `--pass-duel` (`simulatePass`, `PASS_STRATEGIES` cpu / always / never / random); aim duel types include pass.
+- Measured (final data; old = before the loop maps): spins per lifetime character ≈ 49.6 (game ≈ 258 spins, 53 rounds; old ≈ 15 per
+  character / 78 per game), kids 12.9. Decisions per lifetime character 34.1 CPU / 37.2 random (old 13.2 / 13.4; 찬스 광장 10.5 of
+  them). Lifetime mean total (seed 11) random 2160 (old 1619), CPU 3178 (old 1713), kids 1168 (old 1159); composition CPU cash 55.0 %
+  · house 29.1 · items 2.5 · treasures 5.6 · awards 7.9 (old 67.4 / 19.7 / 0.2 / 3.0 / 9.7). Payday share of income (salary + spouse
+  + 용돈) CPU 41.9 %, random 24.2 % excluding side bets (random answers take 찬스 광장 wishes / job changes 75 % of the time and
+  land lower jobs). Random route assignment, 4 CPUs × 300 × seeds 1 / 2 (fair 25): young love / career / money 24.8 / 27.4 /
+  23.2 and 25.9 / 24.0 / 25.5, middle_age 23.3 / 24.5 / 27.5 and 24.4 / 23.2 / 27.8. `--bias --games 400 --seed 1`: 10.5–14.0 %
+  (spread −0.33). Aim duel 150 × seeds 1 / 2: CPU 24.2 / 20.4, random 5.8 / 6.7, always-10 15.0 / 11.7, always-1 11.3 / 13.3,
+  none 6.3 / 10.4 (the old always-1 55 % exploit is gone: paydays halt everyone and the era clock caps the spins). `--pass-duel
+  --games 80`: CPU 13.1, always pass 14.5, never pass 9.9 %. CPU 찬스 광장 picks: pass 80 %, wish 11 %, buy 6.7 %, wishAll 2.1 %,
+  job change 0.1 %. `cpu-game` 4 CPU + 4 random × 100 (seed 1): CPU 87 % of wins (old 67.7 %; more decisions per game).
+
+## Loop maps (원작식 순환 맵) — client
+- Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A) / `loop-deviations.md`. The board shows ONLY the shared era
+  (`room.eraIndex`); eras are turn-limited (`turn.eraRound` / `turn.eraTurns`); the final 노년 era of lifetime / adult mode is a
+  LINEAR goal race (`loop: false, final: true`, no clock, goal order / prizes / bonus spins / `finished` back for that era).
+- Pure `public/js/shared/loop.js` (no imports; `test/client-loop.test.js`, fixture `test/client-loopFixture.js` = synthetic loop
+  boards, also used by E2E scripts): `loopConfig(meta)` (`meta.board.loop`, fallback 5.4 / 18 / 100) + `lapSize`, `isLoopBoard`,
+  `isRaceEra`, `currentEraIndex(room)` (`room.eraIndex`, else the characters' era), `eraClock(room)` → `{index, name, round, turns,
+  left, last, final, race}` + `eraClockText` (「청년 7/15턴」 / 「노년 · 골인 경쟁」) + `lastTurnHint`, `forkOf(era)` (server `fork` /
+  `rejoin`, else the routeChoice stop), `lapOrder(era, route)`, `tileIdForPosition` (index < 0 → the era's first tile),
+  `racetrack(era)` (2D model below), `haltNote(moved)` (💵 월급날! 멈춤 / 🎪 찬스 광장 (남은 n칸) / 🔀 갈림길 / 🚶 이어서 / 🔁 한 바퀴),
+  `lapsOf`, `buffText`, `passOptionExtras(pending, option)` (passTile icons; wish badges only without a server `desc`; 「그냥 지나가기」
+  shows `option.buff` unless the desc names it), `clubLabel(club, meta)`, `playEstimate` (`SEC_PER_TURN` 15, `LONG_GAME_TURNS` 40).
+- 3D layout (`public/js/scene/layout.js`, pure): `layoutBoard(board, {eraIndex})` lays out ONE era. Loop eras: a closed curve per
+  era id (`ERA_SHAPES`: baby round blob, elem schoolyard track (superellipse), middle bean, high rounded triangle, young wide race
+  track, middle_age egg, senior five-lobed; `eraRing(id, length)` scales the unit shape to lap × spacing), tile 0 on the near side
+  walking counter-clockwise on screen (+normal = outwards). Route eras centre the branch zone on the near side: career on the ring,
+  love outside (+routeWidth), money inside, equal lengths (ribbons between fork and rejoin). `era.loop === false` → `layoutLinear`
+  (open winding road, `closed: false`, `goalId`). Result `{loop, closed, eraIndex, ring (closed dense polyline or the road), origin,
+  perimeter, tiles, startId, start, era {id, shape, lap, fork, rejoin, center, bounds, tileIds, routes?}, eras: [era], bounds}`.
+  `eraSweepPoints(layout)` = camera tour (once around / start → goal). `planProps`: landmark in the middle of the loop when it fits
+  (else behind the far side), scatter on both sides (inside = low props only), a park grid inside, a second belt for small loops,
+  mountains far behind; tall props never stand where `shadowPoints` (away from the camera for the default azimuths `VIEW_AZIMUTHS`,
+  height × 1.45) would hide the track (`PROP_HEIGHT`). `insideRing`, `lapSlots`.
+- `board3d.js`: `setBoard(board, {eraIndex, key?})` (a string = old key) — a new board builds at once (`buildEra`); a new era of the
+  same board waits for its `eraTransition` animation (`S.wantEra`; switched in `applyCurrent` once idle when no transition plays).
+  `eraTransition` handler = banner → `switchEra`: `.b3-fade` on → dispose + rebuild the static group → every pawn on the start tile →
+  fade off → camera tour. `eraChanged` = a ✨ pop only. `moved`: hops follow the path ids (wraps, lanes); `hooks.onStep(moved)` after
+  the hop; `halted` → pop + banner (💵 / 🎪 / 🔀), 🔁 pop when passing the start; `resumed` subtitle 「이어서 n칸」. Static board per
+  era: one ground plane (era tint), ring strip (+ lanes), instanced tiles (payday / pass / fork / start / goal scaled up), one merged
+  marker mesh (payday gold coin ring + sign, 🎪 striped tent, start flag, goal gate), atlas icons with ribbons 「월급날」/「찬스 광장」,
+  sprites (era sign at the start, fork / merge, payday labels, goal, route names). Measured (SwiftShader): kids eras 29 calls /
+  ≈ 11.7k tris, young / middle_age (81 tiles + lanes) 37 calls / ≈ 25.7k tris, final race 19–21 calls / ≈ 7–8k tris.
+  `b3.eraIndex`; `focusEra(i)` only for the shown era. `finished` banner: 골인 / 🏖️ 조기 은퇴 (`retired: 'early'`) / 🌾 빈곤 농장
+  (`'bust'`); `bonusSpin` kept for the final race.
+- 2D (`game2d.js` `renderTrack` + `public/css/loop.css`): `racetrack(era)` → a hairpin racetrack on a CSS grid (top row →, right
+  turn cap, bottom row ←, left cap back to 🚩; a route era puts [fork (3 rows) | 💕/💼/💰 labels | three lanes | rejoin] centred
+  in the top row — love above = outside, money below = inside; the final race has no left cap: the goal ends the bottom row).
+  Horizontal scroll follows the current pawn; 56–66 px tiles, no page overflow at 390 px. Tabs = life progress (past ✓, current
+  「7/15」 or 🏁, later dashed); 2D tabs preview another era's map, 3D only the current one (toast).
+- HUD: header `⏳ 7/15턴` chip (+ 「이번 시대 마지막 턴!」 on the last round; the final race 「🏁 골인 경쟁」), spin hint + 3D subtitle
+  also warn on the last round; side rows 「🔁 n바퀴」 (lifetime `character.laps`; 0 → 「🚶 첫 바퀴」), 🏁 n등 골인 / 🏖️ / 🌾 in the final
+  race, `chanceBuff` badge (`gc-tag buff`, also on the 3D name tag), `club` tag while jobless; detail card 찬스 버프 / 동아리 / 바퀴 수.
+- Cut-ins: `planCutins` → ONE `eraTransition` group (anchor always; boundary) with the batch's per-character `eraChanged` (cutin
+  false) + their money / stat / log follow-ups folded in (`entrants`, `eraId`, `eraName`); the batch's newsFlash joins its studio.
+  game2d: studio (MCs) = the transition cut-in (no second event cut-in), else an era cut-in (cast = entrants, chips ⏳ n턴 · 🗺️ n칸);
+  banner 「모두 함께 ○○ 시대로!」. Policy: `eraTransition` big + `involvesMe` for everyone; `isPaydayGroup` (landed salary) → banner
+  unless mine and `delta ≥ PAYDAY_BIG` 300; `isPassSkip` (promptResolved passTile passed/left) + `chanceBuff` (lone → banner, else
+  `g.buffs` chips) are banners; `pass` in `MINOR_TILE_TYPES`. Prompt looks: passTile (good · shop scene), club (school), allIn
+  (casino). passTile options = the generic option list + `passOptionExtras` badges (cut-in and 2D modal); `allIn` (10 number options)
+  = a 5 × 2 number pad (`submapArt.allInOptionsHtml`, via `submapOptionsHtml`); reversal `allIn` / `retire` options use the generic
+  submap cards (`OPTION_LOOK`), results allInWin / allInLose (big) / retire. Floats: `moved` notes, 💵 용돈날 (`salary.pocket`), buffs.
+- Admin: 「시대 길이(턴)」 rows with 「🗺️ n칸 순환」 per era (`lapSize`), 「🏁 노년 길이(칸)」 row (`finalLength`, eras.json
+  `limits.finalLength` / `meta.defaults.finalLength`, fallback 20–80 / 40) instead of senior turns in race modes (senior turns not
+  sent); estimate = Σ turns + final race (length ÷ 5.5 × 1.3) × characters × 15 s with a ⚠️ long-game note (≥ 40 turns); room
+  detail 「노년 골인 경쟁 N칸」. Lobby mode label: 「청년 15턴 / … / 노년 🏁 40칸」. Result rows name 골인 보너스 / n번째 골인 only when
+  there was a goal prize. Skill panel: 「💡 큰 숫자일수록 멀리 가서 💵 월급날·🎪 찬스 광장을 더 자주 만나요.」
+- E2E (session scratchpad `loopb/`): `inject.cjs` (synthetic loop board injected into a real room: every era in 3D 1280 + 2D 390,
+  young last round with lane pawns, wrap + pass pause + passTile prompt + resume + payday stop, the era transition, final race,
+  admin form) and `game.cjs` (natural lifetime game on the loop engine: 1280 3D + 390 2D + 2 CPUs through every era, pass prompts,
+  paydays, forks, the goal race and the result; 0 console errors, no 390 overflow). Screenshots `loopb-*.png`.

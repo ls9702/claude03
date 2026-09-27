@@ -2,201 +2,442 @@
   "_comment": "Stage 6 직업 23종(일반 17 + 숨은 6) + 알바. requires = 취업 후보 조건(능력치 최소값·학력), ranks = 랭크별 급여(만원, 급여 칸 1회), rankUp = 승진 판정(확률 = base + perStat × stats[stat] + 운 보너스, 경험치 expNeeded 이상이면 급여 칸에서 자동 심사), injuryRisk = 급여 칸·승진 시험마다 부상 확률, outfit = avatars.json 의상 id(성장 의상), scene = 컷인 배경(presentation SCENES), unlock = 숨은 직업 해금 조건(모두 만족; anyOf = 그중 하나). 건물주 = 8단계 부동산(houseSwaps / house), 산신령 조건은 9단계(사찰 소원) 전까지의 임시 조건.",
   "jobs": [
     {
-      "id": "civil_servant", "name": "공무원", "icon": "🏛️", "hidden": false,
+      "id": "civil_servant",
+      "name": "공무원",
+      "icon": "🏛️",
+      "hidden": false,
       "desc": "철밥통! 월급은 적당하지만 꾸준해요",
-      "requires": { "stats": { "int": 3 } },
-      "ranks": [{ "name": "9급", "salary": 160 }, { "name": "7급", "salary": 240 }, { "name": "5급 사무관", "salary": 330 }, { "name": "국장", "salary": 450 }],
-      "rankUp": { "stat": "int", "base": 0.4, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "suit", "scene": "office", "tone": "career"
+      "requires": {"stats": {"int": 3}},
+      "ranks": [
+        {"name": "9급", "salary": 30},
+        {"name": "7급", "salary": 40},
+        {"name": "5급 사무관", "salary": 55},
+        {"name": "국장", "salary": 75}
+      ],
+      "rankUp": {"stat": "int", "base": 0.4, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "suit",
+      "scene": "office",
+      "tone": "career"
     },
     {
-      "id": "office_worker", "name": "대기업 회사원", "icon": "🏢", "hidden": false,
+      "id": "office_worker",
+      "name": "대기업 회사원",
+      "icon": "🏢",
+      "hidden": false,
       "desc": "사원증 목에 걸고 여의도로 출근!",
-      "requires": { "stats": { "int": 4 }, "education": "college" },
-      "ranks": [{ "name": "사원", "salary": 310 }, { "name": "대리", "salary": 410 }, { "name": "과장", "salary": 550 }, { "name": "부장", "salary": 720 }, { "name": "임원", "salary": 1000 }],
-      "rankUp": { "stat": "int", "base": 0.35, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "suit", "scene": "office", "tone": "career"
+      "requires": {"stats": {"int": 4}, "education": "college"},
+      "ranks": [
+        {"name": "사원", "salary": 50},
+        {"name": "대리", "salary": 70},
+        {"name": "과장", "salary": 90},
+        {"name": "부장", "salary": 120},
+        {"name": "임원", "salary": 170}
+      ],
+      "rankUp": {"stat": "int", "base": 0.35, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "suit",
+      "scene": "office",
+      "tone": "career"
     },
     {
-      "id": "webtoonist", "name": "웹툰 작가", "icon": "🖊️", "hidden": false,
+      "id": "webtoonist",
+      "name": "웹툰 작가",
+      "icon": "🖊️",
+      "hidden": false,
       "desc": "마감 지옥, 하지만 대박 나면 드라마화!",
-      "requires": { "stats": { "charm": 3 } },
-      "ranks": [{ "name": "지망생", "salary": 120 }, { "name": "연재 작가", "salary": 220 }, { "name": "인기 작가", "salary": 390 }, { "name": "거장", "salary": 630 }],
-      "rankUp": { "stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "hoodie", "scene": "office", "tone": "career"
+      "requires": {"stats": {"charm": 3}},
+      "ranks": [
+        {"name": "지망생", "salary": 20},
+        {"name": "연재 작가", "salary": 35},
+        {"name": "인기 작가", "salary": 65},
+        {"name": "거장", "salary": 105}
+      ],
+      "rankUp": {"stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "hoodie",
+      "scene": "office",
+      "tone": "career"
     },
     {
-      "id": "politician", "name": "국회의원", "icon": "🎤", "hidden": false,
+      "id": "politician",
+      "name": "국회의원",
+      "icon": "🎤",
+      "hidden": false,
       "desc": "금배지를 향해! 지력과 매력이 모두 필요해요",
-      "requires": { "stats": { "int": 5, "charm": 5 }, "education": "college" },
-      "ranks": [{ "name": "보좌관", "salary": 340 }, { "name": "구의원", "salary": 510 }, { "name": "국회의원", "salary": 720 }, { "name": "당대표", "salary": 1040 }],
-      "rankUp": { "stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 2 },
-      "injuryRisk": 0, "outfit": "suit", "scene": "office", "tone": "career"
+      "requires": {"stats": {"int": 5, "charm": 5}, "education": "college"},
+      "ranks": [
+        {"name": "보좌관", "salary": 55},
+        {"name": "구의원", "salary": 90},
+        {"name": "국회의원", "salary": 120},
+        {"name": "당대표", "salary": 175}
+      ],
+      "rankUp": {"stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 2},
+      "injuryRisk": 0,
+      "outfit": "suit",
+      "scene": "office",
+      "tone": "career"
     },
     {
-      "id": "baseball", "name": "야구선수", "icon": "⚾", "hidden": false,
+      "id": "baseball",
+      "name": "야구선수",
+      "icon": "⚾",
+      "hidden": false,
       "desc": "홈런 한 방이면 연봉 대박! 부상 조심",
-      "requires": { "stats": { "str": 5 } },
-      "ranks": [{ "name": "2군", "salary": 150 }, { "name": "1군", "salary": 280 }, { "name": "주전", "salary": 480 }, { "name": "국가대표", "salary": 720 }],
-      "rankUp": { "stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.12, "outfit": "stadium", "scene": "stadium", "tone": "career"
+      "requires": {"stats": {"str": 5}},
+      "ranks": [
+        {"name": "2군", "salary": 25},
+        {"name": "1군", "salary": 50},
+        {"name": "주전", "salary": 80},
+        {"name": "국가대표", "salary": 120}
+      ],
+      "rankUp": {"stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0.12,
+      "outfit": "stadium",
+      "scene": "stadium",
+      "tone": "career"
     },
     {
-      "id": "soccer", "name": "축구선수", "icon": "⚽", "hidden": false,
+      "id": "soccer",
+      "name": "축구선수",
+      "icon": "⚽",
+      "hidden": false,
       "desc": "K리그에서 해외 진출까지! 부상 조심",
-      "requires": { "stats": { "str": 5 } },
-      "ranks": [{ "name": "유스", "salary": 150 }, { "name": "K리그", "salary": 280 }, { "name": "국가대표", "salary": 480 }, { "name": "해외파", "salary": 750 }],
-      "rankUp": { "stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.12, "outfit": "soccer", "scene": "stadium", "tone": "career"
+      "requires": {"stats": {"str": 5}},
+      "ranks": [
+        {"name": "유스", "salary": 25},
+        {"name": "K리그", "salary": 50},
+        {"name": "국가대표", "salary": 80},
+        {"name": "해외파", "salary": 125}
+      ],
+      "rankUp": {"stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0.12,
+      "outfit": "soccer",
+      "scene": "stadium",
+      "tone": "career"
     },
     {
-      "id": "esports", "name": "e스포츠 선수", "icon": "🎮", "hidden": false,
+      "id": "esports",
+      "name": "e스포츠 선수",
+      "icon": "🎮",
+      "hidden": false,
       "desc": "손이 빠르고 운이 좋아야 해요. 손목 부상 주의",
-      "requires": { "stats": { "luck": 4 } },
-      "ranks": [{ "name": "연습생", "salary": 140 }, { "name": "프로", "salary": 260 }, { "name": "에이스", "salary": 440 }, { "name": "월즈 우승", "salary": 680 }],
-      "rankUp": { "stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.06, "outfit": "hoodie", "scene": "stage", "tone": "career"
+      "requires": {"stats": {"luck": 4}},
+      "ranks": [
+        {"name": "연습생", "salary": 20},
+        {"name": "프로", "salary": 45},
+        {"name": "에이스", "salary": 75},
+        {"name": "월즈 우승", "salary": 115}
+      ],
+      "rankUp": {"stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0.06,
+      "outfit": "hoodie",
+      "scene": "stage",
+      "tone": "career"
     },
     {
-      "id": "fighter", "name": "격투기 선수", "icon": "🥊", "hidden": false,
+      "id": "fighter",
+      "name": "격투기 선수",
+      "icon": "🥊",
+      "hidden": false,
       "desc": "링 위의 승부사! 부상 위험이 가장 커요",
-      "requires": { "stats": { "str": 6 } },
-      "ranks": [{ "name": "신인", "salary": 160 }, { "name": "랭커", "salary": 330 }, { "name": "챔피언", "salary": 570 }, { "name": "전설", "salary": 810 }],
-      "rankUp": { "stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.2, "outfit": "taekwondo", "scene": "gym", "tone": "career"
+      "requires": {"stats": {"str": 6}},
+      "ranks": [
+        {"name": "신인", "salary": 30},
+        {"name": "랭커", "salary": 55},
+        {"name": "챔피언", "salary": 95},
+        {"name": "전설", "salary": 135}
+      ],
+      "rankUp": {"stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0.2,
+      "outfit": "taekwondo",
+      "scene": "gym",
+      "tone": "career"
     },
     {
-      "id": "actor", "name": "배우", "icon": "🎬", "hidden": false,
+      "id": "actor",
+      "name": "배우",
+      "icon": "🎬",
+      "hidden": false,
       "desc": "단역부터 천만 배우까지! 매력이 무기",
-      "requires": { "stats": { "charm": 5 } },
-      "ranks": [{ "name": "단역", "salary": 120 }, { "name": "조연", "salary": 260 }, { "name": "주연", "salary": 480 }, { "name": "천만 배우", "salary": 780 }],
-      "rankUp": { "stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "trenchcoat", "scene": "stage", "tone": "career"
+      "requires": {"stats": {"charm": 5}},
+      "ranks": [
+        {"name": "단역", "salary": 20},
+        {"name": "조연", "salary": 45},
+        {"name": "주연", "salary": 80},
+        {"name": "천만 배우", "salary": 135}
+      ],
+      "rankUp": {"stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "trenchcoat",
+      "scene": "stage",
+      "tone": "career"
     },
     {
-      "id": "idol", "name": "아이돌", "icon": "🎤", "hidden": false,
+      "id": "idol",
+      "name": "아이돌",
+      "icon": "🎤",
+      "hidden": false,
       "desc": "연습생 생활을 버티면 월드 스타!",
-      "requires": { "stats": { "charm": 5, "str": 3 } },
-      "ranks": [{ "name": "연습생", "salary": 100 }, { "name": "데뷔", "salary": 240 }, { "name": "음방 1위", "salary": 480 }, { "name": "월드 스타", "salary": 840 }],
-      "rankUp": { "stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0.04, "outfit": "idol", "scene": "stage", "tone": "career"
+      "requires": {"stats": {"charm": 5, "str": 3}},
+      "ranks": [
+        {"name": "연습생", "salary": 20},
+        {"name": "데뷔", "salary": 40},
+        {"name": "음방 1위", "salary": 80},
+        {"name": "월드 스타", "salary": 140}
+      ],
+      "rankUp": {"stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0.04,
+      "outfit": "idol",
+      "scene": "stage",
+      "tone": "career"
     },
     {
-      "id": "youtuber", "name": "유튜버", "icon": "📹", "hidden": false,
+      "id": "youtuber",
+      "name": "유튜버",
+      "icon": "📹",
+      "hidden": false,
       "desc": "구독과 좋아요! 운이 따르면 떡상",
-      "requires": { "stats": { "luck": 3 } },
-      "ranks": [{ "name": "구독자 100명", "salary": 90 }, { "name": "실버 버튼", "salary": 220 }, { "name": "골드 버튼", "salary": 440 }, { "name": "다이아 버튼", "salary": 720 }],
-      "rankUp": { "stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "hoodie", "scene": "office", "tone": "career"
+      "requires": {"stats": {"luck": 3}},
+      "ranks": [
+        {"name": "구독자 100명", "salary": 15},
+        {"name": "실버 버튼", "salary": 35},
+        {"name": "골드 버튼", "salary": 75},
+        {"name": "다이아 버튼", "salary": 120}
+      ],
+      "rankUp": {"stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "hoodie",
+      "scene": "office",
+      "tone": "career"
     },
     {
-      "id": "chef", "name": "셰프", "icon": "👨‍🍳", "hidden": false,
+      "id": "chef",
+      "name": "셰프",
+      "icon": "👨‍🍳",
+      "hidden": false,
       "desc": "불 앞에서 버티는 체력이 필요해요",
-      "requires": { "stats": { "str": 3 } },
-      "ranks": [{ "name": "막내", "salary": 150 }, { "name": "부주방장", "salary": 240 }, { "name": "셰프", "salary": 360 }, { "name": "스타 셰프", "salary": 570 }],
-      "rankUp": { "stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0.03, "outfit": "chef", "scene": "kitchen", "tone": "career"
+      "requires": {"stats": {"str": 3}},
+      "ranks": [
+        {"name": "막내", "salary": 25},
+        {"name": "부주방장", "salary": 40},
+        {"name": "셰프", "salary": 65},
+        {"name": "스타 셰프", "salary": 95}
+      ],
+      "rankUp": {"stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0.03,
+      "outfit": "chef",
+      "scene": "kitchen",
+      "tone": "career"
     },
     {
-      "id": "doctor", "name": "의사", "icon": "🩺", "hidden": false,
+      "id": "doctor",
+      "name": "의사",
+      "icon": "🩺",
+      "hidden": false,
       "desc": "공부는 길지만 월급은 최고 수준",
-      "requires": { "stats": { "int": 6 }, "education": "college" },
-      "ranks": [{ "name": "인턴", "salary": 320 }, { "name": "레지던트", "salary": 480 }, { "name": "전문의", "salary": 780 }, { "name": "병원장", "salary": 1130 }],
-      "rankUp": { "stat": "int", "base": 0.3, "perStat": 0.05, "expNeeded": 2 },
-      "injuryRisk": 0, "outfit": "doctor", "scene": "hospital", "tone": "career"
+      "requires": {"stats": {"int": 6}, "education": "college"},
+      "ranks": [
+        {"name": "인턴", "salary": 50},
+        {"name": "레지던트", "salary": 80},
+        {"name": "전문의", "salary": 135},
+        {"name": "병원장", "salary": 190}
+      ],
+      "rankUp": {"stat": "int", "base": 0.3, "perStat": 0.05, "expNeeded": 2},
+      "injuryRisk": 0,
+      "outfit": "doctor",
+      "scene": "hospital",
+      "tone": "career"
     },
     {
-      "id": "researcher", "name": "연구원", "icon": "🔬", "hidden": false,
+      "id": "researcher",
+      "name": "연구원",
+      "icon": "🔬",
+      "hidden": false,
       "desc": "실험실의 밤은 길다. 대박 특허를 노려요",
-      "requires": { "stats": { "int": 5 }, "education": "college" },
-      "ranks": [{ "name": "연구원", "salary": 310 }, { "name": "선임", "salary": 440 }, { "name": "책임", "salary": 600 }, { "name": "연구소장", "salary": 860 }],
-      "rankUp": { "stat": "int", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "doctor", "scene": "lab", "tone": "career"
+      "requires": {"stats": {"int": 5}, "education": "college"},
+      "ranks": [
+        {"name": "연구원", "salary": 50},
+        {"name": "선임", "salary": 75},
+        {"name": "책임", "salary": 100},
+        {"name": "연구소장", "salary": 145}
+      ],
+      "rankUp": {"stat": "int", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "doctor",
+      "scene": "lab",
+      "tone": "career"
     },
     {
-      "id": "police", "name": "경찰관", "icon": "👮", "hidden": false,
+      "id": "police",
+      "name": "경찰관",
+      "icon": "👮",
+      "hidden": false,
       "desc": "시민의 안전을 지켜요. 체력이 기본!",
-      "requires": { "stats": { "str": 4 } },
-      "ranks": [{ "name": "순경", "salary": 160 }, { "name": "경위", "salary": 260 }, { "name": "경감", "salary": 360 }, { "name": "총경", "salary": 500 }],
-      "rankUp": { "stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0.05, "outfit": "police", "scene": "police", "tone": "career"
+      "requires": {"stats": {"str": 4}},
+      "ranks": [
+        {"name": "순경", "salary": 30},
+        {"name": "경위", "salary": 45},
+        {"name": "경감", "salary": 65},
+        {"name": "총경", "salary": 85}
+      ],
+      "rankUp": {"stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0.05,
+      "outfit": "police",
+      "scene": "police",
+      "tone": "career"
     },
     {
-      "id": "comedian", "name": "개그맨", "icon": "🤡", "hidden": false,
+      "id": "comedian",
+      "name": "개그맨",
+      "icon": "🤡",
+      "hidden": false,
       "desc": "유행어 하나면 인생 역전!",
-      "requires": { "stats": { "charm": 4 } },
-      "ranks": [{ "name": "신인", "salary": 100 }, { "name": "코너 고정", "salary": 220 }, { "name": "유행어 제조기", "salary": 420 }, { "name": "연예대상", "salary": 690 }],
-      "rankUp": { "stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "hawaiian", "scene": "stage", "tone": "career"
+      "requires": {"stats": {"charm": 4}},
+      "ranks": [
+        {"name": "신인", "salary": 20},
+        {"name": "코너 고정", "salary": 35},
+        {"name": "유행어 제조기", "salary": 70},
+        {"name": "연예대상", "salary": 115}
+      ],
+      "rankUp": {"stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "hawaiian",
+      "scene": "stage",
+      "tone": "career"
     },
     {
-      "id": "teacher", "name": "교사", "icon": "📚", "hidden": false,
+      "id": "teacher",
+      "name": "교사",
+      "icon": "📚",
+      "hidden": false,
       "desc": "방학이 있는 직업! 대학 졸업이 필요해요",
-      "requires": { "stats": { "int": 4 }, "education": "college" },
-      "ranks": [{ "name": "기간제", "salary": 250 }, { "name": "정교사", "salary": 370 }, { "name": "부장 교사", "salary": 510 }, { "name": "교장", "salary": 690 }],
-      "rankUp": { "stat": "int", "base": 0.4, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "cardigan", "scene": "school", "tone": "career"
+      "requires": {"stats": {"int": 4}, "education": "college"},
+      "ranks": [
+        {"name": "기간제", "salary": 40},
+        {"name": "정교사", "salary": 65},
+        {"name": "부장 교사", "salary": 90},
+        {"name": "교장", "salary": 115}
+      ],
+      "rankUp": {"stat": "int", "base": 0.4, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "cardigan",
+      "scene": "school",
+      "tone": "career"
     },
     {
-      "id": "landlord", "name": "건물주", "icon": "🏙️", "hidden": true,
+      "id": "landlord",
+      "name": "건물주",
+      "icon": "🏙️",
+      "hidden": true,
       "desc": "조물주 위에 건물주! 월세가 따박따박",
       "requires": {},
-      "ranks": [{ "name": "꼬마 빌딩주", "salary": 750 }, { "name": "빌딩 부자", "salary": 1050 }, { "name": "강남 건물주", "salary": 1420 }],
-      "rankUp": { "stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "trenchcoat", "scene": "office", "tone": "treasure",
-      "unlock": { "anyOf": [{ "houseSwaps": 3 }, { "house": ["penthouse", "jeju_villa"] }], "desc": "부동산 갈아타기 3회 이상, 또는 펜트하우스·제주 별장 보유" }
+      "ranks": [{"name": "꼬마 빌딩주", "salary": 125}, {"name": "빌딩 부자", "salary": 175}, {"name": "강남 건물주", "salary": 240}],
+      "rankUp": {"stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "trenchcoat",
+      "scene": "office",
+      "tone": "treasure",
+      "unlock": {
+        "anyOf": [{"houseSwaps": 4}, {"house": ["penthouse", "jeju_villa"]}],
+        "desc": "부동산 갈아타기 4회 이상, 또는 펜트하우스·제주 별장 보유"
+      }
     },
     {
-      "id": "trot_star", "name": "트로트 스타", "icon": "🎙️", "hidden": true,
+      "id": "trot_star",
+      "name": "트로트 스타",
+      "icon": "🎙️",
+      "hidden": true,
       "desc": "늦게 핀 꽃이 더 아름답다! 전국 노래자랑 우승",
       "requires": {},
-      "ranks": [{ "name": "지역 가수", "salary": 600 }, { "name": "트로트 신동", "salary": 980 }, { "name": "국민 트로트 스타", "salary": 1420 }],
-      "rankUp": { "stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "idol", "scene": "stage", "tone": "result",
-      "unlock": { "era": ["senior"], "stats": { "charm": 7, "luck": 7 }, "desc": "노년 시대에 매력 7·운 7 이상" }
+      "ranks": [
+        {"name": "지역 가수", "salary": 100},
+        {"name": "트로트 신동", "salary": 165},
+        {"name": "국민 트로트 스타", "salary": 240}
+      ],
+      "rankUp": {"stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "idol",
+      "scene": "stage",
+      "tone": "result",
+      "unlock": {"era": ["senior"], "stats": {"charm": 9, "luck": 9}, "desc": "노년 시대에 매력 9·운 9 이상"}
     },
     {
-      "id": "astronaut", "name": "우주비행사", "icon": "🚀", "hidden": true,
+      "id": "astronaut",
+      "name": "우주비행사",
+      "icon": "🚀",
+      "hidden": true,
       "desc": "지력과 체력의 끝판왕만 갈 수 있는 우주!",
       "requires": {},
-      "ranks": [{ "name": "후보생", "salary": 680 }, { "name": "우주비행사", "salary": 1050 }, { "name": "달 탐사대장", "salary": 1500 }],
-      "rankUp": { "stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0.02, "outfit": "longpadding", "scene": "space", "tone": "result",
-      "unlock": { "stats": { "int": 8, "str": 8 }, "desc": "지력 8·체력 8 이상" }
+      "ranks": [{"name": "후보생", "salary": 115}, {"name": "우주비행사", "salary": 175}, {"name": "달 탐사대장", "salary": 250}],
+      "rankUp": {"stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0.02,
+      "outfit": "longpadding",
+      "scene": "space",
+      "tone": "result",
+      "unlock": {"stats": {"int": 9, "str": 9}, "desc": "지력 9·체력 9 이상"}
     },
     {
-      "id": "mountain_spirit", "name": "산신령", "icon": "🏔️", "hidden": true,
+      "id": "mountain_spirit",
+      "name": "산신령",
+      "icon": "🏔️",
+      "hidden": true,
       "desc": "금도끼 은도끼… 온갖 풍파를 견딘 자의 경지",
       "requires": {},
-      "ranks": [{ "name": "동네 도사", "salary": 600 }, { "name": "산신령", "salary": 980 }, { "name": "백두산 산신령", "salary": 1350 }],
-      "rankUp": { "stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "hanbokTrad", "scene": "mountain-trail", "tone": "treasure",
-      "unlock": { "wishes": 2, "desc": "사찰에서 소원을 2번 이상 이루기" }
+      "ranks": [{"name": "동네 도사", "salary": 100}, {"name": "산신령", "salary": 165}, {"name": "백두산 산신령", "salary": 225}],
+      "rankUp": {"stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "hanbokTrad",
+      "scene": "mountain-trail",
+      "tone": "treasure",
+      "unlock": {"wishes": 8, "desc": "소원(사찰·찬스 광장)을 8번 이상 이루기"}
     },
     {
-      "id": "chaebol", "name": "재벌 총수", "icon": "👑", "hidden": true,
+      "id": "chaebol",
+      "name": "재벌 총수",
+      "icon": "👑",
+      "hidden": true,
       "desc": "대기업 임원 끝에 그룹 회장님으로!",
       "requires": {},
-      "ranks": [{ "name": "계열사 사장", "salary": 900 }, { "name": "부회장", "salary": 1280 }, { "name": "그룹 회장", "salary": 1800 }],
-      "rankUp": { "stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "suit", "scene": "office", "tone": "result",
-      "unlock": { "maxRankOf": ["office_worker"], "netWorth": 3000, "desc": "대기업 회사원 최고 랭크(임원) + 순자산 3,000만원 이상" }
+      "ranks": [{"name": "계열사 사장", "salary": 150}, {"name": "부회장", "salary": 215}, {"name": "그룹 회장", "salary": 300}],
+      "rankUp": {"stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "suit",
+      "scene": "office",
+      "tone": "result",
+      "unlock": {"maxRankOf": ["office_worker"], "netWorth": 2000, "desc": "대기업 회사원 최고 랭크(임원) + 순자산 2,000만원 이상"}
     },
     {
-      "id": "national_mc", "name": "국민 MC", "icon": "📺", "hidden": true,
+      "id": "national_mc",
+      "name": "국민 MC",
+      "icon": "📺",
+      "hidden": true,
       "desc": "호야·봄이도 인정한 대한민국 대표 MC!",
       "requires": {},
-      "ranks": [{ "name": "고정 MC", "salary": 680 }, { "name": "간판 MC", "salary": 1050 }, { "name": "국민 MC", "salary": 1500 }],
-      "rankUp": { "stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
-      "injuryRisk": 0, "outfit": "suit", "scene": "stage", "tone": "result",
-      "unlock": { "maxRankOf": ["comedian", "actor", "youtuber"], "stats": { "charm": 8 }, "desc": "개그맨·배우·유튜버 최고 랭크 + 매력 8 이상" }
+      "ranks": [{"name": "고정 MC", "salary": 115}, {"name": "간판 MC", "salary": 175}, {"name": "국민 MC", "salary": 250}],
+      "rankUp": {"stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
+      "injuryRisk": 0,
+      "outfit": "suit",
+      "scene": "stage",
+      "tone": "result",
+      "unlock": {
+        "maxRankOf": ["comedian", "actor", "youtuber"],
+        "stats": {"charm": 9},
+        "desc": "개그맨·배우·유튜버 최고 랭크 + 매력 9 이상"
+      }
     }
   ],
   "partTime": {
-    "id": "parttime", "name": "알바", "icon": "🧾", "hidden": false,
+    "id": "parttime",
+    "name": "알바",
+    "icon": "🧾",
+    "hidden": false,
     "desc": "편의점·카페 알바로 시작! 직업 칸에서 정규직에 도전하세요",
-    "ranks": [{ "name": "알바생", "salary": 90 }, { "name": "주말 매니저", "salary": 140 }, { "name": "점장", "salary": 200 }],
-    "rankUp": { "stat": "luck", "base": 0.35, "perStat": 0.03, "expNeeded": 1 },
-    "injuryRisk": 0, "outfit": "apron", "scene": "office", "tone": "career"
+    "ranks": [{"name": "알바생", "salary": 15}, {"name": "주말 매니저", "salary": 20}, {"name": "점장", "salary": 35}],
+    "rankUp": {"stat": "luck", "base": 0.35, "perStat": 0.03, "expNeeded": 1},
+    "injuryRisk": 0,
+    "outfit": "apron",
+    "scene": "office",
+    "tone": "career"
   }
 }

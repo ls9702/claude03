@@ -4,12 +4,12 @@ import { gameData } from '../server/data/index.js';
 import { applyAction, betWins, startGame } from '../server/game/engine.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { viewFor } from '../server/game/view.js';
-import { makeRoom } from './helpers.js';
+import { atEraEnd, makeRoom, plainEra, toEra } from './helpers.js';
 
 /** Started game. chars: [[ownerSession, name], ...] (sessions 'A', 'B'). */
-function started({ mode = 'lifetime', eraTurns = {}, chars = [['A', 'A1'], ['B', 'B1']], startingMoney = 1000, seed = 7 } = {}) {
+function started({ mode = 'lifetime', eraTurns = {}, chars = [['A', 'A1'], ['B', 'B1']], startingMoney = 1000, seed = 7, finalLength = 40 } = {}) {
   let room = makeRoom({ seed });
-  room.config = { ...room.config, mode, eraTurns: { ...room.config.eraTurns, ...eraTurns }, startingMoney };
+  room.config = { ...room.config, mode, eraTurns: { ...room.config.eraTurns, ...eraTurns }, startingMoney, finalLength };
   room = joinRoom(room, 'A', '에이', 0).room;
   room = joinRoom(room, 'B', '비', 0).room;
   for (const [owner, name] of chars) room = addCharacter(room, owner, { name }, 0).room;
@@ -55,21 +55,32 @@ test('startGame initializes board, characters and turn; input untouched', () => 
   assert.equal(typeof r.room.rngState, 'number');
   assert.deepEqual(r.room.turn.order, ['c1', 'c2']);
   assert.equal(r.room.turn.turnNo, 1);
+  // loop maps: one shared era clock
+  assert.equal(r.room.eraIndex, 0);
+  assert.equal(r.room.turn.eraRound, 1);
+  assert.equal(r.room.turn.eraTurns, 3);
+  assert.equal(r.room.turn.phase, 'awaitSpin');
   for (const c of r.room.characters) {
     assert.equal(c.money, 1000);
     assert.equal(c.debt, 0);
-    assert.deepEqual(c.position, { eraIndex: 0, route: 'main', index: -1 });
+    assert.deepEqual(c.position, { eraIndex: 0, route: 'main', index: 0 });
+    assert.equal(r.room.board.eras[0].tiles[0].type, 'start');
     assert.equal(c.era, 'baby');
+    assert.equal(c.laps, 0);
     assert.equal(c.finished, false);
   }
   assert.ok(types(r.events).includes('turnStarted'));
   assert.equal(startGame(r.room).ok, false); // already started
 });
 
-test('spin rolls 1..10 and moves exactly that many tiles (real rng)', () => {
-  let room = started({ eraTurns: { baby: 40, elem: 40 } });
+test('spin rolls 1..10 and walks that many tiles around the loop, wrapping past the start (real rng)', () => {
+  let room = started({ eraTurns: { baby: 40 } });
+  plainEra(room, 0); // no payday / 찬스 광장 stops for this test
+  const lap = room.board.eras[0].lap;
   const seen = new Set();
-  for (let i = 0; i < 60; i++) {
+  let walked = 0;
+  let wraps = 0;
+  for (let i = 0; i < 40; i++) {
     const id = cur(room);
     const from = ch(room, id).position.index;
     const r = applyAction(room, { type: 'spin', characterId: id }, { now: i });
@@ -78,17 +89,20 @@ test('spin rolls 1..10 and moves exactly that many tiles (real rng)', () => {
     seen.add(spun.value);
     const moved = r.events.find((e) => e.type === 'moved');
     assert.equal(moved.path.length, spun.value);
-    assert.equal(ch(r.room, id).position.index, from + spun.value);
+    assert.equal(ch(r.room, id).position.index, (from + spun.value) % lap);
+    if (moved.wrapped) wraps += moved.laps;
+    walked += spun.value;
     room = r.room;
-    // answer tile prompts (habit / shop…) with their default so the spins continue
     while (room.turn.pending) {
       const p = room.turn.pending;
       const who = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
       room = applyAction(room, { type: 'choose', characterId: who, promptId: p.promptId, optionId: p.defaultOptionId }, { now: i }).room;
     }
-    if (ch(room, id).position.index > 25) break;
   }
   assert.ok(seen.size >= 5);
+  assert.ok(wraps >= 1, 'somebody lapped the 18+ tile ring');
+  assert.equal(room.characters.reduce((n, c) => n + c.laps, 0), wraps);
+  assert.ok(walked > lap);
 });
 
 test('input room is never mutated by applyAction', () => {
@@ -98,23 +112,45 @@ test('input room is never mutated by applyAction', () => {
   assert.deepEqual(room, snap);
 });
 
-test('movement across an era boundary emits eraChanged', () => {
-  const room = started();
-  const id = cur(room);
-  ch(room, id).position = { eraIndex: 0, route: 'main', index: 2 }; // last baby tile
-  setTile(room, 1, 1, { type: 'money', amount: 30 });
-  const r = act(room, { type: 'spin', characterId: id }, [2]);
-  assert.deepEqual(r.events.find((e) => e.type === 'moved').path, ['elem:main:0', 'elem:main:1']);
-  const ec = r.events.find((e) => e.type === 'eraChanged');
-  assert.equal(ec.era, 'elem');
-  assert.equal(ch(r.room, id).era, 'elem');
-  assert.ok(types(r.events).indexOf('eraChanged') < types(r.events).indexOf('landed'));
+test('era clock: the last turn of an era moves everyone together to the next era start (eraTransition → eraChanged ×n → turnStarted)', () => {
+  let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2']] });
+  plainEra(room, 0);
+  const [a, b, c] = room.turn.order;
+  // round 1..3 of baby: 3 spins each; the era changes only after the last character of round 3
+  for (let round = 1; round <= 3; round++) {
+    for (const id of [a, b, c]) {
+      assert.equal(room.eraIndex, 0);
+      assert.equal(room.turn.eraRound, round);
+      const r = act(room, { type: 'spin', characterId: id }, [2]);
+      room = r.room;
+      if (round === 3 && id === c) {
+        const ts = types(r.events);
+        const t = ts.indexOf('eraTransition');
+        assert.ok(t > 0);
+        const tr = r.events[t];
+        assert.deepEqual([tr.fromEraId, tr.toEraId, tr.eraIndex, tr.turns, tr.lap], ['baby', 'elem', 1, 3, room.board.eras[1].lap]);
+        assert.equal(tr.cutin, true);
+        assert.deepEqual(r.events.filter((e) => e.type === 'eraChanged').map((e) => e.charId), [a, b, c]);
+        assert.ok(r.events.filter((e) => e.type === 'eraChanged').every((e) => e.era === 'elem' && e.cutin === false));
+        assert.ok(ts.lastIndexOf('eraChanged') < ts.indexOf('turnStarted'));
+      }
+    }
+  }
+  assert.equal(room.eraIndex, 1);
+  assert.equal(room.turn.eraRound, 1);
+  assert.equal(room.turn.eraTurns, 3);
+  assert.equal(cur(room), a);
+  for (const x of room.characters) {
+    assert.deepEqual(x.position, { eraIndex: 1, route: 'main', index: 0 });
+    assert.equal(x.era, 'elem');
+  }
 });
 
 test('money and loss tiles; loss beyond cash becomes debt, gains repay debt', () => {
   let room = started({ startingMoney: 100 });
+  plainEra(room, 0);
   const [a, b] = room.turn.order;
-  setTile(room, 0, 0, { type: 'loss', amount: 150 });
+  setTile(room, 0, 1, { type: 'loss', amount: 150 });
   let r = act(room, { type: 'spin', characterId: a }, [1]);
   const mc = r.events.find((e) => e.type === 'moneyChanged');
   assert.equal(mc.delta, -150);
@@ -122,23 +158,43 @@ test('money and loss tiles; loss beyond cash becomes debt, gains repay debt', ()
   assert.equal(r.events.find((e) => e.type === 'landed').tileType, 'loss');
   assert.equal(mc.emotion === 'cry' || mc.emotion === 'shock', true);
   room = r.room;
-  setTile(room, 0, 1, { type: 'money', amount: 80 });
-  r = act(room, { type: 'spin', characterId: b }, [2]); // b → baby:main:1
+  setTile(room, 0, 2, { type: 'money', amount: 80 });
+  r = act(room, { type: 'spin', characterId: b }, [2]); // b → baby:main:2
   assert.equal(ch(r.room, b).money, 180);
   room = r.room;
-  r = act(room, { type: 'spin', characterId: a }, [1]); // a → baby:main:1 (+80, repays 50)
+  r = act(room, { type: 'spin', characterId: a }, [1]); // a → baby:main:2 (+80, repays 50)
   assert.deepEqual([ch(r.room, a).money, ch(r.room, a).debt], [30, 0]);
 });
 
-test('stop tile halts movement and opens route choice; choose sets the route', () => {
+test('payday (월급날) is a forced stop: the rest of the move is discarded; kids eras pay 용돈', () => {
+  let room = started();
+  plainEra(room, 0);
+  const a = cur(room);
+  setTile(room, 0, 3, { type: 'salary', label: '월급날' });
+  const r = act(room, { type: 'spin', characterId: a }, [8]);
+  const moved = r.events.find((e) => e.type === 'moved');
+  assert.deepEqual(moved.path, ['baby:main:1', 'baby:main:2', 'baby:main:3']);
+  assert.equal(moved.halted, 'salary');
+  assert.equal(ch(r.room, a).position.index, 3);
+  const pay = r.events.find((e) => e.type === 'salary');
+  const pocket = gameData().balance.salary.pocketMoney.baby;
+  assert.deepEqual([pay.pocket, pay.amount, pay.jobId], [true, pocket, null]);
+  assert.equal(ch(r.room, a).money, 1000 + pocket);
+});
+
+test('the fork (갈림길) halts the move and opens route choice every lap; the route rejoins at the merge', () => {
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2']] });
+  const y = room.board.eras.findIndex((e) => e.id === 'young');
+  toEra(room, y);
+  plainEra(room, y);
+  const era = room.board.eras[y];
   const id = cur(room);
-  ch(room, id).position = { eraIndex: 3, route: 'main', index: 4 }; // last high tile
-  // Stage 6: 진로 / 군 복무 / 취업 are decided before the 갈림길 — this character has done them all
-  Object.assign(ch(room, id), { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'chef', rank: 1, exp: 0, injured: 0 } });
+  ch(room, id).position = { eraIndex: y, route: 'main', index: era.fork - 1 };
+  // 진로 / 군 복무 / 취업 are decided at the start of the first adult turn — this character has done them all
+  for (const x of room.characters) Object.assign(x, { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'chef', rank: 1, exp: 0, injured: 0 } });
   let r = act(room, { type: 'spin', characterId: id }, [7]);
   const moved = r.events.find((e) => e.type === 'moved');
-  assert.deepEqual(moved.path, ['young:main:0']);
+  assert.deepEqual(moved.path, [`young:main:${era.fork}`]);
   assert.equal(moved.halted, 'stop');
   assert.equal(r.room.turn.phase, 'awaitDecision');
   const p = r.room.turn.pending;
@@ -164,15 +220,16 @@ test('stop tile halts movement and opens route choice; choose sets the route', (
   assert.equal(r.room.turn.pending, null);
   assert.notEqual(cur(r.room), id);
 
-  // next time this character moves it goes down the love track and later merges
+  // next time this character moves it goes down the love track and rejoins at the merge (route done → reset)
   room = r.room;
   room.turn.currentIndex = room.turn.order.indexOf(id);
-  const L = room.board.eras[4].routes.love.tiles.length;
+  const L = era.routes.love.tiles.length;
   r = act(room, { type: 'spin', characterId: id }, [L + 1]);
   const path = r.events.find((e) => e.type === 'moved').path;
   assert.equal(path[0], 'young:love:0');
-  assert.equal(path.at(-1), 'young:main:1');
+  assert.equal(path.at(-1), `young:main:${era.rejoin}`);
   assert.equal(ch(r.room, id).routeHistory[0].completed, true);
+  assert.equal(ch(r.room, id).route, null, 'the next lap asks again');
 });
 
 test('ownership and turn validation', () => {
@@ -191,9 +248,10 @@ test('simultaneous prompt (생일 파티) collects answers; timeout fills defaul
   const birthday = base.events.events.find((e) => e.kind === 'groupGift');
   const data = { ...base, events: { events: [birthday] } };
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2'], ['B', 'B2']] });
+  plainEra(room, 0);
   const [a1, b1, a2, b2] = room.turn.order; // turn positions; family order = A1, A2, B1, B2
   assert.deepEqual([a1, b1, a2, b2].map((id) => ch(room, id).name), ['A1', 'A2', 'B1', 'B2']);
-  setTile(room, 0, 0, { type: 'event' });
+  setTile(room, 0, 1, { type: 'event' });
   let r = act(room, { type: 'spin', characterId: a1 }, [1], { data });
   const p = r.room.turn.pending;
   assert.equal(p.kind, 'groupGift');
@@ -243,6 +301,7 @@ test('side bets: payout math, validation, masking until resolved', () => {
   assert.equal(betWins({ kind: 'range', pick: '7-10' }, 10, bal), true);
 
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['B', 'B2'], ['A', 'A2']], startingMoney: 100 });
+  plainEra(room, 0, { type: 'event' }); // (fixed rng → the first event; no money / prompt)
   const order = room.turn.order; // A1, A2, B1, B2
   const [a1, a2, b1, b2] = order;
   const bet = (rm, id, kind, pick, amount, sess = 'B') => act(rm, { type: 'bet', characterId: id, kind, pick, amount, actor: { sessionId: sess } });
@@ -263,14 +322,18 @@ test('side bets: payout math, validation, masking until resolved', () => {
 
   // replace b2's bet, then spin 5: odd wins ×2 (+10), '1-3' loses (-15)
   room = bet(room, b2, 'range', '1-3', 15).room;
+  const b1Before = ch(room, b1).money;
+  const b2Before = ch(room, b2).money;
   const r = act(room, { type: 'spin', characterId: a1 }, [5]);
   const res = r.events.find((e) => e.type === 'betResolved');
   assert.equal(res.value, 5);
   const byId = Object.fromEntries(res.results.map((x) => [x.charId, x]));
   assert.deepEqual([byId[b1].won, byId[b1].delta], [true, 10]);
   assert.deepEqual([byId[b2].won, byId[b2].delta], [false, -15]);
-  assert.equal(ch(r.room, b1).money, 110);
-  assert.equal(ch(r.room, b2).money, 85);
+  assert.equal(ch(r.room, b1).money, b1Before + 20);
+  assert.equal(ch(r.room, b2).money, b2Before);
+  assert.equal(ch(r.room, b1).money - 100, 10);
+  assert.equal(ch(r.room, b2).money - 100, -15);
   assert.ok(types(r.events).indexOf('spun') < types(r.events).indexOf('betResolved'));
   assert.equal(viewFor(r.room, 'A').bets[room.turn.turnNo][b1].pick, 'odd'); // visible once resolved
 
@@ -285,40 +348,50 @@ test('side bets: payout math, validation, masking until resolved', () => {
   assert.throws(() => bet(poor, b1, 'oddEven', 'even', 10), { status: 409 });
 });
 
-test('역전 보정: bottom-2 entering senior get 기초연금 (≥3 characters)', () => {
-  const room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2']] });
+test('역전 보정: at the transition into senior the bottom-2 get 기초연금 at once (≥3 characters)', () => {
+  let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2']] });
+  const mid = room.board.eras.findIndex((e) => e.id === 'middle_age');
+  toEra(room, mid);
+  plainEra(room, mid);
+  for (const x of room.characters) Object.assign(x, { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'chef', rank: 1, exp: 0, injured: 0 } });
   const [x, y, z] = room.turn.order;
   ch(room, x).money = 0;
   ch(room, y).money = 5000;
   ch(room, z).money = 1000;
-  ch(room, x).position = { eraIndex: 5, route: 'main', index: 1 }; // middle_age merge
-  setTile(room, 6, 0, { type: 'event' });
-  const r = act(room, { type: 'spin', characterId: x }, [1]);
-  const pension = r.events.find((e) => e.type === 'moneyChanged' && e.reason === 'pension');
+  atEraEnd(room);
+  const r = act(room, { type: 'spin', characterId: z }, [1]);
+  assert.ok(types(r.events).includes('eraTransition'));
+  const pensions = r.events.filter((e) => e.type === 'moneyChanged' && e.reason === 'pension');
+  assert.deepEqual(pensions.map((e) => e.charId), [x, z]);
   const cfg = gameData().balance.pension;
-  assert.equal(pension.delta, Math.min(cfg.max, cfg.base + 5000 * cfg.gapRatio));
+  assert.equal(pensions[0].delta, Math.min(cfg.max, cfg.base + 5000 * cfg.gapRatio));
   assert.equal(ch(r.room, x).pensionGiven, true);
-  // the richest does not get it
-  const room2 = structuredClone(room);
-  room2.turn.currentIndex = room2.turn.order.indexOf(y);
-  ch(room2, y).position = { eraIndex: 5, route: 'main', index: 1 };
-  const r2 = act(room2, { type: 'spin', characterId: y }, [1]);
-  assert.ok(!r2.events.some((e) => e.reason === 'pension'));
+  assert.equal(ch(r.room, y).pensionGiven, false, 'the richest does not get it');
+  assert.deepEqual(r.room.pension.recipients, [x, z]);
 });
 
-test('goal → finished with prize → others continue while finished get bonus spins → gameOver ranking', () => {
-  let room = started({ mode: 'kids', eraTurns: { baby: 1, elem: 1, middle: 1, high: 1 } });
+test('final era: goal race — goal order + prizes, finished characters get bonus spins, everyone done → gameOver', () => {
+  let room = started({ mode: 'adult', eraTurns: { young: 3, middle_age: 3 }, finalLength: 20 });
+  const last = room.board.eras.length - 1;
+  toEra(room, last);
+  plainEra(room, last);
+  assert.equal(room.board.eras[last].final, true);
+  assert.equal(room.turn.eraRound, null);
   const [a, b] = room.turn.order;
+  for (const x of room.characters) Object.assign(x, { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'chef', rank: 1, exp: 0, injured: 0 } });
+  ch(room, a).position.index = 15;
+  const money = ch(room, a).money;
   let r = act(room, { type: 'spin', characterId: a }, [10]);
+  const moved = r.events.find((e) => e.type === 'moved');
+  assert.equal(moved.halted, 'goal');
+  assert.equal(moved.path.length, 4);
   const fin = r.events.find((e) => e.type === 'finished');
   assert.deepEqual([fin.charId, fin.place], [a, 1]);
-  assert.equal(r.events.find((e) => e.type === 'moved').path.length, 4);
-  assert.equal(r.events.filter((e) => e.type === 'eraChanged').length, 3);
   const prize = gameData().balance.goalPrizes[0];
-  assert.equal(ch(r.room, a).money, 1000 + prize);
+  assert.equal(ch(r.room, a).money, money + prize);
   room = r.room;
   assert.equal(cur(room), b);
-  // b moves 1 → a's turn is skipped with an automatic bonus spin
+  // b moves 1 → a's turn is an automatic bonus spin
   r = act(room, { type: 'spin', characterId: b }, [1, 6]);
   const bonus = r.events.find((e) => e.type === 'bonusSpin');
   assert.deepEqual([bonus.charId, bonus.value, bonus.amount], [a, 6, 6 * gameData().balance.bonusSpinUnit]);
@@ -327,6 +400,7 @@ test('goal → finished with prize → others continue while finished get bonus 
   room = r.room;
   assert.throws(() => act(room, { type: 'spin', characterId: a }), { status: 409 });
   // b reaches the goal → game over
+  ch(room, b).position.index = 18;
   r = act(room, { type: 'spin', characterId: b }, [10]);
   assert.ok(types(r.events).includes('gameOver'));
   assert.equal(r.room.status, 'finished');
@@ -337,6 +411,24 @@ test('goal → finished with prize → others continue while finished get bonus 
   assert.equal(ch(r.room, b).place, 2);
   assert.equal(r.room.turn.phase, 'gameOver');
   assert.throws(() => act(r.room, { type: 'spin', characterId: b }), { status: 409 });
+});
+
+test('kids mode (no final race): the game ends when the last era runs out of turns; place = final rank', () => {
+  let room = started({ mode: 'kids', eraTurns: { baby: 1, elem: 1, middle: 1, high: 1 } });
+  let guard = 0;
+  while (room.status === 'playing' && guard++ < 200) {
+    const p = room.turn.pending;
+    const action = p
+      ? { type: 'choose', characterId: p.forCharacterIds.find((id) => !Object.hasOwn(p.answers, id)), promptId: p.promptId, optionId: p.defaultOptionId }
+      : { type: 'spin', characterId: cur(room) };
+    room = applyAction(room, action, { now: guard }).room;
+  }
+  assert.equal(room.status, 'finished');
+  assert.equal(room.turn.round, 5, '4 eras × 1 round (+ the round that ended it)');
+  assert.ok(!room.characters.some((c) => c.finished === false));
+  const ranking = room.result.ranking;
+  for (const row of ranking) assert.equal(ch(room, row.charId).place, row.rank);
+  assert.equal(room.characters.every((c) => c.examResult != null), true, 'the 수능 happened on the last high-school turn');
 });
 
 test('restore from a JSON snapshot mid-game continues identically (rngState)', () => {

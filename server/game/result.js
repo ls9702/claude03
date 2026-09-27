@@ -13,7 +13,7 @@ import { topHighlights } from './highlights.js';
  * @param {{data?, reveal?: boolean, awards?: {[charId]: number}}} opts  `reveal` = count the (hidden) treasure
  *   appraisal values — only for the final result; mid-game callers (CPU heuristics) leave it off.
  * @returns {{rank, charId, name, money, debt, goalBonus, items, house, treasures, awards, total, place}[]} best
- *   first. Ties on total are broken by goal arrival order, then creation order.
+ *   first. Ties on total are broken by goal arrival order (the final race), then creation order.
  */
 export function computeRanking(room, { data = gameData(), reveal = false, awards = null } = {}) {
   const rows = room.characters.map((c) => {
@@ -46,6 +46,9 @@ export function computeRanking(room, { data = gameData(), reveal = false, awards
   });
 }
 
+/** Does the room's board end with a goal race (the final era)? Kids mode (loop eras only) does not. */
+export const hasGoalRace = (room) => !!room.board?.eras?.at(-1)?.final || !room.board?.eras?.at(-1)?.loop;
+
 /** Players who may vote for the MVP (role player; spectators and CPUs never vote). */
 export const mvpVoters = (room) => (room.players ?? []).filter((p) => p.role !== 'spectator');
 
@@ -57,6 +60,16 @@ export const mvpVoters = (room) => (room.players ?? []).filter((p) => p.role !==
 export function applyResult(room, now, { forced = false, data = gameData() } = {}) {
   const awards = computeAwards(room, data);
   const ranking = computeRanking(room, { data, reveal: true, awards: awardBonusByChar(awards) });
+  // Everyone is finished now. Without a goal race (kids mode: the last era's turns ran out) `place` = the final rank;
+  // with one, `place` = goal order (a forced end leaves the unfinished without a place).
+  const goalRace = hasGoalRace(room);
+  for (const row of ranking) {
+    const c = room.characters.find((x) => x.id === row.charId);
+    if (!c) continue;
+    if (!goalRace && room.board) c.place = row.rank;
+    c.finished = true;
+    row.place = c.place ?? null;
+  }
   // award rows carry the recipients' names for the result screen
   const titles = computeTitles(room, data, { ranking });
   const voteMs = data.balance.result?.mvpVoteMs ?? 60000;

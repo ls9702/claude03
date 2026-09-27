@@ -28,6 +28,7 @@ import { createRng } from '../server/game/rng.js';
 import { viewFor } from '../server/game/view.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { makeRoom } from './helpers.js';
+import { atEraEnd, plainEra, toEra } from './helpers.js';
 
 const data = gameData();
 const P = data.partners;
@@ -119,36 +120,57 @@ test('startGame: every character gets an empty family record; viewFor exposes it
 
 // ---------- 고교 전원 만남 ----------
 
-test('schoolMeet: the first character entering 고등학생 gives every single unfinished character a ★1 partner, once', () => {
+test('고교 첫 만남: each character first high-school turn opens a meet prompt with two ★1 classmates; one recap schoolMeet', () => {
   let room = structuredClone(started());
+  const hi = room.board.eras.findIndex((e) => e.id === 'high');
+  toEra(room, hi);
+  room.turn.currentIndex = room.turn.order.length - 1; // the admin skip starts the first character's turn
   const [c1, c2, c3] = room.turn.order.map((id) => ch(room, id));
-  c2.love.partner = partnerOf({ id: 'pt50' }); // already dating → skipped
-  c3.finished = true; // finished → skipped
-  const middle = room.board.eras.findIndex((e) => e.id === 'middle');
-  c1.position = { eraIndex: middle, route: 'main', index: room.board.eras[middle].tiles.length - 1 };
+  c2.love.partner = partnerOf({ id: 'pt50' }); // already dating → no prompt
   c1.stats = { int: 6, str: 2, charm: 2, luck: 2 };
-  const r = applyAction(room, { type: 'spin', characterId: c1.id }, { rng: fixedRng({ ints: [1] }), now: 5 });
-  const ev = r.events.filter((e) => e.type === 'schoolMeet');
-  assert.equal(ev.length, 1);
-  assert.deepEqual(ev[0].pairs.map((p) => p.charId), [c1.id]);
-  const p = ev[0].pairs[0].partner;
-  assert.deepEqual([p.stars, p.trait, p.body], [1, 'int', 'girl']);
-  assert.deepEqual(Object.keys(p.avatar), avatars.order, 'a full sanitized avatar');
-  assert.equal(p.avatar.body, 'girl');
-  const a1 = ch(r.room, c1.id);
-  assert.deepEqual(a1.love.partner, p);
-  assert.equal(a1.love.affection, P.affection.meet + P.affection.matchBonus + P.affection.eraGain, '지력형 partner for a 지력-top character (+ the era-entry gain)');
-  assert.equal(ch(r.room, c2.id).love.partner.id, 'pt50');
-  assert.equal(r.room.schoolMeetDone, true);
-  assert.equal(ev[0].cutin, true);
-  assert.equal(ev[0].scene, 'school');
-  assert.ok(ev[0].pairs[0].line && !/\{/.test(ev[0].pairs[0].line));
-  // once: a later entrant gets nothing
+  let r = applyAction(room, { type: 'skip' }, { rng: fixedRng(), now: 5 });
+  const p = r.room.turn.pending;
+  assert.equal(p.kind, 'meet');
+  assert.equal(p.charId, c1.id);
+  assert.equal(p.title, '🏫 고교 첫 만남');
+  assert.equal(p.context.school, true);
+  const cands = p.options.filter((o) => o.partnerId);
+  assert.equal(cands.length, 2);
+  assert.ok(cands.every((o) => o.stars === 1), 'classmates are ★1');
+  assert.ok(p.options.some((o) => o.id === 'pass'));
+  const pick = cands[0];
+  r = applyAction(r.room, { type: 'choose', characterId: c1.id, promptId: p.promptId, optionId: pick.id }, { rng: fixedRng(), now: 6 });
+  const met = r.events.find((e) => e.type === 'met');
+  assert.deepEqual([met.charId, met.school, met.partner.id], [c1.id, true, pick.partnerId]);
+  assert.deepEqual(Object.keys(met.partner.avatar), avatars.order, 'a full sanitized avatar');
+  assert.equal(ch(r.room, c1.id).love.partner.id, pick.partnerId);
+  assert.equal(ch(r.room, c1.id).love.affection, P.affection.meet + (pick.match ? P.affection.matchBonus : 0));
+  assert.ok(!r.events.some((e) => e.type === 'schoolMeet'), 'no recap until everyone had their turn');
+  assert.equal(r.room.turn.phase, 'awaitSpin', 'then the spin');
+  // c2 (dating) → no prompt; c3 passes → the recap lists the one couple
   room = r.room;
-  const tx = createTx(room, { rng: fixedRng(), now: 0, data });
-  ch(room, c2.id).love.partner = null;
+  room.turn.currentIndex = room.turn.order.indexOf(c1.id);
+  r = applyAction(room, { type: 'skip' }, { rng: fixedRng(), now: 7 });
+  assert.equal(cur(r.room), c3.id === room.turn.order[1] ? c3.id : cur(r.room));
+  let guard = 0;
+  while (!r.room.schoolMeetDone && guard++ < 6) {
+    const pend = r.room.turn.pending;
+    r = pend
+      ? applyAction(r.room, { type: 'choose', characterId: pend.charId, promptId: pend.promptId, optionId: 'pass' }, { rng: fixedRng(), now: 8 + guard })
+      : applyAction(r.room, { type: 'skip' }, { rng: fixedRng(), now: 8 + guard });
+    const recap = r.events.find((e) => e.type === 'schoolMeet');
+    if (recap) {
+      assert.equal(recap.summary, true);
+      assert.deepEqual(recap.pairs.map((x) => x.charId), [c1.id]);
+      assert.ok(recap.pairs[0].line && !/\{/.test(recap.pairs[0].line));
+      assert.equal(recap.scene, 'school');
+    }
+  }
+  assert.equal(r.room.schoolMeetDone, true);
+  assert.equal(ch(r.room, c2.id).love.partner.id, 'pt50');
+  // the legacy all-at-once helper still exists for old saves, and does nothing once done
+  const tx = createTx(r.room, { rng: fixedRng(), now: 0, data });
   assert.equal(schoolMeet(tx, 'high'), null);
-  assert.equal(tx.events.length, 0);
 });
 
 // ---------- 만남 / 데이트 / 프러포즈 ----------
@@ -403,19 +425,23 @@ test('children grow 돌잔치 → 입학 → 수능 → 취업 (era entries + ev
   assert.equal(allowanceAmount(tx, c, c.children[0]), Math.round((P.children.allowance * P.children.talentMult.genius * P.stars[4].allowanceMult * data.balance.jobs.salaryEraMult.middle_age) / 5) * 5);
 });
 
-test('engine: a married parent entering a new era grows the children and rolls a birth; spins grow children too', () => {
+test('engine: at an era transition the children of a married parent grow and a birth is rolled; spins grow children too', () => {
   const room = structuredClone(started());
   room.erasOpened = room.board.eras.map((e) => e.id);
-  const c = ch(room, cur(room));
   const young = room.board.eras.findIndex((e) => e.id === 'young');
-  Object.assign(c, { era: 'young', route: 'career', position: { eraIndex: young, route: 'main', index: 1 }, careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'teacher', rank: 1, exp: 0, injured: 0 } });
+  toEra(room, young);
+  plainEra(room, young);
+  for (const x of room.characters) Object.assign(x, { careerDone: true, military: { status: 'done', turnsLeft: 0 }, job: { id: 'teacher', rank: 1, exp: 0, injured: 0 } });
+  atEraEnd(room);
+  const c = ch(room, cur(room));
   c.spouse = { ...partnerOf(), salary: 70, marriedTurn: 1 };
   c.children = [{ id: 'ch1', name: '하윤', trait: 'int', talent: 'normal', stage: 'baby', bornTurn: 1, avatar: avatars.default, body: 'girl', growth: 0, turns: 0 }];
   room.nextChildSeq = 1;
-  // merge of young → 1 step into middle_age (era entry)
-  const r = applyAction(room, { type: 'spin', characterId: c.id }, { rng: fixedRng({ ints: [1], nexts: [0, 0.99] }), now: 5 });
+  // the last spin of young → the transition into middle_age (era entry for everyone): the child grows, a birth is rolled
+  const r = applyAction(room, { type: 'spin', characterId: c.id }, { rng: fixedRng({ ints: [1], nexts: [0.99, 0, 0.99] }), now: 5 });
   const evs = r.events.map((e) => e.type);
-  assert.ok(evs.includes('eraChanged') && evs.includes('childGrew') && evs.includes('childBorn'), evs.join(','));
+  assert.ok(evs.includes('eraTransition') && evs.includes('childGrew') && evs.includes('childBorn'), evs.join(','));
+  assert.ok(evs.indexOf('eraTransition') < evs.indexOf('childGrew'), 'era-entry growth is an opening of the transition');
   const a = ch(r.room, c.id);
   assert.equal(a.children[0].stage, 'kid');
   assert.equal(a.children.length, 2);
@@ -547,15 +573,16 @@ test('presentation + MC: Stage 8 types registered; anchors vs chips; lines fille
 test('full random lifetime games: family + house events, known types, filled lines; love-route marriages happen', () => {
   const seen = new Set();
   let married = 0;
-  for (const seed of [6, 8]) { // (Stage 9 board pools: seeds re-picked so a date still happens)
-    let room = started({ seed, chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2'], ['B', 'B2']] });
+  for (const seed of [6, 8]) { // c2 / c4 take the career route: love-route couples jump straight to 프러포즈, a career-route heart tile opens a date
+    let room = started({ seed, chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2'], ['B', 'B2']], config: { eraTurns: { baby: 1, elem: 1, middle: 1, high: 1, young: 6, middle_age: 5 }, finalLength: 20 } });
     const rng = createRng(seed);
     for (let i = 0; i < 3000 && room.status === 'playing'; i++) {
       const p = room.turn.pending;
       let action;
       if (p) {
         const opts = p.options.filter((o) => !o.disabled);
-        const pick = p.kind === 'routeChoice' ? 'love' : ['meet', 'date', 'propose'].includes(p.kind) ? p.defaultOptionId : p.kind === 'house' ? (opts.find((o) => o.id !== 'pass') ?? opts[0]).id : rng.pick(opts).id;
+        const who = p.forCharacterIds[0];
+        const pick = p.kind === 'routeChoice' ? (['c1', 'c3'].includes(who) ? 'love' : 'career') : ['meet', 'date', 'propose'].includes(p.kind) ? p.defaultOptionId : p.kind === 'house' ? (opts.find((o) => o.id !== 'pass') ?? opts[0]).id : rng.pick(opts).id;
         action = { type: 'choose', characterId: p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)), promptId: p.promptId, optionId: pick };
       } else action = { type: 'spin', characterId: cur(room) };
       const r = applyAction(room, action, { now: i * 1000 });
@@ -579,7 +606,7 @@ test('full random lifetime games: family + house events, known types, filled lin
     }
     assert.deepEqual(room.houseOwners, Object.fromEntries(Object.entries(room.houseOwners)));
   }
-  for (const t of ['schoolMeet', 'dated', 'proposed', 'married']) assert.ok(seen.has(t), t);
+  for (const t of ['met', 'dated', 'proposed', 'married']) assert.ok(seen.has(t), t);
   assert.ok(married >= 2, `married ${married}`);
 });
 

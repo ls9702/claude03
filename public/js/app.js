@@ -277,9 +277,11 @@ function modeLabel(room) {
   const eras = state.meta?.eras;
   const mode = eras?.modes?.[room.config.mode];
   if (!mode) return room.config.mode;
-  const parts = mode.eras.map((id) => {
+  // loop maps: turns per era; the final 노년 era of lifetime / adult mode is a goal race of `finalLength` tiles
+  const parts = mode.eras.map((id, i) => {
     const era = eras.eras.find((e) => e.id === id);
-    return `${era?.name ?? id} ${room.config.eraTurns[id]}`;
+    const race = i === mode.eras.length - 1 && id === 'senior' && Number.isInteger(room.config.finalLength);
+    return race ? `${era?.name ?? id} 🏁 ${room.config.finalLength}칸` : `${era?.name ?? id} ${room.config.eraTurns?.[id] ?? '-'}턴`;
   });
   const skill = room.config.rouletteMode === 'skill' ? ' · 🎯 룰렛 실력 모드 (흔들기·버튼으로 목표 숫자)' : '';
   return `${mode.name} · ${parts.join(' / ')} · 초기 자금 ${room.config.startingMoney.toLocaleString()}만원${skill}`;

@@ -12,24 +12,40 @@ export const MIN_CHARACTERS_LIMIT = 2;
 export const MAX_STARTING_MONEY = 100000;
 /** Host tool: seconds per spin / single-character decision before the server acts (0 = off). */
 export const TURN_TIMEOUTS = [0, 30, 60, 90, 120];
-/** Route eras need a 갈림길 stop + merge + ≥1 route tile. */
+/** Route eras (갈림길 루트) need a few turns to reach the fork and walk a route. */
 export const ROUTE_ERA_MIN_TURNS = 3;
 
+/** The final era (goal race) of a mode, or null (eras.json `modes.<mode>.finalEra`; kids mode has none). */
+export const finalEraOf = (mode) => getEras().modes[mode]?.finalEra ?? null;
+
+/** Final race track length limits (eras.json `limits.finalLength`). */
+export function finalLengthLimits() {
+  const l = getEras().limits?.finalLength ?? {};
+  return { min: l.min ?? 20, max: l.max ?? 80, default: l.default ?? 40 };
+}
+
 /**
- * Minimum turns of an era in a mode: route eras ≥ 3; the mode's last era must keep its fixed stops
- * (e.g. 수능 at index 0 of 고등학생 in kids mode) apart from the goal tile.
+ * Minimum turns of an era in a mode (loop maps): route eras ≥ 3, every other era ≥ limits.minTurns (the 수능 is a
+ * turn-start event now, no fixed stop). The final era has no turn limit (its `finalLength` is validated instead).
  */
 export function minEraTurns(eraId, mode) {
-  const { limits, modes } = getEras();
+  const { limits } = getEras();
   const board = getBoardData();
   let min = limits.minTurns;
   if (board.routeEras.includes(eraId)) min = Math.max(min, ROUTE_ERA_MIN_TURNS);
-  const last = modes[mode]?.eras?.at(-1);
-  if (eraId === last) {
-    const stops = board.fixedStops?.[eraId] ?? [];
-    if (stops.length) min = Math.max(min, Math.max(...stops.map((st) => st.index)) + 2);
-  }
   return min;
+}
+
+/** minTurns[mode][era] (the final era → null: no turn limit) — `/api/meta` and `/admin/api/meta`. */
+export function minTurnsTable() {
+  const { modes } = getEras();
+  return Object.fromEntries(Object.entries(modes).map(([mode, m]) => [mode, Object.fromEntries(m.eras.map((id) => [id, id === m.finalEra ? null : minEraTurns(id, mode)]))]));
+}
+
+/** Loop map sizes for the admin estimate: {lapPerTurn, lapMin, lapMax, payday, pass} (board.json `loop`). */
+export function loopMeta() {
+  const l = getBoardData().loop ?? {};
+  return { lapPerTurn: l.lapPerTurn ?? 5.4, lapMin: l.lapMin ?? 18, lapMax: l.lapMax ?? 100, payday: { ...(l.payday ?? { min: 18, max: 25 }) }, pass: { ...(l.pass ?? {}) } };
 }
 
 export function defaultRoomConfig() {
@@ -43,8 +59,9 @@ export function defaultRoomConfig() {
     mcFrequency: 'normal',
     turnTimeoutSec: 0,
     growthOutfits: true, // Stage 6: era / job costumes in game (client `effectiveAvatar`)
-    holidays: true, // Stage 7: 명절 대잔치 when middle / young / middle_age / senior first open
+    holidays: true, // Stage 7: 명절 대잔치 when the holiday eras (holidays.json) begin
     rouletteMode: 'random', // 룰렛 실력 모드: 'skill' = the player aims (shake / gauge), the server lands near the target
+    finalLength: finalLengthLimits().default, // loop maps: tiles of the final era's goal race (노년 길이)
   };
 }
 
@@ -114,16 +131,22 @@ export function validateRoomConfig(input = {}) {
     else cfg.turnTimeoutSec = input.turnTimeoutSec;
   }
 
-  // Per-era minimums depend on the mode (checked on the merged config, so defaults are covered too).
+  if (input.finalLength !== undefined) {
+    const { min, max } = finalLengthLimits();
+    if (!Number.isInteger(input.finalLength) || input.finalLength < min || input.finalLength > max) errors.push(`노년 길이는 ${min}~${max}칸 사이의 정수여야 합니다.`);
+    else cfg.finalLength = input.finalLength;
+  }
+
+  // Per-era minimums depend on the mode (checked on the merged config, so defaults are covered too). The final era's
+  // eraTurns value is ignored (no turn limit there).
   for (const eraId of getEras().modes[cfg.mode]?.eras ?? []) {
+    if (eraId === finalEraOf(cfg.mode)) continue;
     const min = minEraTurns(eraId, cfg.mode);
     const v = cfg.eraTurns[eraId];
     if (Number.isInteger(v) && v < min) {
       const name = eras.find((e) => e.id === eraId)?.name ?? eraId;
       errors.push(
-        getBoardData().routeEras.includes(eraId)
-          ? `${name} 턴 수는 갈림길·합류 칸이 있어 ${min} 이상이어야 합니다.`
-          : `${name} 턴 수는 이 모드에서 ${min} 이상이어야 합니다. (수능 칸과 골인 칸이 겹치지 않게)`,
+        getBoardData().routeEras.includes(eraId) ? `${name} 턴 수는 갈림길·합류 칸이 있어 ${min} 이상이어야 합니다.` : `${name} 턴 수는 ${min} 이상이어야 합니다.`,
       );
     }
   }

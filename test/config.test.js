@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import { validateRoomConfig, defaultRoomConfig } from '../server/game/config.js';
 import { defaultEraTurns, erasForMode, getEras } from '../server/data/index.js';
 
-test('eras.json defaults: 7 eras with Korean names and 3/5/4/5/15/15/6', () => {
-  assert.deepEqual(defaultEraTurns(), { baby: 3, elem: 5, middle: 4, high: 5, young: 15, middle_age: 15, senior: 6 });
+test('eras.json defaults: 7 eras with Korean names and 3/3/3/3/15/15 (+ the final race)', () => {
+  assert.deepEqual(defaultEraTurns(), { baby: 3, elem: 3, middle: 3, high: 3, young: 15, middle_age: 15, senior: 6 });
+  assert.equal(getEras().modes.lifetime.finalEra, 'senior');
+  assert.equal(getEras().modes.adult.finalEra, 'senior');
+  assert.equal(getEras().modes.kids.finalEra, undefined);
+  assert.deepEqual(getEras().limits.finalLength, { min: 20, max: 80, default: 40 });
   assert.deepEqual(
     getEras().eras.map((e) => e.name),
     ['아기', '초등학생', '중학생', '고등학생', '청년', '중년', '노년'],

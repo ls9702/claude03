@@ -89,11 +89,15 @@ test('data: treasures.json (≥ 20, named classics), board pools per era / route
   for (const e of Object.keys(bd.eras)) if (e !== 'senior') assert.equal(w(era(e), 'reversal'), 0, `reversal ${e}`);
   assert.ok(w(era('senior'), 'reversal') > 0);
   for (const r of Object.keys(bd.routePools)) assert.equal(w(route(r), 'reversal'), 0);
-  // 보물: 금전 루트가 가장 많이, 노년 main 에도 조금
-  assert.ok(w(route('money'), 'treasure') > w(era('senior'), 'treasure') && w(era('senior'), 'treasure') > 0);
-  // 산신령 = 사찰 소원 성취 2번 (data-driven; 3 → 2 after the playtest simulation)
+  // loop maps: the final race (노년) track has fixed 인생역전섬 tiles (2–3) and its own mostly-good pool
+  assert.ok(bd.finalTrack.reversal.min >= 2 && bd.finalTrack.reversal.max <= 3);
+  assert.equal(w(bd.finalTrack.pool, 'reversal'), 0, 'placed as fixed spots, not drawn');
+  assert.equal(w(bd.finalTrack.pool, 'loss'), 0, 'trouble only at the fixed spots');
+  // 보물: 금전 루트가 가장 많이, 노년 골인 경주에도 조금
+  assert.ok(w(route('money'), 'treasure') > w(bd.finalTrack.pool, 'treasure') && w(bd.finalTrack.pool, 'treasure') > 0);
+  // 산신령 = 소원 성취 n번 (사찰 + 찬스 광장; data-driven — 8 since the loop maps)
   assert.deepEqual(Object.keys(data.jobs.jobs.find((j) => j.id === 'mountain_spirit').unlock).sort(), ['desc', 'wishes']);
-  assert.equal(data.jobs.jobs.find((j) => j.id === 'mountain_spirit').unlock.wishes, 2);
+  assert.ok(data.jobs.jobs.find((j) => j.id === 'mountain_spirit').unlock.wishes >= 2);
   for (const k of SUBMAPS) assert.ok(PROMPTS[k], `prompt ${k}`);
 });
 
@@ -213,18 +217,19 @@ test('temple: train offers the weakest + strongest stat (+2, skip a spin); wish 
   assert.equal(openPrompt(poor.tx, 'temple', poor.c).options.find((o) => o.id === 'wish').disabled, true);
 });
 
-test('산신령: the third granted 사찰 소원 unlocks it (job era) → hiddenJobUnlocked + offer', () => {
+test('산신령: the n-th granted wish (jobs.json unlock.wishes) at a 사찰 unlocks it (job era) → hiddenJobUnlocked + offer', () => {
+  const W = data.jobs.jobs.find((j) => j.id === 'mountain_spirit').unlock.wishes;
   const room = started();
   const id = cur(room);
   const c = ch(room, id);
-  Object.assign(c, { era: 'young', position: { eraIndex: 4, route: 'money', index: 0 }, route: 'money', careerDone: true, military: { status: 'done', turnsLeft: 0 }, wishes: 2, money: 800 });
+  Object.assign(c, { era: 'young', position: { eraIndex: 4, route: 'money', index: 0 }, route: 'money', careerDone: true, military: { status: 'done', turnsLeft: 0 }, wishes: W - 1, money: 800 });
   c.job = { id: 'police', rank: 1, exp: 0, injured: 0 };
   c.jobHistory = [{ id: 'police', rank: 1, era: 'young' }];
   room.board.eras[4].routes.money.tiles[1] = { id: 'young:money:1', type: 'temple', label: '사찰', icon: '🛕', route: 'money' };
   let r = applyAction(room, { type: 'spin', characterId: id }, { rng: fixedRng({ ints: [1] }), now: 1 });
   assert.equal(r.room.turn.pending?.kind, 'temple');
   r = applyAction(r.room, { type: 'choose', characterId: id, promptId: r.room.turn.pending.promptId, optionId: 'wish' }, { rng: fixedRng({ nexts: [0] }), now: 2 });
-  assert.equal(ch(r.room, id).wishes, 3);
+  assert.equal(ch(r.room, id).wishes, W);
   const un = r.events.find((e) => e.type === 'hiddenJobUnlocked');
   assert.equal(un?.jobId, 'mountain_spirit');
   assert.equal(r.room.turn.pending?.kind, 'hiddenJobOffer');

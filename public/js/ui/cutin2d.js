@@ -24,9 +24,10 @@ import { dolTableSvg, houseArtHtml, houseOptionsHtml, marketChartSvg } from './h
 import { familyOptionsHtml } from './familyArt.js';
 import { isSubmapBig, parseOptionId, racePlan, submapInfo, submapOf, submapSuccess, treasureInfo } from '../shared/submaps.js';
 import { raceGateHtml, raceHtml, submapOptionsHtml, submapSceneBody, treasureArtHtml, treasureChestSvg } from './submapArt.js';
+import { buffText, eraClock, eraClockText, passOptionExtras } from '../shared/loop.js';
 
 const REASON_ICON = {
-  tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', habit: '📚', tuition: '🎓', military: '🪖',
+  tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', passTile: '🎪', wish: '🙏', habit: '📚', tuition: '🎓', military: '🪖',
   // Stage 7
   shop: '🛍️', card: '🃏', sabotage: '💢', tax_audit: '🧾', complaint: '📮', pledge: '🗳️', trade: '🤝', sebae: '🧧', gostop: '🎴', holiday: '🎉', lotto: '🎱',
   // Stage 8
@@ -41,6 +42,9 @@ const STAGE6_LOOK = {
   militaryStart: { tone: 'neutral', scene: 'mountain-trail', pose: 'wave', emotion: 'sweat', sfx: 'whoosh', glyph: '🪖' },
   militaryEnd: { tone: 'good', scene: null, pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🎖️' },
   educationChanged: { tone: 'good', scene: 'school', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🎓' },
+  // loop maps: the shared era transition (everyone waves into the new map) / 찬스 버프
+  eraTransition: { tone: 'good', scene: null, pose: 'wave', emotion: 'joy', sfx: 'fanfare' },
+  chanceBuff: { tone: 'good', scene: null, pose: 'jump', emotion: 'joy', sfx: 'pop', glyph: '🎪' },
 };
 /**
  * Stage 7 anchors → presentation defaults (server tone / scene / emotion win). `target*` = the other character on stage
@@ -332,7 +336,19 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     }
     if (a.type === 'cardBlocked') chips.unshift({ text: `🛡️ ${nameOf(characters, a.targetId)} 방어 성공`, kind: 'plus' });
     if (a.type === 'holidayStarted') chips.push({ text: '🧧 세배 룰렛', kind: '' }, { text: '🗣️ 잔소리 룰렛', kind: '' }, { text: '🎴 고스톱 한 판', kind: '' });
-    if (a.type === 'finished') chips.unshift({ text: `🏁 ${a.place}등 골인`, kind: 'plus' });
+    if (a.type === 'finished') chips.unshift({ text: a.retired === 'early' ? '🏖️ 조기 은퇴' : a.retired === 'bust' ? '🌾 빈곤 농장' : `🏁 ${a.place}등 골인`, kind: 'plus' });
+    // loop maps: 찬스 버프 chips; the era transition names its length and map size
+    for (const b of g.buffs ?? []) {
+      const who = b.charId && b.charId !== g.charId ? `${nameOf(characters, b.charId)} ` : '';
+      chips.push({ text: `${who}${buffText(b.buff) || '🎪 찬스 버프'}${b.action === 'expired' ? ' 끝' : ' 획득'}`, kind: b.action === 'expired' ? '' : 'plus' });
+    }
+    if (a.type === 'chanceBuff' && a.buff) chips.unshift({ text: `${buffText(a.buff)}${a.action === 'expired' ? ' 끝' : ''}`, kind: a.action === 'expired' ? '' : 'plus' });
+    if (a.type === 'eraTransition') {
+      const race = a.final === true || !(Number(a.turns) > 0);
+      chips.unshift(race ? { text: '🏁 턴 제한 없는 골인 경쟁', kind: 'plus' } : { text: `⏳ ${Number(a.turns)}턴`, kind: '' });
+      const size = Number(race ? a.length ?? a.lap : a.lap);
+      if (size > 0) chips.splice(1, 0, { text: `🗺️ ${size}칸 ${race ? '코스' : '순환 지도'}`, kind: '' });
+    }
     const fam = stage8Extras(g, { characters, chips, meta });
     const s9 = stage9Extras(g, { chips, meta });
     const badge = jobBadgeFor(a) ?? stage7Badge(a, meta) ?? stage8Badge(a, g, { characters, meta }) ?? s9.badge;
@@ -341,7 +357,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (a.type === 'injured' && a.turns) chips.unshift({ text: `🤕 ${a.turns}턴 부상`, kind: 'minus' });
     const castIds = a.type === 'holidayResult'
       ? []
-      : a.type === 'holidayStarted' && !g.involved.length
+      : (a.type === 'holidayStarted' || a.type === 'eraTransition') && !g.involved.length
         ? characters.slice(0, 3).map((c) => c.id)
         : a.type === 'married' || a.type === 'childBorn' || a.type === 'childGrew' || a.type === 'dated' || a.type === 'met' || a.type === 'proposed'
           ? [g.charId].filter(Boolean) // the partner / spouse / child joins below (wedding guests: the chips)
@@ -363,7 +379,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
           pose = i === 0 ? 'cheer' : 'wave';
           emotion = i === 0 ? 'joy' : null;
         }
-        if (a.type === 'holidayStarted') {
+        if (a.type === 'holidayStarted' || a.type === 'eraTransition') {
           pose = 'wave';
           emotion = 'joy';
         }
@@ -424,7 +440,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       sfx: look?.sfx ?? null,
       bigWin: isBigWin(a, g.delta) || !!look?.bigWin,
       currentId: g.charId,
-      era: a.type === 'eraChanged' ? `${a.eraName ?? ''} 시대` : '', // board state may already be ahead → no turn/era spoilers
+      era: a.type === 'eraChanged' ? `${a.eraName ?? ''} 시대` : a.type === 'eraTransition' ? `${g.eraName || a.toEraName || ''} 시대` : '', // board state may already be ahead → no turn/era spoilers
       autoMs,
       capMs, // other players' cut-in: the MC corner lines never stretch it past this
       own: owner, // mine (or involves my character): kept when my turn pre-empts other players' cut-ins
@@ -769,6 +785,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
 
   function eraLabel(room, c) {
     if (!room?.board) return '';
+    // loop maps: the shared era clock (「청년 7/15턴」 / 「노년 · 골인 경쟁」)
+    const clock = eraClock(room);
+    if (clock.round != null || clock.race) return eraClockText(clock);
     const era = room.board.eras[c?.position?.eraIndex ?? 0];
     return `${era?.name ?? ''} 시대 · 턴 ${room.turn?.turnNo ?? ''}`;
   }
@@ -1460,6 +1479,10 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         temple: { tone: 'good', scene: 'temple' },
         jeju: { tone: 'holiday', scene: 'jeju' },
         reversal: { tone: 'treasure', scene: 'casino' },
+        // loop maps
+        passTile: { tone: 'good', scene: 'shop' },
+        allIn: { tone: 'treasure', scene: 'casino' },
+        club: { tone: 'good', scene: 'school' },
       }[p.kind] ?? null;
     // Stage 8: the partner (date / propose) or the candidates (meet) stand next to the character
     if (subject && cast.length && ['meet', 'date', 'propose'].includes(p.kind)) {
@@ -1502,9 +1525,10 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         kind: p.kind,
         options: (p.options ?? []).map((o) => {
           const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
+          const px = passOptionExtras(p, o, { won }); // loop maps: 찬스 광장 (시주 / 확률 / 찬스 버프)
           const desc = routeOptionInfo(p, o);
-          const icon = o.icon || x.icon || (p.kind === 'holiday' ? HOLIDAY_OPTION_ICON[o.id] ?? '' : '');
-          return { ...o, icon, label: optionLabel({ ...o, icon }), desc, badges: [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges] };
+          const icon = o.icon || x.icon || px.icon || (p.kind === 'holiday' ? HOLIDAY_OPTION_ICON[o.id] ?? '' : '');
+          return { ...o, icon, label: optionLabel({ ...o, icon }), desc, badges: [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges, ...px.badges] };
         }),
         forMe,
         room, // Stage 8 house listings: owners / capacity

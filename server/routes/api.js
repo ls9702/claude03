@@ -15,6 +15,7 @@ import {
   updateCharacter,
 } from '../game/lobby.js';
 import { viewFor } from '../game/view.js';
+import { finalLengthLimits, loopMeta, minTurnsTable } from '../game/config.js';
 import { validFile, validKey } from '../assets/charArt.js';
 import { clientIp, createRateLimiter, sendFail, sessionMiddleware } from './common.js';
 
@@ -51,14 +52,18 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades, submaps, result, roulette } = getBalance();
+    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
       avatars: getAvatars(),
       reactions: REACTIONS,
-      board: { tileTypes: board.tileTypes, routes: board.routes },
-      balance: { bets, spin, bonusSpinUnit, stats, military, career, lotto, shop, trades, submaps, result, roulette }, // roulette: 실력 모드 jitter
+      // loop maps: `board.loop` {lapPerTurn, lapMin, lapMax, payday, pass}; `minTurns[mode][era]` (final era → null)
+      board: { tileTypes: board.tileTypes, routes: board.routes, loop: loopMeta() },
+      minTurns: minTurnsTable(),
+      finalLength: finalLengthLimits(),
+      // roulette: 실력 모드 jitter; loop maps: salary (용돈), passTile (찬스 광장), chanceBuffs, clubs; final race goalPrizes
+      balance: { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
       mc: { ...getMc(), lines: getLines().mc ?? {} }, // Stage 5.6: MC NPC profiles + line pools (lobby greeting, result fallback)

@@ -246,7 +246,7 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
           r.awards > 0 ? `특별상 ${won(r.awards)}` : '',
         ].filter(Boolean);
         const extra = full
-          ? `${rowExtras(r.raw, c) ?? ''}<span class="small muted">${parts.join(' · ')} · 골인 보너스 ${won(r.goalBonus)}${r.place ? ` · ${r.place}번째 골인` : ''}${routesTxt ? ` · 루트 ${routesTxt}` : ''}</span>`
+          ? `${rowExtras(r.raw, c) ?? ''}<span class="small muted">${parts.join(' · ')}${Number(r.goalBonus) ? ` · 골인 보너스 ${won(r.goalBonus)}` : ''}${r.place && Number(r.goalBonus) ? ` · ${r.place}번째 골인` : ''}${routesTxt ? ` · 루트 ${routesTxt}` : ''}</span>`
           : `<span class="small muted">${parts.join(' · ')}</span>`;
         return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}${mvp ? ' mvp' : ''}${full && i >= 3 ? ' rk-fold' : ''}" style="--k:${rows.length - 1 - i}" data-char="${esc(r.charId)}">
           <span class="rk">${medal(r.rank)}</span>

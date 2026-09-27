@@ -21,6 +21,8 @@
     { "id": "reading_king", "card": "study", "eras": ["elem"], "text": "{name}, 교내 독서왕 선정!", "money": { "min": 10, "max": 20 }, "stats": { "int": 1 }, "tone": "good", "scene": "school", "emotion": "joy" },
     { "id": "broken_window", "eras": ["elem", "middle"], "text": "축구하다 교실 유리창을 깬 {name}… 변상이다", "money": { "min": -50, "max": -30 }, "stats": { "str": 1 }, "tone": "bad", "scene": "school", "emotion": "shock" },
 
+    { "id": "school_trip", "eras": ["middle", "high"], "text": "{name}, 수학여행에서 장기자랑 1등! 친구들이 난리 났다", "money": { "min": 20, "max": 40 }, "stats": { "charm": 1 }, "tone": "good", "scene": "school", "emotion": "joy", "lineTag": "generic_good" },
+    { "id": "sports_day", "eras": ["middle", "high"], "text": "체육대회 계주 마지막 주자 {name}, 역전승을 이끌었다!", "stats": { "str": 1 }, "tone": "good", "scene": "school", "emotion": "joy", "lineTag": "generic_good" },
     { "id": "puberty", "eras": ["middle"], "text": "사춘기가 온 {name}, 하루 종일 거울만 본다", "stats": { "charm": 1 }, "tone": "neutral", "emotion": "angry" },
     { "id": "academy_loop", "eras": ["middle", "high"], "text": "학원 뺑뺑이로 밤 10시에 귀가하는 {name}", "money": { "min": -50, "max": -30 }, "stats": { "int": 1 }, "tone": "bad", "scene": "school", "emotion": "sweat" },
     { "id": "concert_ticket", "eras": ["middle", "high"], "text": "{name}, 아이돌 콘서트 티켓팅 성공!", "money": { "min": -60, "max": -30 }, "stats": { "charm": 1 }, "tone": "love", "emotion": "love" },

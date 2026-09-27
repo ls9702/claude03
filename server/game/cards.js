@@ -5,7 +5,7 @@
 //   (applied and cleared at the character's next spin) · character.lastTargetedBy = {attackerId: round}
 // room.nextCardSeq · room.trades = [{id, fromId, toId, give, want, createdAt, expiresAt}] · room.nextTradeSeq
 // Hands, items and trades are public (cards are open information, like the original board game).
-import { addLog, addStats, assertOwner, changeMoney, charById, emit, fail, josa, particle, round5, won } from './effects.js';
+import { addLog, addStats, assertOwner, changeMoney, charById, emit, fail, hasBuff, josa, particle, round5, won } from './effects.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 
 export const CARD_KINDS = ['instant', 'passive', 'sabotage'];
@@ -109,6 +109,7 @@ export function consumeCard(tx, c, cardId, extra = {}) {
 export function applyLoss(tx, c, amount, reason, extra = {}) {
   let a = Math.max(0, Math.round(amount));
   if (!a) return { amount: 0, debt: 0 };
+  if (hasBuff(c, 'lossShield')) a = round5(a * 0.5); // 🛡️ 액땜 (찬스 광장 buff): losses halved
   if (hasCard(c, 'insurance')) {
     const mult = cardDef(tx.data, 'insurance')?.effect?.lossMult ?? 0.5;
     const before = a;
@@ -363,9 +364,10 @@ registerPrompts({
   /** Shop tile: 2 cards + 1 item on display; buy one (`buy:<n>`) or leave. Options over budget are `disabled`. */
   shop: {
     resultCutin: 'auto', // an item purchase anchors on itemBought; a card purchase / leaving gets promptResolved
-    build(tx, c) {
+    build(tx, c, { offers: listed = null } = {}) {
       const coupon = hasCard(c, 'coupon');
-      const offers = shopOffers(tx, c).map((o) => {
+      // loop maps: the 찬스 광장 「구입」 hands over the listing it showed (else a fresh one is drawn)
+      const offers = (Array.isArray(listed) && listed.length ? listed.map(({ kind, id }) => ({ kind, id })) : shopOffers(tx, c)).map((o) => {
         const def = o.kind === 'card' ? cardDef(tx.data, o.id) : itemDef(tx.data, o.id);
         return { ...o, basePrice: def.price, price: shopPrice(tx, c, def.price) };
       });

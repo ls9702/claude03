@@ -118,6 +118,7 @@ export function treasureArtHtml(id, { art = null, meta = null, cls = '' } = {}) 
  * `data-choose/data-prompt/data-char` like every prompt option.
  */
 export function submapOptionsHtml(p, who, { meta = null, btnClass = 'ci-opt', won = (n) => `${n}만원` } = {}) {
+  if (p?.kind === 'allIn') return allInOptionsHtml(p, who, { btnClass, won });
   if (!['hometown', 'temple', 'jeju', 'reversal'].includes(p?.kind)) return null;
   const opts = submapOptions(p, { meta });
   const attrs = (o) => `data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who?.id ?? '')}"${o.disabled ? ' disabled' : ''}`;
@@ -162,4 +163,21 @@ export function treasureListHtml(list, { values = null, won = (n) => `${n}만원
       return `<li class="tr-item${v?.fake ? ' fake' : ''}">${treasureArtHtml(t.id, { art: artFor('treasure', t.id), cls: 'tr-art' })}<span class="tr-name">${esc(t.info.name)}</span><small class="tr-val${v ? '' : ' unknown'}">${esc(v ? (v.fake ? text : won(v.value)) : text)}</small></li>`;
     })
     .join('')}</ul>`;
+}
+
+/**
+ * ADDENDUM A2 인생역전섬 「🎯 전 재산 올인」 number pick (prompt kind `allIn`, options "1"…"10"): a 5 × 2 number pad
+ * (a plain random roll decides; hit = cash × mult, miss = 빈곤 농장).
+ */
+export function allInOptionsHtml(p, who, { btnClass = 'ci-opt', won = (n) => `${n}만원` } = {}) {
+  const stake = Number(p?.context?.stake);
+  const mult = Number(p?.context?.mult);
+  const head = who && (p.forCharacterIds?.length > 1 || who.id !== p.charId) ? `<p class="ci-opt-who">${esc(who.name)}의 선택</p>` : '';
+  const info = stake > 0 && mult > 0 ? `<p class="sm-allin-info">💰 ${esc(won(stake))} 전부 → 맞히면 <b>${esc(won(stake * mult))}</b> · 틀리면 🌾 빈곤 농장</p>` : '';
+  return `${head}${info}<div class="sm-opts sm-allin" role="group" aria-label="올인할 숫자">${(p.options ?? [])
+    .map(
+      (o) =>
+        `<button type="button" class="${esc(btnClass)} sm-num" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who?.id ?? '')}"${o.disabled ? ' disabled' : ''} title="${esc(o.desc ?? '')}"><b>${esc(o.number ?? o.label ?? o.id)}</b></button>`,
+    )
+    .join('')}</div>`;
 }

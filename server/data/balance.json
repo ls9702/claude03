@@ -1,79 +1,84 @@
 {
-  "spin": { "min": 1, "max": 10 },
+  "spin": {"min": 1, "max": 10},
+  "_goalComment": "마지막 시대(노년) 골인 경주 전용: goalPrizes[골인 순서-1] 골인 상금, 골인 뒤에도 매 턴 자동 보너스 룰렛(값 × bonusSpinUnit), 조기 은퇴 = 다음 순위의 상금 × retirePrizeMult(보너스 룰렛 없음), 올인 파산 = 꼴찌 자리·상금 없음.",
   "bonusSpinUnit": 2,
   "goalPrizes": [60, 50, 45, 40, 35, 30, 25, 20],
-  "eventScale": { "baby": 1, "elem": 1, "middle": 1.5, "high": 2, "young": 5, "middle_age": 8, "senior": 6 },
+  "retirePrizeMult": 0.5,
+  "eventScale": {"baby": 1, "elem": 1, "middle": 1.5, "high": 2, "young": 1.95, "middle_age": 3.12, "senior": 2.34},
   "bets": {
     "minAmount": 5,
     "maxAmount": 20,
-    "payouts": { "odd": 2, "even": 2, "1-3": 3, "4-6": 3, "7-10": 2.5 },
-    "ranges": { "1-3": [1, 3], "4-6": [4, 6], "7-10": [7, 10] },
+    "payouts": {"odd": 2, "even": 2, "1-3": 3, "4-6": 3, "7-10": 2.5},
+    "ranges": {"1-3": [1, 3], "4-6": [4, 6], "7-10": [7, 10]},
     "keepTurns": 6
   },
   "roulette": {
     "_comment": "룰렛 실력 모드 (config rouletteMode skill): 목표 t → t 50 %, t±1 각 20 %, t±2 각 5 % (jitter = |차이|별 비율, ±로 반씩), 1~10 밖은 반사 (0→2, 11→9). 자동 룰렛·관리자 대신 돌리기·골인 후 보너스 룰렛·택시/층간소음의 두 번째 룰렛은 그대로 랜덤. 매 턴 1~10 어느 숫자든 노릴 수 있음 (숫자 덱 규칙은 사용자 결정으로 삭제). cpu.aimNoise = CPU 성격별로 목표가 ±1 빗나갈 확률 (서버 jitter 전에)",
     "modes": ["random", "skill"],
-    "skill": { "jitter": { "0": 0.5, "1": 0.4, "2": 0.1 } },
-    "cpu": { "aimNoise": { "cautious": 0, "normal": 0.25, "bold": 0.5 } }
+    "skill": {"jitter": {"0": 0.5, "1": 0.4, "2": 0.1}},
+    "cpu": {"aimNoise": {"cautious": 0, "normal": 0.25, "bold": 0.5}}
   },
-  "prompts": { "multiTimeoutMs": 40000, "decisionTimeoutMs": null },
-  "pension": { "era": "senior", "minCharacters": 3, "bottomN": 2, "base": 200, "gapRatio": 0.1, "max": 1000 },
-  "charArt": { "perSession": 2, "perCharacter": 1, "perRoom": 8 },
+  "prompts": {"multiTimeoutMs": 40000, "decisionTimeoutMs": null},
+  "pension": {"era": "senior", "minCharacters": 3, "bottomN": 2, "base": 200, "gapRatio": 0.1, "max": 1000},
+  "charArt": {"perSession": 2, "perCharacter": 1, "perRoom": 8},
   "exam": {
     "_comment": "수능: r = rng.next(); r < elite → 명문대, r < college → 일반대, else 불합격. 확률 = base + int×지력 + luck×운 (+ 뉴스 examBonus, 재수 retakeBonus), [min,max]로 제한",
-    "study": { "elite": { "base": -0.1, "int": 0.05, "luck": 0.01 }, "college": { "base": 0.2, "int": 0.07, "luck": 0.02 } },
-    "guess": { "elite": { "base": -0.02, "int": 0.01, "luck": 0.035 }, "college": { "base": 0.18, "int": 0.03, "luck": 0.06 } },
+    "study": {"elite": {"base": -0.1, "int": 0.05, "luck": 0.01}, "college": {"base": 0.2, "int": 0.07, "luck": 0.02}},
+    "guess": {
+      "elite": {"base": -0.02, "int": 0.01, "luck": 0.035},
+      "college": {"base": 0.18, "int": 0.03, "luck": 0.06}
+    },
     "retakeBonus": 0.1,
     "min": 0.02,
     "max": 0.95,
-    "reward": { "elite": 100, "college": 30, "fail": 0 }
+    "reward": {"elite": 100, "college": 30, "fail": 0}
   },
   "stats": {
     "cap": 10,
     "start": 2,
     "randomPoints": 1,
     "adultPoints": 5,
-    "names": { "int": "지력", "str": "체력", "charm": "매력", "luck": "운" },
-    "icons": { "int": "🧠", "str": "💪", "charm": "✨", "luck": "🍀" }
+    "names": {"int": "지력", "str": "체력", "charm": "매력", "luck": "운"},
+    "icons": {"int": "🧠", "str": "💪", "charm": "✨", "luck": "🍀"}
   },
   "habits": {
     "_comment": "습관 칸(아기~고등): 능력치 gain(+bonusChance로 1 더), cost = 만원 × costScale[시대] × 뉴스 habitCostMult. game(뽑기)은 money[min,max] × costScale.",
     "bonusChance": 0.5,
-    "costScale": { "baby": 0.5, "elem": 1, "middle": 1.5, "high": 2 },
+    "costScale": {"baby": 0.5, "elem": 1, "middle": 1.5, "high": 2},
     "options": [
-      { "id": "academy", "stat": "int", "gain": 3, "cost": 15, "icon": "📚" },
-      { "id": "taekwondo", "stat": "str", "gain": 3, "cost": 15, "icon": "🥋" },
-      { "id": "art", "stat": "charm", "gain": 3, "cost": 15, "icon": "🎹" },
-      { "id": "game", "stat": "luck", "gain": 2, "money": [-15, 25], "icon": "🎮" }
+      {"id": "academy", "stat": "int", "gain": 3, "cost": 15, "icon": "📚"},
+      {"id": "taekwondo", "stat": "str", "gain": 3, "cost": 15, "icon": "🥋"},
+      {"id": "art", "stat": "charm", "gain": 3, "cost": 15, "icon": "🎹"},
+      {"id": "game", "stat": "luck", "gain": 2, "money": [-15, 25], "icon": "🎮"}
     ],
     "labels": {
-      "baby": { "academy": "그림책 읽기", "taekwondo": "걸음마 특훈", "art": "동요 따라 부르기", "game": "딸랑이 뽑기" },
-      "elem": { "academy": "영어·수학 학원", "taekwondo": "태권도장", "art": "피아노·미술 학원", "game": "문방구 뽑기" },
-      "middle": { "academy": "종합 학원", "taekwondo": "축구부", "art": "밴드부·미술", "game": "PC방 게임" },
-      "high": { "academy": "인강·독서실", "taekwondo": "헬스·체대 입시", "art": "보컬·연기 학원", "game": "편의점 복권" }
+      "baby": {"academy": "그림책 읽기", "taekwondo": "걸음마 특훈", "art": "동요 따라 부르기", "game": "딸랑이 뽑기"},
+      "elem": {"academy": "영어·수학 학원", "taekwondo": "태권도장", "art": "피아노·미술 학원", "game": "문방구 뽑기"},
+      "middle": {"academy": "종합 학원", "taekwondo": "축구부", "art": "밴드부·미술", "game": "PC방 게임"},
+      "high": {"academy": "인강·독서실", "taekwondo": "헬스·체대 입시", "art": "보컬·연기 학원", "game": "편의점 복권"}
     }
   },
   "career": {
-    "_comment": "청년 진입(갈림길 칸) 시 진로: 대학 진학(학자금 대출 = 빚, collegeTurns 턴 뒤 졸업 → 학위·지력 +1 → 취업), 바로 취업, 재수(1회, 명문대 합격자 제외, retakeSkipTurns 턴 쉼 + 수능 재응시 → 합격이면 바로 입학, 또 불합격이면 바로 취업). 어른 모드는 시작 학력을 adultEducation 가중치로 정함.",
-    "tuition": { "college": 60, "elite": 100 },
-    "collegeTurns": 1,
-    "graduationStats": { "int": 1 },
+    "_comment": "청년 첫 턴(룰렛 전)에 진로: 대학 진학(학자금 대출 = 빚, collegeTurns 턴(룰렛) 뒤 졸업 → 학위·지력 +1 → 취업), 바로 취업, 재수(1회, 명문대 합격자 제외, retakeSkipTurns 턴 쉼 + 수능 재응시 → 합격이면 바로 입학, 또 불합격이면 바로 취업). 어른 모드는 시작 학력을 adultEducation 가중치로 정함.",
+    "tuition": {"college": 60, "elite": 100},
+    "collegeTurns": 3,
+    "graduationStats": {"int": 1},
     "retakeSkipTurns": 1,
-    "adultEducation": { "none": 45, "college": 40, "elite": 15 }
+    "adultEducation": {"none": 45, "college": 40, "elite": 15}
   },
   "military": {
-    "_comment": "군 복무: mandatory 체형은 필수(대학생은 지금/졸업 후 1회 선택, 그 외는 취업 후 자동 입대), volunteer 체형은 체력 volunteerMinStr 이상이면 자원 입대 선택. 복무 중 룰렛 turns번 절반 이동(올림), 매 룰렛 군 월급 pay, 전역 시 체력 +strGain.",
+    "_comment": "군 복무: mandatory 체형은 필수(대학생은 지금/졸업 후 1회 선택, 그 외는 취업 후 자동 입대), volunteer 체형은 체력 volunteerMinStr 이상이면 자원 입대 선택. 복무 중 룰렛 turns번(순환 맵: 4번) 절반 이동(올림), 매 룰렛 군 월급 pay, 전역 시 체력 +strGain.",
     "mandatory": ["boy"],
     "volunteer": ["girl"],
     "volunteerMinStr": 4,
-    "turns": 2,
+    "turns": 4,
     "strGain": 1,
     "pay": 0
   },
   "jobs": {
     "_comment": "급여 칸 = ranks[rank-1].salary × salaryEraMult[시대] × 뉴스 salaryMult(알바는 partTimeMult) × (부상 중 injurySalaryMult). 승진 확률 = rankUp.base + perStat × 능력치 + luckBonus × 운 (+시험 examBonus, 학력 educationBonus, 뉴스 rankUpBonus) ∈ [minChance, maxChance]. 경험치: 급여 칸 +expPerSalary, 야근 +overtime.exp.",
     "offerCount": 3,
-    "salaryEraMult": { "young": 1, "middle_age": 1.2, "senior": 0.8 },
+    "salaryEraMult": {"young": 1, "middle_age": 1.2, "senior": 0.8},
     "expPerSalary": 1,
     "luckBonus": 0.02,
     "examBonus": 0.2,
@@ -82,36 +87,122 @@
     "rankUpStatGain": 1,
     "injuryTurns": 2,
     "injurySalaryMult": 0.5,
-    "overtime": { "salaryShare": 0.5, "exp": 0, "stats": { "str": -1 } },
-    "maxRankBonus": { "chance": 0.5, "luck": 0.03, "salaryShare": 1 },
+    "overtime": {"salaryShare": 0.5, "exp": 0, "stats": {"str": -1}},
+    "maxRankBonus": {"chance": 0.5, "luck": 0.03, "salaryShare": 1},
     "jobEras": ["young", "middle_age", "senior"],
-    "educationBonus": { "none": 0, "college": 0.08, "elite": 0.15 },
-    "offerWeight": { "perReq": 0.5, "education": 1.5 }
+    "educationBonus": {"none": 0, "college": 0.08, "elite": 0.15},
+    "offerWeight": {"perReq": 0.5, "education": 1.5},
+    "expNeededMult": 3
   },
   "lotto": {
     "_comment": "전국 로또(Stage 7): 모드의 첫 시대가 아닌 시대가 처음 열릴 때 lotto 카드 보유자마다 한 장씩 소모. 1~pool 중 pick개 번호(시드)와 추첨 번호 pick개를 비교해 맞은 개수별 상금(만원). 기대값 < 카드 가격(테스트).",
     "pool": 20,
     "pick": 3,
-    "prizes": { "3": 1000, "2": 100, "1": 10 },
+    "prizes": {"3": 1000, "2": 100, "1": 10},
     "keepDraws": 10
   },
-  "shop": { "_comment": "상점 칸(Stage 7): 카드 cards장 + 아이템 items개 진열(가중치, 보유 아이템 제외).", "cards": 2, "items": 1 },
-  "trades": { "_comment": "거래 제안(Stage 7): 제안 유효 시간(ms), 제안자 다음 턴 시작·어느 한쪽 골인 시에도 만료.", "ttlMs": 60000, "maxMoney": 100000 },
+  "shop": {"_comment": "상점 칸(Stage 7): 카드 cards장 + 아이템 items개 진열(가중치, 보유 아이템 제외).", "cards": 2, "items": 1},
+  "trades": {
+    "_comment": "거래 제안(Stage 7): 제안 유효 시간(ms), 제안자 다음 턴 시작·어느 한쪽 골인 시에도 만료.",
+    "ttlMs": 60000,
+    "maxMoney": 100000
+  },
   "submaps": {
-    "_comment": "서브맵(Stage 9): 한 칸짜리 곁길 이벤트. 금액(만원) × scale[시대]. hometown 휴식 = 다음 룰렛 1번 쉼 + 체력 + 부모님 용돈, 안부 = 작은 용돈 + 매력. temple 수련 = 가장 낮은 능력치·(최고치 전) 가장 높은 능력치 중 하나 +trainGain, 한 턴 쉼 / 소원 = 시주 offering 후 운 판정(base + luck×운, [min,max]) 성공 시 운 +1 + 돈, wishes 카운트(산신령). jeju 여행 = 비용, 매력·운 +1, 보물 확률. reversal(노년) 로또 = 비용, 희박한 대박(기대값 < 비용) / 경마 = 현금의 share를 걸고 배당 odds, 적중 확률 chance (odds × chance < 1).",
-    "scale": { "baby": 0.5, "elem": 1, "middle": 1.5, "high": 2, "young": 4, "middle_age": 5, "senior": 4 },
-    "hometown": { "restGift": 30, "visitGift": 10, "restStats": { "str": 1 }, "visitStats": { "charm": 1 }, "skipTurns": 1 },
-    "temple": { "trainGain": 2, "skipTurns": 1, "offering": 5, "wish": { "base": 0.5, "luck": 0.05, "min": 0.1, "max": 0.9, "money": 25, "luckGain": 1 } },
-    "jeju": { "cost": 30, "stats": { "charm": 1, "luck": 1 }, "treasure": { "base": 0.3, "luck": 0.02, "max": 0.6 } },
+    "_comment": "서브맵(Stage 9): 한 칸짜리 곁길 이벤트. 금액(만원) × scale[시대]. hometown 휴식 = 다음 룰렛 1번 쉼 + 체력 + 부모님 용돈, 안부 = 작은 용돈 + 매력. temple 수련 = 가장 낮은 능력치·(최고치 전) 가장 높은 능력치 중 하나 +trainGain, 한 턴 쉼 / 소원 = 시주 offering 후 운 판정(base + luck×운, [min,max]) 성공 시 운 +1 + 돈, wishes 카운트(산신령). jeju 여행 = 비용, 매력·운 +1, 보물 확률. reversal(노년) 로또 = 비용, 희박한 대박(기대값 < 비용) / 경마 = 현금의 share를 걸고 배당 odds, 적중 확률 chance (odds × chance < 1). 노년 골인 경주의 reversal에는 allIn(전 재산 올인)·retire(조기 은퇴)가 추가된다.",
+    "scale": {"baby": 0.5, "elem": 1, "middle": 1.5, "high": 2, "young": 2.0, "middle_age": 2.5, "senior": 2.0},
+    "hometown": {"restGift": 30, "visitGift": 10, "restStats": {"str": 1}, "visitStats": {"charm": 1}, "skipTurns": 1},
+    "temple": {
+      "trainGain": 2,
+      "skipTurns": 1,
+      "offering": 5,
+      "wish": {"base": 0.5, "luck": 0.05, "min": 0.1, "max": 0.9, "money": 25, "luckGain": 1}
+    },
+    "jeju": {"cost": 30, "stats": {"charm": 1, "luck": 1}, "treasure": {"base": 0.3, "luck": 0.02, "max": 0.6}},
     "reversal": {
-      "lotto": { "cost": 35, "prizes": [{ "id": "jackpot", "chance": 0.005, "amount": 3000 }, { "id": "second", "chance": 0.03, "amount": 200 }, { "id": "third", "chance": 0.3, "amount": 30 }] },
-      "horse": { "share": 0.2, "min": 10, "max": 1500, "odds": { "2": 0.47, "5": 0.188, "10": 0.094 } }
+      "lotto": {
+        "cost": 35,
+        "prizes": [
+          {"id": "jackpot", "chance": 0.005, "amount": 3000},
+          {"id": "second", "chance": 0.03, "amount": 200},
+          {"id": "third", "chance": 0.3, "amount": 30}
+        ]
+      },
+      "horse": {"share": 0.2, "min": 10, "max": 1500, "odds": {"2": 0.47, "5": 0.188, "10": 0.094}},
+      "allIn": {
+        "mult": 7,
+        "chance": 0.1,
+        "_comment": "노년 골인 경주의 인생역전섬: 전 재산 올인 = 1~10 중 숫자 하나(항상 순수 랜덤) 맞히면 현금 × mult, 틀리면 현금 0 + 빈곤 농장 은퇴(꼴찌 자리, 상금 없음). 기대값 < 1."
+      }
     }
   },
   "result": {
     "_comment": "결과 발표(Stage 9): MVP 투표 시간(ms, 게임 종료부터), 모든 플레이어가 투표하면 settle ms 뒤 마감. 하이라이트: 캐릭터당 keep개 보관, 결과에는 show개, 큰 돈 기준 bigMoney(만원). 칭호는 캐릭터당 최대 titles.json perCharacter개.",
     "mvpVoteMs": 180000,
     "mvpSettleMs": 5000,
-    "highlights": { "keep": 8, "show": 5, "bigMoney": 300 }
+    "highlights": {"keep": 8, "show": 5, "bigMoney": 300}
+  },
+  "salary": {
+    "_comment": "월급날(강제 정지 칸): 어른 시대 = 직업 급여(jobs), 아이 시대(직업 없음) = 용돈 pocketMoney[시대] × 뉴스 salaryMult (중·고등학생은 동아리 활동 능력치 +1도 함께).",
+    "pocketMoney": {"baby": 10, "elem": 20, "middle": 30, "high": 40}
+  },
+  "passTile": {
+    "_comment": "찬스 광장(지나가기만 해도 발동): wish 나를 위한 소원 = 시주 offering × scale[시대], 확률 base + luck×운 ∈ [min,max] → 성공 시 운 +luckGain + money × scale, 소원 횟수 +1(산신령). wishAll 모두를 위한 소원 = 시주 offering × scale, 다른 캐릭터 모두에게 gift × scale, 내 운 +luckGain(반드시), 소원 횟수 +1. scale 없으면 submaps.scale.",
+    "scale": {"baby": 0.5, "elem": 1, "middle": 1.5, "high": 2, "young": 4, "middle_age": 5, "senior": 4},
+    "wish": {"offering": 10, "money": 25, "base": 0.3, "luck": 0.04, "min": 0.1, "max": 0.7, "luckGain": 1},
+    "wishAll": {"offering": 8, "gift": 2, "luckGain": 1}
+  },
+  "chanceBuffs": [
+    {"id": "salaryX2", "name": "월급 두 배", "icon": "💵", "desc": "월급날(용돈·배우자 월급 포함)이 두 배", "weight": 4},
+    {"id": "moneyX15", "name": "행운 주머니", "icon": "💰", "desc": "돈 칸·좋은 일로 버는 돈 1.5배", "weight": 3},
+    {"id": "lossShield", "name": "액땜", "icon": "🛡️", "desc": "지출·나쁜 일로 잃는 돈 절반", "weight": 3},
+    {"id": "statUp", "name": "성장 버프", "icon": "📈", "desc": "능력치가 오를 때마다 +1 더", "weight": 2}
+  ],
+  "clubs": {
+    "_comment": "중학생 동아리: 중학생 시대 첫 턴에 고른다. 가입 즉시 stats, 중·고등학생 월급날(용돈)마다 train 능력치(순서대로 돌아가며) +trainGain, 관련 직업(jobs) 취업 제안 가중치 +jobBonus.",
+    "trainGain": 1,
+    "trainEras": ["middle", "high"],
+    "jobBonus": 1.5,
+    "options": [
+      {
+        "id": "study",
+        "name": "공부 동아리",
+        "icon": "📚",
+        "stats": {"int": 1},
+        "train": ["int"],
+        "jobs": ["doctor", "researcher", "office_worker", "teacher", "civil_servant", "politician"]
+      },
+      {
+        "id": "sports",
+        "name": "운동부",
+        "icon": "⚽",
+        "stats": {"str": 1},
+        "train": ["str"],
+        "jobs": ["baseball", "soccer", "fighter", "police", "chef"]
+      },
+      {
+        "id": "band",
+        "name": "밴드부",
+        "icon": "🎸",
+        "stats": {"charm": 1},
+        "train": ["charm"],
+        "jobs": ["idol", "actor", "comedian"]
+      },
+      {
+        "id": "boardgame",
+        "name": "보드게임부",
+        "icon": "🎲",
+        "stats": {"luck": 1},
+        "train": ["luck"],
+        "jobs": ["esports", "youtuber", "webtoonist"]
+      },
+      {
+        "id": "broadcast",
+        "name": "방송부",
+        "icon": "🎙️",
+        "stats": {"charm": 1},
+        "train": ["luck", "charm"],
+        "jobs": ["comedian", "youtuber", "actor"]
+      }
+    ]
   }
 }

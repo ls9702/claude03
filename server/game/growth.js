@@ -8,10 +8,10 @@
 //   careerDone (진로 decided) · retook (재수 used) · skipTurns (turns to sit out) · badEvents (bad luck survived)
 import { tileAt } from './board.js';
 import { STAT_KEYS, addDebt, addLog, addStats, changeMoney, charById, emit, josa, round5, statName, statText, won } from './effects.js';
-import { checkHiddenUnlocks, inJobEra, offerJob } from './jobs.js';
+import { checkHiddenUnlocks, clubDef, inJobEra, offerJob } from './jobs.js';
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
-import { proposeStep } from './family.js';
+import { openSchoolMeet, proposeStep, schoolMeetDue } from './family.js';
 
 export const EDUCATIONS = ['none', 'college', 'elite'];
 export const EXAM_RESULTS = ['elite', 'college', 'fail'];
@@ -139,23 +139,42 @@ function atRouteStop(tx, c) {
   return t?.type === 'stop' && t.promptId === 'routeChoice' && !c.route;
 }
 
+/** The era whose last turn holds the 수능. */
+export const EXAM_ERA = 'high';
+
 /**
- * Turn epilogue for the current character: discharge / graduation, then the next life decision in order —
- * 진로 → 군 복무 → 취업 → 자동 입대 → 인생 갈림길 → 숨은 직업 → 프러포즈 (Stage 8). Opens at most one prompt.
- * @returns true when a prompt was opened (the turn waits for it)
+ * 수능 timing (loop maps): at the start of the character's LAST high-school turn (`turn.eraRound === eraTurns`),
+ * before the spin; `post` = after a move that leaves no more high-school turn for this character (a rest / temple
+ * skip covering the last round). A missed exam is taken before the 진로 decision on the first adult turn.
  */
-export function lifeStep(tx, c) {
-  if (!c) return false;
+function examDue(tx, c, { post = false } = {}) {
+  if (c.era !== EXAM_ERA || c.examResult != null || c.careerDone) return false;
+  const turn = tx.room.turn ?? {};
+  const turns = turn.eraTurns ?? 1;
+  const round = turn.eraRound ?? 1;
+  return post ? round + (c.skipTurns ?? 0) >= turns : round >= turns;
+}
+
+/**
+ * Discharge / graduation, then (job eras) 진로 → 군 복무 → 취업 → 자동 입대. Opens at most one prompt.
+ * @returns true when a prompt was opened
+ */
+function careerStep(tx, c) {
   const data = tx.data;
-  ensureLife(c, data);
   const mil = c.military;
   const mcfg = data.balance.military;
-  // discharge / graduation also for a character that just reached the goal on its last service / school spin
+  // discharge / graduation (after the last service / school spin)
   if (mil.status === 'serving' && mil.turnsLeft <= 0) endMilitary(tx, c);
   if (c.school && c.school.turnsLeft <= 0 && c.military.status !== 'serving') graduate(tx, c);
   if (c.finished) return false;
   if (!inJobEra(data, c)) return false;
   if (!c.careerDone) {
+    // a 수능 missed in high school (its last turn was skipped) is taken now, before the 진로 decision
+    if (c.examResult == null && !c.examSkipped) {
+      c.examSkipped = true;
+      openPrompt(tx, 'exam', c, {});
+      return true;
+    }
     if (c.examResult == null) c.careerDone = true;
     else if (openCareer(tx, c)) return true;
   }
@@ -177,6 +196,46 @@ export function lifeStep(tx, c) {
     if (offerJob(tx, c, { after })) return true;
   }
   if (c.military.status === 'none' && mandatory && !c.school) startMilitary(tx, c);
+  return false;
+}
+
+/**
+ * Turn prologue (loop maps), before the spin: the 수능 on the last high-school turn, then the career step — so 진로 /
+ * 군 복무 / 취업 happen at the start of the first adult turn. Opens at most one prompt.
+ * @returns true when a prompt was opened (the spin waits for it)
+ */
+export function preSpinStep(tx, c) {
+  if (!c) return false;
+  ensureLife(c, tx.data);
+  if (c.era === 'middle' && !c.club && !c.clubAsked && (tx.data.balance.clubs?.options ?? []).length) {
+    c.clubAsked = true; // 중학생 동아리: the first middle-school turn
+    openPrompt(tx, 'club', c);
+    return true;
+  }
+  if (schoolMeetDue(tx, c) && openSchoolMeet(tx, c)) return true; // 고교 첫 만남: the first high-school turn
+  if (examDue(tx, c)) {
+    openPrompt(tx, 'exam', c, {});
+    return true;
+  }
+  return careerStep(tx, c);
+}
+
+/**
+ * Turn epilogue for the current character (after the move): the career step (discharge / graduation → 진로 → 군 복무
+ * → 취업 → 자동 입대), a 수능 the character would otherwise miss, the 인생 갈림길 (standing on the fork), hidden jobs,
+ * 프러포즈 (Stage 8). Opens at most one prompt.
+ * @returns true when a prompt was opened (the turn waits for it)
+ */
+export function lifeStep(tx, c) {
+  if (!c) return false;
+  ensureLife(c, tx.data);
+  if (careerStep(tx, c)) return true;
+  if (c.finished) return false;
+  if (examDue(tx, c, { post: true })) {
+    openPrompt(tx, 'exam', c, {});
+    return true;
+  }
+  if (!inJobEra(tx.data, c)) return atRouteStop(tx, c) ? (openPrompt(tx, 'routeChoice', c), true) : false;
   if (atRouteStop(tx, c)) {
     openPrompt(tx, 'routeChoice', c);
     return true;
@@ -250,6 +309,46 @@ function applyCareer(tx, c, choice) {
 // ---------- prompts ----------
 
 registerPrompts({
+  /** 중학생 동아리 (the first middle-school turn): join one → stat now, +1 at every middle / high payday, job offer bonus. */
+  club: {
+    resultCutin: true,
+    build(tx, c) {
+      const cfg = tx.data.balance.clubs ?? {};
+      const jobs = tx.data.jobs?.jobs ?? [];
+      const options = (cfg.options ?? []).map((o) => {
+        const gain = Object.entries(o.stats ?? {}).map(([stat, delta]) => ({ stat, delta }));
+        const train = [...new Set(o.train ?? [])].map((k) => statName(tx.data, k)).join('·');
+        const related = (o.jobs ?? []).slice(0, 3).map((id) => jobs.find((j) => j.id === id)?.name).filter(Boolean).join('·');
+        return {
+          id: o.id,
+          label: `${o.icon} ${o.name}`,
+          icon: o.icon,
+          stats: { ...(o.stats ?? {}) },
+          train: [...(o.train ?? [])],
+          jobs: [...(o.jobs ?? [])],
+          desc: `${statText(tx.data, gain)} · 용돈날마다 ${train} +${cfg.trainGain ?? 1}${related ? ` · ${related} 취업에 유리` : ''}`,
+        };
+      });
+      return {
+        forCharacterIds: [c.id],
+        title: '🏫 동아리 가입',
+        text: `중학생이 된 ${josa(c.name, '은/는')} 어느 동아리에 들어갈까?`,
+        options,
+        defaultOptionId: options[0]?.id,
+        context: {},
+      };
+    },
+    resolve(tx, p) {
+      const c = charById(tx.room, p.charId);
+      const def = clubDef(tx.data, p.answers[c.id]) ?? clubDef(tx.data, p.defaultOptionId);
+      if (!def) return { result: 'none' };
+      c.club = def.id;
+      const changes = addStats(tx, c, def.stats ?? {}, 'club', { clubId: def.id });
+      addLog(tx, `${def.icon} ${josa(c.name, '이/가')} ${def.name}에 들어갔다!${changes.length ? ` (${statText(tx.data, changes)})` : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
+      return { result: 'joined', clubId: def.id };
+    },
+  },
+
   /** Kids-era habit tile: 학원 → 지력, 태권도 → 체력, 피아노·미술 → 매력, 게임·뽑기 → 운 (money ±). */
   habit: {
     resultCutin: 'auto',

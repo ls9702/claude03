@@ -51,7 +51,7 @@ export function poseFor(event, { delta = 0 } = {}) {
   if (delta > 0 && (event?.tone === 'good' || event?.tone === 'treasure' || emotion === 'joy')) return 'jump';
   // an explicit emotion (joy/sweat/angry/love) shows as expression + overlay on the idle stance
   if (event?.tone === 'bad' && (!emotion || emotion === 'neutral')) return 'cry';
-  if (t === 'eraChanged') return 'wave';
+  if (t === 'eraChanged' || t === 'eraTransition') return 'wave';
   if (t === 'routeChosen') return 'cheer';
   return 'idle';
 }
@@ -89,7 +89,7 @@ export const STAGE7_ANCHORS = new Set(['cardBlocked', 'itemBought', 'holidayStar
 /** Cards whose use is a cut-in (besides sabotage cards, recognised by their `targetId`). */
 export const ANCHOR_CARDS = new Set(['pledge']);
 /** Stage 7 events that become their own (banner) group when no anchor covers them. */
-export const STAGE7_LONE = new Set(['cardGained', 'gift', 'tradeResolved', 'cardUsed']);
+export const STAGE7_LONE = new Set(['cardGained', 'gift', 'tradeResolved', 'cardUsed', 'chanceBuff']);
 
 /** `cardUsed` that is a cut-in anchor: sabotage (has a target) or 공약, or flagged by the server. */
 export const isCardAnchor = (e) => e?.type === 'cardUsed' && !e.auto && (e.cardKind === 'sabotage' || !!e.targetId || ANCHOR_CARDS.has(e.cardId));
@@ -108,12 +108,14 @@ export const isFamilyAnchor = (e) => STAGE8_ANCHORS.has(e?.type) || (e?.type ===
  */
 export const STAGE9_ANCHORS = new Set(['submapResult', 'treasureFound']);
 const NEVER_ANCHOR = new Set(['prompt', 'submapEntered', 'mvpDecided']);
+/** Loop maps: the shared era transition is always an anchor (the batch's per-character eraChanged fold into it). */
+export const TRANSITION = 'eraTransition';
 const isAnchor = (e) =>
-  !!e && !NEVER_ANCHOR.has(e.type) && (e.cutin || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || STAGE9_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind));
+  !!e && !NEVER_ANCHOR.has(e.type) && (e.cutin || e.type === TRANSITION || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || STAGE9_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind));
 
 /** Follow-ups stop at these (they start their own step / group). */
 const BOUNDARY = new Set([
-  'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
+  'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'eraTransition', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
   'promptResolved', 'gameOver', 'betPlaced', ...STAGE6_ANCHORS, ...STAGE7_ANCHORS, 'tradeOffered', 'tradeResolved',
   ...STAGE8_ANCHORS, ...STAGE9_ANCHORS, 'submapEntered',
 ]);
@@ -152,6 +154,8 @@ export function planCutins(events = []) {
     const discharged = follow.filter((e) => e.type === 'militaryEnd' && e.charId).map((e) => e.charId);
     // Stage 7 follow-ups → chips: cards gained / used (non-anchor), gifts
     const cards = follow.filter((e) => e.type === 'cardGained' || (e.type === 'cardUsed' && !isCardAnchor(e))).map((e) => ({ type: e.type, charId: e.charId, cardId: e.cardId, source: e.source ?? null }));
+    // loop maps (ADDENDUM A1): 찬스 광장 buffs gained / expired → chips
+    const buffs = follow.filter((e) => e.type === 'chanceBuff').map((e) => ({ charId: e.charId, buff: e.buff ?? null, action: e.action ?? 'gained' }));
     const gifts = follow.filter((e) => e.type === 'gift').map((e) => ({ fromId: e.fromId, toId: e.toId, money: e.money ?? null, cardId: e.cardId ?? null }));
     // Stage 8 follow-ups → chips: 용돈 (allowance), 집 보상판매 (houseSold), 자녀 입학 (childGrew school), 맞벌이 (salary.spouseAmount)
     const family = follow
@@ -177,7 +181,7 @@ export function planCutins(events = []) {
     const mcEvents = [a.mc?.length ? a : null, mcFollow ?? null].filter(Boolean);
     const studio = a.mcStudio && a.mc?.length ? a.mc : null;
     const targetId = a.targetId ?? a.toId ?? null;
-    return { anchor: a, charId, targetId, texts, money, delta, involved: involved.slice(0, 3), mc, studio, mcEvents, stats, salary, discharged, cards, gifts, family, _i: i };
+    return { anchor: a, charId, targetId, texts, money, delta, involved: involved.slice(0, 3), mc, studio, mcEvents, stats, salary, discharged, cards, gifts, family, buffs, _i: i };
   };
   for (let i = 0; i < events.length; i++) {
     const a = events[i];
@@ -190,6 +194,7 @@ export function planCutins(events = []) {
     if (e?.type === 'militaryEnd' || STAGE7_LONE.has(e?.type)) groups.push(build(i, e));
   });
   groups.sort((x, y) => x._i - y._i);
+  foldEraEntries(groups, events);
   // Stage 6 news: fold into the era studio group of the batch (one MC studio cut-in with the 📰 strip)
   const studioGroup = groups.find((g) => g.studio && g.anchor.type !== 'newsFlash');
   for (const g of [...groups]) {
@@ -222,15 +227,66 @@ export function planCutins(events = []) {
   return groups;
 }
 
+/**
+ * Loop maps: ONE shared cut-in per era transition. Every eraChanged group after the batch's eraTransition folds into
+ * it (`entrants` = their characters, texts / money / stat / family chips and MC lines merged; the first MC studio wins).
+ * The group gets `eraId` / `eraName` (from the entrants' events) for the studio title and the banner.
+ */
+function foldEraEntries(groups, events = []) {
+  const t = groups.find((g) => g.anchor.type === TRANSITION);
+  if (!t) return;
+  t.entrants = [];
+  t.eraId = t.anchor.toEraId ?? t.anchor.eraId ?? null;
+  t.eraName = t.anchor.toEraName ?? t.anchor.eraName ?? '';
+  // the server's per-character eraChanged (cutin: false) + their follow-ups (pension, statBonus…) → chips of the transition
+  const ti = events.indexOf(t.anchor);
+  for (let j = ti + 1; ti >= 0 && j < events.length; j++) {
+    const e = events[j];
+    if (e?.type !== 'eraChanged' || isAnchor(e)) continue;
+    if (e.charId && !t.entrants.includes(e.charId)) t.entrants.push(e.charId);
+    if (!t.eraName) t.eraName = e.eraName ?? '';
+    t.eraId ??= e.eraId ?? e.era ?? null;
+    if (e.mc?.length) {
+      t.mc ??= e.mc;
+      t.mcEvents = [...t.mcEvents, e];
+    }
+    for (let k = j + 1; k < events.length && !isBoundary(events[k]); k++) {
+      const f = events[k];
+      if (f.type === 'moneyChanged' && f.delta) t.money.push({ charId: f.charId, delta: f.delta, reason: f.reason });
+      else if (f.type === 'statChanged' && f.delta) t.stats.push({ charId: f.charId, stat: f.stat, delta: f.delta, value: f.value, reason: f.reason });
+      else if (f.type === 'log' && f.text && !t.texts.includes(f.text) && t.texts.length < 4) t.texts.push(f.text);
+    }
+  }
+  for (const g of [...groups]) {
+    if (g === t || g.anchor.type !== 'eraChanged' || g._i < t._i) continue;
+    if (g.charId && !t.entrants.includes(g.charId)) t.entrants.push(g.charId);
+    if (!t.eraName) t.eraName = g.anchor.eraName ?? '';
+    t.eraId ??= g.anchor.era ?? null;
+    t.texts = [...t.texts, ...g.texts].filter((x, i, a) => a.indexOf(x) === i);
+    t.money = [...t.money, ...g.money];
+    t.stats = [...t.stats, ...(g.stats ?? [])];
+    t.salary = [...t.salary, ...(g.salary ?? [])];
+    t.cards = [...(t.cards ?? []), ...(g.cards ?? [])];
+    t.family = [...(t.family ?? []), ...(g.family ?? [])];
+    t.mcEvents = [...t.mcEvents, ...(g.mcEvents ?? [])];
+    if (!t.studio && g.studio) t.studio = g.studio;
+    t.mc ??= g.mc;
+    groups.splice(groups.indexOf(g), 1);
+  }
+  t.involved = [...t.involved, ...t.entrants].filter((id, i, a) => id && a.indexOf(id) === i).slice(0, 3);
+}
+
 /** Fallback dialogue text when a group has no log line. */
 export function fallbackText(anchor, name = '') {
   switch (anchor?.type) {
     case 'eraChanged':
       return `${name} — ${anchor.eraName ?? ''} 시대 시작!`;
+    case 'eraTransition':
+      return `모두 함께 ${anchor.toEraName ?? anchor.eraName ?? '새'} 시대로!${Number(anchor.turns) > 0 ? ` 이번 시대는 ${Number(anchor.turns)}턴이에요.` : anchor.final ? ' 이제 턴 제한 없이 골인까지 경주!' : ''}`;
     case 'routeChosen':
       return `${name}의 새 루트!`;
     case 'finished':
-      return `${name} ${anchor.place}등으로 골인!`;
+      return anchor.retired === 'early' ? `${name} 조기 은퇴! 🏖️` : anchor.retired === 'bust' ? `${name}, 빈곤 농장으로… 🌾` : `${name} ${anchor.place}등으로 골인!`;
     case 'gameOver':
       return '게임 종료! 결과 발표';
     case 'rankUp':
@@ -267,6 +323,8 @@ export function fallbackText(anchor, name = '') {
       return `${name}의 선물!`;
     case 'tradeResolved':
       return anchor.status === 'accepted' ? '거래 성사!' : '거래 불발…';
+    case 'chanceBuff':
+      return anchor.action === 'expired' ? `${name}의 ${anchor.buff?.name ?? '찬스'} 버프가 끝났어요` : `${name}에게 ${anchor.buff?.icon ?? '🎪'} ${anchor.buff?.name ?? '찬스'} 버프!`;
     // Stage 8
     case 'met':
       return `${name}에게 새로운 인연이! 💘`;
@@ -304,11 +362,12 @@ export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {
   let place = '';
   if (anchor?.type === 'landed') place = `${tileTypes[anchor.tileType]?.name ?? ''} 칸`;
   else if (anchor?.type === 'eraChanged') place = `${anchor.eraName ?? ''} 시대`;
+  else if (anchor?.type === 'eraTransition') return `🗺️ ${anchor.toEraName ?? anchor.eraName ?? '새'} 시대 개막`;
   else if (anchor?.type === 'routeChosen') place = `${routes[anchor.route]?.name ?? anchor.route} 루트`;
   else if (anchor?.type === 'finished') place = '골인';
   else if ((anchor?.type === 'gameOver' || anchor?.type === 'result') && anchor?.tone !== 'result') place = '결과 발표';
   else if (anchor?.type === 'prompt') return promptTag(anchor, tone);
-  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '만남', date: '데이트', propose: '프러포즈', house: '부동산', hometown: '고향 시골집', temple: '산사', jeju: '제주도', reversal: '인생역전' }[anchor.kind] ?? '결과';
+  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '만남', date: '데이트', propose: '프러포즈', house: '부동산', hometown: '고향 시골집', temple: '산사', jeju: '제주도', reversal: '인생역전', passTile: '찬스 광장' }[anchor.kind] ?? '결과';
   else if (STAGE6_TAGS[anchor?.type]) return STAGE6_TAGS[anchor.type](anchor);
   else if (STAGE7_TAGS[anchor?.type]) return STAGE7_TAGS[anchor.type](anchor);
   else if (STAGE8_TAGS[anchor?.type]) return STAGE8_TAGS[anchor.type](anchor);
@@ -342,6 +401,7 @@ const STAGE7_TAGS = {
   cardGained: () => '🃏 카드 획득',
   gift: () => '🎁 선물',
   tradeResolved: (a) => (a.status === 'accepted' ? '🤝 거래 성사' : '🤝 거래 불발'),
+  chanceBuff: (a) => `${a.buff?.icon ?? '🎪'} 찬스 버프${a.action === 'expired' ? ' 종료' : ''}`,
 };
 
 /** Stage 8 anchors: own tag. */
@@ -363,7 +423,7 @@ const STAGE9_TAGS = {
   submapResult: (a) => {
     const kind = String(a.optionId ?? '').split(':')[0];
     const base = SUBMAP_TAG[a.submap] ?? '🗺️ 서브맵';
-    const what = { horse: '경마', lotto: '로또', wish: '소원', train: '수련', rest: '휴식', visit: '효도', trip: '여행' }[kind];
+    const what = { horse: '경마', lotto: '로또', wish: '소원', train: '수련', rest: '휴식', visit: '효도', trip: '여행', allIn: '전 재산 올인', retire: '조기 은퇴' }[kind];
     return what ? `${base} · ${what}` : base;
   },
   treasureFound: () => '💎 보물 발견',
@@ -374,7 +434,7 @@ function submapResultText(a, name) {
   const kind = String(a.optionId ?? '').split(':')[0];
   const amt = Number(a.amount);
   const r = String(a.result ?? '').toLowerCase();
-  const ok = ['win', 'won', 'success', 'jackpot', 'bigwin', 'hit', 'granted', 'unlock', 'unlocked'].includes(r) || (r === '' && amt > 0);
+  const ok = ['win', 'won', 'success', 'jackpot', 'bigwin', 'hit', 'granted', 'unlock', 'unlocked', 'allinwin'].includes(r) || (r === '' && amt > 0);
   switch (kind) {
     case 'horse':
       return ok ? `${name}의 말이 1등! 인생역전 대성공 🏆` : `${name}의 말이 뒤처졌다… 💸`;
@@ -390,6 +450,10 @@ function submapResultText(a, name) {
       return `${name} 부모님께 효도했어요 👵`;
     case 'trip':
       return `${name} 제주도 여행! 🌴`;
+    case 'allIn':
+      return ok ? `${name} 전 재산 올인 대성공! 🎯💥` : `${name}, 올인 실패… 빈곤 농장으로 🌾`;
+    case 'retire':
+      return `${name} 조기 은퇴! 여유로운 노후 🏖️`;
     default:
       return `${name}의 ${SUBMAP_TAG[a.submap]?.slice(3) ?? '서브맵'} 결과!`;
   }

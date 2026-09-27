@@ -11,6 +11,7 @@
 import { STAT_KEYS, netWorth } from './effects.js';
 import { treasureValue } from './treasures.js';
 import { houseValue } from './houses.js';
+import { itemsValue } from './cards.js';
 import { ADULT_ERAS } from './highlights.js';
 
 const ROUTE_ERAS = ['young', 'middle_age'];
@@ -66,8 +67,8 @@ export const AWARD_METRICS = {
   luckWinnings: (ctx, c) => c.record?.luckWin ?? 0,
 };
 
-/** Goal order tie-break: earlier arrival, then creation order. */
-const byPlace = (a, b) => (a.place ?? 99) - (b.place ?? 99) || (a.seq ?? 0) - (b.seq ?? 0);
+/** Tie-break: earlier goal arrival (the final race), then more assets (net worth + house + items), then creation order. */
+const assets = (data, c) => netWorth(c) + houseValue(c) + itemsValue(data, c);
 
 /**
  * Compute the special awards of a finished game.
@@ -75,6 +76,7 @@ const byPlace = (a, b) => (a.place ?? 99) - (b.place ?? 99) || (a.seq ?? 0) - (b
  */
 export function computeAwards(room, data) {
   const ctx = { room, data };
+  const byPlace = (a, b) => (a.place ?? 99) - (b.place ?? 99) || assets(data, b) - assets(data, a) || (a.seq ?? 0) - (b.seq ?? 0);
   const out = [];
   for (const def of awardDefs(data)) {
     const metric = AWARD_METRICS[def.metric];
@@ -119,14 +121,19 @@ export function titleFacts(room, c, { data, ranking = [] } = {}) {
   const held = new Set((c.jobHistory ?? []).map((h) => h.id));
   if (c.job) held.add(c.job.id);
   const hidden = [...held].some((id) => jobDefOf(data, id)?.hidden);
-  const lastPlace = c.place != null && c.place === n;
+  // goal order facts only exist with a goal race (kids mode: place = final rank → no 급행열차 / 거북이 titles)
+  const goalRace = !!room.board?.eras?.at(-1)?.final || !room.board?.eras?.at(-1)?.loop;
+  const place = goalRace ? c.place ?? null : null;
+  const lastPlace = place != null && place === n && c.retired !== 'bust';
   return {
     characters: n,
     finalRank: row?.rank ?? null,
     rankPct: row && n > 1 ? (row.rank - 1) / (n - 1) : 0,
     total: row?.total ?? netWorth(c),
-    place: c.place ?? null,
+    place,
     lastPlace: lastPlace ? 1 : 0,
+    retired: c.retired === 'early' ? 1 : 0,
+    bust: c.retired === 'bust' ? 1 : 0,
     worstRankPct: rec.worstRankPct ?? 0,
     minNet: rec.minNet ?? netWorth(c),
     maxDebt: rec.maxDebt ?? 0,

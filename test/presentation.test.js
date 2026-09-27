@@ -36,7 +36,7 @@ function started({ mode = 'kids', seed = 5, eraTurns = { baby: 1, elem: 2, middl
 
 /** Play a whole game with trusted actions (spin / force timeout); returns every event batch. */
 function playAll(seed, mode = 'kids') {
-  const r = started({ seed, mode, eraTurns: mode === 'adult' ? { young: 4, middle_age: 4, senior: 2 } : undefined });
+  const r = started({ seed, mode, eraTurns: mode === 'adult' ? { young: 3, middle_age: 3 } : undefined });
   let room = r.room;
   const batches = [r.events];
   for (let i = 0; i < 400 && room.status === 'playing'; i++) {
@@ -74,7 +74,10 @@ test('decorateEvents: same seed → identical presentation (all clients show the
 });
 
 // Bland events never get a speech bubble; plain money / uneventful landings and small money follow-ups rarely do.
-const QUIET_TYPES = new Set(['turnStarted', 'spun', 'moved', 'log']);
+const QUIET_TYPES = new Set(['turnStarted', 'spun', 'moved', 'log', 'eraChanged']);
+/** Quiet by rule: per-character eraChanged (the eraTransition speaks), a 찬스 광장 pass / buy / job change result (its
+ * follow-up or the buff chip speaks), an expired buff. */
+const quietOk = (e) => (e.type === 'promptResolved' && e.kind === 'passTile' && !e.cutin) || (e.type === 'chanceBuff' && e.action === 'expired');
 const MAYBE_QUIET = new Set(['landed', 'moneyChanged']);
 
 test('every emitted event carries tone/emotion/scene/cutin (+ line) from the allowed sets', () => {
@@ -91,7 +94,7 @@ test('every emitted event carries tone/emotion/scene/cutin (+ line) from the all
       else {
         assert.ok(lines.tags[e.lineTag], `line tag ${e.lineTag} exists in lines.json`);
         if (QUIET_TYPES.has(e.type)) assert.equal(e.line, null, `${e.type} never speaks`);
-        else if (e.line == null) assert.ok(MAYBE_QUIET.has(e.type), `${e.type} has a line`);
+        else if (e.line == null) assert.ok(MAYBE_QUIET.has(e.type) || quietOk(e), `${e.type} has a line`);
         else {
           assert.equal(typeof e.line, 'string', `${e.type} has a line`);
           assert.ok(!/\{\w+\}/.test(e.line), `unfilled placeholder in "${e.line}"`);
@@ -99,7 +102,7 @@ test('every emitted event carries tone/emotion/scene/cutin (+ line) from the all
       }
     }
   }
-  for (const t of ['turnStarted', 'spun', 'moved', 'landed', 'moneyChanged', 'eraChanged', 'prompt', 'promptResolved', 'finished', 'gameOver', 'log']) {
+  for (const t of ['turnStarted', 'spun', 'moved', 'landed', 'moneyChanged', 'eraTransition', 'eraChanged', 'prompt', 'promptResolved', 'chanceBuff', 'finished', 'gameOver', 'log']) {
     assert.ok(seenTypes.has(t), `simulated games emit ${t}`);
   }
 });
@@ -165,6 +168,9 @@ test('presentationFor: every event type maps to a tone, scene and emotion (synth
     treasureFound: { charId: c.id, uid: 'tr1', treasureId: 'celadon', source: 'tile' },
     mvpVoted: { playerId: 'p1', charId: c.id, changed: false, count: 1 },
     mvpDecided: { charId: c.id, votes: { [c.id]: 2 } },
+    // loop maps
+    eraTransition: { fromEraId: 'baby', toEraId: 'elem', eraIndex: 1, turns: 3, lap: 18, eraName: '초등학생' },
+    chanceBuff: { charId: c.id, buff: { id: 'salaryX2', name: '월급 두 배', icon: '💵', desc: '' }, action: 'gained' },
   };
   assert.deepEqual(Object.keys(samples).sort(), [...EVENT_TYPES].sort());
   for (const type of EVENT_TYPES) {
@@ -220,15 +226,15 @@ test('prompt presentation is copied onto turn.pending (reload-safe) and survives
   let room = started({ mode: 'kids', seed: 9, eraTurns: { baby: 1, elem: 1, middle: 1, high: 3 } }).room;
   let prompt = null;
   for (let i = 0; i < 60 && !prompt; i++) {
-    const pend = room.turn.pending; // Stage 6: habit tiles open prompts on the way — answer them
+    const pend = room.turn.pending; // habit tiles / 찬스 광장 / 동아리 open prompts on the way — answer them
     const action = pend
-      ? { type: 'choose', characterId: pend.charId, promptId: pend.promptId, optionId: pend.options[0].id }
+      ? { type: 'choose', characterId: pend.forCharacterIds.find((id) => !Object.hasOwn(pend.answers, id)), promptId: pend.promptId, optionId: pend.options.find((o) => !o.disabled).id }
       : { type: 'spin', characterId: room.turn.order[room.turn.currentIndex] };
     const res = applyAction(room, action, { now: i });
     room = res.room;
     prompt = res.events.find((e) => e.type === 'prompt' && e.kind === 'exam');
   }
-  assert.ok(prompt, 'the 수능 stop opens a prompt');
+  assert.ok(prompt, 'the last high-school turn opens the 수능 prompt');
   const p = room.turn.pending;
   assert.equal(p.promptId, prompt.promptId);
   assert.deepEqual([p.tone, p.scene, p.line, p.cutin], [prompt.tone, prompt.scene, prompt.line, true]);
