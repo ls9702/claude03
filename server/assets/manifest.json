@@ -13686,6 +13686,1339 @@
       "meta": {
         "scene": "studio"
       }
+    },
+    {
+      "id": "bg-stage",
+      "kind": "bg",
+      "label": "컷인 배경 · 무대",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a dazzling K-pop concert stage seen from the front row: glossy stage floor, colorful spotlights and laser beams, LED screen panels showing abstract shapes, confetti in the air, a sea of blurred glow sticks at the very bottom edge. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/stage.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "stage"
+      }
+    },
+    {
+      "id": "bg-stadium",
+      "kind": "bg",
+      "label": "컷인 배경 · 경기장",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a sunny Korean sports stadium seen from the field: green grass with white lines, packed colorful stands with a blurred crowd, a big blank scoreboard, stadium light towers, blue sky with fluffy clouds. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/stadium.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "stadium"
+      }
+    },
+    {
+      "id": "bg-gym",
+      "kind": "bg",
+      "label": "컷인 배경 · 격투기 체육관",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a martial arts gym: an octagon cage ring with a blue mat in the middle, punching bags hanging on the side, stacked training mats, a small wall of trophies, dramatic overhead lights. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/gym.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "gym"
+      }
+    },
+    {
+      "id": "bg-army",
+      "kind": "bg",
+      "label": "컷인 배경 · 훈련소 연병장",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a Korean army boot camp parade ground on a clear day: a wide sandy field, a low beige barracks building with green roof, a flagpole with a plain green flag, mountains behind, a row of young trees. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/army.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "army"
+      }
+    },
+    {
+      "id": "bg-campus",
+      "kind": "bg",
+      "label": "컷인 배경 · 대학 졸업식",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a Korean university campus on graduation day: a grand old stone main building, cherry blossom trees, a wide plaza with a fountain, a few graduation caps flying in the blue sky. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/campus.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "campus"
+      }
+    },
+    {
+      "id": "bg-kitchen",
+      "kind": "bg",
+      "label": "컷인 배경 · 식당 주방",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a busy but tidy restaurant kitchen: shiny steel counters, flames under woks and pots, hanging ladles and pans, fresh vegetables on a cutting board, warm lighting. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/kitchen.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "kitchen"
+      }
+    },
+    {
+      "id": "bg-police",
+      "kind": "bg",
+      "label": "컷인 배경 · 경찰서",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a friendly neighborhood police station in Korea: blue and white interior, a front desk, a bulletin board with blank papers, a patrol car visible through the big window, potted plant. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/police.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "police"
+      }
+    },
+    {
+      "id": "bg-lab",
+      "kind": "bg",
+      "label": "컷인 배경 · 연구실",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a bright modern science laboratory: white benches with glass flasks and colorful liquids, a microscope, computer monitors with graphs (no numbers), big windows with daylight. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/lab.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "lab"
+      }
+    },
+    {
+      "id": "bg-space",
+      "kind": "bg",
+      "label": "컷인 배경 · 우주 발사장",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a rocket launch site at dawn: a tall white rocket on the launch pad with steam around its base, gantry tower, a sky turning from purple to orange with a few stars, distant sea. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/space.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "space"
+      }
+    },
+    {
+      "id": "bg-shop",
+      "kind": "bg",
+      "label": "컷인 배경 · 동네 마트",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a cheerful Korean neighborhood mart / convenience store interior: colorful snack shelves, a drink fridge with glowing doors, a checkout counter with a small register, hanging paper decorations. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/shop.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "shop"
+      }
+    },
+    {
+      "id": "bg-holiday",
+      "kind": "bg",
+      "label": "컷인 배경 · 명절 상차림 거실",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a warm traditional Korean living room during a holiday (Seollal / Chuseok): a low wooden table full of holiday food (songpyeon rice cakes, jeon pancakes, fruits, a bowl of tteokguk), floor cushions, a folding screen with painted plum blossoms, sliding paper doors with warm light. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/holiday.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "holiday"
+      }
+    },
+    {
+      "id": "card-study",
+      "kind": "card",
+      "label": "카드 · 스터디 모임",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: an open notebook with a pencil on top of a small stack of books and a glowing idea light bulb above them. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/study.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "study"
+      }
+    },
+    {
+      "id": "card-insider",
+      "kind": "card",
+      "label": "카드 · 인싸력",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a smartphone with heart and star reaction bubbles and sparkles bursting out of the screen. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/insider.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "insider"
+      }
+    },
+    {
+      "id": "card-energy",
+      "kind": "card",
+      "label": "카드 · 에너지 드링크",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a bright can of energy drink with a big yellow lightning bolt on it, fizzing bubbles around it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/energy.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "energy"
+      }
+    },
+    {
+      "id": "card-taxi",
+      "kind": "card",
+      "label": "카드 · 택시",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a cute round orange Korean taxi car with a roof light, speed lines behind it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/taxi.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "taxi"
+      }
+    },
+    {
+      "id": "card-pledge",
+      "kind": "card",
+      "label": "카드 · 공약 카드",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a campaign speech podium with a microphone and a big red rosette ribbon, small confetti. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/pledge.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "pledge"
+      }
+    },
+    {
+      "id": "card-bonus",
+      "kind": "card",
+      "label": "카드 · 성과급 봉투",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a white envelope overflowing with green paper money bills, tied with a golden ribbon. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/bonus.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "bonus"
+      }
+    },
+    {
+      "id": "card-insurance",
+      "kind": "card",
+      "label": "카드 · 실손 보험",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a blue shield with a white plus sign, sheltered under a small red umbrella. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/insurance.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "insurance"
+      }
+    },
+    {
+      "id": "card-amulet",
+      "kind": "card",
+      "label": "카드 · 건강 부적",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a traditional Korean yellow talisman paper with abstract red swirl patterns (no readable letters), tied with a red string and a small tassel. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/amulet.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "amulet"
+      }
+    },
+    {
+      "id": "card-lotto",
+      "kind": "card",
+      "label": "카드 · 로또 복권",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a lottery ticket card with five colorful glossy lottery balls (plain, no numbers) bouncing out of it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/lotto.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "lotto"
+      }
+    },
+    {
+      "id": "card-coupon",
+      "kind": "card",
+      "label": "카드 · 할인 쿠폰",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a pink discount coupon ticket with a dotted cut line, small scissors and a big percent symbol. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/coupon.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "coupon"
+      }
+    },
+    {
+      "id": "card-lawyer",
+      "kind": "card",
+      "label": "카드 · 변호사 상담권",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a golden balance scale next to a wooden judge's gavel. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/lawyer.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "lawyer"
+      }
+    },
+    {
+      "id": "card-cut-line",
+      "kind": "card",
+      "label": "카드 · 새치기",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a cheeky sneaker leaping over a queue line of small orange traffic cones, with a curved jump arrow. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/cut-line.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "cut_line"
+      }
+    },
+    {
+      "id": "card-noise",
+      "kind": "card",
+      "label": "카드 · 층간소음",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a stomping foot above a ceiling with jagged red sound waves and a shaking lamp below. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/noise.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "noise"
+      }
+    },
+    {
+      "id": "card-tax-audit",
+      "kind": "card",
+      "label": "카드 · 세무조사",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a big magnifying glass over a pile of gold coins and a red official stamp. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/tax-audit.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "tax_audit"
+      }
+    },
+    {
+      "id": "card-complaint",
+      "kind": "card",
+      "label": "카드 · 갑질 민원",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: an angry red megaphone blasting jagged shout lines, with a small red anger mark. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/complaint.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "complaint"
+      }
+    },
+    {
+      "id": "card-gossip",
+      "kind": "card",
+      "label": "카드 · 소문내기",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: two whispering speech bubbles next to a hand cupped beside a sly smiling mouth. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/gossip.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "gossip"
+      }
+    },
+    {
+      "id": "item-car",
+      "kind": "item",
+      "label": "아이템 · 경차",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game item icon: a small cute mint-green compact car, front three-quarter view. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "items/car.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "car"
+      }
+    },
+    {
+      "id": "item-laptop",
+      "kind": "item",
+      "label": "아이템 · 노트북",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game item icon: an open silver laptop with a glowing screen showing abstract colorful shapes. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "items/laptop.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "laptop"
+      }
+    },
+    {
+      "id": "item-gym-pass",
+      "kind": "item",
+      "label": "아이템 · 헬스 회원권",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game item icon: a membership card leaning on a blue dumbbell. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "items/gym-pass.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "gym_pass"
+      }
+    },
+    {
+      "id": "item-designer-bag",
+      "kind": "item",
+      "label": "아이템 · 명품 가방",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game item icon: an elegant beige leather handbag with a gold clasp, sparkles around it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "items/designer-bag.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "designer_bag"
+      }
+    },
+    {
+      "id": "item-lucky-cat",
+      "kind": "item",
+      "label": "아이템 · 복고양이",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game item icon: a cute golden lucky cat figurine raising one paw, a small red bell collar. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "items/lucky-cat.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "lucky_cat"
+      }
+    },
+    {
+      "id": "item-massage-chair",
+      "kind": "item",
+      "label": "아이템 · 안마의자",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game item icon: a big comfy brown massage chair with soft cushions and a small remote control. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "items/massage-chair.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "massage_chair"
+      }
+    },
+    {
+      "id": "icon-job-civil-servant",
+      "kind": "icon",
+      "label": "직업 배지 · 공무원",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a neat folder with an official red stamp and a name badge lanyard. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/civil-servant.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "civil_servant"
+      }
+    },
+    {
+      "id": "icon-job-office-worker",
+      "kind": "icon",
+      "label": "직업 배지 · 대기업 회사원",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a black briefcase with a blue necktie draped over it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/office-worker.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "office_worker"
+      }
+    },
+    {
+      "id": "icon-job-webtoonist",
+      "kind": "icon",
+      "label": "직업 배지 · 웹툰 작가",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a drawing tablet with a stylus and colorful comic panel shapes. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/webtoonist.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "webtoonist"
+      }
+    },
+    {
+      "id": "icon-job-politician",
+      "kind": "icon",
+      "label": "직업 배지 · 국회의원",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a gold lapel badge next to a microphone. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/politician.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "politician"
+      }
+    },
+    {
+      "id": "icon-job-baseball",
+      "kind": "icon",
+      "label": "직업 배지 · 야구선수",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a baseball with a wooden bat and a glove. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/baseball.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "baseball"
+      }
+    },
+    {
+      "id": "icon-job-soccer",
+      "kind": "icon",
+      "label": "직업 배지 · 축구선수",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a black-and-white soccer ball with a small goal net behind it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/soccer.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "soccer"
+      }
+    },
+    {
+      "id": "icon-job-esports",
+      "kind": "icon",
+      "label": "직업 배지 · e스포츠 선수",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a gaming headset resting on a glowing RGB keyboard. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/esports.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "esports"
+      }
+    },
+    {
+      "id": "icon-job-fighter",
+      "kind": "icon",
+      "label": "직업 배지 · 격투기 선수",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a pair of red boxing gloves with a champion belt. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/fighter.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "fighter"
+      }
+    },
+    {
+      "id": "icon-job-actor",
+      "kind": "icon",
+      "label": "직업 배지 · 배우",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a film clapperboard (blank) with a small golden star. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/actor.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "actor"
+      }
+    },
+    {
+      "id": "icon-job-idol",
+      "kind": "icon",
+      "label": "직업 배지 · 아이돌",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a sparkly stage microphone with a pink glow stick and music notes. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/idol.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "idol"
+      }
+    },
+    {
+      "id": "icon-job-youtuber",
+      "kind": "icon",
+      "label": "직업 배지 · 유튜버",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a red play-button shaped sign with a small camera and a ring light. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/youtuber.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "youtuber"
+      }
+    },
+    {
+      "id": "icon-job-chef",
+      "kind": "icon",
+      "label": "직업 배지 · 셰프",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a white chef hat over a frying pan with a sizzling egg. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/chef.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "chef"
+      }
+    },
+    {
+      "id": "icon-job-doctor",
+      "kind": "icon",
+      "label": "직업 배지 · 의사",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a stethoscope around a white medical cross. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/doctor.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "doctor"
+      }
+    },
+    {
+      "id": "icon-job-researcher",
+      "kind": "icon",
+      "label": "직업 배지 · 연구원",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a glass flask with bubbling green liquid and a small microscope. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/researcher.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "researcher"
+      }
+    },
+    {
+      "id": "icon-job-police",
+      "kind": "icon",
+      "label": "직업 배지 · 경찰관",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a police cap with a gold emblem and a whistle. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/police.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "police"
+      }
+    },
+    {
+      "id": "icon-job-comedian",
+      "kind": "icon",
+      "label": "직업 배지 · 개그맨",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a funny red clown nose with a laughing mask. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/comedian.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "comedian"
+      }
+    },
+    {
+      "id": "icon-job-teacher",
+      "kind": "icon",
+      "label": "직업 배지 · 교사",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a green chalkboard (blank) with an apple and a piece of chalk. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/teacher.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "teacher"
+      }
+    },
+    {
+      "id": "icon-job-landlord",
+      "kind": "icon",
+      "label": "직업 배지 · 건물주",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a tall shiny building with a golden key in front of it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/landlord.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "landlord"
+      }
+    },
+    {
+      "id": "icon-job-trot-star",
+      "kind": "icon",
+      "label": "직업 배지 · 트로트 스타",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a golden microphone with a sparkly sequin bow tie. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/trot-star.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "trot_star"
+      }
+    },
+    {
+      "id": "icon-job-astronaut",
+      "kind": "icon",
+      "label": "직업 배지 · 우주비행사",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a white astronaut helmet with a small rocket and stars. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/astronaut.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "astronaut"
+      }
+    },
+    {
+      "id": "icon-job-mountain-spirit",
+      "kind": "icon",
+      "label": "직업 배지 · 산신령",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a wooden staff with a white cloud and a mountain peak behind it. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/mountain-spirit.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "mountain_spirit"
+      }
+    },
+    {
+      "id": "icon-job-chaebol",
+      "kind": "icon",
+      "label": "직업 배지 · 재벌 총수",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a golden crown sitting on a stack of gold bars. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/chaebol.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "chaebol"
+      }
+    },
+    {
+      "id": "icon-job-national-mc",
+      "kind": "icon",
+      "label": "직업 배지 · 국민 MC",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy round game badge icon: a golden trophy shaped like a microphone with confetti. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "icons/jobs/national-mc.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "national_mc"
+      }
     }
   ]
 }

@@ -28,16 +28,20 @@ function hueSat(r, g, b) {
   return [(h * 60 + 360) % 360, d / mx];
 }
 
-/** Median colour of 5×5 patches at the four corners. */
-export function sampleBackground(data, w, h) {
+/**
+ * Median colour of 5×5 patches at the four corners. `corners: 3` skips the bottom-right corner (the Gemini
+ * app paints its sparkle watermark there).
+ */
+export function sampleBackground(data, w, h, { corners = 4 } = {}) {
   const samples = [[], [], []];
   const patch = Math.max(1, Math.min(5, Math.floor(Math.min(w, h) / 10)));
-  for (const [cx, cy] of [
+  const spots = [
     [0, 0],
     [w - patch, 0],
     [0, h - patch],
     [w - patch, h - patch],
-  ]) {
+  ].slice(0, corners === 3 ? 3 : 4);
+  for (const [cx, cy] of spots) {
     for (let y = cy; y < cy + patch; y++) {
       for (let x = cx; x < cx + patch; x++) {
         const i = (y * w + x) * 4;
@@ -94,14 +98,75 @@ export function removeSmallComponents(data, w, h, minArea) {
   return cleared;
 }
 
+/** Bottom-right watermark box (fractions of the canvas): seed region and the region an island must fit in. */
+export const WATERMARK_BOX = { seed: 0.1, fit: 0.16 };
+
+/**
+ * Gemini-app watermark cleanup (after keying): clear every foreground island (alpha > 0, 8-connectivity) that
+ * touches the bottom-right seed box and lies entirely inside the (slightly larger) fit box — i.e. an isolated
+ * sparkle in the corner, never a subject that merely reaches into it. Mutates `data`; returns pixels cleared.
+ */
+export function clearCornerIslands(data, w, h, { seed = WATERMARK_BOX.seed, fit = WATERMARK_BOX.fit } = {}) {
+  const sx = Math.floor(w * (1 - seed));
+  const sy = Math.floor(h * (1 - seed));
+  const fx = Math.floor(w * (1 - fit));
+  const fy = Math.floor(h * (1 - fit));
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  let cleared = 0;
+  for (let y = sy; y < h; y++) {
+    for (let x = sx; x < w; x++) {
+      const start = y * w + x;
+      if (seen[start] || data[start * 4 + 3] === 0) continue;
+      const members = [];
+      let inside = true;
+      stack.push(start);
+      seen[start] = 1;
+      while (stack.length) {
+        const p = stack.pop();
+        members.push(p);
+        const px = p % w;
+        const py = (p - px) / w;
+        if (px < fx || py < fy) inside = false;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = py + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = px + dx;
+            if (xx < 0 || xx >= w || (!dx && !dy)) continue;
+            const q = yy * w + xx;
+            if (!seen[q] && data[q * 4 + 3] !== 0) {
+              seen[q] = 1;
+              stack.push(q);
+            }
+          }
+        }
+      }
+      if (inside) {
+        for (const p of members) data[p * 4 + 3] = 0;
+        cleared += members.length;
+      }
+    }
+  }
+  return cleared;
+}
+
+/** Crop a fraction off the right and bottom edges (the Gemini-app sparkle watermark) of an opaque image. */
+export async function cropWatermark(buffer, { frac = 0.04 } = {}) {
+  const meta = await sharp(buffer).metadata();
+  const width = Math.max(1, Math.round(meta.width * (1 - frac)));
+  const height = Math.max(1, Math.round(meta.height * (1 - frac)));
+  return sharp(buffer).extract({ left: 0, top: 0, width, height }).png().toBuffer();
+}
+
 /**
  * Chroma key: backdrop colour from the corners, soft distance alpha, hue-family kill (catches the
  * darker magenta ground shadow), despill of semi-transparent edges, small-island removal.
  * Returns a PNG with the original canvas size (layers stay aligned). `trim: true` to crop.
  */
-export async function chromaKey(buffer, { hard = 22, soft = 60, hueKill = 14, hueSoft = 22, minSat = 0.5, minArea, trim: doTrim = false } = {}) {
+export async function chromaKey(buffer, { hard = 22, soft = 60, hueKill = 14, hueSoft = 22, minSat = 0.5, minArea, trim: doTrim = false, watermark = false } = {}) {
   const { data, w, h } = await toRaw(buffer);
-  const bg = sampleBackground(data, w, h);
+  const bg = sampleBackground(data, w, h, { corners: watermark ? 3 : 4 });
   const [bh, bs] = hueSat(bg.r, bg.g, bg.b);
   const useHue = bs > 0.35; // only meaningful for a saturated backdrop
   for (let p = 0; p < w * h; p++) {
@@ -128,6 +193,7 @@ export async function chromaKey(buffer, { hard = 22, soft = 60, hueKill = 14, hu
     data[i + 3] = Math.round(a * 255);
   }
   removeSmallComponents(data, w, h, minArea ?? Math.max(24, Math.round(w * h * 0.0002)));
+  if (watermark) clearCornerIslands(data, w, h);
   const png = await fromRaw(data, w, h).png().toBuffer();
   return doTrim ? trim(png) : png;
 }
@@ -135,9 +201,10 @@ export async function chromaKey(buffer, { hard = 22, soft = 60, hueKill = 14, hu
 /**
  * Icons on white: flood-fill from the border through near-white pixels only, so white areas
  * *inside* an outlined icon (a card face, a sign) stay opaque. Near-white edge pixels get
- * partial alpha with the white un-mixed out.
+ * partial alpha with the white un-mixed out. `watermark: true` (manual Gemini-app imports) also clears an
+ * isolated island in the bottom-right corner (the sparkle watermark, which is not white).
  */
-export async function whiteToAlpha(buffer, { threshold = 240, soft = 200, maxChroma = 36, minArea } = {}) {
+export async function whiteToAlpha(buffer, { threshold = 240, soft = 200, maxChroma = 36, minArea, watermark = false } = {}) {
   const { data, w, h } = await toRaw(buffer);
   const n = w * h;
   const whiteness = (p) => {
@@ -182,6 +249,7 @@ export async function whiteToAlpha(buffer, { threshold = 240, soft = 200, maxChr
     data[i + 3] = Math.round(Math.min(a, data[i + 3] / 255) * 255);
   }
   removeSmallComponents(data, w, h, minArea ?? Math.max(16, Math.round(n * 0.0001)));
+  if (watermark) clearCornerIslands(data, w, h);
   return fromRaw(data, w, h).png().toBuffer();
 }
 
@@ -354,14 +422,16 @@ export const toPng = (buffer) => sharp(buffer).png().toBuffer();
  *   moves headwear to `layers.hat`.
  * - `alignHead` aligns a mannequin variant to `base` by the head box; `mannequin` keeps the keyed original
  *   as `layers.base` and outputs the display copy (underwear recoloured).
+ * - `watermark: true` (manual Gemini-app imports): keyed steps sample the backdrop from 3 corners and clear an
+ *   isolated bottom-right island (the sparkle watermark).
  * @returns {Promise<{frames: Buffer[], sheet?: {buffer: Buffer, meta: object}, anim?: Buffer, layers?: Record<string, Buffer>, notes: object}>}
  */
-export async function applySteps(frames, steps, { ref, delays, anchor = 'bottom-center', base, diffOptions } = {}) {
+export async function applySteps(frames, steps, { ref, delays, anchor = 'bottom-center', base, diffOptions, watermark = false } = {}) {
   let cur = frames;
   const out = { notes: {} };
   for (const step of steps) {
-    if (step === 'chromaKey') cur = await Promise.all(cur.map((b) => chromaKey(b)));
-    else if (step === 'whiteToAlpha') cur = await Promise.all(cur.map((b) => whiteToAlpha(b)));
+    if (step === 'chromaKey') cur = await Promise.all(cur.map((b) => chromaKey(b, { watermark })));
+    else if (step === 'whiteToAlpha') cur = await Promise.all(cur.map((b) => whiteToAlpha(b, { watermark })));
     else if (step === 'trim') cur = await Promise.all(cur.map((b) => trim(b)));
     else if (step.startsWith('resize:')) {
       const [w, h] = step.slice(7).split('x').map(Number);

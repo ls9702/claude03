@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { createGeminiClient } from './gemini.js';
 import { KIND_LABELS, LOCAL_REF_DIR, MANIFEST_PATH, getItem, loadManifest, localRefPath, outputsFor, partFiles, renderPrompt, saveManifest, topoOrder } from './manifest.js';
-import { applySteps, toRaw } from './postprocess.js';
+import { applySteps, cropWatermark, toRaw } from './postprocess.js';
 import { measureFill } from './tintMath.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -440,8 +440,13 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     });
   }
 
-  /** Replace an asset with an uploaded image (optionally run the item's postprocess steps). */
-  async function upload(id, buffer, { process = false } = {}) {
+  /**
+   * Replace an asset with an uploaded image (optionally run the item's postprocess steps).
+   * `watermark: true` (manual Gemini-app imports, scripts/import-assets.js): backgrounds (kind bg / anchor) are
+   * flattened (always cover-cropped, never letterboxed) and lose ~4 % on the right and bottom before the resize;
+   * keyed kinds sample the backdrop from 3 corners and clear an isolated bottom-right sparkle.
+   */
+  async function upload(id, buffer, { process = false, watermark = false } = {}) {
     const { m, item } = await mustItem(id);
     if (item.kind === 'sprite') throw new StudioError('스프라이트는 업로드를 지원하지 않습니다. 생성 후 채택하세요.');
     if (item.kind === 'part') throw new StudioError('아바타 파츠는 업로드를 지원하지 않습니다. 생성 후 채택하세요.');
@@ -455,11 +460,13 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
       throw new StudioError(`이미지 크기는 ${UPLOAD_MAX_PX}px 이하여야 합니다.`);
     }
     let png = await sharp(buffer).png().toBuffer();
+    const opaque = item.kind === 'bg' || item.kind === 'anchor';
+    if (watermark && opaque) png = await cropWatermark(await sharp(png).flatten({ background: '#ffffff' }).removeAlpha().png().toBuffer());
     if (process) {
       let ref;
       if (item.kind === 'pose') ref = (await resolveRefs(m, item).catch(() => [])).find((r) => r.kind === 'charLayer')?.raw;
       const steps = ref ? item.postprocess : item.postprocess.filter((s) => s !== 'normalizeFrames');
-      png = (await applySteps([png], steps, { ref, anchor: item.anchor })).frames[0];
+      png = (await applySteps([png], steps, { ref, anchor: item.anchor, watermark })).frames[0];
     }
     await writeOutput(item, png);
     const out = await sharp(png).metadata();

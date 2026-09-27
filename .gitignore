@@ -4,3 +4,5 @@ node_modules/
 *.log
 .claude/worktrees/
 public/vendor/
+assets-inbox/*
+!assets-inbox/README.md

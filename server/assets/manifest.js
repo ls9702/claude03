@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 export const MANIFEST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'manifest.json');
 
-export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part', 'mc'];
+export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part', 'mc', 'card', 'item'];
 export const KIND_LABELS = {
   anchor: '스타일 앵커',
   bg: '컷인 배경',
@@ -21,6 +21,8 @@ export const KIND_LABELS = {
   ui: 'UI',
   part: '아바타 파츠',
   mc: 'MC 캐릭터',
+  card: '카드', // Stage 7: card illustrations (meta.card = cards.json id), same white-background pipeline as icons
+  item: '아이템', // Stage 7: shop items (meta.item = items.json id)
 };
 export const STATUSES = ['todo', 'candidate', 'accepted'];
 /** Aspect ratios accepted by gemini-2.5-flash-image `imageConfig.aspectRatio`. */
@@ -166,6 +168,8 @@ export function validateItem(item) {
       errs.push(`${at} localRefs는 data/mc-refs/<파일명>.jpg|png|webp 배열이어야 합니다.`);
   }
   if (item.kind === 'mc') errs.push(...validateMcMeta(item, at));
+  if (item.kind === 'card' && !(isObj(item.meta) && typeof item.meta.card === 'string' && item.meta.card)) errs.push(`${at} card에는 meta.card(카드 id)가 필요합니다.`);
+  if (item.kind === 'item' && !(isObj(item.meta) && typeof item.meta.item === 'string' && item.meta.item)) errs.push(`${at} item에는 meta.item(아이템 id)가 필요합니다.`);
   if (item.kind === 'part') errs.push(...validatePartMeta(item, at));
   else if (item.postprocess?.some?.((st) => typeof st === 'string' && /^(diffExtract:|alignHead$|mannequin$)/.test(st)))
     errs.push(`${at} diffExtract/alignHead/mannequin 단계는 part에만 쓸 수 있습니다.`);
