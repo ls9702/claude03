@@ -63,5 +63,7 @@ export const secondsLeft = (deadlineAt, now = Date.now(), offset = 0) => Math.ma
 // ---------- CPU players (Stage 9-C, feature-detected) ----------
 /** A CPU-controlled character (`character.cpu` or owner id 'cpu'). */
 export const isCpu = (c) => !!c && (c.cpu === true || (c.cpu && typeof c.cpu === 'object') || c.ownerId === 'cpu');
-/** Small 「🤖 CPU」 badge markup after an owner name ('' for human players). */
-export const cpuBadgeHtml = (c) => (isCpu(c) ? ' <span class="cpu-badge" title="컴퓨터 플레이어">🤖 CPU</span>' : '');
+/** Small 「🤖 CPU」 badge markup ('' for human players). */
+export const cpuBadgeHtml = (c) => (isCpu(c) ? '<span class="cpu-badge" title="컴퓨터 플레이어">🤖 CPU</span>' : '');
+/** Owner label markup: the escaped owner name, or only the 「🤖 CPU」 badge for CPU characters (their owner name is 'CPU'). */
+export const ownerHtml = (c) => (isCpu(c) ? cpuBadgeHtml(c) : esc(c?.ownerName ?? ''));

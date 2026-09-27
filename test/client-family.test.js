@@ -34,7 +34,7 @@ import { dateOptionsHtml, familyDetailHtml, familyOptionsHtml, meetOptionsHtml, 
 import { planCutins, tagLabel, fallbackText } from '../public/js/ui/cutinMap.js';
 import { classifyGroup, isBigGroup, mergeGroups } from '../public/js/ui/cutinPolicy.js';
 import { slotPositions } from '../public/js/ui/cutin2d.js';
-import { cpuBadgeHtml, isCpu } from '../public/js/format.js';
+import { cpuBadgeHtml, isCpu, ownerHtml } from '../public/js/format.js';
 import { loadData } from '../server/data/index.js';
 
 const AV = (body = 'girl', extra = {}) => ({ body, build: 'normal', skin: 'light', face: 'round', eyes: 'round', mouth: 'smile', cheek: 'none', hair: 'bob', hairColor: 'black', outfit: 'tshirt', outfitColor: 'blue', accessory: 'none', ...extra });
@@ -371,5 +371,8 @@ test('panel helpers: family icons / summary / 3D tag badge, detail rows (❤️ 
   assert.equal(isCpu({ ownerId: 'cpu' }), true);
   assert.equal(isCpu({ ownerId: 'p1' }), false);
   assert.match(cpuBadgeHtml({ cpu: true }), /🤖 CPU/);
+  assert.equal(ownerHtml({ ownerId: 'cpu', ownerName: 'CPU' }).match(/CPU/g).length, 1); // only the badge, no "CPU 🤖 CPU"
+  assert.match(ownerHtml({ ownerId: 'cpu', ownerName: 'CPU' }), /^<span class="cpu-badge"/);
+  assert.equal(ownerHtml({ ownerId: 'p1', ownerName: '<철수>' }), '&lt;철수&gt;');
   assert.equal(cpuBadgeHtml({ ownerId: 'p2' }), '');
 });

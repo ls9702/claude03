@@ -1,6 +1,6 @@
 // Admin page: login, create room (per-era turns), room list, lobby detail, start/end/delete.
 import { renderAvatar, setAvatarDefs } from './ui/avatar2d.js';
-import { cpuBadgeHtml } from './format.js';
+import { ownerHtml } from './format.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) =>
@@ -283,7 +283,7 @@ async function renderDetail() {
     </ul>
     <h3>캐릭터 (${room.characters.length}/${room.config.maxCharacters})</h3>
     <div class="detail-chars">
-      ${room.characters.map((c) => `<div class="detail-char">${renderAvatar(c.avatar, { size: 56 })}<div><b>${esc(c.name)}</b></div><small class="muted">${esc(c.ownerName)}${cpuBadgeHtml(c)}</small></div>`).join('') || '<p class="muted">없음</p>'}
+      ${room.characters.map((c) => `<div class="detail-char">${renderAvatar(c.avatar, { size: 56 })}<div><b>${esc(c.name)}</b></div><small class="muted">${ownerHtml(c)}</small></div>`).join('') || '<p class="muted">없음</p>'}
     </div>
     ${cpuTools(room)}
     <details ${openJson ? 'open' : ''}><summary>상태 JSON</summary><pre class="json">${esc(JSON.stringify(room, null, 2))}</pre></details>`;

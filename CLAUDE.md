@@ -870,7 +870,9 @@
   seed 11 × 300 random: lifetime 79.4 spins (Stage 7: 79.0), 13.8 decisions per lifetime character (date 0.65, propose 0.48,
   house 0.24), married 14.7 % (young love route 24 % vs career 12 % / money 10 %); `--family default`: married 27.4 % (love route
   45 %), 0.21 children per character (genius 27 %), love-route net worth within −5..−6 % of the mean (young 1476 vs 1519 / 1647,
-  middle_age 1459 vs 1618 / 1575); houses bought on 37 % of house prompts, 7 % own one at the end, 노년 시세 mean ×1.15.
+  middle_age 1459 vs 1618 / 1575; random policy: young 1506 vs 1495 / 1680, middle_age 1541 vs 1640 / 1514); houses bought on
+  37 % of house prompts, 7.5 % own one at the end, 노년 시세 mean ×1.13–1.15. `--bias --games 2000 --seed 1`: 1st-place share
+  11.3–13.5 %, first→last average rank spread −0.12.
 - Tests: `test/stage8-family.test.js` (data, init / view, schoolMeet once, meet / date / propose seeded success & fail, 축의금
   conservation, spouse salary, birth + max 4 + 출산장려금, child steps + allowance, engine era-entry growth + birth, presentation /
   MC, random lifetime games, restore mid-proposal + pre-Stage-8 migration), `test/stage8-houses.test.js` (houses.json, listings
@@ -924,8 +926,9 @@
   studio cut-in). 3D: animator `ANIMATED_EVENTS` + met dated proposed married schoolMeet childBorn childGrew allowance houseBought
   houseSold houseValueChanged; board3d pops 💘 💕 💍 (+ confetti) 👶 (+ confetti) 💌 🏠 (+ confetti) 🔁, 💍/💔 proposal, childGrew 🎂🎒📝💼,
   schoolMeet banner + 💘 per pair, market banner 📈/📉; `familyTagBadge` rides on the name tag (`tagBadge`, no extra draw calls).
-- CPU players (9-C, feature-detected): `format.isCpu(c)` (`c.cpu` or ownerId 'cpu') / `cpuBadgeHtml(c)` → 「🤖 CPU」 after owner names
-  (side list, now-playing line, result rows, lobby cards, admin room detail).
+- CPU players (9-C): `format.isCpu(c)` (`c.cpu` or ownerId 'cpu'), `cpuBadgeHtml(c)`, `ownerHtml(c)` = the escaped owner name, or
+  only the 「🤖 CPU」 badge for CPU characters (their ownerName is 'CPU' → never "CPU 🤖 CPU") — side list, now-playing line, result
+  rows, lobby cards, admin room detail.
 - CSS `public/css/family.css` (linked after cards.css). E2E: session scratchpad `s8b/` (`inject.cjs` injected state / events for
   every cut-in, prompt (cut-in desktop 3D, 390, 2D modal) and the result; `game.cjs` natural game on the real 8-A server;
   screenshots `s8b-*.png`).

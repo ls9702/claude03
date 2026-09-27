@@ -9,7 +9,7 @@ import {
   setSavedName,
   setSavedRoomId,
 } from './api.js';
-import { NAME_MAX, nameFits, cpuBadgeHtml } from './format.js';
+import { NAME_MAX, nameFits, ownerHtml } from './format.js';
 import { bindNameInput } from './ui/nameInput.js';
 import { createGameUI } from './game2d.js';
 import { hydratePortraits, portraitHtml, setAvatarDefs } from './ui/avatar2d.js';
@@ -165,7 +165,7 @@ function charCard(c, { mine = false } = {}) {
     <div class="char-card${c.isMe ? ' mine' : ''}${state.seenChars.has(c.id) ? '' : ' pop'}" data-id="${esc(c.id)}">
       <div class="portrait">${portraitHtml(c, { size: 72, crop: 'bust' })}</div>
       <div class="char-name">${esc(c.name)}</div>
-      ${mine ? '' : `<div class="char-owner">${esc(c.ownerName)}${cpuBadgeHtml(c)}${c.isMe ? ' (나)' : ''}</div>`}
+      ${mine ? '' : `<div class="char-owner">${ownerHtml(c)}${c.isMe ? ' (나)' : ''}</div>`}
       ${
         mine
           ? `<div class="char-actions">

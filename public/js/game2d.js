@@ -46,7 +46,7 @@ import { familyDetailHtml, familyOptionsHtml } from './ui/familyArt.js';
 import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
 import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
-import { won, esc, secondsLeft, cpuBadgeHtml } from './format.js';
+import { won, esc, secondsLeft, ownerHtml } from './format.js';
 import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
 import {
   STAT_INFO,
@@ -467,7 +467,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const phase = room.turn.pending ? '선택 중' : '룰렛 대기';
     el.now.innerHTML = `
       <span class="now-portrait">${portraitHtml(cur, { size: 40 })}</span>
-      <span class="now-text"><b>${esc(cur.name)}</b>의 차례 <span class="muted small">(${esc(cur.ownerName)}${cpuBadgeHtml(cur)}${cur.isMe ? ' · 나' : ''} · ${phase})</span></span>`;
+      <span class="now-text"><b>${esc(cur.name)}</b>의 차례 <span class="muted small">(${ownerHtml(cur)}${cur.isMe ? ' · 나' : ''} · ${phase})</span></span>`;
     hydratePortraits(el.now);
     el.now.classList.toggle('mine', !!cur.isMe);
   }
@@ -996,7 +996,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           <button type="button" class="gc-row" data-char-detail="${esc(c.id)}" aria-expanded="${open}" aria-controls="gcd-${esc(c.id)}" title="능력치·직업 자세히 보기">
           <span class="gc-portrait">${portraitHtml(c, { size: 40 })}</span>
           <span class="gc-body">
-            <span class="gc-name">${esc(c.name)} <small class="muted">${esc(c.ownerName)}${cpuBadgeHtml(c)}${c.isMe ? ' · 나' : ''}</small></span>
+            <span class="gc-name">${esc(c.name)} <small class="muted">${ownerHtml(c)}${c.isMe ? ' · 나' : ''}</small></span>
             <span class="gc-status small">${status}</span>
             ${tags ? `<span class="gc-tags">${tags}</span>` : ''}
             ${stats.length ? `<span class="gc-mini" aria-hidden="true">${stats.map((st) => `<i style="--p:${st.pct}%;--c:${st.color}" title="${esc(st.label)} ${st.value}"></i>`).join('')}</span>` : ''}
@@ -2134,7 +2134,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}">
             <span class="rk">${MEDAL[r.rank - 1] ?? `${r.rank}위`}</span>
             <span class="rk-portrait">${c ? portraitHtml(c, { size: 52 }) : ''}</span>
-            <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${esc(c?.ownerName ?? '')}${cpuBadgeHtml(c)}</small>${career}
+            <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${c ? ownerHtml(c) : ''}</small>${career}
               ${itemsLine(r, c)}${familyLine(r, c)}<span class="small muted">현금 ${won(r.money)}${r.debt ? ` · 빚 ${won(r.debt)}` : ''}${Number(r.items) > 0 ? ` · 아이템 ${won(r.items)}` : ''}${Number(r.house) > 0 ? ` · 집 ${won(r.house)}` : ''} · 골인 보너스 ${won(r.goalBonus)}${
                 r.place ? ` · ${r.place}번째 골인` : ''
               }${routesTxt ? ` · 루트 ${routesTxt}` : ''}</span></span>
