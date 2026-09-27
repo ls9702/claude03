@@ -419,7 +419,7 @@ test('restore from a JSON snapshot mid-career continues identically (jobs, schoo
     for (let i = 0; i < steps && room.status === 'playing'; i++) {
       const p = room.turn.pending;
       const action = p
-        ? { type: 'choose', characterId: p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)), promptId: p.promptId, optionId: p.options[(room.turn.turnNo + i) % p.options.length].id }
+        ? { type: 'choose', characterId: p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)), promptId: p.promptId, optionId: ((o) => o[(room.turn.turnNo + i) % o.length].id)(p.options.filter((x) => !x.disabled)) }
         : { type: 'spin', characterId: cur(room) };
       room = applyAction(room, action, { now: i }).room;
     }

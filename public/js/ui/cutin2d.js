@@ -286,7 +286,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       tag: tagLabel(a, { tones: pres().tones, tileTypes: getMeta()?.board?.tileTypes, routes: getMeta()?.board?.routes }),
       who: name ? `${name}${sceneLabel(scene) ? ` · ${sceneLabel(scene)}` : ''}` : sceneLabel(scene),
       text: texts,
-      line: a.line ?? null,
+      line: holiday ? null : a.line ?? null, // 명절 정산: nobody on stage (the 화투 row fills the window)
       speaker: g.charId ?? cast[0]?.char.id ?? null,
       chips,
       cast,

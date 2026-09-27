@@ -618,3 +618,102 @@
 - Debug (`?debug=1`): `window.__game` = the game UI (`render`, `onEvents`, `renderResult`, `room` = display room).
 - E2E: session scratchpad `s6b/` (`inject.cjs` injected Stage 6 state, `SHIM=1` fakes `/api/meta.jobs/news` for a server
   without them; screenshots `s6b-*.png`).
+
+## Stage 7 — cards, items, interaction (server)
+- Manual asset import (the user draws in the Gemini app, no API): `assets-inbox/<asset id>.png|jpg|jpeg|webp` (gitignored
+  except its README) → `node scripts/import-assets.js [--dir assets-inbox] [--only id[,id]] [--dry-run] [--keep]` =
+  `importAssets({dir, only, dryRun, keep, manifestPath, outputDir, dataDir, studio, log})` → `studio.upload(id, buf,
+  {process: true, watermark: true})` (item postprocess, accepted `source: 'upload'`), inbox file deleted unless `--keep`,
+  Korean summary per file (output size, % transparent for keyed kinds, warnings: small source upscaled, aspect far off,
+  almost no / almost all transparency). Unknown id / kind part / sprite → skipped, exit 1. The studio gets a client that
+  refuses API calls. `watermark: true`: kind bg/anchor are flattened (never letterboxed) and cropped ~4 % right+bottom
+  (`cropWatermark`) before the cover resize; `chromaKey`/`whiteToAlpha({watermark})` sample the backdrop from 3 corners
+  (`sampleBackground({corners: 3})`) and `clearCornerIslands` removes an isolated island inside the bottom-right box
+  (`WATERMARK_BOX` seed 10 % / fit 16 %; defaults unchanged for every other caller).
+- Manifest kinds `card` (meta.card = cards.json id) and `item` (meta.item) — icon pipeline (`whiteToAlpha, trim,
+  resize:256x256` → png). New ids (status todo): `bg-stage bg-stadium bg-gym bg-army bg-campus bg-kitchen bg-police bg-lab
+  bg-space bg-shop bg-holiday` (meta.scene), `card-<id with _→->` ×16 (`cards/<…>.png`), `item-<…>` ×6 (`items/<…>.png`),
+  `icon-job-<…>` ×23 (`icons/jobs/<…>.png`, meta.job). Scenes: presentation `SCENES` + tones.json `scenes` have the 11 new
+  scenes; `tones.json.sceneFallbacks` maps each to one of the 5 original scenes (the client draws the fallback until the bg
+  is accepted; a test enforces that). jobs.json scenes: stage (idol actor comedian esports trot_star national_mc),
+  stadium (baseball soccer), gym (fighter), kitchen (chef), police, lab (researcher), space (astronaut); tagScenes
+  military/military_end → army, graduation → campus (educationChanged scene campus).
+- Data: `cards.json` `{handLimit 5, eraScale, cards[{id, name, icon, kind instant|passive|sabotage, desc, price, weight,
+  jobOnly?, effect}]}` (16 fixed ids), `items.json` `{items[{id, name, icon, desc, price, resale, stats?, effect}]}` (6),
+  `holidays.json` (eras, kinds seol/chuseok, names/icons, sebae ranges per era, nagging, stakes × stakeScale, hwatu 1..10),
+  `balance.json` `lotto {pool 20, pick 3, prizes {3:1000, 2:100, 1:10}, keepDraws}`, `shop {cards 2, items 1}`, `trades
+  {ttlMs 60000, maxMoney}`; `gameData().cards/items/holidays` (`getCards/getItems/getHolidays`); `/api/meta` adds `cards`,
+  `items`, `holidays`, `balance.lotto|shop|trades`. events.json: `card` reward on 6 events. Board: card tiles in elem/
+  middle/high (habit 2 / card 2), every route (career 2), senior (card 2, shop 1); shop on the money route (2); card/shop
+  left `placeholders`.
+- Modules: `server/game/cards.js` (hands, passive helpers, spin mods, `useCard`, card tile, `shop` prompt, trades, gifts),
+  `server/game/holidays.js` (era openings, lotto, `holiday` prompt). `assertOwner` moved to effects.js.
+- Character (public): `cards [{uid, id}]` (uid `k<seq>` from `room.nextCardSeq`; hand limit → the oldest is discarded with
+  a log, `cardGained.discarded`), `items [itemId]` (one each), `spinMods [{kind: plus|minus|max2|min2, value?, by?, card}]`
+  (applied + cleared at the next spin), `lastTargetedBy {attackerId: round}`. Room: `nextCardSeq`, `nextTradeSeq`,
+  `trades [{id 't<seq>', fromId, toId, give, want, createdAt, expiresAt}]` (sides `{money}` | `{cardUid, cardId}`),
+  `holidayCount`, `holidays {eraId: seol|chuseok}`, `lotto {draws [{eraId, numbers, entries, at}]}`, `erasOpened [eraId]`,
+  `eraQueue`; config `holidays` (bool, default true, validated "명절 대잔치 값은 true/false여야 합니다."). `turn.cardUsed`.
+  `viewFor` adds `trades`, `holidays`, `lotto` (hands/items/trades are open information; nothing new is masked).
+  `ensureCards` / `ensureRoomCards` migrate older saves (eras already reached count as opened).
+- Actions (`POST /api/rooms/:id/actions`, spectators 403, owner via actor): `useCard {characterId, cardUid, targetId?}` —
+  current character, awaitSpin without a prompt, 1 per turn, passive → 409, `jobOnly` (pledge = politician) → 409, sabotage
+  needs another unfinished target (400 missing/self, 409 finished) not sabotaged by you this or last round
+  (`lastTargetedBy[you] ≥ round − 1` → 409); target's `lawyer` blocks it (both consumed → `cardBlocked`, no `cardUsed`).
+  `offerTrade {characterId, toId, give, want}` (one side = exactly one of money (int > 0) | cardUid; not money↔money; own
+  characters / CPU / finished refused; one open offer per character; give cash / both cards checked), `respondTrade
+  {characterId (target), tradeId, accept: bool}` (re-validated → `tradeResolved {status: 'cancelled', reason: 'invalid'}`
+  when a side is gone), `cancelTrade {characterId (offerer), tradeId}`, `gift {characterId, toId, money? | cardUid?}`
+  (immediate, own characters allowed → `gift.family`), `expireTrades` (system/admin; runner). Offers expire before every
+  action at `now ≥ expiresAt` (60 s), when the offerer's turn starts and when either side finishes (`tradeResolved expired`);
+  game end clears them. Trades/gifts never change phase/pending. `GameRunner.deadlineOf` returns `{kind: 'trades'}` when
+  the earliest `expiresAt` comes before the prompt/spin deadline → dispatches `expireTrades`. `choose` refuses an option
+  with `disabled: true` (409 "지금은 고를 수 없는 선택지예요.").
+- Card effects: study int+1, insider charm+1, energy `plus 2`, taxi `max2` (second roll, keep the higher), pledge = every
+  other unfinished character pays `donation × eraScale[era]` (≤ their cash); passive (auto, `cardUsed {auto: true}`):
+  bonus (next salary ×2 in `paySalary`), insurance (`applyLoss`: loss tiles, bad events, tax, fines → halved once),
+  amulet (`tryAmulet`: cancels an injury roll or a bad event tile, `cancelled: 'injury'|'badEvent'`), lotto (ticket),
+  coupon (next shop purchase 50 %), lawyer (blocks one sabotage); sabotage: cut_line `minus 3` (move ≥ 1), noise `min2`,
+  tax_audit 10 % of cash ≤ 300 (via applyLoss), complaint (job → exp −2, else fine 30 × eraScale), gossip charm −1.
+  Spin: `applySpinMods` → `spun {value (roulette result, bets resolve on it), steps? (move when ≠ value), rolls? [a, b],
+  mods? [...], car?, halved? (military only)}`; 경차 turns a move of 1 into 2.
+- Tiles: `card` → one weighted card (`drawableCards`: job-only cards only for that job) → `cardGained {source: 'tile'}`;
+  `shop` → prompt `shop` (single): options `buy:0..2` (2 cards + 1 unowned item; `{price, basePrice, cardId|itemId,
+  disabled?}`, desc names the coupon / shortage) + `leave` (default); item → `itemBought {charId, itemId, price}` (anchor,
+  stats via addStats reason 'item'), card → `cardGained {source: 'shop'}` + `promptResolved {result: 'card', cardId}`,
+  leave → `promptResolved {result: 'left'|'noMoney'}` (resultCutin 'auto'). Items: car (move 1 → 2), laptop (int +1,
+  +10 % salary for webtoonist/youtuber/esports via `itemSalaryMult`), gym_pass str +1, designer_bag charm +1 (resale 0.9),
+  lucky_cat luck +1, massage_chair (`guardStats`: no str loss from senior events). `computeRanking(room, {data})` rows add
+  `items` (Σ floor(price × resale)) and `total = money − debt + items`.
+- Era openings: the first entrant of an era (not the mode's first) queues it (`queueEraOpening` in `enterEra`, after
+  news/pension); `continueTurn` runs `runEraOpenings` whenever no prompt is open, before the current character's
+  `lifeStep`: ① lotto draw (holders of a `lotto` card use one each; 3 seeded numbers of 1..20 each, 3 drawn → `lottoDraw
+  {eraId, numbers, entries [{charId, numbers, matches, prize}]}` + moneyChanged `lotto`; skipped without tickets; exact EV
+  `lottoExpectedValue` 8.93 < price 20) ② holiday (eras middle/young/middle_age/senior, config on, once per era,
+  seol/chuseok alternate by `holidayCount`) → `holidayStarted {eraId, kind, name}` + ONE simultaneous prompt `holiday`
+  (all unfinished characters, 40 s, options `pass` (default) | `small` | `big` with `stake` = stakes × stakeScale[era]).
+  Resolution → `holidayResult {eraId, kind, name, results [{charId, sebae, nagging {stat, delta, line}, stake, card, won,
+  line, lineTag}], pot, winners}` then moneyChanged (`sebae`, `gostop`) / statChanged (`nagging`): ① 세뱃돈 roulette
+  (kids eras +, adult eras − never into debt) ② 잔소리 (random stat ±1) ③ 고스톱: stakers (stake ≤ cash, ≥ 2 of them) draw
+  1..10; each loser pays min(own stake, top winner stake), tied winners split (floor, remainder to the first) → Σ won = 0.
+- Events (all in `EVENT_TYPES`): `cardGained {charId, cardId, uid, source: tile|shop|event|trade|gift, discarded?, from?}`,
+  `cardUsed {charId, cardId, uid, cardKind, targetId?, auto?, cancelled?}` (+ `targetLine` from pool `sabotaged` on
+  sabotage), `cardBlocked {charId (attacker), targetId, cardId, uid, lawyerUid}`, `itemBought`, `tradeOffered {tradeId,
+  fromId, toId, give, want, expiresAt}`, `tradeResolved {tradeId, fromId, toId, status: accepted|rejected|expired|
+  cancelled, reason?, give?, want?}`, `gift {fromId, toId, charId (= fromId), money? | cardId + uid, family}`,
+  `holidayStarted`, `holidayResult`, `lottoDraw`. Cut-in anchors: `cardBlocked itemBought holidayStarted holidayResult
+  lottoDraw` + `cardUsed` only for sabotage / pledge (`isCutinCardUse`; also a follow-up boundary via `isBoundary`);
+  cardGained / passive cardUsed are chips, gift / trade* banners. Line tags: card, card_use, sabotage, sabotaged, blocked,
+  shop, shop_buy, holiday, holiday_sebae, holiday_nagging, gostop_win, gostop_lose, lotto_win, lotto_lose, gift,
+  gift_send, trade (placeholders + `{target} {card} {item} {holiday}`). Scenes: shop/itemBought/lotto → shop, holiday* →
+  holiday. MC situations (mc.json + lines.json pools): sabotage, blocked, shopping (minor), holiday (big, studio on
+  holidayStarted), lotto (big, studio on lottoDraw), gift (minor); passive triggers stay quiet.
+- Simulation (`scripts/simulate.js`, exports `playableCards`, `randomCardAction`; `simulateBias({cards = true})`): random
+  card play 50 %, random enabled options, rare gifts / trade offers; prints the Stage 7 block (cards per character by
+  source, hand vs auto, sabotage count / target net-worth rank / blocks, shop purchase rate, items, holiday pot + Σ won,
+  sebae flow, lotto payout vs EV vs price, gifts, trade outcomes).
+- Tests: `test/stage7-import.test.js` (importer, watermark keying), `test/stage7-cards.test.js` (data, useCard rules, every
+  card effect, spin mods, passive cards, hand limit, shop, items, ranking), `test/stage7-social.test.js` (trades incl.
+  expiry / runner deadline / re-validation, gifts, holidays incl. pot conservation / ties / config, lotto EV + draws,
+  presentation + MC, a random lifetime game, restore + migration, HTTP). `test/helpers.js` `makeRoom` sets
+  `holidays: false` so pre-Stage-7 rule tests keep their flow; Stage 7 tests turn it on.

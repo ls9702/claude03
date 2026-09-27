@@ -526,7 +526,7 @@ test('full random lifetime games: every event type / line tag is known; no unfil
     for (let i = 0; i < 2000 && room.status === 'playing'; i++) {
       const p = room.turn.pending;
       const action = p
-        ? { type: 'choose', characterId: p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)), promptId: p.promptId, optionId: p.options[(seed + i) % p.options.length].id }
+        ? { type: 'choose', characterId: p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)), promptId: p.promptId, optionId: ((o) => o[(seed + i) % o.length].id)(p.options.filter((x) => !x.disabled)) }
         : { type: 'spin', characterId: cur(room) };
       const r = applyAction(room, action, { now: i });
       room = r.room;

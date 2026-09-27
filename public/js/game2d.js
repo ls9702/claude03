@@ -773,6 +773,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     ui.cardSheet = null;
     el.cardsheet.hidden = true;
     el.cardsheet.innerHTML = '';
+    el.cardsheet.dataset.html = '';
   }
 
   /** Card detail sheet: art, kind, effect, 「사용」 (+ target picker for sabotage cards). Re-rendered on state changes. */
@@ -808,7 +809,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     }
     const ready = pl.playable && (!pl.needsTarget || !!cs.targetId);
     const reason = pl.reason ?? (pl.needsTarget && !cs.targetId ? '대상을 고르세요.' : '');
-    el.cardsheet.innerHTML = `<div class="g-sheet card-sheet k-${esc(info.kind)}">
+    const html = `<div class="g-sheet card-sheet k-${esc(info.kind)}">
       <div class="cs-top">${cardHtml(card, { art: artFor('card', card.id), meta, tag: 'div', cls: 'big' })}
         <div class="cs-info"><span class="cs-kind" style="--kc:${kind.color}">${esc(kind.label)} 카드</span><h2>${esc(info.icon)} ${esc(info.name)}</h2><p>${esc(info.desc)}</p>${
           info.jobOnly ? `<p class="small muted">💼 ${esc(jobInfo(info.jobOnly, meta?.jobs)?.name ?? info.jobOnly)} 전용</p>` : ''
@@ -818,8 +819,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       <div class="cs-actions"><button type="button" class="btn ghost" data-sheet-close>닫기</button>${
         info.kind === 'passive' ? '' : `<button type="button" class="btn primary" data-card-use${ready ? '' : ' disabled'}>${info.kind === 'sabotage' ? '💢 뒤통수 치기' : '✨ 사용'}</button>`
       }</div></div>`;
-    hydratePortraits(el.cardsheet);
     el.cardsheet.hidden = false;
+    if (el.cardsheet.dataset.html === html) return; // unchanged → keep focus / portraits
+    el.cardsheet.innerHTML = html;
+    el.cardsheet.dataset.html = html;
+    hydratePortraits(el.cardsheet);
   }
 
   async function useCard() {

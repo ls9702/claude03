@@ -80,7 +80,7 @@ test('actions endpoint: start → spin/choose loop → finished (HTTP + SSE)', a
     let r;
     if (p) {
       const cid = p.forCharacterIds.find((x) => !p.answered.includes(x));
-      r = await call('POST', `/api/rooms/${id}/actions`, { token: tokenOf[cid], body: { type: 'choose', characterId: cid, promptId: p.promptId, optionId: p.options[0].id } });
+      r = await call('POST', `/api/rooms/${id}/actions`, { token: tokenOf[cid], body: { type: 'choose', characterId: cid, promptId: p.promptId, optionId: p.options.find((o) => !o.disabled).id } });
       chose++;
     } else {
       const cid = room.turn.order[room.turn.currentIndex];
