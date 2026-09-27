@@ -86,6 +86,9 @@ export function viewFor(room, sessionId = null) {
     trades: structuredClone(room.trades ?? []),
     holidays: structuredClone(room.holidays ?? {}),
     lotto: structuredClone(room.lotto ?? { draws: [] }),
+    // Stage 8: love / spouse / children / house are on the characters (public); owners per house + 노년 시세
+    houseOwners: structuredClone(room.houseOwners ?? {}),
+    housingMarket: structuredClone(room.housingMarket ?? null),
     result: room.result ? structuredClone(room.result) : null,
     log: room.log.slice(-50),
     createdAt: room.createdAt,

@@ -9,7 +9,7 @@ import {
   setSavedName,
   setSavedRoomId,
 } from './api.js';
-import { NAME_MAX, nameFits } from './format.js';
+import { NAME_MAX, nameFits, cpuBadgeHtml } from './format.js';
 import { bindNameInput } from './ui/nameInput.js';
 import { createGameUI } from './game2d.js';
 import { hydratePortraits, portraitHtml, setAvatarDefs } from './ui/avatar2d.js';
@@ -165,7 +165,7 @@ function charCard(c, { mine = false } = {}) {
     <div class="char-card${c.isMe ? ' mine' : ''}${state.seenChars.has(c.id) ? '' : ' pop'}" data-id="${esc(c.id)}">
       <div class="portrait">${portraitHtml(c, { size: 72, crop: 'bust' })}</div>
       <div class="char-name">${esc(c.name)}</div>
-      ${mine ? '' : `<div class="char-owner">${esc(c.ownerName)}${c.isMe ? ' (나)' : ''}</div>`}
+      ${mine ? '' : `<div class="char-owner">${esc(c.ownerName)}${cpuBadgeHtml(c)}${c.isMe ? ' (나)' : ''}</div>`}
       ${
         mine
           ? `<div class="char-actions">
@@ -262,6 +262,7 @@ function renderLobby(room) {
     : '<p class="muted">내 캐릭터를 만들어 보세요. 여러 명을 조종할 수 있어요!</p>';
   hydratePortraits($('#char-grid'));
   hydratePortraits($('#my-chars'));
+  renderCpuTools(room);
   for (const c of room.characters) state.seenChars.add(c.id);
   $('#sheet-title').textContent = `내 캐릭터 (${mine.length})`;
   // Mobile: open the bottom sheet once when I have no characters yet (players only).
@@ -289,6 +290,46 @@ function renderLobby(room) {
 
   // Editing a character that no longer exists → close the editor.
   if (state.customizer?.charId && !room.characters.some((c) => c.id === state.customizer.charId)) closeCustomizer();
+}
+
+// Stage 9-C: the host (first joined player) adds / removes CPU characters in rooms created with 「CPU 허용」.
+function renderCpuTools(room) {
+  let box = $('#cpu-tools');
+  const host = playersOnly(room)[0];
+  const on = room.status === 'lobby' && room.config.allowCpu && !!host?.isMe && !isSpectator(room);
+  if (!on) {
+    if (box) box.hidden = true;
+    return;
+  }
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'cpu-tools';
+    box.className = 'cpu-tools';
+    $('#char-grid').after(box);
+    box.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('[data-cpu]');
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      try {
+        const res =
+          btn.dataset.cpu === 'add'
+            ? await api('POST', `/api/rooms/${state.room.id}/cpu`, {})
+            : await api('DELETE', `/api/rooms/${state.room.id}/cpu/${btn.dataset.cpu}`);
+        state.room = res.room;
+        render();
+      } catch (err) {
+        toast(err.message || 'CPU를 바꾸지 못했어요.', 'error');
+        btn.disabled = false;
+      }
+    });
+  }
+  box.hidden = false;
+  const cpus = room.characters.filter((c) => c.ownerId === 'cpu');
+  const full = room.characters.length >= room.config.maxCharacters;
+  box.innerHTML = `
+    ${cpus.map((c) => `<button class="btn tiny ghost" type="button" data-cpu="${esc(c.id)}" title="CPU 빼기">🤖 ${esc(c.name)} ✕</button>`).join(' ')}
+    <button class="btn tiny" type="button" data-cpu="add" ${full ? 'disabled' : ''}>🤖 CPU 추가</button>
+    <small class="muted">방장만 CPU를 넣고 뺄 수 있어요</small>`;
 }
 
 function closeCustomizer() {

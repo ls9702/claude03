@@ -59,3 +59,9 @@ export function clockBounds(prev, { date, sentAt, receivedAt }) {
 
 /** Whole seconds left until a server deadline (ms epoch). */
 export const secondsLeft = (deadlineAt, now = Date.now(), offset = 0) => Math.max(0, Math.ceil((Number(deadlineAt) - (now + offset)) / 1000));
+
+// ---------- CPU players (Stage 9-C, feature-detected) ----------
+/** A CPU-controlled character (`character.cpu` or owner id 'cpu'). */
+export const isCpu = (c) => !!c && (c.cpu === true || (c.cpu && typeof c.cpu === 'object') || c.ownerId === 'cpu');
+/** Small 「🤖 CPU」 badge markup after an owner name ('' for human players). */
+export const cpuBadgeHtml = (c) => (isCpu(c) ? ' <span class="cpu-badge" title="컴퓨터 플레이어">🤖 CPU</span>' : '');

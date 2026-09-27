@@ -14261,6 +14261,52 @@
       }
     },
     {
+      "id": "bg-park",
+      "kind": "bg",
+      "label": "컷인 배경 · 공원 데이트",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a romantic Korean city park in spring for a date: cherry blossom trees with pink petals falling, a winding path, a wooden bench, a small pond with a bridge, string lights, soft golden sunset sky. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/park.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "park"
+      }
+    },
+    {
+      "id": "bg-house",
+      "kind": "bg",
+      "label": "컷인 배경 · 우리 집",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a bright cozy modern Korean apartment living room right after moving in: big window with a city view, a sofa, a few unopened moving boxes, a potted plant, a housewarming cake on a low table, warm sunlight. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/house.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "house"
+      }
+    },
+    {
       "id": "card-study",
       "kind": "card",
       "label": "카드 · 스터디 모임",

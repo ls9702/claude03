@@ -213,25 +213,28 @@ test('MC frequency: many ≥ normal ≥ few for optional appearances; cooldown s
 test('MC guard: placeholder tiles (heart/treasure/…) never produce marriage/treasure celebrations; job MC only on real hires', () => {
   const r = started({ mcFrequency: 'many' });
   const placeholders = Object.keys(gameData().board.placeholders);
-  assert.ok(placeholders.includes('heart') && placeholders.includes('treasure'));
+  assert.ok(placeholders.includes('treasure'));
   assert.ok(!placeholders.includes('job'), 'Stage 6: job tiles are live');
+  assert.ok(!placeholders.includes('heart') && !placeholders.includes('house'), 'Stage 8: heart / house tiles are live');
   const c = r.room.characters[0].id;
   // even if tileSituations maps them again later, a tile type still listed as a placeholder stays quiet
   const data = { ...gameData(), mc: { ...mc, tileSituations: { heart: 'marriage', treasure: 'treasure' } } };
   for (const seed of [1, 2, 3, 4, 5]) {
-    for (const tileType of [...placeholders, 'job']) {
+    for (const tileType of [...placeholders, 'job', 'heart', 'house']) {
       const room = structuredClone(r.room);
       room.mcState = { cool: 0, eras: ['baby'], firstSpin: true };
       const events = [{ type: 'landed', charId: c, tileType, tileId: `x-${tileType}` }, { type: 'log', text: '준비 중', tone: 'info', charId: c }];
-      attachMc(events, { room, data: tileType === 'job' ? gameData() : data, seed });
-      assert.ok(!['marriage', 'job', 'treasure', 'birth', 'promotion'].includes(events[0].mcKey), `${tileType} → ${events[0].mcKey}`);
+      attachMc(events, { room, data: placeholders.includes(tileType) ? data : gameData(), seed });
+      assert.ok(!['marriage', 'job', 'treasure', 'birth', 'promotion', 'house', 'market'].includes(events[0].mcKey), `${tileType} → ${events[0].mcKey}`);
     }
   }
-  // full games: no marriage/treasure/birth while those systems are placeholders; 'job' only on a real hire
+  // full games: no treasure while it is a placeholder; 'job' only on a real hire; Stage 8 MC only on real outcomes
   for (const seed of [2, 4]) {
     const events = playAll({ seed, mode: 'adult', mcFrequency: 'many' }).events;
     const keys = events.map((e) => e.mcKey).filter(Boolean);
-    assert.ok(!keys.some((k) => ['marriage', 'treasure', 'birth'].includes(k)), keys.join(','));
+    assert.ok(!keys.includes('treasure'), keys.join(','));
+    const origin = { marriage: 'married', birth: 'childBorn', house: 'houseBought', market: 'houseValueChanged', proposeFail: 'proposed', schoolMeet: 'schoolMeet' };
+    for (const e of events.filter((x) => origin[x.mcKey])) assert.equal(e.type, origin[e.mcKey], e.mcKey);
     for (const e of events.filter((x) => x.mcKey === 'job')) assert.deepEqual([e.type, e.reason], ['jobChanged', 'hire']);
     for (const e of events.filter((x) => x.mcKey === 'promotion')) assert.equal(e.type, 'rankUp');
   }

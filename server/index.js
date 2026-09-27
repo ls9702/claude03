@@ -92,6 +92,7 @@ export async function startServer({
   assets,
   charArtFake = config.CHAR_ART_FAKE,
   rate = {},
+  cpuDelayMs, // Stage 9-C: CPU pacing (ms number or {spin, prompt, trade}); default CPU_DELAY_MS
 } = {}) {
   configureSharpForServer(); // low-memory libvips settings (AI art / studio run inside the server)
   const pw = resolveAdminPassword(dataDir, adminPassword);
@@ -100,7 +101,7 @@ export async function startServer({
   const store = new RoomStore({ dataDir, debounceMs, log });
   await store.load();
   store.startPruning(); // player sessions: TTL 7 days unless still in a room (also pruned at load)
-  const runner = new GameRunner(store, { log });
+  const runner = new GameRunner(store, { log, ...(cpuDelayMs != null ? { cpuDelayMs } : {}) });
   runner.restore(); // re-arm prompt deadline timers of restored rooms
   let assetOpts = { log, ...assets };
   if (charArtFake && !assetOpts.studio && !assetOpts.studioOptions?.fetchImpl) {

@@ -13,7 +13,7 @@
 import { DEFAULT_ERA_OUTFITS, eraOutfitTable } from './growth.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
-const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 
 /** Contract fallback of partners.json `traits` (stat keys). */
 export const DEFAULT_TRAITS = Object.freeze({
@@ -158,7 +158,7 @@ export function houseInfo(id, meta) {
     icon: d.icon ?? '🏠',
     price: num(d.price),
     value: num(d.value),
-    capacity: num(d.capacity) ?? 1,
+    capacity: d.capacity === null ? 0 : num(d.capacity) ?? 1, // null / 0 = many owners (아파트)
     lucky: !!d.lucky,
     desc: d.desc ?? '',
     known: !!def,
@@ -184,8 +184,10 @@ export function houseOf(character, meta) {
   return { ...info, price, value, boughtTurn: num(h.boughtTurn), swaps: num(character.houseSwaps) ?? 0, gain: price != null && value != null ? value - price : 0 };
 }
 
-/** Owners (character ids) of a 매물 in the room. */
+/** Owners (character ids) of a 매물 in the room (`room.houseOwners {houseId: [charId]}` when present, else derived). */
 export function houseOwners(room, houseId) {
+  const map = room?.houseOwners;
+  if (isObj(map) && Array.isArray(map[houseId])) return [...map[houseId]];
   return (room?.characters ?? []).filter((c) => c?.house?.id === houseId).map((c) => c.id);
 }
 
@@ -271,7 +273,8 @@ export function familyCast(g, characters = [], { avatars = null } = {}) {
       if (isObj(a.child)) childEntry(a.child, 'baby', { pose: 'jump', emotion: 'joy' });
       break;
     case 'childGrew': {
-      const child = (Array.isArray(c?.children) ? c.children : []).find((k) => k.id === a.childId) ?? (isObj(a.child) ? a.child : null);
+      // the event's copy first (the state may already be further on)
+      const child = (isObj(a.child) ? a.child : null) ?? (Array.isArray(c?.children) ? c.children : []).find((k) => k.id === a.childId) ?? null;
       if (child) childEntry(child, a.stage ?? child.stage, { pose: 'cheer', emotion: 'joy', glyph: a.kind === 'dol' ? '🎂' : a.kind === 'exam' ? '📝' : a.kind === 'job' ? '💼' : null });
       break;
     }
@@ -298,7 +301,7 @@ export function schoolMeetPairs(a, characters = [], meta = null) {
     .filter(Boolean);
 }
 
-/** 💌 wedding gift rows: [{fromId, name, amount}] (+ total). */
+/** 💌 wedding / 돌잔치 gift rows: [{fromId, name, amount}] (+ total). */
 export function weddingGifts(a, characters = []) {
   const rows = (Array.isArray(a?.gifts) ? a.gifts : [])
     .filter((g) => Number(g?.amount) > 0)
@@ -324,7 +327,7 @@ export function chancePct(v) {
   return Math.max(0, Math.min(100, Math.round(n <= 1 ? n * 100 : n)));
 }
 
-const isPass = (o) => o?.id === 'pass' || o?.id === 'wait' || o?.id === 'leave' || o?.id === 'skip';
+const isPass = (o) => o?.id === 'pass' || o?.id === 'wait' || o?.id === 'leave' || o?.id === 'skip' || o?.id === 'steady';
 
 /**
  * 만남 prompt: candidate cards. The spec comes from the option (`partner` / `avatar`), else `character.love.candidates`
@@ -350,18 +353,21 @@ export function meetOptions(p, { character = null, meta = null } = {}) {
   return { candidates, pass };
 }
 
-/** 데이트 prompt: [{option, cost, gain, free}] (cost = `cost ?? price`, gain = `gain ?? affection`). */
+/** 데이트 prompt: [{option, cost, gain, free, match}] (cost = `cost ?? price`, gain = `gain ?? affection`). */
 export function dateOptions(p) {
   return (p?.options ?? []).map((o) => {
     const cost = num(o.cost ?? o.price) ?? 0;
     const gain = num(o.gain ?? o.affection ?? o.affectionGain);
-    return { option: o, cost, gain, free: cost <= 0, pass: isPass(o) };
+    return { option: o, cost, gain, free: cost <= 0, pass: isPass(o), match: !!o.match };
   });
 }
 
-/** 프러포즈 prompt: [{option, chance (0..100 | null), propose}]. */
+/** 프러포즈 prompt: [{option, chance (0..100 | null; only for the propose option), propose}]. */
 export function proposeOptions(p) {
-  return (p?.options ?? []).map((o) => ({ option: o, chance: chancePct(o.chance), propose: o.id === 'propose' || (!isPass(o) && o.chance != null) }));
+  return (p?.options ?? []).map((o) => {
+    const propose = o.id === 'propose' || (!isPass(o) && Number(o.chance) > 0);
+    return { option: o, chance: propose ? chancePct(o.chance ?? p?.context?.chance) : null, propose };
+  });
 }
 
 /**
@@ -380,12 +386,18 @@ export function houseOptions(p, { room = null, meta = null, character = null } =
     const house = houseInfo(houseId, meta);
     const price = num(o.price) ?? house.price ?? 0;
     const tradeIn = num(o.tradeIn) ?? 0;
-    const discount = num(o.discount) ?? 0;
+    const base = num(o.basePrice);
+    // 청약: `discount` when sent, else basePrice − price of a subscription win
+    const discount = num(o.discount) ?? (base != null && base > price && (o.subscription || o.discount == null) ? base - price : 0);
+    const lucky = !!(o.lucky ?? house.lucky);
+    const capacity = o.capacity === null ? 0 : num(o.capacity) ?? house.capacity;
     const owners = houseOwners(room, houseId)
       .filter((id) => id !== character?.id)
       .map((id) => room?.characters?.find((c) => c.id === id)?.name ?? '');
-    const full = house.capacity > 0 && owners.length >= house.capacity;
-    listings.push({ option: o, house, price, tradeIn, discount, net: Math.max(0, price - tradeIn), owners, full, disabled: !!o.disabled || full, reason: o.reason ?? (full ? '이미 팔린 매물이에요' : o.disabled ? o.desc || '살 수 없어요' : '') });
+    const full = capacity > 0 && owners.length >= capacity;
+    const net = num(o.cost) ?? Math.max(0, price - tradeIn);
+    const reason = o.reason ?? (full ? '이미 팔린 매물이에요' : o.disabled ? (/필요|부족/.test(String(o.desc ?? '')) ? `현금 ${net.toLocaleString('ko-KR')}만원 필요` : '살 수 없어요') : '');
+    listings.push({ option: o, house: { ...house, capacity, lucky }, price, basePrice: base, value: num(o.value) ?? house.value, tradeIn, discount, net, owners, full, disabled: !!o.disabled || full, reason });
   }
   return { listings, pass };
 }

@@ -509,7 +509,6 @@ export function offerTrade(tx, action) {
   if (!to) fail(404, '거래할 캐릭터를 찾을 수 없어요.');
   if (to.id === from.id) fail(400, '자기 자신과는 거래할 수 없어요.');
   if (to.ownerSessionId === from.ownerSessionId) fail(409, '내 캐릭터끼리는 거래할 수 없어요. 선물하기를 써 주세요.');
-  if (to.ownerSessionId === 'cpu') fail(409, 'CPU 캐릭터와는 거래할 수 없어요.');
   if (from.finished || to.finished) fail(409, '골인한 캐릭터는 거래할 수 없어요.');
   ensureCards(from);
   ensureCards(to);

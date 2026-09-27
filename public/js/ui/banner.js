@@ -26,7 +26,7 @@ export function createBanner(root, { getMeta = () => ({}) } = {}) {
     const tone = getMeta()?.presentation?.tones?.[spec.tone] ?? {};
     const color = spec.color ?? tone.colors?.tag ?? '#ea580c';
     const main = spec.cast?.find((m) => m.char.id === spec.speaker)?.char ?? spec.cast?.[0]?.char ?? null;
-    const line = (spec.text ?? []).find(Boolean) ?? spec.line ?? '';
+    const line = (spec.text ?? []).find(Boolean) ?? (spec.lottoText ?? spec.marketText ?? []).find(Boolean) ?? spec.line ?? '';
     const chips = (spec.chips ?? []).slice(0, 3);
     host.style.setProperty('--eb-tone', color);
     host.dataset.tone = spec.tone ?? 'neutral';

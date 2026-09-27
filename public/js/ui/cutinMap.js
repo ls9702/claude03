@@ -93,13 +93,25 @@ export const STAGE7_LONE = new Set(['cardGained', 'gift', 'tradeResolved', 'card
 
 /** `cardUsed` that is a cut-in anchor: sabotage (has a target) or 공약, or flagged by the server. */
 export const isCardAnchor = (e) => e?.type === 'cardUsed' && !e.auto && (e.cardKind === 'sabotage' || !!e.targetId || ANCHOR_CARDS.has(e.cardId));
-const isAnchor = (e) => !!e && e.type !== 'prompt' && (e.cutin || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || isCardAnchor(e));
+
+/**
+ * Stage 8 cut-in anchors (always anchors): 만남, 데이트, 프러포즈, 결혼식, 고교 첫 만남, 출산, 집 구매, 부동산 시세;
+ * `childGrew` only for 돌잔치 / 수능 / 취업 (입학 = a chip). `dated` is an anchor too (minor: a banner for others).
+ */
+export const STAGE8_ANCHORS = new Set(['met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged']);
+/** childGrew kinds that open a cut-in. */
+export const CHILD_GROW_ANCHORS = new Set(['dol', 'exam', 'job']);
+export const isFamilyAnchor = (e) => STAGE8_ANCHORS.has(e?.type) || (e?.type === 'childGrew' && CHILD_GROW_ANCHORS.has(e.kind));
+const isAnchor = (e) => !!e && e.type !== 'prompt' && (e.cutin || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind));
 
 /** Follow-ups stop at these (they start their own step / group). */
 const BOUNDARY = new Set([
   'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
   'promptResolved', 'gameOver', 'betPlaced', ...STAGE6_ANCHORS, ...STAGE7_ANCHORS, 'tradeOffered', 'tradeResolved',
+  ...STAGE8_ANCHORS,
 ]);
+/** Stage 8: childGrew dol / exam / job are boundaries (their own cut-in); 입학 is a chip of the anchor before it. */
+const isBoundary = (e) => BOUNDARY.has(e?.type) || (e?.type === 'childGrew' && CHILD_GROW_ANCHORS.has(e.kind));
 
 const newsOf = (e) => ({ eraId: e.eraId, newsId: e.newsId, title: e.title, text: e.text, tone: e.tone });
 
@@ -119,7 +131,7 @@ export function planCutins(events = []) {
   const covered = new Set();
   const build = (i, a) => {
     const follow = [];
-    for (let j = i + 1; j < events.length && !BOUNDARY.has(events[j].type); j++) {
+    for (let j = i + 1; j < events.length && !isBoundary(events[j]); j++) {
       follow.push(events[j]);
       covered.add(j);
     }
@@ -134,6 +146,10 @@ export function planCutins(events = []) {
     // Stage 7 follow-ups → chips: cards gained / used (non-anchor), gifts
     const cards = follow.filter((e) => e.type === 'cardGained' || (e.type === 'cardUsed' && !isCardAnchor(e))).map((e) => ({ type: e.type, charId: e.charId, cardId: e.cardId, source: e.source ?? null }));
     const gifts = follow.filter((e) => e.type === 'gift').map((e) => ({ fromId: e.fromId, toId: e.toId, money: e.money ?? null, cardId: e.cardId ?? null }));
+    // Stage 8 follow-ups → chips: 용돈 (allowance), 집 보상판매 (houseSold), 자녀 입학 (childGrew school), 맞벌이 (salary.spouseAmount)
+    const family = follow
+      .filter((e) => e.type === 'allowance' || e.type === 'houseSold' || e.type === 'childGrew')
+      .map((e) => ({ type: e.type, charId: e.charId, childId: e.childId ?? null, kind: e.kind ?? null, stage: e.stage ?? null, amount: e.amount ?? e.price ?? e.value ?? null, houseId: e.houseId ?? null }));
     const involved = [];
     const add = (id) => id && !involved.includes(id) && involved.push(id);
     add(charId);
@@ -145,6 +161,8 @@ export function planCutins(events = []) {
     if (a.type === 'gameOver') for (const r of (a.ranking ?? []).slice(0, 3)) add(r.charId);
     if (a.type === 'holidayResult') for (const r of a.results ?? []) add(r.charId);
     if (a.type === 'lottoDraw') for (const r of a.entries ?? a.winners ?? []) add(r.charId);
+    if (a.type === 'schoolMeet') for (const pr of a.pairs ?? []) add(pr.charId);
+    if (a.type === 'married') for (const gf of a.gifts ?? []) add(gf.fromId);
     // Stage 5.6 MCs: a studio anchor (game start / first entry into an era) opens its own MC cut-in (`studio`);
     // the small MC corner of the event cut-in takes the anchor's lines, else the first follow-up's (e.g. pension).
     const mcFollow = follow.find((e) => e.mc?.length);
@@ -152,7 +170,7 @@ export function planCutins(events = []) {
     const mcEvents = [a.mc?.length ? a : null, mcFollow ?? null].filter(Boolean);
     const studio = a.mcStudio && a.mc?.length ? a.mc : null;
     const targetId = a.targetId ?? a.toId ?? null;
-    return { anchor: a, charId, targetId, texts, money, delta, involved: involved.slice(0, 3), mc, studio, mcEvents, stats, salary, discharged, cards, gifts, _i: i };
+    return { anchor: a, charId, targetId, texts, money, delta, involved: involved.slice(0, 3), mc, studio, mcEvents, stats, salary, discharged, cards, gifts, family, _i: i };
   };
   for (let i = 0; i < events.length; i++) {
     const a = events[i];
@@ -230,6 +248,27 @@ export function fallbackText(anchor, name = '') {
       return `${name}의 선물!`;
     case 'tradeResolved':
       return anchor.status === 'accepted' ? '거래 성사!' : '거래 불발…';
+    // Stage 8
+    case 'met':
+      return `${name}에게 새로운 인연이! 💘`;
+    case 'dated':
+      return `${name}의 두근두근 데이트 💑`;
+    case 'proposed':
+      return anchor.success ? `${name}의 프러포즈 대성공! 💍` : `${name}의 프러포즈… 거절당했어요 💔`;
+    case 'married':
+      return `${name} 결혼합니다! 💒`;
+    case 'schoolMeet':
+      return '고등학교에서 운명의 첫 만남! 🏫💘';
+    case 'childBorn':
+      return `${name}네 집에 아기가 태어났어요! 👶`;
+    case 'childGrew':
+      return anchor.kind === 'dol' ? '돌잔치 날! 돌잡이는 과연? 🎂' : anchor.kind === 'exam' ? '자녀의 수능 결과 발표! 📝' : anchor.kind === 'job' ? '자녀가 취업했어요! 💼' : `${name}네 아이가 자랐어요!`;
+    case 'houseBought':
+      return Number(anchor.tradeIn) > 0 ? `${name} 집 갈아타기 성공! 🏠` : `${name} 내 집 마련 성공! 🏠`;
+    case 'houseValueChanged': {
+      const m = Number(anchor.mult) || 1;
+      return m >= 1 ? `부동산 시세 급등! 집값이 ${Math.round((m - 1) * 100)}% 올랐어요 📈` : `부동산 시세 폭락… 집값이 ${Math.round((1 - m) * 100)}% 내렸어요 📉`;
+    }
     default:
       return anchor?.line ?? '';
   }
@@ -245,9 +284,10 @@ export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {
   else if (anchor?.type === 'finished') place = '골인';
   else if ((anchor?.type === 'gameOver' || anchor?.type === 'result') && anchor?.tone !== 'result') place = '결과 발표';
   else if (anchor?.type === 'prompt') return promptTag(anchor, tone);
-  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절' }[anchor.kind] ?? '결과';
+  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '만남', date: '데이트', propose: '프러포즈', house: '부동산' }[anchor.kind] ?? '결과';
   else if (STAGE6_TAGS[anchor?.type]) return STAGE6_TAGS[anchor.type](anchor);
   else if (STAGE7_TAGS[anchor?.type]) return STAGE7_TAGS[anchor.type](anchor);
+  else if (STAGE8_TAGS[anchor?.type]) return STAGE8_TAGS[anchor.type](anchor);
   // the tone label repeats the route name for routes ("💕 연애·육아 · 연애·육아 루트") → keep just the place
   if (place && tone.label && place.startsWith(tone.label)) return `${tone.icon ?? ''} ${place}`.trim();
   return `${tone.icon ?? ''} ${tone.label ?? ''}${place ? ` · ${place}` : ''}`.trim();
@@ -277,6 +317,19 @@ const STAGE7_TAGS = {
   cardGained: () => '🃏 카드 획득',
   gift: () => '🎁 선물',
   tradeResolved: (a) => (a.status === 'accepted' ? '🤝 거래 성사' : '🤝 거래 불발'),
+};
+
+/** Stage 8 anchors: own tag. */
+const STAGE8_TAGS = {
+  met: () => '💘 새로운 만남',
+  dated: () => '💑 데이트',
+  proposed: (a) => (a.success ? '💍 프러포즈 성공' : '💔 프러포즈 실패'),
+  married: () => '💒 결혼식',
+  schoolMeet: () => '🏫 고교 첫 만남',
+  childBorn: () => '👶 출산',
+  childGrew: (a) => ({ dol: '🎂 돌잔치', school: '🎒 초등 입학', exam: '📝 자녀 수능', job: '💼 자녀 취업' })[a.kind] ?? '🧒 자녀 성장',
+  houseBought: (a) => (Number(a.tradeIn) > 0 ? '🏠 집 갈아타기' : '🏠 내 집 마련'),
+  houseValueChanged: (a) => ((Number(a.mult) || 1) >= 1 ? '📈 부동산 시세 급등' : '📉 부동산 시세 폭락'),
 };
 
 /** Prompt tag = its title only (the tone label would repeat / contradict it: "💼 일·커리어 · 📝 수능 날"). */

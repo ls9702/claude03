@@ -8,6 +8,15 @@
 // holiday answers (disabled options skipped), rare random gifts and trade offers (accepted / rejected / left to
 // expire). Stage 7 report: cards gained / used per character, sabotage targets by rank, blocks, shop purchase
 // rate, items, holiday money flow (고스톱 pot conserved), lotto payout vs EV vs price.
+// Stage 8 policy: random enabled options (만남 / 데이트 / 프로포즈 / 부동산). Report: meets / dates / proposals, marriage
+// rate by route, children per character, genius share, spouse salary + allowance share of income, houses by type,
+// swaps, 청약 / lucky, the 노년 시세 draw and its effect, 건물주. `--family default` answers 만남 / 데이트 / 프로포즈 with
+// the prompt default (best candidate, matched date, propose) instead of randomly.
+//
+// Stage 9-C: `--policy cpu` plays every character with the CPU heuristics (server/game/cpu.js `cpuDecide`), `--policy
+// mixed` only the odd-numbered ones (the rest stay random) and prints the 1st-place share per policy. CPU-policy
+// characters never bet, offer trades or gift (they still answer offers). `scripts/cpu-game.js` has the fixed
+// 4 CPU + 4 random comparison.
 //
 //   node scripts/simulate.js --bias --games 2000 --seed 1
 // Turn-order bias check: 8-character lifetime games (default eraTurns, index order, random decisions, no
@@ -21,6 +30,7 @@ import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { createRng } from '../server/game/rng.js';
 import { lottoExpectedValue } from '../server/game/holidays.js';
+import { cpuDecide, cpuTradeAccept } from '../server/game/cpu.js';
 
 function arg(name, def) {
   const i = process.argv.indexOf(`--${name}`);
@@ -33,6 +43,10 @@ const GAMES = Number(arg('games', 200));
 const SEED = Number(arg('seed', 1));
 const VERBOSE = !!arg('verbose', false);
 const BIAS = !!arg('bias', false);
+const POLICY = String(arg('policy', 'random')); // random | cpu | mixed (Stage 9-C)
+if (!['random', 'cpu', 'mixed'].includes(POLICY)) throw new Error(`--policy random|cpu|mixed (got ${POLICY})`);
+/** Does this character play by the CPU heuristics? */
+const cpuPolicy = (c) => POLICY === 'cpu' || (POLICY === 'mixed' && (c?.seq ?? 0) % 2 === 1);
 const MAX_ACTIONS = 20000;
 
 const data = gameData();
@@ -41,8 +55,11 @@ const ERA_IDS = data.eras.eras.map((e) => e.id);
 const BET_PICKS = { oddEven: ['odd', 'even'], range: Object.keys(data.balance.bets.ranges) };
 const CARD_DEFS = new Map(data.cards.cards.map((d) => [d.id, d]));
 
+const FAMILY_POLICY = arg('family', 'random'); // Stage 8: 'default' = 만남 / 데이트 / 프로포즈 take the prompt's default
+const FAMILY_KINDS = new Set(['meet', 'date', 'propose']);
 /** A random answer among the enabled options. */
-const randomOption = (rng, p) => rng.pick(p.options.filter((o) => !o.disabled)).id;
+const randomOption = (rng, p) =>
+  FAMILY_POLICY === 'default' && FAMILY_KINDS.has(p.kind) ? p.defaultOptionId : rng.pick(p.options.filter((o) => !o.disabled)).id;
 
 /** Cards the current character may play now: [{card, def, targets|null}]. */
 export function playableCards(room, c) {
@@ -142,6 +159,7 @@ const stats = {
   careerChoice: {},
   military: {},
   finalRank: {},
+  policyWins: { cpu: 0, random: 0, games: 0, chars: { cpu: 0, random: 0 } }, // Stage 9-C (--policy mixed)
   news: {},
   rankUps: 0,
   injuries: 0,
@@ -169,6 +187,32 @@ const stats = {
     gifts: 0,
     trades: {}, // status → n
     offers: 0,
+  },
+  // Stage 8
+  s8: {
+    chars: 0, // lifetime + adult characters
+    schoolMeets: 0,
+    met: 0,
+    dates: 0,
+    proposals: 0,
+    proposeOk: 0,
+    married: 0,
+    marriedByRoute: {}, // `${era}:${route}` → [married, n]
+    weddingGifts: 0,
+    children: 0,
+    genius: 0,
+    grew: {}, // kind → n
+    income: { spouse: 0, allowance: 0, weddingGift: 0, dolGift: 0, childExam: 0, birthBonus: 0 },
+    houseVisits: 0,
+    houseBuys: 0,
+    swaps: 0,
+    subscription: 0,
+    lucky: 0,
+    finalHouses: {}, // houseId → n
+    houseValue: 0,
+    markets: [], // mult
+    marketDelta: 0, // Σ (after − before)
+    landlord: 0,
   },
 };
 const STAT_ORDER = ['int', 'str', 'charm', 'luck'];
@@ -253,6 +297,34 @@ function playGame(g) {
         }
       }
       if (ev.type === 'gift') s7.gifts++;
+      // Stage 8
+      const s8 = stats.s8;
+      if (room.config.mode !== 'kids') {
+        if (ev.type === 'moneyChanged' && ev.delta > 0) {
+          const key = { spouseSalary: 'spouse', allowance: 'allowance', weddingGift: 'weddingGift', dolGift: 'dolGift', childExam: 'childExam', birthBonus: 'birthBonus' }[ev.reason];
+          if (key) s8.income[key] += ev.delta;
+        }
+        if (ev.type === 'schoolMeet') s8.schoolMeets++;
+        if (ev.type === 'met') s8.met++;
+        if (ev.type === 'dated') s8.dates++;
+        if (ev.type === 'proposed') {
+          s8.proposals++;
+          if (ev.success) s8.proposeOk++;
+        }
+        if (ev.type === 'married') s8.weddingGifts += ev.total;
+        if (ev.type === 'childGrew') s8.grew[ev.kind] = (s8.grew[ev.kind] ?? 0) + 1;
+        if (ev.type === 'prompt' && ev.kind === 'house') s8.houseVisits++;
+        if (ev.type === 'houseBought') {
+          s8.houseBuys++;
+          if (ev.swap) s8.swaps++;
+          if (ev.subscription) s8.subscription++;
+          if (ev.lucky) s8.lucky++;
+        }
+        if (ev.type === 'houseValueChanged') {
+          s8.markets.push(ev.mult);
+          for (const ch of ev.changes) s8.marketDelta += ch.after - ch.before;
+        }
+      }
       if (ev.type === 'tradeOffered') s7.offers++;
       if (ev.type === 'tradeResolved') s7.trades[ev.status] = (s7.trades[ev.status] ?? 0) + 1;
       if (ev.type === 'finished' && ev.place === 1) {
@@ -274,15 +346,28 @@ function playGame(g) {
         continue;
       }
       const id = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
-      apply({ type: 'choose', characterId: id, promptId: p.promptId, optionId: randomOption(meta, p) });
+      if (cpuPolicy(room.characters.find((c) => c.id === id))) apply(cpuDecide(room, id, data));
+      else apply({ type: 'choose', characterId: id, promptId: p.promptId, optionId: randomOption(meta, p) });
       continue;
     }
     const cur = room.characters.find((c) => c.id === room.turn.order[room.turn.currentIndex]);
     // Stage 7: out-of-turn gifts / trades now and then, a card before the spin half of the time
     interact(() => room, meta, apply);
+    if (room.status !== 'playing') break;
+    if (cpuPolicy(cur)) {
+      // Stage 9-C: the CPU heuristics play a card (maybe) and spin
+      let a = cpuDecide(room, cur.id, data);
+      while (a && a.type !== 'spin' && room.status === 'playing') {
+        apply(a);
+        a = room.turn.pending ? null : cpuDecide(room, cur.id, data);
+      }
+      if (a) apply(a);
+      continue;
+    }
     const cardAction = randomCardAction(room, room.characters.find((c) => c.id === cur.id), meta);
     if (cardAction) apply(cardAction);
     for (const c of room.characters) {
+      if (cpuPolicy(c)) continue; // CPU-policy characters never bet
       if (c.ownerSessionId === cur.ownerSessionId || c.money < 5 || meta.next() > 0.3) continue;
       const kind = meta.pick(['oddEven', 'range']);
       apply({ type: 'bet', characterId: c.id, kind, pick: meta.pick(BET_PICKS[kind]), amount: meta.int(5, Math.min(20, c.money)) });
@@ -301,6 +386,25 @@ function playGame(g) {
   sp[1]++;
   if (mode === 'lifetime') stats.lifePrompts.chars += room.characters.length;
   const total = new Map(room.result.ranking.map((r) => [r.charId, r.total]));
+  if (mode !== 'kids') {
+    const s8 = stats.s8;
+    for (const c of room.characters) {
+      s8.chars++;
+      if (c.spouse) s8.married++;
+      s8.children += c.children.length;
+      s8.genius += c.children.filter((k) => k.talent === 'genius').length;
+      if (c.house) {
+        s8.finalHouses[c.house.id] = (s8.finalHouses[c.house.id] ?? 0) + 1;
+        s8.houseValue += c.house.value;
+      }
+      if (c.jobHistory.some((h) => h.id === 'landlord') || c.hiddenUnlocked.includes('landlord')) s8.landlord++;
+      for (const h of c.routeHistory) {
+        const b = (s8.marriedByRoute[`${h.era}:${h.route}`] ??= [0, 0]);
+        if (c.spouse) b[0]++;
+        b[1]++;
+      }
+    }
+  }
   for (const c of room.characters) {
     for (let i = 0; i < 4; i++) stats.finalStats[i] += c.stats[STAT_ORDER[i]];
     stats.finalStats[4]++;
@@ -352,6 +456,13 @@ function playGame(g) {
     slot[1]++;
   }
   if (ranking[0].place === 1) stats.winnerWasFirstFinisher++;
+  if (POLICY === 'mixed') {
+    const pw = stats.policyWins;
+    const winner = room.characters.find((c) => c.id === ranking[0].charId);
+    pw[cpuPolicy(winner) ? 'cpu' : 'random']++;
+    pw.games++;
+    for (const c of room.characters) pw.chars[cpuPolicy(c) ? 'cpu' : 'random']++;
+  }
   if (VERBOSE) console.log(`#${g} ${mode} chars=${room.characters.length} turns=${room.turn.turnNo} winner=${ranking[0].name} ${ranking[0].total}`);
 }
 
@@ -360,6 +471,7 @@ function interact(live, rng, apply) {
   const chars = live().characters;
   if (rng.next() < 0.02) {
     const from = rng.pick(chars);
+    if (cpuPolicy(from)) return interactAnswers(live, rng, apply);
     const to = rng.pick(chars.filter((x) => x.id !== from.id));
     if (from.cards.length && rng.next() < 0.5) apply({ type: 'gift', characterId: from.id, toId: to.id, cardUid: rng.pick(from.cards).uid });
     else if (from.money >= 10) apply({ type: 'gift', characterId: from.id, toId: to.id, money: rng.int(1, Math.max(1, Math.floor(from.money / 10))) });
@@ -367,6 +479,7 @@ function interact(live, rng, apply) {
   const r = live();
   if (rng.next() < 0.03 && r.status === 'playing') {
     const from = rng.pick(r.characters.filter((x) => !x.finished));
+    if (cpuPolicy(from)) return interactAnswers(live, rng, apply);
     const others = r.characters.filter((x) => !x.finished && x.ownerSessionId !== from?.ownerSessionId);
     if (from && others.length && !r.trades.some((t) => t.fromId === from.id)) {
       const to = rng.pick(others);
@@ -376,8 +489,17 @@ function interact(live, rng, apply) {
       if (give && want && !(give.money != null && want.money != null) && !(want.money != null && want.money > to.money)) apply({ type: 'offerTrade', characterId: from.id, toId: to.id, give, want });
     }
   }
+  interactAnswers(live, rng, apply);
+}
+
+/** Answers to open trade offers: CPU-policy targets decide by value at once, random ones accept / reject / wait. */
+function interactAnswers(live, rng, apply) {
   for (const t of [...(live().trades ?? [])]) {
     if (live().status !== 'playing' || !live().trades.some((x) => x.id === t.id)) continue;
+    if (cpuPolicy(live().characters.find((c) => c.id === t.toId))) {
+      apply({ type: 'respondTrade', characterId: t.toId, tradeId: t.id, accept: cpuTradeAccept(live(), t, data) });
+      continue;
+    }
     const x = rng.next();
     if (x < 0.25) apply({ type: 'respondTrade', characterId: t.toId, tradeId: t.id, accept: rng.next() < 0.6 });
     else if (x < 0.3) apply({ type: 'cancelTrade', characterId: t.fromId, tradeId: t.id });
@@ -389,7 +511,7 @@ function interact(live, rng, apply) {
  * characters, random decisions, no bets; Stage 7: random card plays unless `cards: false`, holidays on).
  * @returns {{games, winShare: number[], avgRank: number[], avgGoalPlace: number[]}} per turn position
  */
-export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true } = {}) {
+export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true, onGame = null } = {}) {
   const wins = Array(characters).fill(0);
   const rankSum = Array(characters).fill(0);
   const placeSum = Array(characters).fill(0);
@@ -419,6 +541,7 @@ export function simulateBias({ games = 500, seed = 1, characters = 8, data: simD
       room = applyAction(room, action, { now, ...(simData ? { data: simData } : {}) }).room;
       room.log = []; // the engine clones the room per action; the log is irrelevant here (≈10× faster)
     }
+    onGame?.(room, g);
     const pos = new Map(room.turn.order.map((id, i) => [id, i]));
     for (const r of room.result.ranking) {
       const i = pos.get(r.charId);
@@ -483,6 +606,7 @@ function mainRandom() {
   );
   console.log(`훈수 베팅 ${stats.bets.placed}건, 적중 ${pct(stats.bets.won, stats.bets.placed)} · 기초연금 ${stats.pensions}회 · 보너스 룰렛 ${stats.bonusSpins}회`);
   console.log(`프롬프트 ${JSON.stringify(stats.prompts)} · 타임아웃 ${stats.timeouts}회`);
+  if (POLICY !== 'random') console.log(`정책: ${POLICY}${POLICY === 'mixed' ? ` · 1위 비율 CPU ${pct(stats.policyWins.cpu, stats.policyWins.games)} / 랜덤 ${pct(stats.policyWins.random, stats.policyWins.games)} (캐릭터 수 비율 CPU ${pct(stats.policyWins.chars.cpu, stats.policyWins.chars.cpu + stats.policyWins.chars.random)})` : ''}`);
 
   // ---------- Stage 6 ----------
   console.log(`\n--- 6단계: 능력치·직업·성장 ---`);
@@ -530,6 +654,19 @@ function mainRandom() {
   const price = data.cards.cards.find((k) => k.id === 'lotto')?.price;
   console.log(`로또 ${s7.lottoTickets}장 · 평균 당첨금 ${(s7.lottoPrize / Math.max(1, s7.lottoTickets)).toFixed(2)}만원 (기대값 ${ev.toFixed(2)} < 카드 가격 ${price}) · 맞춘 개수 ${JSON.stringify(s7.lottoWins)}`);
   console.log(`선물 ${s7.gifts}회 · 거래 제안 ${s7.offers}건 → ${JSON.stringify(s7.trades)}`);
+  const s8 = stats.s8;
+  const per8 = (n) => (n / Math.max(1, s8.chars)).toFixed(2);
+  console.log(`\n--- 8단계: 연애·가족·부동산 (청년 이후 모드 ${s8.chars}명) ---`);
+  console.log(`고교 전원 만남 ${s8.schoolMeets}회 · 만남 ${per8(s8.met)} · 데이트 ${per8(s8.dates)} · 프로포즈 ${per8(s8.proposals)} (성공 ${pct(s8.proposeOk, s8.proposals)}) · 결혼 ${pct(s8.married, s8.chars)} · 축의금 결혼당 ${(s8.weddingGifts / Math.max(1, s8.proposeOk)).toFixed(0)}만원`);
+  for (const era of ['young', 'middle_age']) {
+    console.log(`${era} 루트별 결혼율: ${['love', 'career', 'money'].map((r) => { const [m, n] = s8.marriedByRoute[`${era}:${r}`] ?? [0, 0]; return `${r} ${pct(m, n)}`; }).join(' · ')}`);
+  }
+  console.log(`자녀 캐릭터당 ${per8(s8.children)}명 · 천재 ${pct(s8.genius, s8.children)} · 성장 ${JSON.stringify(s8.grew)}`);
+  const inc = s8.income;
+  console.log(`수입 비중: 맞벌이 ${pct(inc.spouse, stats.income.all)} · 용돈 ${pct(inc.allowance, stats.income.all)} · 축의금 ${pct(inc.weddingGift, stats.income.all)} · 돌잔치 ${pct(inc.dolGift, stats.income.all)} · 자녀 수능 ${pct(inc.childExam, stats.income.all)} · 출산장려금 ${pct(inc.birthBonus, stats.income.all)}`);
+  console.log(`부동산 칸 ${s8.houseVisits}회 · 구매 ${s8.houseBuys} (${pct(s8.houseBuys, s8.houseVisits)}) · 갈아타기 ${s8.swaps} · 청약 ${s8.subscription} · 골드 매물 ${s8.lucky} · 최종 보유 ${pct(Object.values(s8.finalHouses).reduce((a, b) => a + b, 0), s8.chars)} ${JSON.stringify(s8.finalHouses)} · 평균 집값 ${(s8.houseValue / Math.max(1, Object.values(s8.finalHouses).reduce((a, b) => a + b, 0))).toFixed(0)}`);
+  const mk = s8.markets;
+  console.log(`노년 시세 ${mk.length}회 · 평균 ×${(mk.reduce((a, b) => a + b, 0) / Math.max(1, mk.length)).toFixed(2)} (최소 ${Math.min(...mk).toFixed(2)} · 최대 ${Math.max(...mk).toFixed(2)}) · 집값 변동 합 ${s8.marketDelta}만원 · 건물주 해금/취임 ${pct(s8.landlord, s8.chars)}`);
   console.log(`뉴스: ${Object.entries(stats.news).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
   if (errors) process.exit(1);
 }

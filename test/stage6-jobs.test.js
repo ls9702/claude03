@@ -100,7 +100,10 @@ test('jobs.json: 17 regular + 6 hidden + 알바, valid requirements, ranks, outf
   for (const j of hidden) {
     const u = j.unlock;
     assert.ok(u && u.desc, `${j.id} unlock`);
-    for (const k of Object.keys(u)) assert.ok(['era', 'stats', 'money', 'netWorth', 'badEvents', 'maxRankOf', 'desc'].includes(k), `${j.id}: ${k}`);
+    const KEYS = ['era', 'stats', 'money', 'netWorth', 'badEvents', 'maxRankOf', 'houseSwaps', 'house', 'anyOf', 'desc'];
+    for (const k of Object.keys(u)) assert.ok(KEYS.includes(k), `${j.id}: ${k}`);
+    for (const sub of u.anyOf ?? []) for (const k of Object.keys(sub)) assert.ok(KEYS.includes(k) && k !== 'anyOf', `${j.id}: anyOf ${k}`);
+    for (const h of [...(u.house ?? []), ...(u.anyOf ?? []).flatMap((x) => x.house ?? [])]) assert.ok(data.houses.houses.some((x) => x.id === h), `${j.id}: house ${h}`);
     for (const id of u.maxRankOf ?? []) assert.ok(regular.some((r) => r.id === id));
     for (const e of u.era ?? []) assert.ok(ERA_IDS.includes(e));
   }
@@ -410,11 +413,12 @@ test('hidden jobs: all 6 unlock conditions (boundaries), unlock event once, offe
   // 산신령 (임시): 운 9 + 나쁜 일 3번
   check('mountain_spirit', { ...S({ luck: 9 }), badEvents: 3 }, true);
   check('mountain_spirit', { ...S({ luck: 9 }), badEvents: 2 }, false);
-  // 건물주 (임시): 중년 + 현금
-  const cash = def('landlord').unlock.money;
-  check('landlord', { money: cash }, true, 'middle_age');
-  check('landlord', { money: cash - 1 }, false, 'middle_age');
-  check('landlord', { money: cash }, false, 'young');
+  // 건물주 (Stage 8): 부동산 갈아타기 3회 이상, 또는 펜트하우스 / 제주 별장 보유 (any job era)
+  check('landlord', { houseSwaps: 3 }, true, 'young');
+  check('landlord', { houseSwaps: 2, house: { id: 'hanok', price: 1800, value: 1800, boughtTurn: 1 } }, false, 'middle_age');
+  check('landlord', { houseSwaps: 0, house: { id: 'penthouse', price: 3000, value: 3000, boughtTurn: 1 } }, true, 'senior');
+  check('landlord', { houseSwaps: 0, house: { id: 'jeju_villa', price: 1500, value: 2500, boughtTurn: 1 } }, true, 'young');
+  check('landlord', { money: 99999 }, false, 'middle_age');
   assert.equal(hiddenJobs(data).length, 6);
 
   // unlock once + engine offer at the end of the turn

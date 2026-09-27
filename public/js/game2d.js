@@ -40,10 +40,13 @@ import {
   spinNote,
 } from './shared/cards.js';
 import { HOLIDAY_OPTION_ICON, cardHtml, itemIconHtml, shopOptionsHtml } from './ui/cardArt.js';
+import { familyIcons, familySummary, familyTagBadge, houseInfo, houseOf, marketInfo } from './shared/family.js';
+import { houseArtHtml, houseOptionsHtml } from './ui/houseArt.js';
+import { familyDetailHtml, familyOptionsHtml } from './ui/familyArt.js';
 import { createMcCorner, mcHash, resultMcFrom } from './ui/mc.js';
 import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
-import { won, esc, secondsLeft } from './format.js';
+import { won, esc, secondsLeft, cpuBadgeHtml } from './format.js';
 import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
 import {
   STAT_INFO,
@@ -70,9 +73,11 @@ const SPECTATOR_KEY = 'jinsei.spectatorCutins'; // 「관전 컷인」 full | co
 const STAGE6_CUTIN_TYPES = ['jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged'];
 /** Stage 7 cut-in anchors / lone banner events (3D: shown after their board step). */
 const STAGE7_CUTIN_TYPES = ['cardUsed', 'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw', 'cardGained', 'gift', 'tradeResolved'];
-const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES];
+/** Stage 8 cut-in anchors (3D: shown after their board step). */
+const STAGE8_CUTIN_TYPES = ['met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'houseBought', 'houseValueChanged'];
+const CUTIN_TYPES = ['landed', 'eraChanged', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES];
 /** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
-const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES];
+const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold'];
 /** Stage 6 tile types the server may send before board.json knows them (meta wins). */
 const CLIENT_TILE_TYPES = {
   habit: { name: '습관', icon: '📚', color: '#20a39e' },
@@ -381,7 +386,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   /** A cut-in group, preceded by the MC studio cut-in when it opens an era (Stage 5.6). */
   function showGroup(g) {
     // Stage 7 lotto: one studio cut-in (MCs + ball draw) built by cutin2d from the group
-    if (g.anchor?.type === 'lottoDraw') return cutin.show(mcOn() ? g : { ...g, mc: null, studio: null }, cutinOpts(g));
+    if (g.anchor?.type === 'lottoDraw' || g.anchor?.type === 'houseValueChanged') return cutin.show(mcOn() ? g : { ...g, mc: null, studio: null }, cutinOpts(g));
     const jobs = [];
     if (g.news) noteNews(g.news);
     if (g.studio && mcOn()) jobs.push(cutin.show(studioSpecFor(g.studio, g.anchor, g.news)));
@@ -462,7 +467,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const phase = room.turn.pending ? '선택 중' : '룰렛 대기';
     el.now.innerHTML = `
       <span class="now-portrait">${portraitHtml(cur, { size: 40 })}</span>
-      <span class="now-text"><b>${esc(cur.name)}</b>의 차례 <span class="muted small">(${esc(cur.ownerName)}${cur.isMe ? ' · 나' : ''} · ${phase})</span></span>`;
+      <span class="now-text"><b>${esc(cur.name)}</b>의 차례 <span class="muted small">(${esc(cur.ownerName)}${cpuBadgeHtml(cur)}${cur.isMe ? ' · 나' : ''} · ${phase})</span></span>`;
     hydratePortraits(el.now);
     el.now.classList.toggle('mine', !!cur.isMe);
   }
@@ -991,7 +996,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           <button type="button" class="gc-row" data-char-detail="${esc(c.id)}" aria-expanded="${open}" aria-controls="gcd-${esc(c.id)}" title="능력치·직업 자세히 보기">
           <span class="gc-portrait">${portraitHtml(c, { size: 40 })}</span>
           <span class="gc-body">
-            <span class="gc-name">${esc(c.name)} <small class="muted">${esc(c.ownerName)}${c.isMe ? ' · 나' : ''}</small></span>
+            <span class="gc-name">${esc(c.name)} <small class="muted">${esc(c.ownerName)}${cpuBadgeHtml(c)}${c.isMe ? ' · 나' : ''}</small></span>
             <span class="gc-status small">${status}</span>
             ${tags ? `<span class="gc-tags">${tags}</span>` : ''}
             ${stats.length ? `<span class="gc-mini" aria-hidden="true">${stats.map((st) => `<i style="--p:${st.pct}%;--c:${st.color}" title="${esc(st.label)} ${st.value}"></i>`).join('')}</span>` : ''}
@@ -1021,6 +1026,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (edu) out.push(`<span class="gc-tag">🎓 ${esc(edu)}</span>`);
     const mil = militaryLabel(c.military);
     if (mil && c.military?.status === 'serving') out.push(`<span class="gc-tag mil">🪖 ${esc(mil)}</span>`);
+    // Stage 8: 💕 partner / 💍 spouse + children, 🏠 house
+    const fam = familyIcons(c);
+    if (fam) out.push(`<span class="gc-tag fam" title="${esc(familySummary(c, getMeta()) || '연애 중')}">${esc(fam)}</span>`);
+    const house = houseOf(c, getMeta());
+    if (house) out.push(`<span class="gc-tag house" title="${esc(`${house.name} · ${won(house.value ?? 0)}`)}">${esc(house.icon)} ${esc(won(house.value ?? 0))}</span>`);
     // Stage 7: roulette modifiers (⚡+2 / ✂️−3 …), hand size, item icons
     for (const b of spinModBadges(c.spinMods)) out.push(`<span class="gc-tag mod ${b.kind}" title="${esc(b.title)}">${esc(b.text)}</span>`);
     if (Array.isArray(c.cards)) out.push(`<span class="gc-tag hand-n" title="손패 ${c.cards.length}장">🃏 ${c.cards.length}</span>`);
@@ -1104,6 +1114,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           .join('')}</span></div>`,
       );
     }
+    // Stage 8: love (❤️ bar), spouse, children, house
+    const famHtml = familyDetailHtml(c, { meta, room: ui.room, avatars: meta?.avatars, artFor, won });
+    if (famHtml) facts.push(famHtml);
     const mods = spinModBadges(c.spinMods);
     if (mods.length) facts.push(`<div class="gd-fact"><span class="gd-k">다음 룰렛</span><span class="gd-v">${mods.map((b) => `<span class="gc-tag mod ${b.kind}">${esc(b.text)} ${esc(b.title)}</span>`).join(' ')}</span></div>`);
     const acts = [];
@@ -1239,7 +1252,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         ${
           p.kind === 'shop'
             ? `<div class="choice-list shop-choices">${shopOptionsHtml(p, who, { meta: getMeta(), artFor, btnClass: 'btn choice' })}</div>`
-            : `<div class="choice-list">${p.options
+            : p.kind === 'house'
+              ? `<div class="choice-list house-choices">${houseOptionsHtml(p, who, { meta: getMeta(), room, artFor, btnClass: 'btn choice' })}</div>`
+              : familyOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice' }) != null
+                ? `<div class="choice-list fam-choices">${familyOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice' })}</div>`
+                : `<div class="choice-list">${p.options
           .map((o) => {
             const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
             const badges = [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges];
@@ -1734,10 +1751,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const cur = currentChar();
     b3.setBoard(room.board);
     // Stage 7: roulette modifiers ride on the pawn's name tag (「✂️−3」「⚡+2」)
+    // Stage 8: 💍 / 👶n / 🏠 ride on it too (no extra draw calls: the name tag is one sprite)
     b3.setCharacters(
       chars().map((c) => {
-        const mods = spinModBadges(c.spinMods);
-        return mods.length ? { ...c, tagBadge: mods.map((b) => b.text).join(' ') } : c;
+        const badge = [...spinModBadges(c.spinMods).map((b) => b.text), familyTagBadge(c)].filter(Boolean).join(' ');
+        return badge ? { ...c, tagBadge: badge } : c;
       }),
     );
     const canSpin = !!cur?.isMe && room.turn.phase === 'awaitSpin' && !room.turn.pending;
@@ -1975,9 +1993,82 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
             toast(hit.length ? `🎱 로또 당첨! ${hit.map((x) => `${byId(x.charId)?.name ?? ''} ${won(x.prize)}`).join(', ')}` : `🎱 전국 로또 추첨: ${(e.numbers ?? []).join(', ')}`);
           }
           break;
+        // ---------- Stage 8 ----------
+        case 'met':
+        case 'dated':
+        case 'proposed':
+        case 'married':
+        case 'childBorn':
+        case 'childGrew':
+        case 'houseBought': {
+          const t = stage8Float(e);
+          if (t) floatOn(e.charId, t.text, t.kind);
+          if (c?.isMe && (!cutinsOn() || (e.type === 'dated' && ui.cutinMode === 'off'))) toast(stage8Toast(e, c));
+          else if (!c?.isMe && ui.cutinMode === 'off' && ['married', 'childBorn', 'houseBought'].includes(e.type)) toast(stage8Toast(e, c));
+          break;
+        }
+        case 'allowance':
+          floatOn(e.charId, `💌 용돈 +${won(Number(e.amount) || 0)}`, 'plus');
+          break;
+        case 'houseSold':
+          floatOn(e.charId, `🔁 보상판매${Number(e.amount ?? e.price) ? ` +${won(Number(e.amount ?? e.price))}` : ''}`, 'plus');
+          break;
+        case 'schoolMeet':
+          for (const pr of e.pairs ?? []) floatOn(pr.charId, `💘 ${pr.partner?.name ?? ''}`, 'plus');
+          if (!cutinsOn()) toast('🏫 고등학교에서 운명의 첫 만남!');
+          break;
+        case 'houseValueChanged': {
+          const mk = marketInfo(e);
+          if (mk && (!cutinsOn() || ui.cutinMode === 'off')) toast(`🏠 부동산 ${mk.text}`, mk.dir === 'down' ? 'error' : 'info');
+          break;
+        }
         default:
           break;
       }
+    }
+  }
+
+  /** Stage 8 side-list floats. */
+  function stage8Float(e) {
+    switch (e.type) {
+      case 'met':
+        return { text: `💘 ${e.partner?.name ?? '새 인연'}`, kind: 'plus' };
+      case 'dated':
+        return { text: '💑 데이트', kind: 'plus' };
+      case 'proposed':
+        return e.success ? { text: '💍 프러포즈 성공!', kind: 'plus' } : { text: '💔 거절…', kind: 'minus' };
+      case 'married':
+        return { text: '💒 결혼!', kind: 'plus' };
+      case 'childBorn':
+        return { text: `👶 ${e.child?.name ?? '아기'} 탄생`, kind: 'plus' };
+      case 'childGrew':
+        return { text: `${{ dol: '🎂 돌잔치', school: '🎒 입학', exam: '📝 자녀 수능', job: '💼 자녀 취업' }[e.kind] ?? '🧒 성장'}`, kind: Number(e.amount) < 0 ? 'minus' : 'plus' };
+      case 'houseBought':
+        return { text: `🏠 ${houseInfo(e.houseId, getMeta())?.name ?? '집'}`, kind: 'plus' };
+      default:
+        return null;
+    }
+  }
+
+  function stage8Toast(e, c) {
+    const name = c?.name ?? '';
+    switch (e.type) {
+      case 'met':
+        return `💘 ${name}: ${e.partner?.name ?? '새로운 인연'}을(를) 만났어요!`;
+      case 'dated':
+        return `💑 ${name}의 데이트!`;
+      case 'proposed':
+        return e.success ? `💍 ${name} 프러포즈 성공!` : `💔 ${name} 프러포즈 실패…`;
+      case 'married':
+        return `💒 ${name} 결혼! 축의금 ${won(Number(e.total) || 0)}`;
+      case 'childBorn':
+        return `👶 ${name}네 아기 ${e.child?.name ?? ''} 탄생!`;
+      case 'childGrew':
+        return `${stage8Float(e)?.text ?? '🧒'} — ${name}네 아이`;
+      case 'houseBought':
+        return `🏠 ${name}: ${houseInfo(e.houseId, getMeta())?.name ?? '집'} 구매!`;
+      default:
+        return '';
     }
   }
 
@@ -2043,8 +2134,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}">
             <span class="rk">${MEDAL[r.rank - 1] ?? `${r.rank}위`}</span>
             <span class="rk-portrait">${c ? portraitHtml(c, { size: 52 }) : ''}</span>
-            <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${esc(c?.ownerName ?? '')}</small>${career}
-              ${itemsLine(r, c)}<span class="small muted">현금 ${won(r.money)}${r.debt ? ` · 빚 ${won(r.debt)}` : ''}${Number(r.items) > 0 ? ` · 아이템 ${won(r.items)}` : ''} · 골인 보너스 ${won(r.goalBonus)}${
+            <span class="rk-body"><b>${esc(r.name)}</b> <small class="muted">${esc(c?.ownerName ?? '')}${cpuBadgeHtml(c)}</small>${career}
+              ${itemsLine(r, c)}${familyLine(r, c)}<span class="small muted">현금 ${won(r.money)}${r.debt ? ` · 빚 ${won(r.debt)}` : ''}${Number(r.items) > 0 ? ` · 아이템 ${won(r.items)}` : ''}${Number(r.house) > 0 ? ` · 집 ${won(r.house)}` : ''} · 골인 보너스 ${won(r.goalBonus)}${
                 r.place ? ` · ${r.place}번째 골인` : ''
               }${routesTxt ? ` · 루트 ${routesTxt}` : ''}</span></span>
             <span class="rk-total">${won(r.total)}</span>
@@ -2062,6 +2153,19 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     return `<span class="rk-items" title="아이템 되팔기 가치${Number(r.items) > 0 ? ` ${won(r.items)}` : ''}">${items
       .map((i) => `<span class="rk-item">${itemIconHtml(i.id, { art: artFor('item', i.id), meta: getMeta() })}<small>${esc(i.info.name)}</small></span>`)
       .join('')}</span>`;
+  }
+
+  /** Stage 8 result row: 🏠 house (art · name · value) + family (💍 spouse, children, 🌟 genius). */
+  function familyLine(r, c) {
+    const meta = getMeta();
+    const h = c ? houseOf(c, meta) : null;
+    const value = Number(r.house) > 0 ? Number(r.house) : h?.value ?? 0;
+    const icons = c ? familyIcons(c) : '';
+    const fam = c ? familySummary(c, meta) : '';
+    if (!h && !icons) return '';
+    return `<span class="rk-family">${
+      h ? `<span class="rk-house" title="${esc(`${h.name} · 자산가치 ${won(value)}`)}">${houseArtHtml(h.id, { art: artFor('house', h.id), label: h.name, cls: 'rk-house-art' })}<small>${esc(h.name)} ${esc(won(value))}</small></span>` : ''
+    }${icons ? `<span class="rk-kids" title="${esc(fam)}"><span class="rk-ic">${esc(icons)}</span>${fam ? `<small>${esc(fam)}</small>` : ''}</span>` : ''}</span>`;
   }
 
   /** Cut-in style 「결과 발표」 intro (tone result) before the ranking list. */

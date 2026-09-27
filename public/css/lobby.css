@@ -288,3 +288,7 @@ body.spectator .lobby-grid { padding-bottom: 90px; }
 }
 .react.wiggle { animation: react-wiggle 0.3s; }
 @keyframes react-wiggle { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+/* Stage 9-C: host CPU tools under the character grid */
+.cpu-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.cpu-tools small { flex-basis: 100%; }

@@ -28,26 +28,33 @@
     "space":          { "label": "발사장", "bg": "bg-space" },
     "shop":           { "label": "동네 마트", "bg": "bg-shop" },
     "holiday":        { "label": "명절",   "bg": "bg-holiday" },
+    "park":           { "label": "공원 데이트", "bg": "bg-park" },
+    "house":          { "label": "우리 집", "bg": "bg-house" },
     "none":           { "label": "",       "bg": null }
   },
   "_sceneFallbacksComment": "Stage 7: scenes whose bg asset is not accepted yet are drawn with the fallback scene's bg (client resolves; chains end at the 5 original scenes).",
   "sceneFallbacks": {
     "stage": "wedding-hall", "stadium": "mountain-trail", "gym": "mountain-trail", "army": "mountain-trail", "space": "mountain-trail",
-    "campus": "school", "kitchen": "office", "police": "office", "shop": "office", "lab": "hospital", "holiday": "wedding-hall"
+    "campus": "school", "kitchen": "office", "police": "office", "shop": "office", "lab": "hospital", "holiday": "wedding-hall",
+    "park": "mountain-trail", "house": "office"
   },
   "eraScenes": { "baby": "hospital", "elem": "school", "middle": "school", "high": "school", "young": "office", "middle_age": "office", "senior": "mountain-trail" },
   "routeScenes": { "love": "wedding-hall", "career": "office", "money": "mountain-trail" },
   "tagScenes": {
     "exam": "school", "exam_pass": "school", "exam_fail": "school",
     "route_love": "wedding-hall", "route_career": "office", "route_money": "mountain-trail",
-    "heart": "wedding-hall", "job": "office", "treasure": "mountain-trail", "pension": "hospital",
+    "heart": "park", "job": "office", "treasure": "mountain-trail", "pension": "hospital",
     "hire": "office", "job_offer": "office", "job_change": "office", "promotion": "office", "salary": "office", "overtime": "office",
     "hoesik": "office", "parttime": "office", "injury": "hospital", "military": "army", "military_end": "army",
     "graduation": "campus", "career": "school", "exam_elite": "school", "exam_college": "school",
     "habit": "school", "habit_int": "school", "habit_str": "school", "habit_charm": "school", "habit_luck": "school",
     "goal": "mountain-trail", "goal_first": "mountain-trail", "game_over": "mountain-trail", "era_baby": "hospital",
     "shop": "shop", "shop_buy": "shop", "holiday": "holiday", "holiday_sebae": "holiday", "holiday_nagging": "holiday",
-    "gostop_win": "holiday", "gostop_lose": "holiday", "lotto_win": "shop", "lotto_lose": "shop", "blocked": "police"
+    "gostop_win": "holiday", "gostop_lose": "holiday", "lotto_win": "shop", "lotto_lose": "shop", "blocked": "police",
+    "meet": "park", "school_meet": "school", "date": "park", "propose": "park", "propose_ok": "park", "propose_fail": "park",
+    "wedding": "wedding-hall", "birth": "hospital", "dol": "wedding-hall", "child_school": "school", "child_exam": "school",
+    "child_exam_fail": "school", "child_job": "office", "house": "house", "house_buy": "house", "house_sell": "house",
+    "market_up": "house", "market_down": "house"
   },
   "eventScenes": { "rain": "mountain-trail", "phone": "school", "lucky": "mountain-trail", "found_money": "school" },
   "cutinTiles": ["event", "heart", "job", "habit", "card", "shop", "treasure", "house", "stop"],
@@ -59,6 +66,9 @@
     "jobChanged": "fanfare", "rankUp": "fanfare", "salary": "coin", "injured": "thud", "hiddenJobUnlocked": "fanfare", "newsFlash": "whoosh",
     "militaryStart": "thud", "militaryEnd": "fanfare", "educationChanged": "fanfare", "statUp": "pop", "statDown": "thud",
     "cardGained": "pop", "cardUsed": "whoosh", "sabotage": "thud", "cardBlocked": "fanfare", "itemBought": "coin", "tradeOffered": "pop",
-    "tradeResolved": "coin", "gift": "heart", "holidayStarted": "fanfare", "holidayResult": "coin", "lottoDraw": "fanfare"
+    "tradeResolved": "coin", "gift": "heart", "holidayStarted": "fanfare", "holidayResult": "coin", "lottoDraw": "fanfare",
+    "met": "heart", "dated": "heart", "proposed": "heart", "proposeFail": "tears", "married": "fanfare", "schoolMeet": "heart",
+    "childBorn": "fanfare", "childGrew": "pop", "allowance": "coin", "houseBought": "coin", "houseSold": "coin",
+    "houseValueChanged": "whoosh"
   }
 }

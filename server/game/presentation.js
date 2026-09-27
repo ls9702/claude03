@@ -4,7 +4,7 @@
 //
 // Lines are picked with a sub-RNG seeded from the engine RNG state + event index, so every client shows the
 // same text without consuming the gameplay RNG stream (existing seeds keep their outcomes).
-import { getBoardData, getCards, getEvents, getItems, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
+import { getBoardData, getCards, getEvents, getHouses, getItems, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
 import { createRng } from './rng.js';
 import { MC_FREQUENCIES } from './config.js';
 
@@ -13,6 +13,8 @@ export const SCENES = [
   'school', 'mountain-trail', 'wedding-hall', 'office', 'hospital',
   // Stage 7 (bg assets may still be todo → the client draws tones.json `sceneFallbacks`)
   'stage', 'stadium', 'gym', 'army', 'campus', 'kitchen', 'police', 'lab', 'space', 'shop', 'holiday',
+  // Stage 8 (bg todo → tones.json sceneFallbacks: park → mountain-trail, house → office)
+  'park', 'house',
   'none',
 ];
 export const EMOTIONS = ['joy', 'cry', 'angry', 'sweat', 'love', 'shock', 'neutral'];
@@ -27,6 +29,9 @@ export const EVENT_TYPES = [
   // Stage 7 — cards, items, interaction
   'cardGained', 'cardUsed', 'cardBlocked', 'itemBought', 'tradeOffered', 'tradeResolved', 'gift', 'holidayStarted',
   'holidayResult', 'lottoDraw',
+  // Stage 8 — romance, family, real estate
+  'met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'allowance', 'houseBought', 'houseSold',
+  'houseValueChanged',
 ];
 
 /** Types that always get a full cut-in (landed only for `tones.cutinTiles`). statChanged / salary / militaryEnd are chips. */
@@ -35,7 +40,12 @@ export const CUTIN_TYPES = new Set([
   'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'educationChanged',
   // Stage 7 (cardUsed only for sabotage / 공약 — see isCutinCardUse)
   'cardBlocked', 'itemBought', 'holidayStarted', 'holidayResult', 'lottoDraw',
+  // Stage 8 (childGrew only for 돌잔치 / 수능 / 취업 — see isCutinChildGrew; dated / allowance / houseSold are chips)
+  'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged',
 ]);
+
+/** Stage 8: child growth steps with a full cut-in (입학 = a cost chip). */
+export const isCutinChildGrew = (ev) => ev?.type === 'childGrew' && ['dol', 'exam', 'job'].includes(ev.kind);
 
 /** Stage 7: a card use that gets a full cut-in (sabotage / 공약); passive triggers and self cards are chips. */
 export const isCutinCardUse = (ev) => ev?.type === 'cardUsed' && !ev.auto && (ev.cardKind === 'sabotage' || ev.cardId === 'pledge');
@@ -46,23 +56,34 @@ const BOUNDARY = new Set([
   'promptResolved', 'gameOver', 'betPlaced',
   'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged',
   'cardBlocked', 'itemBought', 'tradeOffered', 'tradeResolved', 'gift', 'holidayStarted', 'holidayResult', 'lottoDraw',
+  'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged',
 ]);
-/** Boundary test (Stage 7: an anchored card use is a boundary, a passive trigger / self card is a follow-up). */
-export const isBoundary = (ev) => BOUNDARY.has(ev.type) || isCutinCardUse(ev);
+/**
+ * Boundary test (Stage 7: an anchored card use is a boundary, a passive trigger / self card is a follow-up;
+ * Stage 8: a cut-in child growth step is one, 입학 / dated / allowance / houseSold are follow-ups).
+ */
+export const isBoundary = (ev) => BOUNDARY.has(ev.type) || isCutinCardUse(ev) || isCutinChildGrew(ev);
+/** Stage 8 anchors that take over a heart / house landing (the landing itself then stays on the board). */
+const STAGE8_TAKEOVER = new Set(['met', 'proposed', 'married', 'childBorn', 'houseBought']);
 
 const PROMPT_TONES = {
   routeChoice: 'good', exam: 'career', groupGift: 'holiday', habit: 'good', career: 'career', military: 'neutral',
   jobOffer: 'career', jobTile: 'career', hiddenJobOffer: 'result', shop: 'treasure', holiday: 'holiday',
+  meet: 'love', date: 'love', propose: 'love', house: 'treasure',
 };
 const PROMPT_TAGS = {
   routeChoice: 'route_choice', exam: 'exam', groupGift: 'gift', habit: 'habit', career: 'career', military: 'military',
   jobOffer: 'job_offer', jobTile: 'job', hiddenJobOffer: 'hidden_job', shop: 'shop', holiday: 'holiday',
+  meet: 'heart', date: 'date', propose: 'propose', house: 'house',
 };
 const PROMPT_EMOTIONS = {
   exam: 'sweat', groupGift: 'love', routeChoice: 'joy', habit: 'joy', career: 'sweat', military: 'sweat', jobOffer: 'joy',
-  jobTile: 'neutral', hiddenJobOffer: 'shock', shop: 'joy', holiday: 'joy',
+  jobTile: 'neutral', hiddenJobOffer: 'shock', shop: 'joy', holiday: 'joy', meet: 'love', date: 'love', propose: 'love',
+  house: 'joy',
 };
-const PROMPT_SCENES = { shop: 'shop', holiday: 'holiday' };
+const PROMPT_SCENES = { shop: 'shop', holiday: 'holiday', meet: 'park', date: 'park', propose: 'park', house: 'house' };
+const GROW_TAGS = { dol: 'dol', school: 'child_school', exam: 'child_exam', job: 'child_job' };
+const GROW_SCENES = { dol: 'wedding-hall', school: 'school', exam: 'school', job: 'office' };
 const JOB_TAGS = { hire: 'hire', change: 'job_change', hidden: 'hidden_job', parttime: 'parttime' };
 const JOB_TILE_TAGS = { failed: 'job_fail', blocked: 'injury', overtime: 'overtime', bonus: 'salary', noBonus: 'job_fail', promoted: 'promotion', changed: 'job_change' };
 const EXAM_TAGS = { elite: 'exam_elite', college: 'exam_college', fail: 'exam_fail' };
@@ -80,6 +101,13 @@ const itemName = (data, id) => (data?.items ?? getItems()).items?.find((i) => i.
 const holidayName = (data, kind) => data?.holidays?.names?.[kind] ?? { seol: '설날', chuseok: '추석' }[kind] ?? '';
 const eventOf = (data, id) => (id ? (data?.events ?? getEvents()).events?.find((e) => e.id === id) ?? null : null);
 const newsOf = (data, id) => (id ? (data?.news ?? getNews()).news?.find((n) => n.id === id) ?? null : null);
+const houseName = (data, id) => (id ? (data?.houses ?? getHouses()).houses?.find((h) => h.id === id)?.name ?? '' : '');
+/** Stage 8: partner / spouse / child names of a character for line vars. */
+function familyVars(ev, c) {
+  const partner = ev.partner?.name ?? ev.spouse?.name ?? c?.love?.partner?.name ?? c?.spouse?.name ?? '';
+  const child = ev.child?.name ?? (ev.childId ? c?.children?.find((k) => k.id === ev.childId)?.name : '') ?? '';
+  return { partner, child: child || (ev.childId ? '우리 아이' : '') };
+}
 const TONE_EMOTION = { good: 'joy', bad: 'cry', love: 'love', result: 'joy', treasure: 'joy', holiday: 'joy', career: 'joy', neutral: 'neutral' };
 const BIG_GAIN = 100; // 만원 — money_gain vs big_gain line pool
 
@@ -177,7 +205,7 @@ export function presentationFor(ev, ctx) {
   const c = charId ? chars.find((x) => x.id === charId) : null;
   const era = ev.type === 'eraChanged' ? ev.era : charId ? ctx.eraOf?.(charId) ?? c?.era ?? null : null;
   const eraName = (id) => room?.board?.eras?.find((e) => e.id === id)?.name ?? ctx.data?.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
-  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '' };
+  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '', ...familyVars(ev, c), house: houseName(ctx.data, ev.houseId ?? c?.house?.id) };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.targetId || ev.toId) vars.target = nameOf(ev.targetId ?? ev.toId);
   if (ev.cardId) vars.card = cardName(ctx.data, ev.cardId);
@@ -235,7 +263,9 @@ export function presentationFor(ev, ctx) {
       emotion ??= o.emotion && EMOTIONS.includes(o.emotion) ? o.emotion : null;
       if (o.delta) vars.amount = wonText(o.delta);
       scene ??= (o.eventId && tones.eventScenes?.[o.eventId]) || null;
-      cutin = (tones.cutinTiles ?? []).includes(tt) && !promptNext;
+      // Stage 8: a birth / wedding / purchase right after the landing takes the stage (one cut-in, not two)
+      const takeover = next && next.charId === charId && STAGE8_TAKEOVER.has(next.type);
+      cutin = (tones.cutinTiles ?? []).includes(tt) && !promptNext && !takeover;
       break;
     }
     case 'moneyChanged': {
@@ -278,6 +308,10 @@ export function presentationFor(ev, ctx) {
     }
     case 'prompt':
       tag = PROMPT_TAGS[ev.kind] ?? 'prompt_wait';
+      if (ev.kind === 'holiday') {
+        const pk = room?.turn?.pending?.promptId === ev.promptId ? room.turn.pending.context?.kind : null;
+        vars.holiday = (pk ? holidayName(ctx.data, pk) : '') || String(ev.title ?? '').replace(/^\S+\s+/, '').replace(/\s*대잔치$/, '');
+      }
       tone ??= PROMPT_TONES[ev.kind] ?? 'neutral';
       emotion ??= PROMPT_EMOTIONS[ev.kind] ?? null;
       scene = PROMPT_SCENES[ev.kind] ?? null;
@@ -311,6 +345,21 @@ export function presentationFor(ev, ctx) {
         emotion ??= ev.result === 'card' ? 'joy' : ev.result === 'noMoney' ? 'sweat' : 'neutral';
         if (ev.cardId) vars.item = cardName(ctx.data, ev.cardId);
         scene = 'shop';
+      } else if (ev.kind === 'date') {
+        tag = 'date';
+        tone ??= 'love';
+        emotion ??= 'love';
+        scene = 'park';
+      } else if (ev.kind === 'meet' || ev.kind === 'propose') {
+        tag = 'heart';
+        tone ??= 'love';
+        emotion ??= 'neutral';
+        scene = 'park';
+      } else if (ev.kind === 'house') {
+        tag = ev.result === 'bought' ? 'house_buy' : 'house';
+        tone ??= 'treasure';
+        emotion ??= ev.result === 'noMoney' ? 'sweat' : 'neutral';
+        scene = 'house';
       } else if (ev.kind === 'groupGift') {
         const g = outcome(list, charId);
         tag = g.gifts ? 'gift' : 'gift_none';
@@ -467,6 +516,81 @@ export function presentationFor(ev, ctx) {
       scene = 'shop';
       break;
     }
+    // ---------- Stage 8 ----------
+    case 'met':
+      tag = 'meet';
+      tone ??= 'love';
+      emotion ??= 'love';
+      scene = 'park';
+      break;
+    case 'dated':
+      tag = 'date';
+      tone ??= 'love';
+      emotion ??= 'love';
+      scene = 'park';
+      if (ev.cost) vars.amount = wonText(ev.cost);
+      break;
+    case 'proposed':
+      tag = ev.success ? 'propose_ok' : 'propose_fail';
+      tone = ev.success ? 'love' : 'bad';
+      emotion ??= ev.success ? 'love' : 'cry';
+      scene = 'park';
+      break;
+    case 'married':
+      tag = 'wedding';
+      tone ??= 'love';
+      emotion ??= 'love';
+      scene = 'wedding-hall';
+      if (ev.total) vars.amount = wonText(ev.total);
+      break;
+    case 'schoolMeet': {
+      tag = 'school_meet';
+      tone ??= 'love';
+      emotion ??= 'love';
+      scene = 'school';
+      break;
+    }
+    case 'childBorn':
+      tag = 'birth';
+      tone ??= 'love';
+      emotion ??= 'joy';
+      scene = 'hospital';
+      break;
+    case 'childGrew':
+      cutin = isCutinChildGrew(ev);
+      tag = GROW_TAGS[ev.kind] ?? 'birth';
+      if (ev.kind === 'exam') tag = ev.result === 'fail' ? 'child_exam_fail' : 'child_exam';
+      tone ??= ev.kind === 'school' ? 'neutral' : ev.kind === 'dol' ? 'love' : 'good';
+      emotion ??= ev.kind === 'school' || ev.result === 'fail' ? 'sweat' : 'joy';
+      scene = GROW_SCENES[ev.kind] ?? null;
+      if (ev.amount) vars.amount = wonText(ev.amount);
+      break;
+    case 'allowance':
+      tag = 'allowance';
+      tone ??= 'good';
+      emotion ??= 'joy';
+      if (ev.amount) vars.amount = wonText(ev.amount);
+      break;
+    case 'houseBought':
+      tag = 'house_buy';
+      tone ??= 'treasure';
+      emotion ??= 'joy';
+      scene = 'house';
+      if (ev.price) vars.amount = wonText(ev.price);
+      break;
+    case 'houseSold':
+      tag = 'house_sell';
+      tone ??= 'treasure';
+      emotion ??= 'neutral';
+      scene = 'house';
+      if (ev.amount) vars.amount = wonText(ev.amount);
+      break;
+    case 'houseValueChanged':
+      tag = (ev.mult ?? 1) >= 1 ? 'market_up' : 'market_down';
+      tone = (ev.mult ?? 1) >= 1 ? 'treasure' : 'bad';
+      emotion ??= (ev.mult ?? 1) >= 1 ? 'joy' : 'shock';
+      scene = 'house';
+      break;
     case 'gameOver': {
       tag = 'game_over';
       tone ??= 'result';
@@ -555,6 +679,20 @@ function decorateRows(ev, { lines, room, data, seed, vars }) {
       r.line = pickLine(lines, tag, hashSeed(seed, r.charId), { ...vars, name: nameOf(r.charId), amount });
     }
   }
+  // Stage 8: one line per pair of the 고교 전원 만남 / per owner of the 노년 시세
+  if (ev.type === 'schoolMeet') {
+    for (const pr of ev.pairs ?? []) {
+      pr.lineTag = 'meet';
+      pr.line = pickLine(lines, 'meet', hashSeed(seed, pr.charId), { ...vars, name: nameOf(pr.charId), partner: pr.partner?.name ?? '' });
+    }
+  }
+  if (ev.type === 'houseValueChanged') {
+    for (const ch of ev.changes ?? []) {
+      const tag = ch.after >= ch.before ? 'market_up' : 'market_down';
+      ch.lineTag = tag;
+      ch.line = pickLine(lines, tag, hashSeed(seed, ch.charId), { ...vars, name: nameOf(ch.charId), amount: wonText(ch.after - ch.before), house: houseName(data, ch.houseId) });
+    }
+  }
   if (ev.type === 'lottoDraw') {
     for (const e of ev.entries ?? []) {
       const tag = e.prize > 0 ? 'lotto_win' : 'lotto_lose';
@@ -619,7 +757,7 @@ export function mcFrequencyOf(room) {
 export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {}, jobs = getJobs(), cards = getCards(), items = getItems() }) {
   const chars = room?.characters ?? [];
   const c = ev.charId ? chars.find((x) => x.id === ev.charId) : null;
-  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '' };
+  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '', partner: '', child: '', house: '' };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.jobId) vars.job = (ev.jobId === jobs.partTime?.id ? jobs.partTime : jobs.jobs?.find((j) => j.id === ev.jobId))?.name ?? '';
   const big = mc?.bigAmount ?? BIG_GAIN;
@@ -747,6 +885,32 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       key = 'gift';
       vars.name = nameOf(ev.fromId);
       vars.target = nameOf(ev.toId);
+      break;
+    // Stage 8: only real outcomes (never a heart / house TILE landing itself)
+    case 'married':
+      key = 'marriage';
+      vars.partner = ev.spouse?.name ?? '';
+      break;
+    case 'proposed':
+      if (!ev.success) {
+        key = 'proposeFail';
+        vars.partner = ev.partner?.name ?? '';
+      }
+      break;
+    case 'childBorn':
+      key = 'birth';
+      vars.child = ev.child?.name ?? '';
+      break;
+    case 'schoolMeet':
+      key = 'schoolMeet';
+      break;
+    case 'houseBought':
+      key = 'house';
+      vars.house = houseName(null, ev.houseId);
+      break;
+    case 'houseValueChanged':
+      key = 'market';
+      studio = true;
       break;
     default:
       break;

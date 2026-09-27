@@ -3,7 +3,10 @@
 // apply to every character while it is in that era.
 import { addLog, addStats, charById, emit } from './effects.js';
 
-/** Neutral effects (no news / unknown keys). `housePriceMult` / `birthBonus` are Stage 8 hooks (no effect yet). */
+/**
+ * Neutral effects (no news / unknown keys). Stage 8: `housePriceMult` = house listing prices / values of the era (the
+ * senior one also scales the 노년 시세 draw), `birthBonus` = 출산장려금 (만원) per child born in the era.
+ */
 export const NEWS_DEFAULTS = Object.freeze({
   jobRequireDelta: 0,
   jobDelta: {},

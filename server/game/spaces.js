@@ -1,5 +1,6 @@
 // Space (tile) resolution + the routeChoice / groupGift prompts. Called by the engine inside a tx.
-// Stage 6 tiles: habit (kids eras → habit prompt), salary (job pay), job (job-tile decision); event tiles draw
+// Stage 6 tiles: habit (kids eras → habit prompt), salary (job pay), job (job-tile decision); Stage 8: heart
+// (family.js), house (houses.js); event tiles draw
 // from events.json (conditions on job / education / route; money and stat effects).
 import { ROUTE_KEYS } from './board.js';
 import { addLog, addStats, changeMoney, charById, emit, josa, round5, statText, won } from './effects.js';
@@ -8,6 +9,8 @@ import { PART_TIME_ID, paySalary, resolveJobTile } from './jobs.js';
 import { effectsFor } from './news.js';
 import { PROMPTS, openPrompt, promptComplete, registerPrompts, resolvePrompt } from './prompts.js';
 import { applyLoss, cardDef, gainCard, guardStats, resolveCardTile, resolveShopTile, tryAmulet } from './cards.js';
+import { blindDate, resolveHeartTile } from './family.js';
+import { resolveHouseTile } from './houses.js';
 
 export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
@@ -36,6 +39,7 @@ registerPrompts({
       c.routeHistory.push({ era: era.id, route: key, completed: false });
       emit(tx, 'routeChosen', { charId: c.id, era: era.id, route: key, tone: r.tone, emotion: 'joy' });
       addLog(tx, `${r.icon} ${josa(c.name, '은/는')} ${era.name} 시대에 「${r.name}」 루트를 선택!`, { tone: r.tone, charId: c.id });
+      if (key === 'love') blindDate(tx, c); // Stage 8: 소개팅 when single
     },
   },
 
@@ -174,6 +178,10 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
     case 'shop':
       resolveShopTile(tx, c);
       return 'prompt';
+    case 'heart': // Stage 8: 만남 / 데이트 / 프로포즈 prompt, or family (출산 / 가족 나들이)
+      return resolveHeartTile(tx, c) ? 'prompt' : null;
+    case 'house': // Stage 8: 부동산 매물 prompt
+      return resolveHouseTile(tx, c, tile) ? 'prompt' : null;
     case 'stop':
       if (tile.promptId === 'routeChoice') return null; // opened by the turn epilogue after life decisions
       if (PROMPTS[tile.promptId]) {
@@ -189,7 +197,7 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       onGoal?.(c);
       return 'goal';
     default: {
-      // heart/treasure/house: placeholders (hooks for later stages).
+      // treasure: placeholder (hook for Stage 9).
       const text = tx.data.board.placeholders?.[tile.type] ?? tile.label;
       addLog(tx, `${tile.icon ?? ''} ${c.name}: ${text}`.trim(), { tone: routeTone ?? 'info', charId: c.id });
       return null;

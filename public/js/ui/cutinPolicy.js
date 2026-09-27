@@ -10,6 +10,7 @@
 // Stage 7: 명절 / 로또 / 뒤통수 on me are big (full even in compact), shop / card tiles and other players' purchases
 // or sabotage are minor; lone card / gift / trade events are banners; a lotto draw that arrives while my prompt waits
 // is deferred ('defer') until I have answered.
+// Stage 8: 결혼식 / 출산 / 고교 첫 만남 / 부동산 시세 are big, a date is minor, 용돈 / 보상판매 / 입학 are chips.
 import { isCardAnchor } from './cutinMap.js';
 
 /** 「관전 컷인」 setting: full cut-ins for everything / small banners for other players' minor events / none. */
@@ -29,7 +30,11 @@ export const CAST_PRELOAD_MS = 600;
 
 /** Tiles that will become marriage / job events (Stage 6) — always full cut-ins. */
 export const BIG_TILE_TYPES = ['heart', 'job'];
-const BIG_TYPES = new Set(['finished', 'eraChanged', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash', 'holidayStarted', 'holidayResult', 'lottoDraw']);
+const BIG_TYPES = new Set(['finished', 'eraChanged', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash', 'holidayStarted', 'holidayResult', 'lottoDraw',
+  // Stage 8: 결혼식, 출산, 고교 첫 만남, 부동산 시세 (full even in 「간단히」)
+  'married', 'childBorn', 'schoolMeet', 'houseValueChanged']);
+/** Stage 8 minor anchors: never full for other players in 「간단히」 (whatever their line tag says). */
+export const MINOR_TYPES = ['dated'];
 const BIG_TAG = /marriage|wedding|job|promotion|birth/;
 /** Stage 6 minor tiles: never full cut-ins for other players (whatever their line tag says). */
 export const MINOR_TILE_TYPES = ['habit', 'salary', 'card', 'shop'];
@@ -57,6 +62,7 @@ export function isBigGroup(g) {
   if (!a) return false;
   if (g.studio?.length || a.mcStudio) return true;
   if (BIG_TYPES.has(a.type)) return true;
+  if (MINOR_TYPES.includes(a.type)) return false;
   if (a.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType)) return true;
   if (a.type === 'landed' && MINOR_TILE_TYPES.includes(a.tileType)) return false;
   if (BIG_TAG.test(String(a.mcKey ?? '')) || BIG_TAG.test(String(a.lineTag ?? ''))) return true;
@@ -71,6 +77,8 @@ export function isOwnGroup(g, mine) {
   const set = toSet(mine);
   if (g?.charId && set.has(g.charId)) return true;
   const t = g?.anchor?.type;
+  // Stage 8: a 고교 첫 만남 with one of my characters in it, a wedding I paid a gift for
+  if (t === 'schoolMeet' && (g.anchor.pairs ?? []).some((p) => set.has(p?.charId))) return true;
   const target = g?.targetId ?? g?.anchor?.targetId ?? g?.anchor?.toId ?? null;
   return !!target && ['cardUsed', 'cardBlocked', 'gift', 'tradeResolved'].includes(t) && set.has(target);
 }
@@ -111,6 +119,8 @@ const ANCHOR_RANK = {
   hiddenJobUnlocked: 9, jobChanged: 8, rankUp: 8, finished: 6, eraChanged: 5, militaryStart: 4, educationChanged: 4,
   injured: 3, routeChosen: 3, promptResolved: 2, landed: 1, militaryEnd: 0,
   cardBlocked: 6, cardUsed: 5, itemBought: 3, gift: 0, cardGained: 0, tradeResolved: 0,
+  // Stage 8
+  married: 9, childBorn: 8, proposed: 7, schoolMeet: 7, houseValueChanged: 6, childGrew: 5, houseBought: 5, met: 4, dated: 2,
 };
 const rankOf = (a) => (a?.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType) ? 4 : ANCHOR_RANK[a?.type] ?? 0);
 
@@ -146,6 +156,7 @@ export function mergeGroups(groups = [], { mine = [] } = {}) {
       discharged: [...(prev.discharged ?? []), ...(g.discharged ?? [])],
       cards: [...(prev.cards ?? []), ...(g.cards ?? [])],
       gifts: [...(prev.gifts ?? []), ...(g.gifts ?? [])],
+      family: [...(prev.family ?? []), ...(g.family ?? [])],
       targetId: anchor === g.anchor ? g.targetId ?? null : prev.targetId ?? null,
       delta: prev.delta + g.delta,
       involved,

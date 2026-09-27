@@ -139,6 +139,18 @@ test('presentationFor: every event type maps to a tone, scene and emotion (synth
     holidayStarted: { eraId: 'young', kind: 'seol', name: '설날' },
     holidayResult: { eraId: 'young', kind: 'seol', results: [{ charId: c.id, sebae: 30, nagging: { stat: 'int', delta: 1 }, stake: 0, card: null, won: 0 }], pot: 0, winners: [] },
     lottoDraw: { eraId: 'young', numbers: [1, 2, 3], entries: [{ charId: c.id, numbers: [1, 5, 9], matches: 1, prize: 10 }] },
+    // Stage 8
+    met: { charId: c.id, partner: { id: 'pt1', name: '서연', trait: 'int', stars: 2, body: 'girl' }, affection: 25, match: false },
+    dated: { charId: c.id, partnerId: 'pt1', dateId: 'library', trait: 'int', cost: 20, gain: 30, affection: 55, match: true },
+    proposed: { charId: c.id, partnerId: 'pt1', success: false, chance: 0.5 },
+    married: { charId: c.id, spouse: { id: 'pt1', name: '서연', trait: 'int', stars: 2, body: 'girl', salary: 70, marriedTurn: 9 }, gifts: [], total: 0 },
+    schoolMeet: { eraId: 'high', pairs: [{ charId: c.id, partner: { id: 'pt2', name: '민호' } }] },
+    childBorn: { charId: c.id, child: { id: 'ch1', name: '하윤', talent: 'genius', stage: 'baby' } },
+    childGrew: { charId: c.id, childId: 'ch1', stage: 'kid', kind: 'dol', amount: 40 },
+    allowance: { charId: c.id, childId: 'ch1', amount: 60 },
+    houseBought: { charId: c.id, houseId: 'villa', price: 700, tradeIn: 0 },
+    houseSold: { charId: c.id, houseId: 'oneroom', value: 300, amount: 210 },
+    houseValueChanged: { eraId: 'senior', mult: 1.2, changes: [] },
   };
   assert.deepEqual(Object.keys(samples).sort(), [...EVENT_TYPES].sort());
   for (const type of EVENT_TYPES) {

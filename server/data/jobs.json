@@ -1,5 +1,5 @@
 {
-  "_comment": "Stage 6 직업 23종(일반 17 + 숨은 6) + 알바. requires = 취업 후보 조건(능력치 최소값·학력), ranks = 랭크별 급여(만원, 급여 칸 1회), rankUp = 승진 판정(확률 = base + perStat × stats[stat] + 운 보너스, 경험치 expNeeded 이상이면 급여 칸에서 자동 심사), injuryRisk = 급여 칸·승진 시험마다 부상 확률, outfit = avatars.json 의상 id(성장 의상), scene = 컷인 배경(presentation SCENES), unlock = 숨은 직업 해금 조건(모두 만족). 산신령·건물주 조건은 7·8단계(사찰 소원·부동산) 전까지의 임시 조건.",
+  "_comment": "Stage 6 직업 23종(일반 17 + 숨은 6) + 알바. requires = 취업 후보 조건(능력치 최소값·학력), ranks = 랭크별 급여(만원, 급여 칸 1회), rankUp = 승진 판정(확률 = base + perStat × stats[stat] + 운 보너스, 경험치 expNeeded 이상이면 급여 칸에서 자동 심사), injuryRisk = 급여 칸·승진 시험마다 부상 확률, outfit = avatars.json 의상 id(성장 의상), scene = 컷인 배경(presentation SCENES), unlock = 숨은 직업 해금 조건(모두 만족; anyOf = 그중 하나). 건물주 = 8단계 부동산(houseSwaps / house), 산신령 조건은 9단계(사찰 소원) 전까지의 임시 조건.",
   "jobs": [
     {
       "id": "civil_servant", "name": "공무원", "icon": "🏛️", "hidden": false,
@@ -144,7 +144,7 @@
       "ranks": [{ "name": "꼬마 빌딩주", "salary": 750 }, { "name": "빌딩 부자", "salary": 1050 }, { "name": "강남 건물주", "salary": 1420 }],
       "rankUp": { "stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1 },
       "injuryRisk": 0, "outfit": "trenchcoat", "scene": "office", "tone": "treasure",
-      "unlock": { "era": ["middle_age"], "money": 4000, "desc": "중년에 현금 4,000만원 이상 (부동산 단계 전 임시 조건)" }
+      "unlock": { "anyOf": [{ "houseSwaps": 3 }, { "house": ["penthouse", "jeju_villa"] }], "desc": "부동산 갈아타기 3회 이상, 또는 펜트하우스·제주 별장 보유" }
     },
     {
       "id": "trot_star", "name": "트로트 스타", "icon": "🎙️", "hidden": true,

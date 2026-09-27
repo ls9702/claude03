@@ -1,12 +1,15 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getBalance, getBoardData, getCards, getEras, getHolidays, getItems, getJobs, getLines, getMc, getNews, getTones } from '../data/index.js';
+import { getAvatars, getBalance, getBoardData, getCards, getEras, getHolidays, getHouses, getItems, getJobs, getLines, getMc, getNews, getPartners, getTones } from '../data/index.js';
 import {
   addCharacter,
+  addCpuCharacter,
+  canManageCpu,
   findPlayer,
   isSpectator,
   joinRoom,
   removeCharacter,
+  removeCpuCharacter,
   setReady,
   spectatorFail,
   updateCharacter,
@@ -63,6 +66,8 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       cards: getCards(), // Stage 7: cards.json (hand cards; character.cards = [{uid, id}])
       items: getItems(), // Stage 7: items.json (shop items; character.items = [id])
       holidays: getHolidays(), // Stage 7: holidays.json (명절 대잔치)
+      partners: getPartners(), // Stage 8: partners.json (traits, ★ grades, dates, children; character.love / spouse / children)
+      houses: getHouses(), // Stage 8: houses.json (6 fixed ids; character.house, room.houseOwners / housingMarket)
     });
   });
 
@@ -140,6 +145,25 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.type('image/webp');
     res.sendFile(p, { dotfiles: 'deny' });
+  });
+
+  // Stage 9-C: the host player adds / removes CPU characters in rooms created with 「CPU 허용」 (allowCpu).
+  router.post('/rooms/:id/cpu', requireSession, withRoom, (req, res) => {
+    const can = canManageCpu(req.room, req.sessionId);
+    if (!can.ok) return sendFail(res, can);
+    const body = req.body ?? {};
+    const by = findPlayer(req.room, req.sessionId).name;
+    const r = addCpuCharacter(req.room, { name: body.name, avatar: body.avatar }, Date.now(), { by });
+    if (!r.ok) return sendFail(res, r);
+    store.commit(r.room, r.logs);
+    res.status(201).json({ ok: true, characterId: r.character.id, room: viewFor(r.room, req.sessionId) });
+  });
+
+  router.delete('/rooms/:id/cpu/:charId', requireSession, withRoom, (req, res) => {
+    const can = canManageCpu(req.room, req.sessionId);
+    if (!can.ok) return sendFail(res, can);
+    const by = findPlayer(req.room, req.sessionId).name;
+    respond(req, res, removeCpuCharacter(req.room, req.params.charId, Date.now(), { by }));
   });
 
   router.post('/rooms/:id/ready', requireSession, withRoom, (req, res) => {

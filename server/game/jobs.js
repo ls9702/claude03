@@ -8,6 +8,7 @@ import { STAT_KEYS, addLog, addStats, changeMoney, emit, josa, netWorth, round5,
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 import { itemSalaryMult, salaryCardMult, tryAmulet } from './cards.js';
+import { payAllowances, spouseSalary } from './family.js';
 
 export const PART_TIME_ID = 'parttime';
 
@@ -191,10 +192,16 @@ export function paySalary(tx, c) {
   const amount = round5(salaryAmount(tx, c) * salaryCardMult(tx, c)); // Stage 7: 성과급 봉투 ×2
   const def = jobDef(tx.data, job?.id ?? PART_TIME_ID);
   const rank = job?.rank ?? 1;
-  emit(tx, 'salary', { charId: c.id, jobId: def.id, rank, amount, tone: 'career', emotion: 'joy' });
+  const spouseAmount = spouseSalary(tx, c); // Stage 8: 맞벌이
+  emit(tx, 'salary', { charId: c.id, jobId: def.id, rank, amount, ...(spouseAmount ? { spouseAmount } : {}), tone: 'career', emotion: 'joy' });
   changeMoney(tx, c, amount, 'salary', { emotion: 'joy', tone: 'career', jobId: def.id });
   const who = job ? `${def.name} ${rankName(def, rank)}` : c.school ? '대학생 알바' : def.name;
   addLog(tx, `💵 ${c.name} 월급날! (${who}) +${won(amount)}${job?.injured > 0 ? ' (부상으로 감액)' : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
+  if (spouseAmount) {
+    changeMoney(tx, c, spouseAmount, 'spouseSalary', { emotion: 'love', tone: 'love' });
+    addLog(tx, `💑 ${c.spouse.name}의 맞벌이 월급 +${won(spouseAmount)}`, { tone: 'love', charId: c.id, emotion: 'love' });
+  }
+  payAllowances(tx, c); // Stage 8: employed children send 용돈
   if (!job) return amount;
   job.exp += tx.data.balance.jobs.expPerSalary ?? 1;
   tryRankUp(tx, c);
@@ -222,6 +229,10 @@ export function unlockMet(tx, c, def) {
   if (u.netWorth != null && netWorth(c) < u.netWorth) return false;
   if (u.badEvents != null && (c.badEvents ?? 0) < u.badEvents) return false;
   if (u.maxRankOf && !u.maxRankOf.some((id) => reachedMaxRank(tx, c, id))) return false;
+  // Stage 8: real estate (건물주) — houseSwaps ≥ n, owning one of `house`; `anyOf` = at least one sub-condition
+  if (u.houseSwaps != null && (c.houseSwaps ?? 0) < u.houseSwaps) return false;
+  if (u.house && !u.house.includes(c.house?.id)) return false;
+  if (u.anyOf && !u.anyOf.some((sub) => unlockMet(tx, c, { unlock: sub }))) return false;
   return true;
 }
 

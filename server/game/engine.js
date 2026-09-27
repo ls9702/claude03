@@ -38,6 +38,8 @@ import {
   useCard,
 } from './cards.js';
 import { queueEraOpening, runEraOpenings } from './holidays.js';
+import { ensureFamily, ensureRoomFamily, growChildrenOnEra, growChildrenOnSpin, initFamily, schoolMeet } from './family.js';
+import { drawHousingMarket, syncHouseOwners } from './houses.js';
 
 export { EngineError, turnTimeoutMs };
 export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout', 'skip', 'useCard', 'offerTrade', 'respondTrade', 'cancelTrade', 'gift', 'expireTrades'];
@@ -91,6 +93,8 @@ export function startGame(room, ctx = {}) {
     items: [],
     spinMods: [],
     lastTargetedBy: {},
+    // Stage 8: love {candidates, partner, affection, dates}, spouse, children, house, houseSwaps (all public)
+    ...initFamily(),
   }));
   // The board is public; without a secret, its tiles would reveal the seed and so every future spin.
   // The side-effect layer (GameRunner) passes `ctx.secret` = crypto random uint32; tests/simulator omit it
@@ -104,6 +108,8 @@ export function startGame(room, ctx = {}) {
   next.news = {};
   // Stage 7: card uids, open trades, era openings (lotto / holidays; the first era never opens one)
   Object.assign(next, { nextCardSeq: 0, nextTradeSeq: 0, trades: [], holidayCount: 0, holidays: {}, lotto: { draws: [] }, erasOpened: [firstEra], eraQueue: [] });
+  // Stage 8: partner / child ids, 고교 전원 만남 (once), house owners, 노년 시세
+  Object.assign(next, { nextPartnerSeq: 0, nextChildSeq: 0, schoolMeetDone: false, houseOwners: {}, housingMarket: null });
   const tx = createTx(next, { rng, now, data });
   emit(tx, 'gameStarted', { eras: next.board.eras.map((e) => e.id) });
   drawStartNews(tx);
@@ -149,6 +155,10 @@ function enterEra(tx, c, eraIndex) {
   drawNews(tx, era.id); // first character entering the era → 뉴스 속보
   applyEraNews(tx, c, era.id);
   if (era.id === tx.data.balance.pension.era) catchUpBonus(tx, c);
+  // Stage 8: 노년 시세 (first entrant of senior), 고교 전원 만남 (first entrant of high), children grow a step
+  drawHousingMarket(tx, era.id);
+  schoolMeet(tx, era.id);
+  growChildrenOnEra(tx, c);
   queueEraOpening(tx, era.id); // Stage 7: lotto draw + holiday, run by the turn loop once no prompt is open
 }
 
@@ -418,6 +428,7 @@ function doSpin(tx, action) {
   c.position = pos;
   emit(tx, 'moved', { charId: c.id, from, path, steps: path.length, halted });
   for (const eraIndex of eraSteps) enterEra(tx, c, eraIndex);
+  if (!eraSteps.length) growChildrenOnSpin(tx, c); // Stage 8: children also grow every few parent spins
   const tile = tileAt(board, pos);
   if (tile) {
     emit(tx, 'landed', { charId: c.id, tileId: tile.id, tileType: tile.type, route: tile.route ?? null });
@@ -522,9 +533,13 @@ export function applyAction(room, action, ctx = {}) {
   for (const ch of next.characters) {
     ensureLife(ch, c.data); // games saved before Stage 6
     ensureCards(ch); // … and Stage 7
+    ensureFamily(ch); // … and Stage 8
   }
   next.news ??= {};
   ensureRoomCards(next);
+  ensureRoomFamily(next);
+  next.houseOwners ??= {};
+  syncHouseOwners(next);
   const tx = createTx(next, c);
   expireTrades(tx); // pure: offers past `expiresAt` (ctx.now) are dropped before anything else
   handler(tx, action);

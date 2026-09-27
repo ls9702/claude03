@@ -3,15 +3,18 @@
 import { gameData } from '../data/index.js';
 import { netWorth } from './effects.js';
 import { itemsValue } from './cards.js';
+import { houseValue } from './houses.js';
 
 /**
- * @returns {{rank, charId, name, money, debt, goalBonus, items, total, place}[]} best first.
- * total = money − debt + items (Stage 7: resale value of shop items, Σ price × resale).
+ * @returns {{rank, charId, name, money, debt, goalBonus, items, house, total, place}[]} best first.
+ * total = money − debt + items (Stage 7: resale value of shop items, Σ price × resale) + house (Stage 8: the
+ * house's value, after the 노년 시세).
  * Ties on total are broken by goal arrival order, then creation order.
  */
 export function computeRanking(room, { data = gameData() } = {}) {
   const rows = room.characters.map((c) => {
     const items = itemsValue(data, c);
+    const house = houseValue(c);
     return {
       charId: c.id,
       name: c.name,
@@ -20,7 +23,8 @@ export function computeRanking(room, { data = gameData() } = {}) {
       debt: c.debt ?? 0,
       goalBonus: c.goalBonus ?? 0,
       items,
-      total: netWorth(c) + items,
+      house,
+      total: netWorth(c) + items + house,
       place: c.place ?? null,
     };
   });

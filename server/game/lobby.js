@@ -2,6 +2,7 @@
 // Result shape: { ok: true, room, logs: [entry], ...extra } | { ok: false, status, error }
 import { buildTurnOrder } from './order.js';
 import { sanitizeAvatar } from './avatar.js';
+import { getAvatars } from '../data/index.js';
 
 export const MAX_PLAYERS = 4;
 export const NAME_MAX = 12;
@@ -197,5 +198,92 @@ export function endGame(room, now = Date.now()) {
   next.status = 'finished';
   next.finishedAt = now;
   const logs = [pushLog(next, '관리자가 게임을 종료했습니다.', now, 'system')];
+  return { ok: true, room: next, logs };
+}
+
+// ---------- Stage 9-C: CPU characters (owner 'cpu') ----------
+
+export const CPU_OWNER = 'cpu';
+/** Korean CPU name pool (≤ NAME_MAX); the first unused one is taken, then numbered. */
+export const CPU_NAMES = ['로봇 철수', 'AI 영희', '알파 민수', '자동 지영', '기계 순자', '봇 덕배', '로보 춘향', '사이보그 길동', '안드로 말순', '컴퓨터 영수', '인공 두식', '칩 미자'];
+export const CPU_PERSONALITIES = ['cautious', 'normal', 'bold'];
+
+const isCpuChar = (c) => c.ownerSessionId === CPU_OWNER;
+
+function hash32(...parts) {
+  let h = 0x811c9dc5;
+  for (const ch of parts.map(String).join('|')) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/** A seeded random look (every avatars.json part), deterministic per room + character seq. */
+export function randomAvatar(seed) {
+  const defs = getAvatars();
+  const out = {};
+  defs.order.forEach((key, i) => {
+    const options = defs.parts[key] ?? [];
+    out[key] = options.length ? options[hash32(seed, key, i) % options.length].id : defs.default[key];
+  });
+  return sanitizeAvatar(out);
+}
+
+/** The room's host = the first joined non-spectator player (may add / remove CPU characters when `allowCpu`). */
+export const roomHost = (room) => activePlayers(room)[0] ?? null;
+
+/** Host players manage CPU characters only in rooms created with 「CPU 허용」. */
+export function canManageCpu(room, sessionId) {
+  const p = findPlayer(room, sessionId);
+  if (!p) return fail(403, '이 방의 참가자가 아닙니다.');
+  if (isSpectator(p)) return spectatorFail();
+  if (!room.config?.allowCpu) return fail(409, '이 방은 CPU 참가가 허용되지 않았어요.');
+  if (roomHost(room)?.sessionId !== sessionId) return fail(403, '방장만 CPU를 넣거나 뺄 수 있어요.');
+  return { ok: true };
+}
+
+/**
+ * Add a CPU character (lobby only, max characters respected). `name` optional (else the first unused pool name),
+ * `avatar` optional (else a seeded random look); personality cautious / normal / bold seeded per room + seq.
+ * `by` = who added it (log text).
+ */
+export function addCpuCharacter(room, { name, avatar } = {}, now = Date.now(), { by = '관리자' } = {}) {
+  if (room.status !== 'lobby') return fail(409, '로비에서만 CPU를 넣을 수 있습니다.');
+  if (room.characters.length >= room.config.maxCharacters) return fail(409, `캐릭터는 최대 ${room.config.maxCharacters}명까지 만들 수 있습니다.`);
+  const seq = (room.nextCharSeq || 0) + 1;
+  let clean;
+  if (name !== undefined && name !== null && name !== '') {
+    clean = cleanName(name);
+    if (!clean) return fail(400, `캐릭터 이름은 1~${NAME_MAX}자로 입력하세요.`);
+  } else {
+    const used = new Set(room.characters.map((c) => c.name));
+    clean = CPU_NAMES.find((n) => !used.has(n)) ?? `CPU ${seq}`;
+  }
+  const next = structuredClone(room);
+  next.nextCharSeq = seq;
+  const character = {
+    id: `c${seq}`,
+    seq,
+    name: clean,
+    avatar: avatar && typeof avatar === 'object' ? sanitizeAvatar(avatar) : randomAvatar(`${room.seed ?? 0}:${room.id}:${seq}`),
+    ownerSessionId: CPU_OWNER,
+    cpuPersonality: CPU_PERSONALITIES[hash32(room.seed ?? 0, room.id, seq, 'cpu') % CPU_PERSONALITIES.length],
+    createdAt: now,
+  };
+  next.characters.push(character);
+  const logs = [pushLog(next, `🤖 ${by} 님이 CPU 캐릭터 「${clean}」을(를) 넣었습니다.`, now)];
+  return { ok: true, room: next, logs, character };
+}
+
+/** Remove a CPU character (lobby only). */
+export function removeCpuCharacter(room, charId, now = Date.now(), { by = '관리자' } = {}) {
+  const c = room.characters.find((x) => x.id === charId);
+  if (!c) return fail(404, '캐릭터를 찾을 수 없습니다.');
+  if (!isCpuChar(c)) return fail(409, 'CPU 캐릭터만 여기서 뺄 수 있어요.');
+  if (room.status !== 'lobby') return fail(409, '로비에서만 CPU를 뺄 수 있습니다.');
+  const next = structuredClone(room);
+  next.characters = next.characters.filter((x) => x.id !== charId);
+  const logs = [pushLog(next, `🤖 ${by} 님이 CPU 캐릭터 「${c.name}」을(를) 뺐습니다.`, now)];
   return { ok: true, room: next, logs };
 }

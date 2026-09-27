@@ -132,7 +132,7 @@
   gameOver{ranking}, log{text,tone}`. Since Stage 5 every event also has `tone, emotion, scene, line, cutin, lineTag`
   (see Stage 5). Events are broadcast to everyone → never put secret info in them (masking lives in `viewFor`).
 - `viewFor` masks: other sessions' pending answers (exposes `pending.answered[]` instead) and unresolved bets.
-- Hooks for later stages: `heart/card/shop/treasure/house` tiles are log-only placeholders in `resolveTile`
+- Hooks for later stages: `treasure` tiles are log-only placeholders in `resolveTile` (card/shop live since Stage 7, heart/house since Stage 8)
   (text in `board.json.placeholders`); add jobs/cards/romance/submaps as new tile handlers + `PROMPTS` entries;
   extend `computeRanking` for assets/awards.
 - Avatar part ids in `server/data/avatars.json` are stable contracts (generated PNG layers will key off them);
@@ -404,11 +404,11 @@
   sleepy), `poses` (idle wave clap mic), `profiles.<id>` {name, role, personality, speech, looks, colors}, `bigAmount`,
   `frequency.<many|normal|few|off>` {label, medium, minor (chances), cooldown, duoChance}, `situations.<key>` {weight
   big|medium|minor, lead hoya|bomi|any, duo true|false|'chance', vars[], hoya/bomi: {expression, pose}}, `eraSituations`,
-  `tileSituations` (tile type → situation; `{}`: heart/treasure are still placeholder tiles, and any tile type listed in
+  `tileSituations` (tile type → situation; `{}`: treasure is still a placeholder tile, heart/house map real outcomes (Stage 8), and any tile type listed in
   `board.json.placeholders` is skipped anyway — a test guards that placeholders never produce marriage/treasure MC lines;
   Stage 6 maps job outcomes (`jobChanged` hire → job, `rankUp` → promotion …) instead of the job tile). Pools: `lines.json` `mc.<key>.{hoya,bomi}` = string | {t, e?, p?},
   `mc.<key>.duo` = 2–3 line dialogues [{s, t, e?, p?}] (both MCs). Tests: ≥6 per speaker + ≥6 duos per situation,
-  ≤48 chars, placeholders ⊂ situation `vars`, every 호야 line has 멍. `birth` is reserved (no engine event yet — Stage 6).
+  ≤48 chars, placeholders ⊂ situation `vars`, every 호야 line has 멍. `birth` = Stage 8 `childBorn`.
 - Engine: `presentation.js` `attachMc` (end of `decorateEvents`) → qualifying events get `mc: [{speaker, line, expression,
   pose, part?}]`, `mcWeight`, `mcKey`, `mcStudio` (game start + first character entering each era after the first).
   Situations: gameStarted→gameStart, first turnStarted→firstSpin, eraChanged→era<Era>|eraChange, routeChosen→routeChoice,
@@ -493,7 +493,7 @@
   committed state shows ready/failed; 1 s polling only while SSE is down).
 - Admin: host box (turn/phase/deadline + 「프롬프트 시간 초과 처리」「대신 룰렛 돌리기」「이번 턴 건너뛰기」 → `POST
   /admin/api/rooms/:id/actions`), 「턴 제한 시간」 select (`meta.turnTimeouts` when present), era minimum hints
-  (`meta.minTurns[mode][era]`, else client mirror), CPU checkbox removed, 390 px layout.
+  (`meta.minTurns[mode][era]`, else client mirror), CPU checkbox removed (back in Stage 9-C as 「CPU 허용」), 390 px layout.
 - CSS: long-name truncation (lobby cards 2-line clamp, HUD/side list/ranking ellipsis, `minmax(0,1fr)` grids — grid items
   need `min-width: 0` or a nowrap child widens the page), crowded 2D tiles (3 overlapping pawns + "+N"), 3D name tags on
   < 700 px canvases = current / moving (+ mine off crowded tiles), roulette pop z 21 (under cut-ins), single-row cut-in
@@ -553,8 +553,8 @@
   is offered instead. Injury: `injuryRisk × news injuryMult` after salary / promotion exams → `injured` = 2 turns
   (decremented per spin). Hidden unlocks (data `unlock`, all must hold, job eras only): 우주비행사 int 9 & str 9; 국민 MC max
   rank of 개그맨/배우/유튜버 (now or history) & charm 9; 재벌 총수 max 대기업 & net worth ≥ 3,000; 트로트 스타 senior & charm 8 &
-  luck 8; **interim until Stages 7/8**: 산신령 luck 9 & `badEvents` ≥ 3 (loss tiles, bad events, injuries), 건물주 middle_age
-  & cash ≥ 4,000. News: first entrant of an era (not baby; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
+  luck 8; **interim until Stage 9**: 산신령 luck 9 & `badEvents` ≥ 3 (loss tiles, bad events, injuries); 건물주 = Stage 8
+  (houseSwaps ≥ 3 or penthouse / jeju_villa). News: first entrant of an era (not baby; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
   (global, no charId; MC studio `news`), `statBonus` for every entrant; effects via `effectsFor(tx, c)` (character's era).
 - Events: `statChanged {charId, stat, delta, value, reason}` (habit/event/news/military/graduation/rankUp/overtime),
   `jobChanged {charId, jobId, fromJobId, rank, reason: hire|change|hidden|parttime}`, `rankUp {charId, jobId, rank, rankName}`,
@@ -674,7 +674,7 @@
   needs another unfinished target (400 missing/self, 409 finished) not sabotaged by you this or last round
   (`lastTargetedBy[you] ≥ round − 1` → 409); target's `lawyer` blocks it (both consumed → `cardBlocked`, no `cardUsed`).
   `offerTrade {characterId, toId, give, want}` (one side = exactly one of money (int > 0) | cardUid; not money↔money; own
-  characters / CPU / finished refused; one open offer per character; give cash / both cards checked), `respondTrade
+  characters / finished refused (CPU targets allowed since Stage 9-C); one open offer per character; give cash / both cards checked), `respondTrade
   {characterId (target), tradeId, accept: bool}` (re-validated → `tradeResolved {status: 'cancelled', reason: 'invalid'}`
   when a side is gone), `cancelTrade {characterId (offerer), tradeId}`, `gift {characterId, toId, money? | cardUid?}`
   (immediate, own characters allowed → `gift.family`), `expireTrades` (system/admin; runner). Offers expire before every
@@ -789,3 +789,201 @@
   the game header's era · turn · 📰 line never wraps. CSS in `public/css/cards.css`.
 - E2E: session scratchpad `s7b/` (`inject.cjs` injected state/events, `game.cjs` natural 4-client game + 390 spectator on the
   real server; screenshots `s7b-*.png`).
+
+## Stage 8 — romance, family, real estate (server)
+- Data (`loadData` / `gameData().partners|houses|avatars`, `/api/meta.partners|houses`): `server/data/partners.json` — `traits`
+  (int 지력형 / str 체력형 / charm 매력형 / luck 운형 `{name, icon, desc, weight}`), `stars` 1..4 `{salary, allowanceMult, weight}`
+  (60/100/150/200 만원 per salary tile; 고교 전원 만남 is always ★1), `names.boy|girl` (24 each), `meetEras`, `affection {meet 30,
+  dateGain, matchBonus 10, proposeAt 50, max 100, failDrop 15, steadyGain 10, familyGain 10}`, `propose {base, perAffection, charm,
+  luck, match, min, max, eras}`, `dates[]` (walk / library int / hiking str / concert charm / amusement luck: `{cost, gain}`), `costs
+  {scale per era, wedding, weddingGift, birth}`, `birth {eras young/middle_age, base, perAffection, perChild, max}`, `children {max 4,
+  genius {base, match, luck}, growTurns 2, dolGift, schoolCost, examGift, allowance 50, talentMult}`, `outings[]`, `avatar` (hair /
+  outfit (boy / girl / child) / colour pools, `traitAccessory`). `server/data/houses.json` — 6 fixed ids `oneroom villa apartment
+  hanok penthouse jeju_villa` `{name, icon, price, value, capacity 1 | null (apartment), eras, lucky? (jeju), desc}`, `listings` 3,
+  `tradeIn` 0.7, `subscription {houseId apartment, chance, discount}`, `luckyChance {money, other, perLuck}`, `market {era senior,
+  min 0.8, max 1.5}`. news.json: `housing_boom` (young/middle_age ×1.3), new `housing_slump` (middle_age/senior ×0.8) and
+  `redevelopment` (senior ×1.2) = `housePriceMult`; `birth_bonus.birthBonus` 300 = 출산장려금. Board: `heart` love route 7 (career /
+  money 1, high 2, senior 1), `house` money route 2 + senior 1; heart / house left `placeholders` (only treasure remains).
+  manifest: `bg-park` / `bg-house` (todo; scenes `park` → mountain-trail, `house` → office in `sceneFallbacks`).
+- Modules: `server/game/family.js` (init / `ensureFamily` / `ensureRoomFamily`, `topStats` / `traitMatch` (찰떡궁합 = partner trait
+  is one of my best stats), `makePartner` / `randomLook` (seeded, sanitized full avatars; children inherit a parent's skin / hair
+  colour), `schoolMeet`, `resolveHeartTile`, `blindDate`, `proposeChance`, `birthChance`, `bearChild`, `growChildrenOnEra|OnSpin`,
+  `allowanceAmount` / `payAllowances`, `spouseSalary`; prompts meet / date / propose) and `server/game/houses.js` (`houseOwners` /
+  `syncHouseOwners`, `houseAvailable`, `priceMult`, `tradeInValue`, `houseListings`, `resolveHouseTile`, `buyHouse`,
+  `drawHousingMarket`; prompt house). spaces.js: `heart` / `house` tile cases; routeChoice `love` → `blindDate`.
+- Character (public): `love {candidates [partnerSpec] (the open 만남 prompt's people, else []), partner, affection, dates}`,
+  partnerSpec = `{id 'pt<n>', name, trait, stars, body (opposite of the character), avatar}`; `spouse` = partnerSpec + `{salary,
+  marriedTurn}` | null; `children [{id 'ch<n>', name, trait, talent genius|normal, stage baby|kid|teen|adult, bornTurn, avatar, body,
+  growth 0..4, turns}]` (max 4); `house {id, price, value, boughtTurn}` | null; `houseSwaps`. Room: `nextPartnerSeq`,
+  `nextChildSeq`, `schoolMeetDone`, `houseOwners {houseId: [charId]}` (kept in sync), `housingMarket {eraId, mult}` | null — the last
+  two in `viewFor`. Older saves migrate in `applyAction` (a save already past 고등학생 never gets a late 전원 만남).
+- Rules: 고교 전원 만남 = the first character entering `high` (enterEra) gives every unfinished single character a ★1 partner
+  (affection meet + matchBonus on 찰떡궁합) → ONE `schoolMeet {eraId, pairs [{charId, partner}]}` (no prompt). Heart tile: single →
+  `meet` prompt (meetEras: high+, earlier eras only a log); partner → `date` prompt, or `propose` when affection ≥ proposeAt in a
+  propose era (young+; a date that reaches it opens the propose prompt at once); married → birth roll (`birthChance`, birth eras,
+  < 4 children) else a family outing (outings money × scale, stats, affection + familyGain). 소개팅: choosing the love route while
+  single → a partner at once (`met {blindDate: true}`, no prompt). Proposal: `proposeChance` = base + (affection − proposeAt) ×
+  perAffection + charm × 매력 + luck × 운 (+ match), clamped → success = wedding, fail = affection − failDrop. Wedding: spouse (salary = ★
+  salary), 축의금 `weddingGift × scale` from EVERY other character capped at their cash (moneyChanged `weddingGift` pairs → Σ
+  conserved) − wedding cost (capped at cash). Salary tiles: `salary.spouseAmount` = ★ salary × salaryEraMult × news salaryMult →
+  moneyChanged `spouseSalary`; employed children send 용돈 (`allowance` + moneyChanged `allowance`) = allowance × talentMult ×
+  spouse ★ allowanceMult × salaryEraMult. Birth (`bearChild`): genius = base + match (spouse trait is my best stat) + luck ×
+  genius.luck; trait = spouse's (50 %) or my best stat; moneyChanged `birth` (cost) + `birthBonus` (news). A married parent also
+  rolls a birth at every era entry. Growth steps (`GROWTH_STEPS`): each era entry of the parent + every `growTurns` parent spins
+  (no double step on an era-entry spin) → dol (stage kid; 돌잔치 gifts `dolGift × scale` from every other character, capped) →
+  school (teen; cost `school`) → exam (teen; genius → elite 축하금, normal → college (chance) small 축하금 / fail) → job (adult;
+  용돈 from then on). House tile (job eras): `houseListings` = `listings` distinct available houses of the era (capacity: holders
+  other than me; my own house never), seeded; lucky roll (money route `luckyChance.money`, else `.other`, + luck × perLuck) swaps the
+  last pick for 제주 별장; 청약 roll discounts the apartment's price (value unchanged); prices / values × `priceMult` (the drawn market
+  in its era, else news housePriceMult). Buy = cash only (price − trade-in ≤ cash, else `disabled`), trade-in = value × 0.7 →
+  `houseSwaps` +1, one net moneyChanged `house`. Resolve re-checks capacity / cash (→ promptResolved `noMoney`). 노년 시세: the
+  first character entering senior draws `int(80..150)/100 × senior news housePriceMult`, clamped → every house value × mult →
+  `houseValueChanged {eraId, mult, changes [{charId, houseId, before, after}], reason: 'market'}`. Ranking: `house` = value, total =
+  money − debt + items + house. 건물주 unlock (jobs.json `unlock.anyOf`): `houseSwaps ≥ 3` or owning penthouse / jeju_villa
+  (`unlockMet` also knows `houseSwaps`, `house`, `anyOf`); 산신령 keeps its interim rule until Stage 9.
+- Prompts (CPU-readable fields; defaults): `meet` options `meet:<partnerId>` ×2 `{partnerId, partner (full spec), trait, stars,
+  salary, match}` + `pass` (default = 찰떡궁합 / higher ★ candidate; context.candidates), resultCutin 'auto' (`met` anchors, pass →
+  promptResolved `{result: 'pass'}`); `date` options `date:<walk|library|hiking|concert|amusement>` `{dateId, trait, cost, price,
+  gain, match, disabled?}` (default = matched affordable date, else cheapest), resultCutin true → `promptResolved {result: 'dated',
+  dateId, gain, affection, propose}`; `propose` options `propose {chance, partnerId}` (default) / `steady {chance: 0}`; `house`
+  options `buy:<houseId> {houseId, price, basePrice, value, tradeIn, cost (net cash), subscription, lucky, capacity, disabled?}` +
+  `pass` (default), resultCutin 'auto' (`houseBought` anchors; pass / noMoney → promptResolved).
+- Events (all in `EVENT_TYPES`): `met {charId, partner, affection, match, blindDate?}`, `dated {charId, partnerId, partner, dateId,
+  trait, cost, gain, affection, match}` (chip; `steady` = 조금 더 사귀기), `proposed {charId, partnerId, partner, success, chance}`,
+  `married {charId, spouse, gifts [{fromId, amount}], total, cost}`, `schoolMeet {eraId, pairs [{charId, partner, line, lineTag}]}`,
+  `childBorn {charId, child, spouse}`, `childGrew {charId, childId, stage, kind dol|school|exam|job, amount, child, gifts? (dol),
+  result? (exam elite|college|fail)}`, `allowance {charId, childId, amount}` (chip), `houseBought {charId, houseId, price, basePrice,
+  value, tradeIn, subscription, lucky, swap, fromHouseId}`, `houseSold {charId, houseId, value, amount}` (chip, right after
+  houseBought), `houseValueChanged` (rows carry `line` / `lineTag`). `salary.spouseAmount`. moneyChanged reasons: date, wedding,
+  weddingGift, birth, birthBonus, family, dolGift, school, childExam, spouseSalary, allowance, house. Anchors (`CUTIN_TYPES` +
+  prompts.js `ANCHOR_TYPES`): met proposed married schoolMeet childBorn houseBought houseValueChanged + childGrew dol/exam/job
+  (`isCutinChildGrew`, also a boundary via `isBoundary`); a heart / house landing followed by met / proposed / married / childBorn
+  / houseBought of the same character has `cutin: false` (the outcome takes the stage). Avatars ride on met.partner /
+  dated.partner / proposed.partner / married.spouse / childBorn.child + spouse / childGrew.child / schoolMeet.pairs[].partner.
+  Presentation: tags meet, school_meet, date, propose, propose_ok, propose_fail, wedding, birth, dol, child_school, child_exam,
+  child_exam_fail, child_job, allowance, house_buy, house_sell, market_up, market_down (+ `heart` / `house` for prompts); new
+  placeholders `{partner} {child} {house}`; scenes park (meet / date / propose), wedding-hall (wedding, dol), hospital (birth),
+  school (schoolMeet, child school / exam), office (child job), house (houses / market). MC situations: marriage (married, big),
+  proposeFail (medium), birth (childBorn, big), house (houseBought, medium), market (houseValueChanged, big, studio), schoolMeet
+  (medium); `tileSituations` stays `{}` (never on a heart / house TILE landing).
+- Simulation (`scripts/simulate.js` Stage 8 block; `--family default` answers 만남 / 데이트 / 프로포즈 with the prompt default):
+  seed 11 × 300 random: lifetime 79.4 spins (Stage 7: 79.0), 13.8 decisions per lifetime character (date 0.65, propose 0.48,
+  house 0.24), married 14.7 % (young love route 24 % vs career 12 % / money 10 %); `--family default`: married 27.4 % (love route
+  45 %), 0.21 children per character (genius 27 %), love-route net worth within −5..−6 % of the mean (young 1476 vs 1519 / 1647,
+  middle_age 1459 vs 1618 / 1575); houses bought on 37 % of house prompts, 7 % own one at the end, 노년 시세 mean ×1.15.
+- Tests: `test/stage8-family.test.js` (data, init / view, schoolMeet once, meet / date / propose seeded success & fail, 축의금
+  conservation, spouse salary, birth + max 4 + 출산장려금, child steps + allowance, engine era-entry growth + birth, presentation /
+  MC, random lifetime games, restore mid-proposal + pre-Stage-8 migration), `test/stage8-houses.test.js` (houses.json, listings
+  capacity / own house / 청약 / lucky jeju / news prices, buy / swap / trade-in / cash / race, market once + news + clamp + engine,
+  ranking, 건물주 via swaps / penthouse, HTTP meta + choose).
+
+## Stage 8 — client (romance, family, real estate)
+- Pure `public/js/shared/family.js` (imports only `growth.js`; `test/client-family.test.js`): `DEFAULT_TRAITS` / `DEFAULT_HOUSES`
+  (contract fallbacks; `/api/meta.partners.traits` / `.houses.houses` win), `HOUSE_IDS` (oneroom villa apartment hanok penthouse
+  jeju_villa), `CHILD_STAGES` (baby 0.5 / kid 0.64 / teen 0.78 / adult 0.9 cut-in scale + label + icon), `traitInfo`, `starsText`
+  (★★☆☆), `partnerInfo`, `npcCharacter(spec, {prefix, avatar})` (partner / child as a portrait / cut-in "character" `{id:
+  '<prefix>:<id>', name, avatar, art: null, npc: true}`), `affectionInfo(love, meta)` (❤️ bar to `affection.proposeAt`), `childInfo`,
+  `childLook(child, {stage, avatars})` (stage costume from the era-outfit table: baby → dino, kid → tracksuit, teen → uniform/sailor,
+  adult = own), `houseInfo` (capacity null → 0 = many owners), `houseOf`, `houseOwners` (`room.houseOwners` else derived),
+  `marketInfo(room.housingMarket | event)`, `familyOf`, `familyIcons` (💕 / 💍 + 👶🧒🧑‍🎓🧑‍💼 + 🌟), `familySummary`, `familyCast(group,
+  characters, {avatars})` (met/dated/proposed → partner, married → spouse 💍, childBorn → spouse + baby 👶, childGrew → the
+  event's child copy at its stage; entries `{char, role, scale, stage?, pose, emotion, glyph, genius?}`), `schoolMeetPairs`,
+  `weddingGifts` (축의금 / 돌잔치 gifts), `CHILD_GROW` (dol/school/exam/job label · icon · scene), `meetOptions` (spec from the option
+  `partner`, else `love.candidates` / `context.candidates` by `partnerId`), `dateOptions` (cost, gain, match), `proposeOptions`
+  (chance % only on the propose option; `steady` is a pass), `houseOptions` (price, `basePrice` → 청약 discount, trade-in, net =
+  `cost`, owners, sold out by capacity, lucky, reason), `familyTagBadge` (💍👶n🏠 for the 3D name tag).
+- `public/js/ui/houseArt.js` (string builders): `houseSvg(id)` = 6 distinct flat SVG houses (viewBox 120×100, no ids) + generic
+  fallback, `houseArtHtml(id, {art})` (accepted `findAsset({kind:'house', house: id})` img wins), `houseOptionsHtml` (매물 listing
+  cards: art, name, price (basePrice struck on 청약), 🔁 보상판매 → 실제, 💎 자산가치 when ≠ price, 👥 capacity + 🏠 owners, 🎫 청약 /
+  ✨ 골드 매물 ribbon, sold-out / no-cash reason; pass button), `marketChartSvg(mult)` (red ▲ / blue ▼ line), `dolTableSvg()`.
+  `public/js/ui/familyArt.js`: `meetOptionsHtml` (candidate cards: portrait slot, trait, ★, 💞 찰떡궁합, 💼 맞벌이, 「💘 만나기」 +
+  pass), `dateOptionsHtml` (💸 cost / ❤️ gain / 🎯 취향 저격 badges; server desc only for the disabled reason), `proposeOptionsHtml`
+  (`.chance-meter` role=meter), `familyOptionsHtml(p)` (by kind, null otherwise), `partnerCardHtml`, `familyDetailHtml(c, {meta,
+  room, avatars, artFor})` (연애 ❤️ bar · 배우자 portrait/trait/★/salary · 자녀 tiny portraits + stage + 🌟 천재 · 집 art/value/gain/
+  swaps + market). Portraits are `portraitHtml` slots → `hydratePortraits` after insertion.
+- Cut-ins: `cutinMap.STAGE8_ANCHORS` (met dated proposed married schoolMeet childBorn houseBought houseValueChanged) +
+  `childGrew` of `CHILD_GROW_ANCHORS` (dol exam job; `isFamilyAnchor`) are anchors and follow-up boundaries; `allowance` /
+  `houseSold` / childGrew school follow-ups → `g.family[]` chips; schoolMeet involves every pair's character. Tags 💘 새로운 만남 /
+  💑 데이트 / 💍 프러포즈 성공 · 💔 실패 / 💒 결혼식 / 🏫 고교 첫 만남 / 👶 출산 / 🎂 돌잔치 · 🎒 · 📝 자녀 수능 · 💼 자녀 취업 / 🏠 내 집 마련 ·
+  집 갈아타기 / 📈 급등 · 📉 폭락; promptResolved kinds meet/date/propose/house. Policy: married / childBorn / schoolMeet /
+  houseValueChanged are big (full in 「간단히」), `MINOR_TYPES` dated (banner for others), a schoolMeet with my character counts as
+  mine; merge ranks married 9, childBorn 8, proposed/schoolMeet 7. cutin2d `stage8Look` (love tone; wedding-hall for proposal
+  success / wedding, hospital birth, `CHILD_GROW` scenes, studio market; `fx8` wedding = confetti + 💒 + pink frame (`.cutin.wedding`),
+  hearts, heartbreak), `stage8Extras` (💌 per-guest 축의금 / 돌잔치 chips replace the weddingGift / dolGift money chips, 💍 spouse chip,
+  👶 baby chip, exam result, 💌 future allowance, 🏠 price / 🔁 trade-in / 🎫 청약 / ✨ 골드 매물, ❤️ affection, 용돈 / 보상판매 / 입학
+  follow-ups, 💑 맞벌이 = `salary.spouseAmount`), `stage8Badge` (💘 partner trait · ★, 👶 baby), panels `.ci-house` (house art + price)
+  / `.ci-dol` / `.ci-pairs` (every pair with portraits in the box) / `.ci-market`; `marketSpec` = studio with the MCs when the group has
+  lines, else kind `market` (chart centred), chips `before → after` per owner from `changes`. Cast: family entries join the
+  character (up to `MAX_CAST` 5, `slotPositions(scales)` spreads narrower children; `.ci-slot.fam.<role>` with a `.ci-famtag` name,
+  height × scale); schoolMeet window = my pair first + one more (4 figures). Prompts (cut-in + 2D modal): meet / date / propose via
+  familyArt, house via `houseOptionsHtml` (prompt spec carries `room` for owners); prompt cast: meet → subject + both candidates,
+  date / propose → subject + partner; kind looks love / love / wedding-hall / treasure.
+- game2d: side rows `gc-tag fam` (💕/💍 + kids) and `gc-tag house` (icon + value); detail card = `familyDetailHtml`; result rows
+  `familyLine` (house art + name + value, family icons + summary) and 「집 N만원」 (ranking `house`); floats / toasts (cut-ins off)
+  for every Stage 8 event (`stage8Float` / `stage8Toast`); `houseValueChanged` goes through the lotto path of `showGroup` (one
+  studio cut-in). 3D: animator `ANIMATED_EVENTS` + met dated proposed married schoolMeet childBorn childGrew allowance houseBought
+  houseSold houseValueChanged; board3d pops 💘 💕 💍 (+ confetti) 👶 (+ confetti) 💌 🏠 (+ confetti) 🔁, 💍/💔 proposal, childGrew 🎂🎒📝💼,
+  schoolMeet banner + 💘 per pair, market banner 📈/📉; `familyTagBadge` rides on the name tag (`tagBadge`, no extra draw calls).
+- CPU players (9-C, feature-detected): `format.isCpu(c)` (`c.cpu` or ownerId 'cpu') / `cpuBadgeHtml(c)` → 「🤖 CPU」 after owner names
+  (side list, now-playing line, result rows, lobby cards, admin room detail).
+- CSS `public/css/family.css` (linked after cards.css). E2E: session scratchpad `s8b/` (`inject.cjs` injected state / events for
+  every cut-in, prompt (cut-in desktop 3D, 390, 2D modal) and the result; `game.cjs` natural game on the real 8-A server;
+  screenshots `s8b-*.png`).
+
+## Stage 9 — CPU players (9-C)
+- Owner id `'cpu'` (`lobby.CPU_OWNER`, `cpu.CPU_OWNER`): `viewFor` shows `ownerId 'cpu'`, `ownerName 'CPU'`; order.js puts
+  CPUs after the players' characters (family order). CPU characters carry `cpuPersonality` cautious|normal|bold (public).
+- Lobby (pure, `server/game/lobby.js`): `addCpuCharacter(room, {name?, avatar?}, now, {by})` (lobby only, max characters,
+  name = first unused `CPU_NAMES` entry unless given, look = `randomAvatar(seed)` seeded by room seed + id + seq,
+  personality seeded the same way), `removeCpuCharacter(room, charId, now, {by})` (CPU only → 409, lobby only),
+  `roomHost(room)` (= first joined non-spectator), `canManageCpu(room, sessionId)` (409 without `config.allowCpu`, 403
+  for non-hosts / spectators). A CPU-only room starts like any other (≥ 2 characters, no ready check) — admin only.
+- Routes: admin `POST /admin/api/rooms/:id/cpu {name?, avatar?}` → 201 `{characterId, room}` (always allowed in a lobby),
+  `DELETE /admin/api/rooms/:id/cpu/:charId`; host player `POST /api/rooms/:id/cpu` → 201 / `DELETE /api/rooms/:id/cpu/:charId`
+  (only with 「CPU 허용」). Admin page: 「CPU 허용」 create checkbox (sent only when on), room detail 「🤖 CPU 추가」 + one
+  「🤖 name ✕」 button per CPU in the lobby. Lobby (`app.js` `renderCpuTools`): the same chips under the character grid
+  for the host when `allowCpu` (`#cpu-tools`).
+- `server/game/cpu.js` (pure; never consumes the game RNG — ties use a sub-RNG hashed from seed/rngState/turn/prompt/char):
+  `cpuDecide(room, charId, data) → action | null` (order: answer a trade offer made to it → answer the pending prompt →
+  on its awaitSpin turn `cpuCardAction` or `spin`); `cpuDue(room) → {kind: trade|prompt|spin, charId, key}` (what the
+  room waits on from a CPU; the key changes per step, e.g. `s:<turnNo>:<cardUsed>`); `cpuNextAction` (both, headless);
+  `cpuAnswer`, `CPU_ANSWERS[kind](ctx, c, pending) → optionId | null` (null / unknown kind / disabled → the prompt default,
+  else the first enabled option — every answer is an enabled option); `cpuTradeAccept` (value got ≥ value given ×
+  `tradeMargin`; money at face value, cards at `cardValue` = price, job-only cards of another job ×0.1, lotto ×0.45, a
+  card pushed out of a full hand counts); `jobScore` (rank salary + odds of the next two ranks − injury), `targetJob`,
+  `jobDeficit`; `PERSONALITY` knobs (promotion / retake / propose thresholds, cash reserve, shop multiplier, sabotage
+  ratio, trade margin, holiday stake style, route bias). CPUs never bet, offer trades or gift.
+- Heuristics: route = max of love (charm ×0.5, +1.5 dating, +1.5 charm ≥ 6 single) / career (2 + regular salary/100 +
+  int ×0.2) / money (cash/400 ≤ 6 + luck ×0.2 + 1 without a house) + personality bias; habit → the biggest requirement gap
+  of `targetJob`, else int before a degree job, else its rank-up stat; exam = higher `college + elite/2` of study/guess;
+  career = college when admitted, 재수 when the retake pass chance ≥ threshold, else job; military = now/volunteer for
+  str jobs (전역 체력 +2), else later/skip (bold volunteers); jobOffer = max `jobScore`; jobTile = change when the new job
+  scores > 1.15 × the current rank, promotion when `rankUpChance(exam)` ≥ threshold (not injured), max-rank bonus when its
+  EV ≥ overtime share, else overtime; hiddenJobOffer accept; shop = best positive (worth × shopMult − price) keeping the
+  reserve (items: resale + 90 per useful stat, laptop salary bonus; bonus card = next salary; lotto/coupon ≈ worthless);
+  holiday stake by cash multiples; groupGift default; Stage 8 kinds read option fields (meet: ★ + 맞벌이 월급 + 찰떡궁합,
+  never pass; date: gain − 0.3 × cost within the reserve; propose when `chance` ≥ threshold else the other option;
+  house: value − cash cost − current house + 15 % drift until 노년 시세, keeping half the reserve).
+  Cards before the spin (one): 공약 with the job; sabotage vs the richest rival (ranking total, no lawyer in hand, not
+  targeted by anyone this / last round) when it is ≥ own total × `sabotage` ratio (tax audit ≥ 300 cash > complaint with a
+  job > cut_line > noise > gossip for charm jobs); stat cards for a useful stat; taxi / energy within 12 tiles of the goal
+  or when the expected landing (tile worth over rolls 1..10, stops halt) gains ≥ 25; a (nearly) full hand plays anyway.
+- Runner (`GameRunner`): sibling CPU timer per room (`cpuTimers`), armed by `schedule(room, events)` from start / dispatch /
+  restore with `cpuDue`; delay `cpuDelayMs` (`CPU_DELAY_MS` spin 1600 / prompt 1200 / trade 1200, + `cutin` 2500 when the
+  last batch had an `event.cutin`; a number sets all four — tests pass 0 or `{cutin: 0}`), fires `runCpu(roomId, key)` →
+  `cpuDecide` dispatched with actor `{system: true, cpu: true}` (only for `ownerSessionId === 'cpu'`); a refused action
+  falls back to the default option / plain spin / reject, then logs. `end()` / `stop()` clear it. Simultaneous prompts:
+  each CPU answers on its own timer. `startServer({cpuDelayMs})` passes it through.
+- Engine edits: `prompts.js` `openPrompt` no longer pre-answers CPU characters with the default (the runner answers);
+  `cards.js` `offerTrade` accepts CPU targets (the runner answers). A system actor may already act for any character.
+- Scripts: `node scripts/cpu-game.js --cpus 4 [--random R] --mode lifetime --seed S [--games N] [--verbose]` (headless,
+  CPU and random characters alternate, `index` order; per game winner / routes / jobs / totals, summary by personality;
+  `playCpuGame`, `cpuVsRandom` exported). `scripts/simulate.js --policy random|cpu|mixed` (mixed = odd seq CPU, prints
+  1st-place share per policy). Measured (4 CPU + 4 random, lifetime, 300 games): CPU win share 62.3 / 64.3 / 66.3 %
+  (seeds 1 / 2 / 3), average rank 4.1 vs 4.9, average total ≈ 1610 vs 1435 만원; `simulate --policy mixed --games 300
+  --seed 11`: CPU 66.3 % of wins with 54.6 % of the characters.
+- Tests: `test/cpu.test.js` (lobby rules, every registered prompt kind answered with an enabled option the engine
+  accepts — kinds without a fixture get a synthetic prompt, heuristics, Stage 8 option fields, sabotage targeting, card
+  legality, trade answers, CPU-only games in 3 modes with no bets / offers / gifts), `test/cpu-server.test.js` (delays,
+  mocked-timer pacing incl. the cut-in extra and a trade answer, a CPU-only runner game to the end, admin / host routes,
+  admin start of a CPU-only room watched by a spectator). E2E: session scratchpad `s9c/e2e.cjs` (`s9c-*.png`).

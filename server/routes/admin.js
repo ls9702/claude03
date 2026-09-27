@@ -7,6 +7,7 @@ import path from 'node:path';
 import { getEras } from '../data/index.js';
 import { TURN_TIMEOUTS, defaultRoomConfig, minEraTurns, validateRoomConfig } from '../game/config.js';
 import { adminSummary, adminView } from '../game/view.js';
+import { addCpuCharacter, removeCpuCharacter } from '../game/lobby.js';
 import { clientIp, createRateLimiter, sendFail } from './common.js';
 
 export const ADMIN_COOKIE = 'jinsei_admin';
@@ -202,6 +203,23 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
     const r = runner.dispatch(room.id, action);
     if (!r.ok) return sendFail(res, r);
     res.json({ room: adminView(r.room), events: r.events });
+  });
+
+  // Stage 9-C: CPU characters (lobby only; the admin may add them even without 「CPU 허용」). A room with only
+  // CPU characters (+ spectators) can be started by the admin — demos / TV mode.
+  router.post('/rooms/:id/cpu', requireAdmin, withRoom, (req, res) => {
+    const body = req.body ?? {};
+    const r = addCpuCharacter(req.room, { name: body.name, avatar: body.avatar }, Date.now());
+    if (!r.ok) return sendFail(res, r);
+    store.commit(r.room, r.logs);
+    res.status(201).json({ characterId: r.character.id, room: adminView(r.room) });
+  });
+
+  router.delete('/rooms/:id/cpu/:charId', requireAdmin, withRoom, (req, res) => {
+    const r = removeCpuCharacter(req.room, req.params.charId, Date.now());
+    if (!r.ok) return sendFail(res, r);
+    store.commit(r.room, r.logs);
+    res.json({ room: adminView(r.room) });
   });
 
   // Stage 5.5-D: (re)generate a character's AI art; ?force=1 ignores the cache and the 1-per-character rule.

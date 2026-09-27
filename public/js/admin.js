@@ -1,5 +1,6 @@
 // Admin page: login, create room (per-era turns), room list, lobby detail, start/end/delete.
 import { renderAvatar, setAvatarDefs } from './ui/avatar2d.js';
+import { cpuBadgeHtml } from './format.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) =>
@@ -194,6 +195,8 @@ async function onCreate(ev) {
   if (f.growthOutfits && !f.growthOutfits.checked) body.growthOutfits = false;
   // Stage 7 「명절 대잔치」 (default on; only sent when turned off)
   if (f.holidays && !f.holidays.checked) body.holidays = false;
+  // Stage 9-C 「CPU 허용」 (default off; only sent when on)
+  if (f.allowCpu?.checked) body.allowCpu = true;
   try {
     const { room } = await req('POST', '/admin/api/rooms', body);
     toast(`방을 만들었습니다. 코드: ${room.code}`);
@@ -270,6 +273,7 @@ async function renderDetail() {
       <dt>턴 제한 시간</dt><dd>${room.config.turnTimeoutSec ? `${room.config.turnTimeoutSec}초` : '끄기'}</dd>
       <dt>성장 의상</dt><dd>${room.config.growthOutfits === false ? '끄기 (로비에서 고른 옷 그대로)' : '켜기 (시대·직업 의상)'}</dd>
       <dt>명절 대잔치</dt><dd>${room.config.holidays === false ? '끄기' : '켜기 (설날·추석 미니게임)'}</dd>
+      <dt>CPU 허용</dt><dd>${room.config.allowCpu ? '켜기 (방장도 CPU 추가 가능)' : '끄기 (관리자만 추가)'}</dd>
       ${room.turn ? `<dt>턴 순서(실제)</dt><dd>${room.turn.order.map((id) => esc(byId.get(id)?.name ?? id)).join(' → ')}</dd>` : ''}
     </dl>
     <h3>참가자 (${players.length}/4)${spectators.length ? ` <small class="muted">· 👀 관전 ${spectators.length}</small>` : ''}</h3>
@@ -279,9 +283,22 @@ async function renderDetail() {
     </ul>
     <h3>캐릭터 (${room.characters.length}/${room.config.maxCharacters})</h3>
     <div class="detail-chars">
-      ${room.characters.map((c) => `<div class="detail-char">${renderAvatar(c.avatar, { size: 56 })}<div><b>${esc(c.name)}</b></div><small class="muted">${esc(c.ownerName)}</small></div>`).join('') || '<p class="muted">없음</p>'}
+      ${room.characters.map((c) => `<div class="detail-char">${renderAvatar(c.avatar, { size: 56 })}<div><b>${esc(c.name)}</b></div><small class="muted">${esc(c.ownerName)}${cpuBadgeHtml(c)}</small></div>`).join('') || '<p class="muted">없음</p>'}
     </div>
+    ${cpuTools(room)}
     <details ${openJson ? 'open' : ''}><summary>상태 JSON</summary><pre class="json">${esc(JSON.stringify(room, null, 2))}</pre></details>`;
+}
+
+/** Stage 9-C: add / remove CPU characters in the lobby (a CPU-only room can be started for demos / TV mode). */
+function cpuTools(room) {
+  if (room.status !== 'lobby') return '';
+  const cpus = room.characters.filter((c) => c.ownerId === 'cpu');
+  const full = room.characters.length >= room.config.maxCharacters;
+  return `
+    <div class="cpu-tools">
+      ${cpus.map((c) => `<button class="btn tiny ghost" data-cpu-remove="${esc(c.id)}" title="CPU 빼기">🤖 ${esc(c.name)} ✕</button>`).join(' ')}
+      <button class="btn tiny" data-act="addCpu" ${full ? 'disabled' : ''}>🤖 CPU 추가</button>
+    </div>`;
 }
 
 /** Host tools for a running game: current turn / phase + timeout, spin for, skip turn. */
@@ -324,6 +341,17 @@ async function onDetailClick(ev) {
     await refresh().catch(() => {});
     return;
   }
+  const cpuRemove = ev.target.closest('[data-cpu-remove]')?.dataset.cpuRemove;
+  if (cpuRemove && selectedId) {
+    try {
+      await req('DELETE', `/admin/api/rooms/${selectedId}/cpu/${cpuRemove}`);
+      toast('CPU를 뺐어요.');
+      await refresh();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    return;
+  }
   const act = ev.target.closest('[data-act]')?.dataset.act;
   if (!act || !selectedId) return;
   try {
@@ -339,6 +367,9 @@ async function onDetailClick(ev) {
       await req('DELETE', `/admin/api/rooms/${selectedId}`);
       selectedId = null;
       toast('방을 삭제했습니다.');
+    } else if (act === 'addCpu') {
+      const { room } = await req('POST', `/admin/api/rooms/${selectedId}/cpu`, {});
+      toast(`🤖 ${room.characters.at(-1)?.name ?? 'CPU'} 참가!`);
     } else if (act === 'copy') {
       const code = $('#detail h2').textContent.match(/방 (\w+)/)?.[1];
       const url = `${location.origin}/?code=${code}`;

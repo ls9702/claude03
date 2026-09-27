@@ -7,6 +7,7 @@
 //   dolTableSvg()                 → 돌잡이 table (childGrew kind dol)
 import { esc, won as wonFmt } from '../format.js';
 import { houseInfo, houseOptions } from '../shared/family.js';
+import { optionLabel } from '../shared/growth.js';
 
 const svg = (body, { label = '', cls = 'house-svg', view = '0 0 120 100' } = {}) =>
   `<svg class="${cls}" viewBox="${view}" role="img" aria-label="${esc(label)}" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
@@ -109,7 +110,9 @@ export function houseOptionsHtml(p, who, { meta = null, room = null, artFor = ()
         ${l.discount > 0 ? `<span class="hi-disc">🎫 청약 -${esc(won(l.discount))}</span>` : h.lucky ? '<span class="hi-disc gold">✨ 골드 매물</span>' : ''}
         ${houseArtHtml(h.id, { art: artFor('house', h.id), label: h.name, cls: 'hi-art' })}
         <span class="hi-name">${esc(h.icon)} ${esc(h.name)}</span>
-        <span class="hi-price"><b>${esc(won(l.price))}</b>${l.tradeIn > 0 ? `<small class="hi-trade">🔁 보상판매 +${esc(won(l.tradeIn))} → 실제 ${esc(won(l.net))}</small>` : ''}</span>
+        <span class="hi-price">${l.discount > 0 && l.basePrice ? `<s>${esc(won(l.basePrice))}</s>` : ''}<b>${esc(won(l.price))}</b>${
+          l.tradeIn > 0 ? `<small class="hi-trade">🔁 보상판매 +${esc(won(l.tradeIn))} → 실제 ${esc(won(l.net))}</small>` : ''
+        }${l.value != null && l.value !== l.price ? `<small class="hi-val">💎 자산가치 ${esc(won(l.value))}</small>` : ''}</span>
         <span class="hi-cap">👥 ${esc(cap)}${l.owners.length ? ` · 🏠 ${esc(l.owners.join(', '))}` : ''}</span>
         ${h.desc ? `<span class="hi-desc">${esc(h.desc)}</span>` : ''}
         ${l.disabled ? `<span class="hi-off">${esc(l.reason || '살 수 없어요')}</span>` : ''}
@@ -117,7 +120,7 @@ export function houseOptionsHtml(p, who, { meta = null, room = null, artFor = ()
     })
     .join('');
   const passBtn = pass
-    ? `<button type="button" class="${btnClass} house-pass" ${attrs(pass)}><span class="c-icon">${esc(pass.icon ?? '🙅')}</span><span class="ci-opt-l">${esc(pass.label ?? '다음에 살게요')}</span></button>`
+    ? `<button type="button" class="${btnClass} house-pass" ${attrs(pass)}><span class="c-icon">${esc(pass.icon ?? '🙅')}</span><span class="ci-opt-l">${esc(pass.label ? optionLabel(pass) : '다음에 살게요')}${pass.desc ? `<small class="ci-opt-desc">${esc(pass.desc)}</small>` : ''}</span></button>`
     : '';
   return `<div class="house-grid" style="--n:${Math.max(1, Math.min(3, listings.length))}">${cards}</div>${passBtn}`;
 }

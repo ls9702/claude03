@@ -42,6 +42,9 @@ const STAT_FLOAT = { int: ['🧠', '#2446a8'], str: ['💪', '#a33a14'], charm: 
 
 /** Stage 7 board reactions over the pawn (sabotage / block pop over the target). */
 const STAGE7_POP = { cardGained: '🃏', itemBought: '🛍️', gift: '🎁', lottoDraw: '🎱' };
+/** Stage 8 board reactions over the pawn (the cut-in follows). */
+const STAGE8_POP = { met: '💘', dated: '💕', married: '💍', childBorn: '👶', allowance: '💌', houseBought: '🏠', houseSold: '🔁' };
+const CHILD_GROW_POP = { dol: '🎂', school: '🎒', exam: '📝', job: '💼' };
 /** Name tag text: name + Stage 7 roulette-modifier badge (`tagBadge`, e.g. 「✂️−3」). */
 const tagName = (c) => (c?.tagBadge ? `${c.name} ${c.tagBadge}` : c?.name ?? '');
 
@@ -909,6 +912,48 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         },
       ]),
     ),
+    // ---------- Stage 8 ----------
+    ...Object.fromEntries(
+      Object.entries(STAGE8_POP).map(([type, glyph]) => [
+        type,
+        async (e, ctx) => {
+          hooks.onStep?.(e);
+          if (ctx.instant) return;
+          emotion.pop(e.charId, glyph, { dur: type === 'allowance' || type === 'houseSold' ? 1.2 : 1.7 });
+          const P = S.pawns.get(e.charId);
+          if (P && preset.particles > 0 && (type === 'married' || type === 'childBorn' || type === 'houseBought')) {
+            const p = P.pawn.group.position;
+            particles.burst('confetti', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, type === 'married' ? 60 : 40), { up: 4, spread: 2, life: 1, size: 0.35 });
+          }
+          await ctx.sleep(type === 'allowance' || type === 'houseSold' || type === 'dated' ? 200 : 450);
+        },
+      ]),
+    ),
+    proposed: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      emotion.pop(e.charId, e.success ? '💍' : '💔', { dur: 1.7 });
+      await ctx.sleep(420);
+    },
+    childGrew: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      emotion.pop(e.charId, CHILD_GROW_POP[e.kind] ?? '🧒', { dur: 1.5 });
+      await ctx.sleep(300);
+    },
+    schoolMeet: async (e, ctx) => {
+      hooks.onStep?.(e);
+      banner('🏫 고교 첫 만남!', 1800);
+      if (ctx.instant) return;
+      for (const pr of e.pairs ?? []) emotion.pop(pr.charId, '💘', { dur: 1.6 });
+      await ctx.sleep(500);
+    },
+    houseValueChanged: async (e, ctx) => {
+      hooks.onStep?.(e);
+      const m = Number(e.mult) || 1;
+      banner(`${m >= 1 ? '📈' : '📉'} 부동산 시세 ${m >= 1 ? '+' : ''}${Math.round((m - 1) * 100)}%`, 2200);
+      if (!ctx.instant) await ctx.sleep(600);
+    },
     ...Object.fromEntries(
       Object.entries(STAGE6_POP).map(([type, glyph]) => [
         type,

@@ -17,11 +17,16 @@ import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from '.
 import { educationLabel, jobInfo, optionExtras, optionLabel, rankName, rankStars, salaryChip, statChip } from '../shared/growth.js';
 import { CARD_KINDS, cardInfo, holidayRows, holidayTitle, itemInfo, lottoRows } from '../shared/cards.js';
 import { HOLIDAY_OPTION_ICON, hwatuFlipHtml, hwatuSvg, lottoBallHtml, shopOptionsHtml } from './cardArt.js';
+import { CHILD_GROW, childInfo, familyCast, houseInfo, marketInfo, npcCharacter, partnerInfo, schoolMeetPairs, weddingGifts } from '../shared/family.js';
+import { dolTableSvg, houseArtHtml, houseOptionsHtml, marketChartSvg } from './houseArt.js';
+import { familyOptionsHtml } from './familyArt.js';
 
 const REASON_ICON = {
   tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', habit: '📚', tuition: '🎓', military: '🪖',
   // Stage 7
   shop: '🛍️', card: '🃏', sabotage: '💢', tax_audit: '🧾', complaint: '📮', pledge: '🗳️', trade: '🤝', sebae: '🧧', gostop: '🎴', holiday: '🎉', lotto: '🎱',
+  // Stage 8
+  wedding: '💒', weddingGift: '💌', dolGift: '🎂', date: '💑', house: '🏠', houseSold: '🔁', allowance: '💌', school: '🎒', childExam: '🎓', spouse: '💑', birth: '👶', birthBonus: '🍼', family: '👨‍👩‍👧',
 };
 /** Stage 6 anchors → presentation defaults (the server's tone / scene / emotion win when set). */
 const STAGE6_LOOK = {
@@ -65,6 +70,59 @@ function stage7Look(a) {
   }
 }
 const SLOT_X = { 1: [34], 2: [27, 73], 3: [18, 50, 82] };
+/** Max figures in the window (Stage 8: a family may bring the spouse + a child next to the characters). */
+const MAX_CAST = 5;
+
+/**
+ * Stage 8 anchors → presentation defaults (server tone / scene / emotion win). `fx`: wedding (confetti + 💒 frame),
+ * hearts (❤️ burst), heartbreak (💔), house / market / dol panels come from the spec.
+ */
+function stage8Look(a) {
+  switch (a?.type) {
+    case 'met':
+      return { tone: 'love', scene: null, pose: 'wave', emotion: 'shy', sfx: 'heart', glyph: '💘' };
+    case 'dated':
+      return { tone: 'love', scene: null, pose: 'cheer', emotion: 'love', sfx: 'heart' };
+    case 'proposed':
+      return a.success
+        ? { tone: 'love', scene: 'wedding-hall', pose: 'jump', emotion: 'love', sfx: 'fanfare', fx: 'hearts', bigWin: true }
+        : { tone: 'bad', scene: null, pose: 'cry', emotion: 'cry', sfx: 'thud', fx: 'heartbreak', glyph: '💔' };
+    case 'married':
+      return { tone: 'love', scene: 'wedding-hall', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', fx: 'wedding', bigWin: true };
+    case 'schoolMeet':
+      return { tone: 'love', scene: 'school', pose: 'wave', emotion: 'shy', sfx: 'heart' };
+    case 'childBorn':
+      return { tone: 'love', scene: 'hospital', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', fx: 'hearts' };
+    case 'childGrew':
+      return { tone: a.kind === 'job' ? 'career' : 'good', scene: CHILD_GROW[a.kind]?.scene ?? null, pose: 'cheer', emotion: 'joy', sfx: 'fanfare' };
+    case 'houseBought':
+      return { tone: 'treasure', scene: null, pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🏠', bigWin: true };
+    case 'houseValueChanged':
+      return (Number(a.mult) || 1) >= 1 ? { tone: 'treasure', scene: 'studio', pose: 'cheer', emotion: 'joy', sfx: 'fanfare' } : { tone: 'bad', scene: 'studio', pose: 'shock', emotion: 'shock', sfx: 'thud' };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Horizontal slot centres (%) for a cast: the classic 1–3 slots for full-size figures, else spread by figure width
+ * (children are narrower) between 13 % and 87 %.
+ */
+export function slotPositions(scales = []) {
+  const n = scales.length;
+  if (!n) return [];
+  if (n <= 3 && scales.every((x) => (x ?? 1) >= 1)) return SLOT_X[n];
+  const w = scales.map((x) => Math.max(0.35, x ?? 1));
+  const total = w.reduce((a, b) => a + b, 0);
+  const lo = n === 2 ? 24 : 13;
+  const hi = n === 2 ? 76 : 87;
+  let acc = 0;
+  return w.map((x) => {
+    const c = (acc + x / 2) / total;
+    acc += x;
+    return Math.round(lo + c * (hi - lo));
+  });
+}
 
 /** Fallback SVG scenes (viewBox 1600×900) when a generated background is missing. */
 function sceneSvg(scene, tone) {
@@ -192,7 +250,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const a = g.anchor;
     if (a.type === 'newsFlash') return newsSpec(g, { characters });
     if (a.type === 'lottoDraw') return lottoSpec(g, { characters });
-    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? null;
+    if (a.type === 'houseValueChanged') return marketSpec(g, { characters });
+    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? stage8Look(a) ?? null;
     const meta = getMeta();
     const main = characters.find((c) => c.id === g.charId) ?? null;
     const name = main?.name ?? '';
@@ -207,8 +266,14 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       const c = salaryChip(s, won);
       chips.push({ ...c, text: who ? c.text.replace('월급', `${who}월급`) : c.text });
     }
+    // Stage 8: 축의금 / 돌잔치 축하금 transfers are listed per guest (💌 chips) instead of one money chip per side
+    const giftReasons = Array.isArray(a.gifts) && (a.type === 'married' || a.type === 'childGrew') ? new Set(['weddingGift', 'dolGift']) : null;
+    // a 입학 follow-up chip names the child and the 학원비 → its own money chip is dropped
+    const schoolChip = (g.family ?? []).some((f) => f.type === 'childGrew' && f.kind === 'school' && Number(f.amount));
     g.money.forEach((m, k) => {
       if (salaryHidden.has(k)) return;
+      if (giftReasons?.has(m.reason)) return;
+      if (schoolChip && m.reason === 'school') return;
       const who = m.charId !== g.charId ? `${nameOf(characters, m.charId)} ` : '';
       chips.push({ text: `${REASON_ICON[m.reason] ?? '💰'} ${who}${m.delta > 0 ? '+' : ''}${won(m.delta)}`, kind: m.delta > 0 ? 'plus' : 'minus' });
     });
@@ -239,11 +304,20 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (a.type === 'cardBlocked') chips.unshift({ text: `🛡️ ${nameOf(characters, a.targetId)} 방어 성공`, kind: 'plus' });
     if (a.type === 'holidayStarted') chips.push({ text: '🧧 세배 룰렛', kind: '' }, { text: '🗣️ 잔소리 룰렛', kind: '' }, { text: '🎴 고스톱 한 판', kind: '' });
     if (a.type === 'finished') chips.unshift({ text: `🏁 ${a.place}등 골인`, kind: 'plus' });
-    const badge = jobBadgeFor(a) ?? stage7Badge(a, meta);
+    const fam = stage8Extras(g, { characters, chips, meta });
+    const badge = jobBadgeFor(a) ?? stage7Badge(a, meta) ?? stage8Badge(a, g, { characters, meta });
     if (a.type === 'educationChanged' && educationLabel(a.education)) chips.unshift({ text: `🎓 ${educationLabel(a.education)}`, kind: 'plus' });
     if (a.type === 'militaryStart' && a.turns) chips.unshift({ text: `🪖 복무 ${a.turns}턴`, kind: '' });
     if (a.type === 'injured' && a.turns) chips.unshift({ text: `🤕 ${a.turns}턴 부상`, kind: 'minus' });
-    const castIds = a.type === 'holidayResult' ? [] : a.type === 'holidayStarted' && !g.involved.length ? characters.slice(0, 3).map((c) => c.id) : g.involved;
+    const castIds = a.type === 'holidayResult'
+      ? []
+      : a.type === 'holidayStarted' && !g.involved.length
+        ? characters.slice(0, 3).map((c) => c.id)
+        : a.type === 'married' || a.type === 'childBorn' || a.type === 'childGrew' || a.type === 'dated' || a.type === 'met' || a.type === 'proposed'
+          ? [g.charId].filter(Boolean) // the partner / spouse / child joins below (wedding guests: the chips)
+          : a.type === 'schoolMeet'
+            ? fam.pairCast.map((x) => x.char.id)
+            : g.involved;
     const cast = castIds
       .map((id) => characters.find((c) => c.id === id))
       .filter(Boolean)
@@ -263,8 +337,25 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
           pose = 'wave';
           emotion = 'joy';
         }
+        if (a.type === 'schoolMeet') {
+          pose = 'wave';
+          emotion = 'shy';
+        }
         return { char: c, pose, emotion: emotion === 'neutral' ? null : emotion, glyph: isMain ? look?.glyph ?? null : isTarget ? look.targetGlyph ?? null : null };
       });
+    // Stage 8: partner / spouse / child next to the character (schoolMeet: each character with their match)
+    if (a.type === 'schoolMeet') {
+      const out = [];
+      for (const m of cast) {
+        out.push(m);
+        const pc = fam.pairCast.find((x) => x.char.id === m.char.id);
+        if (pc?.npc) out.push({ char: pc.npc, role: 'partner', scale: 1, pose: 'wave', emotion: 'shy', glyph: null });
+      }
+      cast.splice(0, cast.length, ...out.slice(0, 4));
+    } else if (fam.cast.length) {
+      if (cast[0] && look?.glyph && fam.cast.some((m) => m.glyph === look.glyph)) cast[0].glyph = null; // one 💍 is enough
+      cast.push(...fam.cast);
+    }
     const ownerChar = characters.find((c) => c.id === g.charId);
     const scene = a.scene && a.scene !== 'none' ? a.scene : look?.scene ?? a.scene ?? 'none';
     const holiday = a.type === 'holidayResult' ? { kind: a.kind ?? null, rows: holidayRows(a, { characters, won }) } : null;
@@ -293,13 +384,18 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       chips,
       cast,
       badge,
-      fx: look?.fx ?? null,
+      fx: look?.fx === 'gold' ? 'gold' : null,
       sfx: look?.sfx ?? null,
       bigWin: isBigWin(a, g.delta) || !!look?.bigWin,
       currentId: g.charId,
       era: a.type === 'eraChanged' ? `${a.eraName ?? ''} 시대` : '', // board state may already be ahead → no turn/era spoilers
       autoMs,
       holiday, // Stage 7: 고스톱 flip row + result table
+      house: fam.house, // Stage 8: 🏠 illustration panel (houseBought)
+      dol: fam.dol, // 돌잡이 table
+      pairs: fam.pairs, // 고교 첫 만남: every pair in the box
+      gifts: fam.gifts, // 💌 축의금 list
+      fx8: look?.fx && ['wedding', 'hearts', 'heartbreak'].includes(look.fx) ? look.fx : null,
       characters,
       mc: g.mc ?? null, // Stage 5.6: small MC corner lines
     };
@@ -331,6 +427,163 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       return { icon: info.icon, img: artFor('item', a.itemId), title: info.name, stars: '', sub: info.desc || '새 아이템!', kind: 'item' };
     }
     return null;
+  }
+
+  /**
+   * Stage 8 chips / panels of a group (mutates `chips`): 💌 축의금 per guest + total, 👶 birth, 🎂 / 📝 / 💼 child events,
+   * 🏠 purchase (price, 🔁 보상판매, 🎫 청약), 용돈 / 보상판매 / 입학 follow-ups, 💑 맞벌이 on pay day. → {cast, house, dol, pairs,
+   * pairCast, gifts}
+   */
+  function stage8Extras(g, { characters, chips, meta }) {
+    const a = g.anchor;
+    const out = { cast: [], house: null, dol: null, pairs: null, pairCast: [], gifts: null };
+    const who = (id) => (id && id !== g.charId ? `${nameOf(characters, id)} ` : '');
+    const main = characters.find((c) => c.id === g.charId) ?? null;
+    const kidName = (charId, childId) => (characters.find((c) => c.id === charId)?.children ?? []).find((k) => k.id === childId)?.name ?? '';
+    try {
+      out.cast = familyCast(g, characters, { avatars: meta?.avatars });
+    } catch {
+      out.cast = [];
+    }
+    switch (a.type) {
+      case 'married': {
+        const gifts = weddingGifts(a, characters);
+        out.gifts = gifts;
+        const sp = partnerInfo(a.spouse ?? main?.spouse, meta);
+        if (sp) chips.unshift({ text: `💍 ${sp.name} ${sp.traitIcon}${sp.starsText ? ` ${sp.starsText}` : ''}`, kind: 'plus love' });
+        for (const r of gifts.rows) chips.push({ text: `💌 ${r.name} 축의금 +${won(r.amount)}`, kind: 'plus' });
+        if (!gifts.rows.length) chips.push({ text: '💌 축의금은 마음만…', kind: '' });
+        if (gifts.total > 0 && gifts.rows.length > 1) chips.push({ text: `💒 축의금 합계 +${won(gifts.total)}`, kind: 'plus' });
+        break;
+      }
+      case 'childBorn': {
+        const k = childInfo(a.child, meta);
+        if (k) chips.unshift({ text: `👶 ${k.name}${k.genius ? ' 🌟 천재' : ''}${k.traitName ? ` · ${k.traitIcon} ${k.traitName}` : ''}`, kind: 'plus love' });
+        break;
+      }
+      case 'childGrew': {
+        const info = CHILD_GROW[a.kind];
+        const name = kidName(g.charId, a.childId);
+        if (info) chips.unshift({ text: `${info.icon} ${name ? `${name} ` : ''}${info.label}`, kind: '' });
+        if (a.kind === 'exam' && a.result) chips.push({ text: { elite: '🎓 명문대 합격!', college: '🎓 대학 합격', fail: '📖 다음 기회에' }[a.result] ?? '📝 수능', kind: a.result === 'fail' ? '' : 'plus' });
+        if (a.kind === 'dol') {
+          out.dol = true;
+          const gifts = weddingGifts(a, characters);
+          out.gifts = gifts;
+          for (const r of gifts.rows) chips.push({ text: `💌 ${r.name} 축하금 +${won(r.amount)}`, kind: 'plus' });
+        } else if (a.kind === 'job' && Number(a.amount) > 0) chips.push({ text: `💌 앞으로 용돈 +${won(Number(a.amount))}`, kind: 'plus' });
+        else if (Number(a.amount) && !g.money.some((m) => m.charId === g.charId)) chips.push({ text: `${info?.icon ?? '💰'} ${Number(a.amount) > 0 ? '+' : ''}${won(Number(a.amount))}`, kind: Number(a.amount) > 0 ? 'plus' : 'minus' });
+        break;
+      }
+      case 'houseBought': {
+        const h = houseInfo(a.houseId, meta);
+        const discount = Number(a.discount) || (a.subscription && Number(a.basePrice) > Number(a.price) ? Number(a.basePrice) - Number(a.price) : 0);
+        out.house = { id: a.houseId, name: h?.name ?? a.houseId, icon: h?.icon ?? '🏠', price: Number(a.price) || null, value: Number(a.value) || null, tradeIn: Number(a.tradeIn) || 0, discount, lucky: !!a.lucky, art: artFor('house', a.houseId) };
+        if (Number(a.price) > 0 && !g.money.some((m) => m.charId === a.charId && m.delta < 0)) chips.push({ text: `🏠 -${won(Number(a.price))}`, kind: 'minus' });
+        // the houseSold follow-up names the old house → its chip replaces this one
+        if (Number(a.tradeIn) > 0 && !(g.family ?? []).some((f) => f.type === 'houseSold' && f.charId === a.charId)) chips.push({ text: `🔁 보상판매 +${won(Number(a.tradeIn))}`, kind: 'plus' });
+        if (discount > 0) chips.push({ text: `🎫 청약 당첨 -${won(discount)}`, kind: 'plus' });
+        if (a.lucky) chips.push({ text: `✨ 골드 매물${Number(a.value) > Number(a.price) ? ` (자산가치 ${won(Number(a.value))})` : ''}`, kind: 'plus' });
+        break;
+      }
+      case 'schoolMeet': {
+        const pairs = schoolMeetPairs(a, characters, meta);
+        out.pairs = pairs;
+        // the window: my pair first, then the others (2 pairs = 4 figures at most)
+        const mine = pairs.filter((p) => p.char.isMe);
+        out.pairCast = [...mine, ...pairs.filter((p) => !p.char.isMe)].slice(0, 2);
+        break;
+      }
+      case 'met': {
+        const pi = partnerInfo(a.partner ?? main?.love?.partner, meta);
+        if (pi) chips.unshift({ text: `💘 ${pi.name} · ${pi.traitIcon} ${pi.traitName}${pi.starsText ? ` ${pi.starsText}` : ''}`, kind: 'plus love' });
+        if (a.match) chips.push({ text: '💞 찰떡궁합!', kind: 'plus love' });
+        if (Number(a.affection) > 0) chips.push({ text: `❤️ 호감도 ${Number(a.affection)}`, kind: 'love' });
+        break;
+      }
+      case 'dated': {
+        const gain = Number(a.gain);
+        if (gain > 0) chips.push({ text: `❤️ 호감도 +${gain}${Number(a.affection) > 0 ? ` (${Number(a.affection)})` : ''}`, kind: 'plus love' });
+        if (a.match) chips.push({ text: '🎯 취향 저격!', kind: 'plus love' });
+        break;
+      }
+      case 'proposed':
+        chips.unshift(a.success ? { text: '💍 프러포즈 성공!', kind: 'plus love' } : { text: '💔 거절…', kind: 'minus' });
+        break;
+      default:
+        break;
+    }
+    // follow-ups: 용돈 / 집 보상판매 / 입학 (학원비)
+    for (const f of g.family ?? []) {
+      if (f.type === 'allowance') chips.push({ text: `💌 ${who(f.charId)}${kidName(f.charId, f.childId) || '자녀'} 용돈 +${won(Number(f.amount) || 0)}`, kind: 'plus' });
+      else if (f.type === 'houseSold') chips.push({ text: `🔁 ${who(f.charId)}${houseInfo(f.houseId, meta)?.name ?? '집'} 보상판매${Number(f.amount) ? ` +${won(Number(f.amount))}` : ''}`, kind: 'plus' });
+      else if (f.type === 'childGrew') {
+        const info = CHILD_GROW[f.kind];
+        chips.push({ text: `${info?.icon ?? '🧒'} ${who(f.charId)}${kidName(f.charId, f.childId)} ${info?.label ?? '성장'}${Number(f.amount) ? ` ${Number(f.amount) > 0 ? '+' : ''}${won(Number(f.amount))}` : ''}`, kind: Number(f.amount) < 0 ? 'minus' : '' });
+      }
+    }
+    // 💑 맞벌이: the spouse's share of a pay day
+    for (const s of g.salary ?? []) if (Number(s.spouseAmount) > 0) chips.push({ text: `💑 ${who(s.charId)}맞벌이 +${won(Number(s.spouseAmount))}`, kind: 'salary' });
+    return out;
+  }
+
+  /** Stage 8 badges: 💘 the new partner (trait · ★), 👶 the baby. */
+  function stage8Badge(a, g, { characters, meta }) {
+    if (a?.type === 'met') {
+      const c = characters.find((x) => x.id === g.charId);
+      const pi = partnerInfo(a.partner ?? c?.love?.partner, meta);
+      if (pi) return { icon: pi.traitIcon, img: null, title: pi.name, stars: pi.starsText, sub: pi.traitName, kind: 'partner' };
+    }
+    if (a?.type === 'childBorn') {
+      const k = childInfo(a.child, meta);
+      if (k) return { icon: '👶', img: null, title: k.name, stars: '', sub: `${k.genius ? '🌟 천재 · ' : ''}${k.traitName || '건강하게 태어났어요'}`, kind: `baby${k.genius ? ' genius' : ''}` };
+    }
+    return null;
+  }
+
+  /**
+   * Stage 8: 부동산 시세 → studio cut-in (MCs when the group has lines) with the market chart and every owner's new value.
+   */
+  function marketSpec(g, { characters = [] } = {}) {
+    const a = g.anchor;
+    const mk = marketInfo(a) ?? { mult: 1, pct: 0, dir: 'flat', text: '' };
+    const meta = getMeta();
+    const up = mk.mult >= 1;
+    // owners at the time of the event (`changes`), else the current state
+    const owners = Array.isArray(a.changes)
+      ? a.changes.map((x) => ({ char: characters.find((c) => c.id === x.charId), house: houseInfo(x.houseId, meta), value: Number(x.after) || 0 })).filter((o) => o.char)
+      : characters.filter((c) => c.house?.id).map((c) => ({ char: c, house: houseInfo(c.house.id, meta), value: Number(c.house.value) || 0 }));
+    const text = [fallbackText(a), owners.length ? `집주인 ${owners.length}명의 자산가치가 ${up ? '올랐어요' : '내렸어요'}!` : '아직 집을 가진 사람이 없어요.'];
+    const lines = g.studio?.length ? g.studio : g.mc?.length ? g.mc : null;
+    const base = {
+      key: `market:${a.eraId ?? ''}:${mk.mult}`,
+      tone: up ? 'treasure' : 'bad',
+      scene: 'studio',
+      tag: tagLabel(a, { tones: pres().tones }),
+      who: '🏠 부동산 시세 속보',
+      text,
+      line: null,
+      speaker: null,
+      chips: [
+        { text: mk.text, kind: up ? 'plus' : 'minus' },
+        ...(Array.isArray(a.changes) ? a.changes : []).map((x) => ({
+          text: `${houseInfo(x.houseId, meta)?.icon ?? '🏠'} ${nameOf(characters, x.charId)} ${won(Number(x.before) || 0)} → ${won(Number(x.after) || 0)}`,
+          kind: Number(x.after) >= Number(x.before) ? 'plus' : 'minus',
+        })),
+      ],
+      cast: [],
+      bigWin: false,
+      currentId: null,
+      era: '',
+      characters,
+      market: { mult: mk.mult, dir: mk.dir },
+      sfx: up ? 'fanfare' : 'thud',
+    };
+    if (lines) {
+      const spec = studioSpec(lines, { key: base.key, tone: base.tone, title: base.tag, characters });
+      return { ...spec, ...base, kind: 'mc', mcScript: lines, text: [], marketText: text, autoMs: Math.max(spec.autoMs, 5200) };
+    }
+    return { ...base, kind: 'market', autoMs: autoAdvanceMs({ owner: owners.some((o) => o.char.isMe), reduced: isReduced() }) + 1200 };
   }
 
   /** 🎁 what a gift / trade side carries ("50만원" / "택시 카드"). */
@@ -470,17 +723,26 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   function renderCast(spec) {
     $.cast.innerHTML = '';
     $.fx.innerHTML = '';
-    const n = Math.min(3, spec.cast.length) || 0;
-    const xs = SLOT_X[n] ?? [];
+    // Stage 8: family members (partner / spouse / children) may add figures; the characters alone stay ≤ 3
+    const list = spec.cast.some((m) => m.role) ? spec.cast.slice(0, MAX_CAST) : spec.cast.slice(0, 3);
+    const n = list.length;
+    const xs = slotPositions(list.map((m) => m.scale ?? 1));
     const els = [];
-    spec.cast.slice(0, 3).forEach((m, i) => {
+    list.forEach((m, i) => {
       const slot = document.createElement('div');
-      slot.className = 'ci-slot';
+      slot.className = `ci-slot${m.role ? ` fam ${m.role}` : ''}${m.stage ? ` st-${m.stage}` : ''}${m.genius ? ' genius' : ''}`;
       slot.style.left = `${xs[i]}%`;
+      if ((m.scale ?? 1) !== 1) slot.style.height = `${(86 * m.scale).toFixed(1)}%`;
       slot.classList.toggle('right', xs[i] > 50);
       slot.dataset.char = m.char.id;
       // first pose is a neutral stand; the target pose cross-fades in (keypose + procedural motion)
       const av = renderAvatarLayers(m.char.avatar, { pose: 'idle', emotion: null, name: m.char.name, flip: n > 1 && xs[i] > 50, art: m.char.art ?? null });
+      if (m.role && m.char.name) {
+        const tag = document.createElement('span');
+        tag.className = 'ci-famtag';
+        tag.textContent = `${m.role === 'spouse' ? '💍 ' : m.role === 'partner' ? '💕 ' : m.genius ? '🌟 ' : ''}${m.char.name}`;
+        slot.appendChild(tag);
+      }
       slot.appendChild(av);
       const glyph = m.glyph ?? EMOTION_GLYPH[m.emotion] ?? null;
       if (glyph) {
@@ -604,6 +866,73 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     }
   }
 
+  // ---------- Stage 8: wedding / hearts / heartbreak fx, house panel, market chart, 돌잡이, 고교 첫 만남 pairs ----------
+  function renderStage8(item) {
+    const { spec } = item;
+    if (spec.prompt?.kind === 'house') {
+      // 매물 prompt: the listed houses stand on the right side of the window (「매물」 signs)
+      const ids = (spec.prompt.options ?? []).map((o) => o.houseId ?? (String(o.id).startsWith('buy:') ? String(o.id).slice(4) : null)).filter(Boolean).slice(0, 3);
+      if (ids.length) {
+        const row = document.createElement('div');
+        row.className = 'ci-houserow';
+        row.innerHTML = ids.map((id, i) => `<span class="ci-hr-item" style="--i:${i}">${houseArtHtml(id, { art: artFor('house', id), label: houseInfo(id, getMeta())?.name ?? id })}<i>매물</i></span>`).join('');
+        $.fx.appendChild(row);
+      }
+    }
+    overlay.classList.toggle('wedding', spec.fx8 === 'wedding');
+    if (spec.fx8) {
+      const fx = document.createElement('div');
+      fx.className = `ci-famfx ${spec.fx8}`;
+      const glyphs = spec.fx8 === 'wedding' ? ['🎊', '💐', '🎉', '💖', '✨', '🎊', '🌸'] : spec.fx8 === 'hearts' ? ['💗', '💕', '💖', '❤️', '💞'] : ['💔', '💧', '💔'];
+      const n = spec.fx8 === 'heartbreak' ? 5 : 16;
+      fx.innerHTML = `${spec.fx8 === 'wedding' ? '<span class="ci-wedframe" aria-hidden="true">💒</span>' : ''}${Array.from(
+        { length: n },
+        (_, i) => `<i style="--i:${i};--x:${(i * 61) % 100}%;--d:${((i * 37) % 17) / 10}s">${glyphs[i % glyphs.length]}</i>`,
+      ).join('')}`;
+      $.fx.appendChild(fx);
+    }
+    if (spec.house) {
+      const h = spec.house;
+      const panel = document.createElement('div');
+      panel.className = 'ci-house';
+      panel.innerHTML = `${houseArtHtml(h.id, { art: h.art, label: h.name, cls: 'ci-house-art' })}<div class="ci-house-cap"><b>${esc(h.icon)} ${esc(h.name)}</b>${h.price ? `<small>${esc(won(h.price))}</small>` : ''}${
+        h.tradeIn ? `<small class="trade">🔁 보상판매 +${esc(won(h.tradeIn))}</small>` : ''
+      }${h.discount ? `<small class="disc">🎫 청약 -${esc(won(h.discount))}</small>` : ''}${h.value && h.value !== h.price ? `<small class="disc">💎 자산가치 ${esc(won(h.value))}</small>` : ''}</div>`;
+      $.fx.appendChild(panel);
+    }
+    if (spec.market) {
+      const panel = document.createElement('div');
+      panel.className = `ci-market ${spec.market.dir}`;
+      panel.innerHTML = `<div class="ci-market-t">🏠 부동산 시세</div>${marketChartSvg(spec.market.mult)}`;
+      $.fx.appendChild(panel);
+      if (spec.marketText?.length) {
+        const p = document.createElement('p');
+        p.className = 'ci-lotto-sum';
+        p.textContent = spec.marketText.join(' ');
+        $.extra.appendChild(p);
+      }
+    }
+    if (spec.dol) {
+      const panel = document.createElement('div');
+      panel.className = 'ci-dol';
+      panel.innerHTML = dolTableSvg();
+      $.fx.appendChild(panel);
+    }
+    if (spec.pairs?.length) {
+      const list = document.createElement('div');
+      list.className = 'ci-pairs';
+      list.innerHTML = spec.pairs
+        .map(
+          (pr, i) => `<div class="ci-pair${pr.char.isMe ? ' me' : ''}" style="--d:${300 + i * 220}ms"><span class="ci-pair-av">${portraitHtml(pr.char, { size: 30 })}</span><b>${esc(pr.char.name)}</b><span class="ci-pair-h">💘</span><span class="ci-pair-av">${
+            pr.npc ? portraitHtml(pr.npc, { size: 30 }) : '💞'
+          }</span><b>${esc(pr.partner.name)}</b><span class="ci-chip love">${esc(pr.partner.traitIcon)} ${esc(pr.partner.traitName)}${pr.partner.starsText ? ` ${esc(pr.partner.starsText)}` : ''}</span></div>`,
+        )
+        .join('');
+      $.extra.appendChild(list);
+      hydratePortraits(list);
+    }
+  }
+
   // ---------- MCs (Stage 5.6) ----------
   const mcSound = (l) => audio?.play('bark', { mc: l.speaker, force: true });
 
@@ -699,6 +1028,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     overlay.classList.toggle('prompt', !!spec.prompt);
     overlay.classList.toggle('minimized', false);
     overlay.classList.toggle('lotto', !!spec.lotto);
+    overlay.classList.toggle('market', !!spec.market);
     overlay.dataset.kind = spec.prompt ? 'prompt' : spec.kind ?? 'event';
     overlay.dataset.key = spec.key ?? '';
     overlay.setAttribute('aria-label', spec.tag || '이벤트');
@@ -720,6 +1050,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     item.els = els;
     renderStage6(spec);
     renderStage7(item);
+    renderStage8(item);
     if (spec.kind === 'mc') renderStudio(item);
     else if (spec.mc?.length) renderSmallMc(item);
     audio?.play(spec.sfx ?? pres().tones?.[spec.tone]?.sfx ?? 'pop');
@@ -768,7 +1099,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       $.options.dataset.key = optKey;
     }
     if (!p) return;
-    if (p.forMe?.length && !$.options.childElementCount && p.kind === 'shop') {
+    const famHtml = p.forMe?.length && !$.options.childElementCount ? stage8OptionsHtml(p) : null;
+    if (famHtml) {
+      $.options.innerHTML = famHtml;
+      hydratePortraits($.options);
+    } else if (p.forMe?.length && !$.options.childElementCount && p.kind === 'shop') {
       // Stage 7 상점: three product cards (art, name, price, effect, coupon, disabled) + 지나가기
       const who = p.forMe[0];
       $.options.innerHTML = `${
@@ -793,6 +1128,15 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     tickDeadline();
   }
 
+  /** Stage 8 prompts: 만남 candidate cards, 데이트 cost / ❤️, 프러포즈 chance meter, 매물 listing cards. */
+  function stage8OptionsHtml(p) {
+    const who = p.forMe[0];
+    const head = p.forMe.length > 1 || who.id !== p.charId ? `<p class="ci-opt-who">${esc(who.name)}의 선택</p>` : '';
+    if (p.kind === 'house') return `${head}${houseOptionsHtml(p, who, { meta: getMeta(), room: p.room ?? null, artFor, btnClass: 'ci-opt' })}`;
+    const html = familyOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt' });
+    return html == null ? null : `${head}${html}`;
+  }
+
   function tickDeadline() {
     for (const d of overlay.querySelectorAll('[data-deadline]')) {
       const left = Math.max(0, Math.ceil((Number(d.dataset.deadline) - now()) / 1000));
@@ -805,7 +1149,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   // ---------- queue ----------
   /** Warm the cast's composed art so the window opens with the characters in place (capped wait). */
   function preloadCast(spec) {
-    const cast = (spec.cast ?? []).slice(0, 3);
+    const cast = (spec.cast ?? []).slice(0, (spec.cast ?? []).some((m) => m.role) ? MAX_CAST : 3);
     if (!cast.length) return Promise.resolve();
     const jobs = cast.map((m) => {
       const part = expressionFor(m.emotion).part;
@@ -950,7 +1294,31 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       .filter(Boolean)
       .map((c) => ({ char: c, pose: c.id === p.charId ? (p.kind === 'routeChoice' ? 'wave' : 'idle') : 'idle', emotion: c.id === p.charId && p.emotion !== 'neutral' ? p.emotion : null }));
     // Stage 7: 상점 / 명절 prompts default to their own scene + tone when the server leaves them neutral
-    const kindLook = { shop: { tone: 'treasure', scene: 'shop' }, holiday: { tone: 'holiday', scene: 'holiday' } }[p.kind] ?? null;
+    const kindLook =
+      {
+        shop: { tone: 'treasure', scene: 'shop' },
+        holiday: { tone: 'holiday', scene: 'holiday' },
+        // Stage 8
+        meet: { tone: 'love', scene: 'none' },
+        date: { tone: 'love', scene: 'none' },
+        propose: { tone: 'love', scene: 'wedding-hall' },
+        house: { tone: 'treasure', scene: 'none' },
+      }[p.kind] ?? null;
+    // Stage 8: the partner (date / propose) or the candidates (meet) stand next to the character
+    if (subject && cast.length && ['meet', 'date', 'propose'].includes(p.kind)) {
+      const extra = [];
+      if (p.kind === 'meet') {
+        for (const o of p.options ?? []) {
+          const spec = o.partner ?? (subject.love?.candidates ?? []).find((x) => x?.id === o.partnerId) ?? (p.context?.candidates ?? []).find((x) => x?.id === o.partnerId);
+          const npc = npcCharacter(spec, { prefix: 'partner' });
+          if (npc) extra.push({ char: npc, role: 'partner', scale: 1, pose: 'wave', emotion: 'shy', glyph: null });
+        }
+      } else {
+        const npc = npcCharacter(subject.love?.partner ?? subject.spouse, { prefix: 'partner' });
+        if (npc) extra.push({ char: npc, role: 'partner', scale: 1, pose: p.kind === 'propose' ? 'idle' : 'wave', emotion: p.kind === 'propose' ? 'shy' : 'love', glyph: null });
+      }
+      if (extra.length) cast.splice(1, cast.length, ...extra.slice(0, 2));
+    }
     const tone = p.tone && (p.tone !== 'neutral' || !kindLook) ? p.tone : kindLook?.tone ?? 'neutral';
     const scene = p.scene && (p.scene !== 'none' || !kindLook) ? p.scene : kindLook?.scene ?? 'none';
     const anchor = { type: 'prompt', tone, title: p.title, kind: p.kind };
@@ -982,6 +1350,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
           return { ...o, icon, label: optionLabel({ ...o, icon }), desc, badges: [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges] };
         }),
         forMe,
+        room, // Stage 8 house listings: owners / capacity
         deadlineAt: p.deadlineAt,
         waitingNames: waitingIds.map((id) => characters.find((c) => c.id === id)?.name ?? id),
       },

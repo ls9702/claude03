@@ -62,6 +62,9 @@ export const getEvents = () => loadData('events');
 export const getCards = () => loadData('cards');
 export const getItems = () => loadData('items');
 export const getHolidays = () => loadData('holidays');
+/** Stage 8: partners / spouses / children (연애·가족) and houses (부동산). */
+export const getPartners = () => loadData('partners');
+export const getHouses = () => loadData('houses');
 
 /** Everything the engine reads, as one object (tests may pass overrides). */
 export function gameData() {
@@ -78,5 +81,8 @@ export function gameData() {
     cards: getCards(),
     items: getItems(),
     holidays: getHolidays(),
+    partners: getPartners(),
+    houses: getHouses(),
+    avatars: getAvatars(),
   };
 }
