@@ -560,7 +560,7 @@
   luckBonus×luck + educationBonus (+ examBonus on a promotion exam) + news `rankUpBonus`, clamped; success → `rankUp` + the
   job's stat +1; injury blocks. Job tile: `jobTile` prompt 승진 시험 (or 성과급 at max rank) / 전직 (one eligible candidate,
   `option.jobId`) / 야근 (`overtime.salaryShare` 50 % salary, exp `overtime.exp` 0, str −1); students / soldiers only look around; a pending unlocked hidden job
-  is offered instead. Injury: `injuryRisk × news injuryMult` after salary / promotion exams → `injured` = 2 turns
+  is offered instead. Injury: `injuryRisk × news injuryMult` after salary / promotion exams → `injured` = 2 turns (+ the 🤕 status card; 🧿 건강기원 부적 blocks it)
   (decremented per spin). Hidden unlocks (data `unlock`, all must hold, job eras only; values since the post-simulation
   fixes): 우주비행사 int 8 & str 8; 국민 MC max rank of 개그맨/배우/유튜버 (now or history) & charm 8; 재벌 총수 max 대기업 &
   net worth ≥ 3,000; 트로트 스타 senior & charm 7 & luck 7; 산신령 (Stage 9) 사찰 소원 성취 `wishes` ≥ 2; 건물주 (Stage 8)
@@ -656,14 +656,14 @@
   `addWatermark` stamps a synthetic mark (tests).
 - Manifest kinds `card` (meta.card = cards.json id) and `item` (meta.item) — icon pipeline (`whiteToAlpha, trim,
   resize:256x256` → png). New ids (status todo): `bg-stage bg-stadium bg-gym bg-army bg-campus bg-kitchen bg-police bg-lab
-  bg-space bg-shop bg-holiday` (meta.scene), `card-<id with _→->` ×16 (`cards/<…>.png`), `item-<…>` ×6 (`items/<…>.png`),
+  bg-space bg-shop bg-holiday` (meta.scene), `card-<id with _→->` ×16 (+14 blue / red cards, see below; `cards/<…>.png`), `item-<…>` ×6 (`items/<…>.png`),
   `icon-job-<…>` ×23 (`icons/jobs/<…>.png`, meta.job). Scenes: presentation `SCENES` + tones.json `scenes` have the 11 new
   scenes; `tones.json.sceneFallbacks` maps each to one of the 5 original scenes (the client draws the fallback until the bg
   is accepted; a test enforces that). jobs.json scenes: stage (idol actor comedian esports trot_star national_mc),
   stadium (baseball soccer), gym (fighter), kitchen (chef), police, lab (researcher), space (astronaut); tagScenes
   military/military_end → army, graduation → campus (educationChanged scene campus).
-- Data: `cards.json` `{handLimit 5, eraScale, cards[{id, name, icon, kind instant|passive|sabotage, desc, price, weight,
-  jobOnly?, effect}]}` (16 fixed ids), `items.json` `{items[{id, name, icon, desc, price, resale, stats?, effect}]}` (6),
+- Data: `cards.json` `{handLimit (5 → 6, see "Blue / red cards — server"), eraScale, cards[{id, name, icon, color, kind instant|passive|sabotage
+  (+ held|merit|status), desc, price, weight, jobOnly?, hold?, effect}]}` (16 Stage 7 ids + 14 blue / red), `items.json` `{items[{id, name, icon, desc, price, resale, stats?, effect}]}` (6),
   `holidays.json` (eras, kinds seol/chuseok, names/icons, sebae ranges per era, nagging, stakes × stakeScale, hwatu 1..10),
   `balance.json` `lotto {pool 20, pick 3, prizes {3:1000, 2:100, 1:10}, keepDraws}`, `shop {cards 2, items 1}`, `trades
   {ttlMs 60000, maxMoney}`; `gameData().cards/items/holidays` (`getCards/getItems/getHolidays`); `/api/meta` adds `cards`,
@@ -672,7 +672,7 @@
   the same `shop` prompt with its own `offers`).
 - Modules: `server/game/cards.js` (hands, passive helpers, spin mods, `useCard`, card tile, `shop` prompt, trades, gifts),
   `server/game/holidays.js` (era openings, lotto, `holiday` prompt). `assertOwner` moved to effects.js.
-- Character (public): `cards [{uid, id}]` (uid `k<seq>` from `room.nextCardSeq`; hand limit → the oldest is discarded with
+- Character (public): `cards [{uid, id}]` (uid `k<seq>` from `room.nextCardSeq`; hand limit → a card is discarded (blue / red discard order) with
   a log, `cardGained.discarded`), `items [itemId]` (one each), `spinMods [{kind: plus|minus|max2|min2, value?, by?, card}]`
   (applied + cleared at the next spin), `lastTargetedBy {attackerId: round}`. Room: `nextCardSeq`, `nextTradeSeq`,
   `trades [{id 't<seq>', fromId, toId, give, want, createdAt, expiresAt}]` (sides `{money}` | `{cardUid, cardId}`),
@@ -681,7 +681,7 @@
   `viewFor` adds `trades`, `holidays`, `lotto` (hands/items/trades are open information; nothing new is masked).
   `ensureCards` / `ensureRoomCards` migrate older saves (eras already reached count as opened).
 - Actions (`POST /api/rooms/:id/actions`, spectators 403, owner via actor): `useCard {characterId, cardUid, targetId?}` —
-  current character, awaitSpin without a prompt, 1 per turn, passive → 409, `jobOnly` (pledge = politician) → 409, sabotage
+  current character, awaitSpin without a prompt, 1 per turn, passive / blue / status → 409, `jobOnly` (pledge = politician) → 409, sabotage
   needs another unfinished target (400 missing/self, 409 finished) not sabotaged by you this or last round
   (`lastTargetedBy[you] ≥ round − 1` → 409); target's `lawyer` blocks it (both consumed → `cardBlocked`, no `cardUsed`).
   `offerTrade {characterId, toId, give, want}` (one side = exactly one of money (int > 0) | cardUid; not money↔money; own
@@ -720,7 +720,7 @@
   line, lineTag}], pot, winners}` then moneyChanged (`sebae`, `gostop`) / statChanged (`nagging`): ① 세뱃돈 roulette
   (kids eras +, adult eras − never into debt) ② 잔소리 (random stat ±1) ③ 고스톱: stakers (stake ≤ cash, ≥ 2 of them) draw
   1..10; each loser pays min(own stake, top winner stake), tied winners split (floor, remainder to the first) → Σ won = 0.
-- Events (all in `EVENT_TYPES`): `cardGained {charId, cardId, uid, source: tile|shop|event|trade|gift, discarded?, from?}`,
+- Events (all in `EVENT_TYPES`): `cardGained {charId, cardId, uid, source: tile|shop|event|trade|gift (+ club|graduation|job|status|start), color, discarded?, from?}`,
   `cardUsed {charId, cardId, uid, cardKind, targetId?, auto?, cancelled?}` (+ `targetLine` from pool `sabotaged` on
   sabotage), `cardBlocked {charId (attacker), targetId, cardId, uid, lawyerUid}`, `itemBought`, `tradeOffered {tradeId,
   fromId, toId, give, want, expiresAt}`, `tradeResolved {tradeId, fromId, toId, status: accepted|rejected|expired|
@@ -1511,3 +1511,107 @@ Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A, which wins); devi
   young last round with lane pawns, wrap + pass pause + passTile prompt + resume + payday stop, the era transition, final race,
   admin form) and `game.cjs` (natural lifetime game on the loop engine: 1280 3D + 390 2D + 2 CPUs through every era, pass prompts,
   paydays, forks, the goal race and the result; 0 console errors, no 390 overflow). Screenshots `loopb-*.png`.
+
+## Blue / red cards — server
+Contract: session scratchpad `cards-contract.md` (FIXED CONTRACT) + `cards-deviations.md`. Tests: `test/cards-bluered.test.js`
+(+ updated stage6-jobs / stage7-cards / stage7-social / presentation / cpu-server / assets-manifest). Roadmap row 12 in `docs/PLAN.md`.
+- Data: every `cards.json` card has `color` blue | red; kinds `instant` / `sabotage` / `passive` (red; passive = auto one-shot) +
+  `held` / `merit` / `status` (blue). `handLimit` 6. New ids: held `marriage_luck` 결혼운◎ (`affectionBonus` 5, `hold.until: 'married'`),
+  `popular` 인기 폭발◎ (`starChance` 0.5 / `match` / `dateGain` 2, until married), requirement cards `research` 🔬 / `charisma` 🎤 /
+  `tongue` 👅 / `iron_body` 🦾 (`effect.requirement`), `health_charm` 🧿 (`noInjury`), `salary_charm` 💴 (`salaryBonus` 0.1), `merit` 🏅
+  (weight 0), red `big_roll` [6,10] / `small_roll` [1,5] (`effect.range`), `exact_roll` (`exact`), `payday_rush` (`rush: 'salary'`),
+  status `injury` 🤕 (color blue, price / weight 0). Manifest `card-<id>` items for all of them (todo).
+- `cards.js`: `CARD_COLORS`, `CARD_KINDS`, `PLAYABLE_KINDS`, `REQUIREMENT_CARDS`, `ROLL_CARDS`, `cardColor`, `cardCount`, `meritCount`,
+  `transferable` (all but status), `discardIndex` (full hand: oldest red → oldest non-requirement blue → oldest requirement card; never
+  the injury card; `cardLost {reason: 'discarded'}` + the old `cardGained.discarded`), `loseCard(tx, c, id, reason, {count, all})`,
+  `dropHeldCards(tx, c, 'married')` (called by family `marry`), `syncInjuryCard` (the 🤕 card mirrors `job.injured`: rollInjury adds it,
+  `spinSteps` removes it when the countdown hits 0, `hire` / the `heal` event clear it; `applyAction` silently adds it to old saves),
+  `clubCardRoll`, `affectionBonus` / `popularEffect` / `salaryCharmMult` / `injuryProof`, `drawableCards` (weight > 0, no merit /
+  status), `rollPlan` / `spinFixed`, `rushDistance(room, c)` (tiles to the next payday on the path; null when the fork / goal comes
+  first or no payday is left), `cardBlockReason(room, c, def, data)` (shared by useCard, simulators, CPU). `cardGained` gains `color`
+  and sources `club | graduation | job | status | start`; new event `cardLost {charId, cardId, uid, reason: married|healed|discarded|
+  merit}` (EVENT_TYPES; chip, never a line). Trades / gifts refuse the injury card (409); blue cards trade / gift like any card.
+- useCard: blue / merit / status → 409; `exact_roll` needs `value` 1..10 (digit string OK; route passes `body.value`) → 400; roulette
+  cards push spin mods `{kind: 'range', min, max}` / `{kind: 'exact', value}` / `{kind: 'rush'}`; a card-fixed spin refunds side bets
+  already placed on the turn and refuses new ones (409). doSpin: exact = the number (no draw, no aim, no taxi / noise second roll),
+  range = `rng.int(lo, hi)` (skill rooms: the aimed result clamped; a second roll stays in range), rush = `walk(…, {rush})` straight to
+  the payday (no military halving, 찬스 광장 not paused), `spun.rush` / `moved.rush`, log notes.
+- Held effects: 결혼운◎ via family `gainAffection(tx, c, gain, {set})` (every affection gain incl. the starting one; date options show
+  the card bonuses in `gain`), 인기 폭발◎ `popularize` (meet prompt / 소개팅 candidates: ★+1 chance for non-school candidates, one
+  찰떡궁합 guaranteed), 월급 부적 in `salaryAmount`, 건강기원 부적 cancels an injury roll (log only; the one-shot 🧧 amulet stays).
+- Requirement cards (mandatory): `jobs.json requires.cards` (doctor / researcher research, politician / idol charisma, chef tongue,
+  baseball / soccer / fighter iron_body) checked by `meetsRequirements` (hiring, job tile / 찬스 광장 job change), national_mc
+  `unlock.cards`; `missingJobCards`, `jobCardRequirements`. Sources: graduation (`growth.grantSkillCard`: best stat →
+  `balance.cardSources.statCards`, next best when held), adult-mode graduates at the start (source 'start'), clubs (`clubs.options[].card`
+  + `clubs.cardChance` join 0.5 / train 0.35), events (`card` + `conditions.lacksCard`), card tiles / shop / 찬스 광장 buy (weight 3).
+  Offer weight +`offerWeight.card` 2 for (eligible) card jobs.
+- Merit: `rankUp.merit` (doctor 1, politician 2, idol 1, actor 1, office_worker 1) — `tryRankUp` returns `'noMerit'` without enough 🏅
+  cards, consumes them on success (`cardLost merit`); jobTile `promotion` is `disabled` + `merit` / `merits` fields then (default = first
+  enabled option). Earned only at those jobs (`balance.jobs.merit`: paydayChance 0.2, overtimeChance 0.35, +1 on a passed promotion exam
+  below max rank; bonus off) and from events (`project_win` for merit jobs, `crisis_save` any job).
+- Events.json: `conditions.injured`, `conditions.lacksCard`, `heal: true` (`rehab`); 14 new events (card rewards, merit, heal).
+  `/api/meta.balance` adds `cardSources` and `merit`.
+- CPU: `cardValue(data, c, id, room?)` values blue cards (`blueWorth`: wanted requirement card 130 while jobless, 부적 by injury risk,
+  월급 부적 by salary, romance cards while unmarried, merit for merit jobs); `jobDeficit` +2 per missing requirement card; plays only
+  red cards (`cardBlockReason`); `rollCardChoice` = expected landing worth (tile + 찬스 광장 + aimSpeed × progress, losses ×
+  lossAversion) of 딱 그 칸 (best number) / 큰 수 / 작은 수 / 월급날 직행 vs the plain roulette (skill rooms: its aim), thresholds 40 /
+  20 / 30; trade answers use the discard slot of `discardIndex`.
+- Simulator block 「파랑/빨강 카드」. Measured (seed 11 × 300; before → after): random policy — requirement-card jobs doctor 2.7 → 1.8 %,
+  researcher 2.6 → 2.4, politician 2.3 → 1.4, idol 6.8 → 3.8, chef 4.8 → 1.6, baseball 5.0 → 2.2, soccer 4.0 → 3.3, fighter 3.7 → 2.2,
+  national_mc 0.9 → 0.1; top job 8.9 → 11.1 % (e스포츠), 알바 0 %; CPU policy top job 의사 8.9 → 11.2 %, chef 2.0 → 0.1 %. Cards gained
+  per character random 3.41 → 4.98 (blue 2.16 / red 2.72), CPU 2.73 → 4.34 (2.10 / 2.17); end-of-game hand blue 1.52 · merit 0.26 · red
+  0.44. Roulette cards (random / CPU uses): big 153 / 112, small 150 / 20, exact 60 / 34, rush 40 / 54 per 300 games; payday arrival
+  plain 21 % · big 36 / 30 % · small 17 / 25 % · exact 27 / 21 % · rush 100 %. Injury cards 154 (random) / 128 (CPU) (injuries before
+  221 / 194 — 건강기원 부적), 0–1.9 % of injuries hit a full hand. Merit gained / spent random 620 / 154, CPU 1074 / 560. First hires
+  holding a requirement card 70 % (CPU 74 %). 1st place among adult-era characters holding a requirement card 20.5 % (fair 19.1) vs
+  without 15.0 % (fair 19.2); CPU 19.8 vs 15.7. Aim duel 150 × seed 1: CPU 24.2 → 23.8, random 5.8 → 6.7, max 15.0 → 14.6, min 11.3 →
+  10.8, none 6.3 → 7.1. Pass duel 80: cpu 13.1 → 11.7, always 14.5 → 13.6, never 9.9 → 12.2. Bias 400 × seed 1: 10.5–14.0 % (spread
+  −0.33) → 9.5–14.5 % (0.04). `cpu-game` 4 + 4 × 100: CPU wins 87 → 90 %; mixed 86.7 → 84.7 %. Lifetime spins unchanged (49.0).
+
+## Blue / red cards — client
+- Contract: session scratchpad `cards-contract.md` (FIXED CONTRACT) + `cards-deviations.md`. Tests: `test/client-bluered.test.js`
+  (+ updated `client-cards` / `client-growth`). E2E: session scratchpad `cardsb/` (`inject.cjs`, `game.cjs`; screenshots `cardsb-*.png`).
+- Pure `public/js/shared/cards.js`: `CARD_COLORS` blue 「보유」 / red 「사용」 / status 「부상」; `CARD_KINDS` instant · sabotage · passive (red,
+  passive = 「자동」) · held · merit (blue) · status (grey) with `colorId`. `cardInfo` adds `color` (`cardColor`: kind status always
+  status — the server sends the injury card `color: 'blue'`), `tag` (`cardTag`), `auto`, `needsValue` (딱 그 칸), `rush` (월급날
+  직행); `DEFAULT_CARDS` knows every new id (fallback names / icons); `DEFAULT_HAND_LIMIT` 6. `cardKindLabel`, `cardEffectText`
+  (보유 효과 · `hold.until` / 사용 효과 / 자동 / 부상 / 공적 text for the sheet). Hand: `sortHand` (status → held → merit → instant →
+  sabotage → auto), `handStacks` (🏅 merit cards of one id → one entry `{count, uids}`), `heldCards` (side-list icon row),
+  `meritCount`, `statusCards`, `hasCard`. `cardPlayability` → `{playable, reason, needsTarget, needsValue, kind, color}`: blue /
+  merit / status / auto never; 월급날 직행 refused when `paydayAhead` is false (= `nextHaltTile` — the next
+  salary / stop / goal on the path: route track → rejoin → ring (wraps), the final race stops at the goal — is not a payday, the
+  server's 409). `useCardBody(char, card, {targetId, value})` → the `useCard` action (`value` 1..10 via `exactValue`).
+  `tradableCards` = every card but the status card (blue held + 🏅 merit trade and gift; server deviation); `validateTrade` /
+  `validateGift` take `{meta}` and refuse the injury card. Spin mods: `modRange` (`{min, max}` | `range: [a, b]` | `card` /
+  `value` big|small), `modExact`; `spinModBadges` + 🔼6–10 / 🔽1–5 / 🎯n / 💨월급날; `rollConstraint(spinMods)` → `{min, max, exact,
+  rush, text, short}` (rush > exact > range) for the dock hint / skill panel / bet card; `spinNote` knows `range` (「🔼 8칸
+  (6~10)」), `exact` (「🎯 딱 3칸」), `rush` / `spun.rush` (「💨 월급날 직행 11칸」). `handLayout(n, w, {min 46, max, gap 6,
+  minGap 4})` (six cards fit a 390 px row). `cardLostInfo(e)` / `cardLostChips(events)` (💍 결혼운◎ 소멸 · 🩹 부상 회복 · 🗑️ 버림 ·
+  🏅 공적 카드 n장 사용, merged per character + reason + card).
+- `public/js/shared/growth.js`: `requirementList(requires, {character, cards})` → `[{text, kind: stat|edu|military|card, id, need,
+  ok}]` (card badges 「🔬 연구열심 필요」, names from `meta.cards` else `REQUIREMENT_CARDS`; `ok` null without a character),
+  `requirementBadges` = its texts, `meritNeed(character, jobs)` (`rankUp.merit` for the next rank → `{need, have, ok}`),
+  `optionExtras(p, o, {jobs, character, cards})` adds `reqs` (the option's own `requires` wins — 찬스 광장 이직; jobTile 승진 option
+  `merit` / `merits` → a 🏅 badge), `optionBadgeList(x, extra)` → `[{text, miss, card}]`: the cut-in list and the 2D modal render
+  missing requirements red (`.ci-opt-badge.miss` / `.c-badge.miss`, 「✗ 」 prefix), requirement cards blue. Disabled options of the
+  generic cut-in list are now disabled buttons (`.ci-opt.off`).
+- `ui/cardArt.js`: `cardFrameSvg(kind, color)` (blue double ring, red, sabotage orange-red, status grey with hand-clipped diagonal
+  stripes — no SVG ids), `cardHtml(card, {count})` → classes `k-<kind> c-<color>` (+ `stacked`), corner `.cf-tag t-<color>` 보유 / 사용
+  / 자동 (`cf-auto`) / 부상, `.cf-stack` 「×n」; `cardChipHtml(id, {count})` (detail hand list); shop cards tag 🔵 보유 / 🔴 사용.
+- game2d: hand row = `handStacks` (status card is a non-clickable `div.cardf.status`; blue cards `held` — never dimmed, open the sheet;
+  red `can` / `dim`), `n/limit` red when full, hints about 🔴 / 🔵; `fitHand()` sets `--hand-cw` / `--hand-gap` from `handLayout` (also
+  on resize; CSS caps per breakpoint: 62 / 54 phones / 56 desktop dock (hand column `minmax(300px, 44%)`) / 44 sticky phone dock).
+  Card sheet: kind line, 🔵 / 🔴 effect box, requirement jobs (「🔑 취업 조건: …」), 🏅 count + next-promotion need, 「사용」 only for red
+  non-auto cards, sabotage targets, 딱 그 칸 5 × 2 number pad (`data-card-value`, button 「🎯 n칸 가기」) → `useCard {…, value}`. Trade
+  dialog lists `tradableCards`. Side rows: 🤕 (job injury turns or the status card), 🔵 held-card icons (`gc-tag held`, requirement
+  cards underlined), 🏅×n; detail: colour chips for the hand, 「직업 카드」 row (requirement cards ✓ / ✗ + 「🏅 다음 승진에 공적 n장 ·
+  보유 m」). Spin: dock hint `.roll-lim` (mine: full text; others: 「이름 · 🔼 6–10」), `spinNow` spins plainly (no aim panel) under
+  딱 그 칸 / 월급날 직행; skill panel `open/update({limit})` shades out-of-range cells (`.sk-cell.out`) + `.sk-lim` line; the bet card
+  closes while the current character has a red roulette card mod; the 2D roulette pop shows 「🔼 6~10만!」 and 🎯 / 💨 notes. Floats /
+  toasts: `cardLost` (discard toast for mine), injury card gained, `cardUsed.value`.
+- Cut-ins: `cardLost` is a follow-up chip (`g.cards[].reason`) and a lone banner group (`STAGE7_LONE`, `BANNER_TYPES`, merge rank 0,
+  tag 🩹 부상 회복 / 💍 카드 소멸 / 🏅 공적 사용 / 🗑️ 카드 버림); cutin2d `gainedChip` (🔵 / 🔴 dot, 🤕 injury card = minus chip),
+  `cardLostChips` chips (a lone healed banner skips its own chip), injury `cardGained` / `cardLost` looks, card badges use
+  `cardKindLabel` + `c-<color>`. 3D (board3d): `cardLost` pop (animator `ANIMATED_EVENTS`), injury card gained 🤕, 🔼 / 🔽 / 🎯 / 💨 pops on
+  `cardUsed`, `spun` subtitle 「· 🔼 6~10」, rush banner 「💨 ○○, 월급날로 직행!」, name-tag badges via `spinModBadges`.
+- CSS: end of `public/css/cards.css` (colour chips / tags / stack / status stripes / number pad / requirement badges / roll hints).

@@ -425,7 +425,7 @@ test('HTTP: card / trade / gift actions, spectators 403, /api/meta cards·items�
     const current = room.turn.order[room.turn.currentIndex];
     const other = room.characters.find((c) => c.id !== current);
     const mine = room.characters.find((c) => c.id === current);
-    mine.cards = [{ uid: 'k1', id: 'taxi' }];
+    mine.cards = [{ uid: 'k1', id: 'exact_roll' }]; // blue / red cards: 딱 그 칸 carries its number over HTTP
     other.cards = [{ uid: 'k2', id: 'lotto' }];
     srv.store.put(room);
     const tokenOf = (charId) => (srv.store.getRoom(id).characters.find((c) => c.id === charId).ownerSessionId === A ? A : B);
@@ -434,10 +434,13 @@ test('HTTP: card / trade / gift actions, spectators 403, /api/meta cards·items�
       assert.equal(r.status, 403, body.type);
       assert.match(r.json.error, /관전자/);
     }
-    const use = await call('POST', `/api/rooms/${id}/actions`, { token: tokenOf(current), body: { type: 'useCard', characterId: current, cardUid: 'k1' } });
+    const bad = await call('POST', `/api/rooms/${id}/actions`, { token: tokenOf(current), body: { type: 'useCard', characterId: current, cardUid: 'k1', value: 11 } });
+    assert.equal(bad.status, 400);
+    assert.match(bad.json.error, /1~10/);
+    const use = await call('POST', `/api/rooms/${id}/actions`, { token: tokenOf(current), body: { type: 'useCard', characterId: current, cardUid: 'k1', value: 7 } });
     assert.equal(use.status, 200, use.text);
-    assert.ok(use.json.events.some((e) => e.type === 'cardUsed' && e.cardId === 'taxi'));
-    assert.deepEqual(use.json.room.characters.find((c) => c.id === current).spinMods, [{ kind: 'max2', card: 'taxi' }]);
+    assert.ok(use.json.events.some((e) => e.type === 'cardUsed' && e.cardId === 'exact_roll' && e.value === 7));
+    assert.deepEqual(use.json.room.characters.find((c) => c.id === current).spinMods, [{ kind: 'exact', value: 7, card: 'exact_roll' }]);
     const offer = await call('POST', `/api/rooms/${id}/actions`, { token: tokenOf(current), body: { type: 'offerTrade', characterId: current, toId: other.id, give: { money: 5 }, want: { cardUid: 'k2' } } });
     assert.equal(offer.status, 200, offer.text);
     assert.equal(offer.json.room.trades.length, 1);
@@ -448,8 +451,10 @@ test('HTTP: card / trade / gift actions, spectators 403, /api/meta cards·items�
     assert.equal(gift.status, 409);
     assert.match(gift.json.error, /부족/);
     const meta = (await call('GET', '/api/meta')).json;
-    assert.equal(meta.cards.cards.length, 16);
+    assert.equal(meta.cards.cards.length, gameData().cards.cards.length); // 16 Stage 7 cards + the blue / red cards
     assert.equal(meta.items.items.length, 6);
+    assert.equal(meta.balance.cardSources.statCards.int, 'research');
+    assert.equal(meta.balance.merit.paydayChance, gameData().balance.jobs.merit.paydayChance);
     assert.deepEqual(meta.holidays.eras, gameData().holidays.eras);
     assert.equal(meta.balance.lotto.pool, 20);
     assert.equal(meta.presentation.sceneFallbacks.stage, 'wedding-hall');

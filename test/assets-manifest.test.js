@@ -36,7 +36,7 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
   assert.equal(count('pose'), 6);
   assert.ok(count('sprite') >= 1);
   assert.equal(count('icon'), 12 + 23); // tile icons + Stage 7 job badges (icon-job-<id>)
-  assert.equal(count('card'), 16);
+  assert.equal(count('card'), 30); // 16 Stage 7 cards + 14 blue / red cards
   assert.equal(count('item'), 6);
   assert.equal(count('treasure'), 22); // Stage 9: one icon per treasures.json id (treasure-<id>)
   assert.equal(count('texture'), 2);

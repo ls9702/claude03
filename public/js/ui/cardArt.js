@@ -2,27 +2,65 @@
 // the 고스톱 flip, lotto balls, shop product cards. Art comes from the asset index when accepted
 // (`findAsset({kind:'card', card})`, `{kind:'item', item}`), else the emoji inside an SVG frame.
 import { esc, won as wonFmt } from '../format.js';
-import { CARD_KINDS, cardInfo, itemInfo } from '../shared/cards.js';
+import { CARD_COLORS, CARD_KINDS, cardColor, cardInfo, cardTag, itemInfo } from '../shared/cards.js';
 
-/** SVG card frame (viewBox 60×84): kind colour border + cream panel + kind ribbon. */
-export function cardFrameSvg(kind = 'instant') {
-  const k = CARD_KINDS[kind] ?? CARD_KINDS.instant;
-  return `<svg class="cf-frame" viewBox="0 0 60 84" preserveAspectRatio="none" aria-hidden="true"><rect x="1" y="1" width="58" height="82" rx="7" fill="${k.color}" stroke="${k.dark}" stroke-width="2"/><rect x="5" y="5" width="50" height="74" rx="4.5" fill="#fffdf7"/><rect x="5" y="5" width="50" height="46" rx="4.5" fill="${k.soft}"/><path d="M5 51 H55" stroke="${k.color}" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="50" cy="10" r="3" fill="${k.color}"/></svg>`;
+// diagonal stripes of the 🤕 status card, clipped by hand to the inner panel (x 5..55, y 5..79) — no SVG ids needed
+const STATUS_STRIPES = (() => {
+  const [x0, x1, y0, y1] = [5, 55, 5, 79];
+  let d = '';
+  for (let c = x0 + y0 + 8; c < x1 + y1; c += 9) {
+    // segment of x + y = c inside the box
+    const ax = Math.max(x0, c - y1);
+    const bx = Math.min(x1, c - y0);
+    if (bx - ax < 1) continue;
+    d += `M${ax} ${c - ax}L${bx} ${c - bx}`;
+  }
+  return d;
+})();
+
+/**
+ * SVG card frame (viewBox 60×84) by colour: 🔵 blue (보유) / 🔴 red (사용 · 자동; sabotage a deeper orange-red) / grey
+ * striped status (부상). `kind` may be a card kind or a colour id.
+ */
+export function cardFrameSvg(kind = 'instant', color = null) {
+  const colorId = kind === 'status' ? 'status' : CARD_COLORS[color] ? color : CARD_COLORS[kind] ? kind : CARD_KINDS[kind]?.colorId ?? 'red';
+  const col = kind === 'sabotage' && colorId === 'red' ? CARD_KINDS.sabotage : kind === 'merit' && colorId === 'blue' ? CARD_KINDS.merit : CARD_COLORS[colorId];
+  const status = colorId === 'status';
+  const blue = colorId === 'blue';
+  // blue cards get a double inner ring (the 「보유」 look), status cards stripes
+  const deco = status
+    ? `<path d="${STATUS_STRIPES}" stroke="#c4c8cf" stroke-width="3" opacity="0.7"/>`
+    : blue
+      ? `<rect x="7.5" y="7.5" width="45" height="69" rx="3.5" fill="none" stroke="${col.color}" stroke-width="0.8" opacity="0.55"/>`
+      : '';
+  return `<svg class="cf-frame" viewBox="0 0 60 84" preserveAspectRatio="none" aria-hidden="true"><rect x="1" y="1" width="58" height="82" rx="7" fill="${col.color}" stroke="${col.dark}" stroke-width="2"/><rect x="5" y="5" width="50" height="74" rx="4.5" fill="${status ? '#f3f4f6' : '#fffdf7'}"/><rect x="5" y="5" width="50" height="46" rx="4.5" fill="${col.soft}"/>${deco}<path d="M5 51 H55" stroke="${col.color}" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="50" cy="10" r="3" fill="${col.color}"/></svg>`;
 }
 
 /**
- * One hand card: frame + art (asset image or emoji) + name (+ 「자동」 for passive cards).
- * @param {{uid?: string, id: string, info?: object}} card
- * @param {{art?: string|null, meta?: object, attrs?: string, cls?: string, tag?: string, disabled?: boolean, note?: string}} opts
+ * One hand card: colour frame + art (asset image or emoji) + name + a corner tag (「보유」 blue, 「사용」 red, 「자동」 red auto,
+ * 「부상」 status) + a 🏅 ×n stack badge (`count` > 1).
+ * @param {{uid?: string, id: string, info?: object, count?: number}} card
+ * @param {{art?: string|null, meta?: object, attrs?: string, cls?: string, tag?: string, disabled?: boolean, note?: string, count?: number}} opts
  */
-export function cardHtml(card, { art = null, meta = null, attrs = '', cls = '', tag = 'button', disabled = false, note = '' } = {}) {
+export function cardHtml(card, { art = null, meta = null, attrs = '', cls = '', tag = 'button', disabled = false, note = '', count = null } = {}) {
   const info = card.info ?? cardInfo(card.id, meta);
   const kind = info?.kind ?? 'instant';
+  const color = info?.color ?? cardColor(info);
+  const n = Math.max(1, Number(count ?? card.count) || 1);
   const pic = art ? `<img class="cf-art-img" src="${esc(art)}" alt="" loading="lazy" decoding="async">` : `<span class="cf-emoji" aria-hidden="true">${esc(info?.icon ?? '🃏')}</span>`;
-  const auto = kind === 'passive' ? '<span class="cf-auto">자동</span>' : '';
-  const label = `${info?.name ?? card.id} (${CARD_KINDS[kind]?.label ?? ''} 카드)${note ? ` — ${note}` : ''}`;
+  const tagText = info?.tag ?? cardTag(info);
+  const tagEl = `<span class="cf-tag t-${esc(color)}${kind === 'passive' ? ' cf-auto' : ''}">${esc(tagText)}</span>`;
+  const stack = n > 1 ? `<span class="cf-stack" aria-hidden="true">×${n}</span>` : '';
+  const label = `${info?.name ?? card.id}${n > 1 ? ` ${n}장` : ''} (${tagText} 카드)${note ? ` — ${note}` : ''}`;
   const el = tag === 'button' ? `button type="button"${disabled ? ' aria-disabled="true"' : ''}` : tag;
-  return `<${el} class="cardf k-${esc(kind)}${cls ? ` ${cls}` : ''}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${cardFrameSvg(kind)}<span class="cf-art">${pic}</span><span class="cf-name">${esc(info?.name ?? card.id)}</span>${auto}</${tag}>`;
+  return `<${el} class="cardf k-${esc(kind)} c-${esc(color)}${n > 1 ? ' stacked' : ''}${cls ? ` ${cls}` : ''}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${cardFrameSvg(kind, color)}<span class="cf-art">${pic}</span><span class="cf-name">${esc(info?.name ?? card.id)}</span>${tagEl}${stack}</${tag}>`;
+}
+
+/** Tiny inline card chip (detail card / requirement badges): 「🔬 연구열심」 with the colour class. */
+export function cardChipHtml(id, { meta = null, count = 1, cls = '' } = {}) {
+  const info = cardInfo(id, meta);
+  if (!info) return '';
+  return `<span class="gd-card k-${esc(info.kind)} c-${esc(info.color)}${cls ? ` ${cls}` : ''}" title="${esc(`${info.tag} · ${info.desc}`)}">${esc(info.icon)} ${esc(info.name)}${count > 1 ? ` ×${count}` : ''}</span>`;
 }
 
 /** Small inline item icon (asset image or emoji). */
@@ -112,6 +150,7 @@ export function shopOptionsHtml(p, who, { meta = null, artFor = () => null, btnC
       const info = isCard ? cardInfo(o.cardId, meta) : o.itemId ? itemInfo(o.itemId, meta) : null;
       const art = isCard ? artFor('card', o.cardId) : o.itemId ? artFor('item', o.itemId) : null;
       const kind = isCard ? info?.kind ?? 'instant' : 'item';
+      const color = isCard ? info?.color ?? 'red' : 'item';
       const name = info?.name ?? o.label ?? o.id;
       const base = Number(o.basePrice ?? info?.price);
       const price = Number(o.price);
@@ -119,8 +158,8 @@ export function shopOptionsHtml(p, who, { meta = null, artFor = () => null, btnC
       // the definition's effect line (the server's option desc repeats kind · price · coupon)
       const desc = info?.known ? info.desc : o.desc || info?.desc || '';
       const disabled = !!o.disabled;
-      const tagText = isCard ? `${CARD_KINDS[kind]?.label ?? ''} 카드` : '아이템';
-      return `<button type="button" class="${btnClass} shop-item k-${esc(kind)}${disabled ? ' off' : ''}" ${attrs(o)}${disabled ? ' disabled' : ''}>
+      const tagText = isCard ? `${color === 'blue' ? '🔵 보유' : '🔴 사용'}${kind === 'passive' ? ' · 자동' : ''} 카드` : '아이템';
+      return `<button type="button" class="${btnClass} shop-item k-${esc(kind)} c-${esc(color)}${disabled ? ' off' : ''}" ${attrs(o)}${disabled ? ' disabled' : ''}>
         <span class="si-tag">${esc(tagText)}</span>
         <span class="si-art">${art ? `<img src="${esc(art)}" alt="" decoding="async">` : `<span class="si-emoji" aria-hidden="true">${esc(info?.icon ?? o.icon ?? '🛍️')}</span>`}</span>
         <span class="si-name">${esc(name)}</span>

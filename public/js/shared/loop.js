@@ -189,7 +189,7 @@ export function racetrack(era) {
 /** Board note for a `moved` event (halted by a forced stop / paused on a pass tile / a wrap past the start). */
 export function haltNote(e) {
   if (!e || e.type !== 'moved') return null;
-  if (e.halted === 'salary') return { text: '💵 월급날! 멈춤', kind: 'plus', icon: '💵' };
+  if (e.halted === 'salary') return e.rush ? { text: '💨 월급날 직행! 도착', kind: 'plus', icon: '💨' } : { text: '💵 월급날! 멈춤', kind: 'plus', icon: '💵' };
   if (e.halted === 'pass') return { text: `🎪 찬스 광장${Number(e.remaining) > 0 ? ` (남은 ${Number(e.remaining)}칸)` : ''}`, kind: 'info', icon: '🎪' };
   if (e.halted === 'stop') return { text: '🔀 갈림길! 멈춤', kind: 'info', icon: '🔀' };
   if (e.resumed) return { text: '🚶 이어서 출발!', kind: 'info', icon: '🚶' };

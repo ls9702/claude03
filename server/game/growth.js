@@ -12,6 +12,7 @@ import { checkHiddenUnlocks, clubDef, inJobEra, offerJob } from './jobs.js';
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 import { openSchoolMeet, proposeStep, schoolMeetDue } from './family.js';
+import { REQUIREMENT_CARDS, cardDef, clubCardRoll, gainCard, hasCard, syncInjuryCard } from './cards.js';
 
 export const EDUCATIONS = ['none', 'college', 'elite'];
 export const EXAM_RESULTS = ['elite', 'college', 'fail'];
@@ -117,7 +118,34 @@ export function graduate(tx, c) {
   emit(tx, 'educationChanged', { charId: c.id, education: tier, tone: 'good', emotion: 'joy' });
   addLog(tx, `🎓 ${c.name} ${tier === 'elite' ? '명문대' : '대학'} 졸업! 학사모를 던졌다`, { tone: 'good', charId: c.id, emotion: 'joy' });
   addStats(tx, c, tx.data.balance.career.graduationStats ?? {}, 'graduation');
+  grantSkillCard(tx, c, 'graduation');
 }
+
+/**
+ * The job-requirement card (blue) a character's best stat earns (`balance.cardSources.statCards`: int → 연구열심,
+ * charm → 카리스마◎, str → 강철 체력, luck → 절대미각), skipping cards already held (then the next best stat). Ties →
+ * STAT_KEYS order. @returns the card id or null
+ */
+export function skillCardFor(data, c) {
+  const map = data.balance.cardSources?.statCards ?? { int: 'research', charm: 'charisma', str: 'iron_body', luck: 'tongue' };
+  const order = [...STAT_KEYS].sort((a, b) => (c.stats?.[b] ?? 0) - (c.stats?.[a] ?? 0));
+  for (const k of order) {
+    const id = map[k];
+    if (id && REQUIREMENT_CARDS.includes(id) && !hasCard(c, id)) return id;
+  }
+  return null;
+}
+
+/** 졸업 (and the adult-mode start for graduates): the best stat's requirement card. */
+export function grantSkillCard(tx, c, source) {
+  const id = skillCardFor(tx.data, c);
+  if (!id) return null;
+  const def = cardDef(tx.data, id);
+  gainCard(tx, c, id, source, { log: false });
+  addLog(tx, `${def.icon} ${c.name}: ${source === 'graduation' ? '대학에서 갈고닦은' : '학창 시절의'} 실력으로 「${def.name}」 카드를 얻었다! (${def.desc})`, { tone: 'good', charId: c.id, emotion: 'joy' });
+  return id;
+}
+
 
 /** Per-spin bookkeeping (before moving): military halves the move + pays, school / injury count down. */
 export function spinSteps(tx, c, value) {
@@ -129,7 +157,10 @@ export function spinSteps(tx, c, value) {
   } else if (c.school) {
     c.school.turnsLeft = Math.max(0, c.school.turnsLeft - 1);
   }
-  if (c.job?.injured > 0) c.job.injured -= 1;
+  if (c.job?.injured > 0) {
+    c.job.injured -= 1;
+    if (!c.job.injured) syncInjuryCard(tx, c); // healed → the 🤕 card leaves the hand
+  }
   return steps;
 }
 
@@ -345,6 +376,7 @@ registerPrompts({
       c.club = def.id;
       const changes = addStats(tx, c, def.stats ?? {}, 'club', { clubId: def.id });
       addLog(tx, `${def.icon} ${josa(c.name, '이/가')} ${def.name}에 들어갔다!${changes.length ? ` (${statText(tx.data, changes)})` : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
+      clubCardRoll(tx, c, def, tx.data.balance.clubs?.cardChance?.join ?? 0);
       return { result: 'joined', clubId: def.id };
     },
   },

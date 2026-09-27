@@ -26,6 +26,7 @@ import {
 import { NEWS_DEFAULTS } from '../server/game/news.js';
 import { CUTIN_TYPES, EMOTIONS, EVENT_TYPES, SCENES, TONES, attachMc, decorateEvents } from '../server/game/presentation.js';
 import { eventConditionsMet, eventPool } from '../server/game/spaces.js';
+import { REQUIREMENT_CARDS } from '../server/game/cards.js';
 import { validateRoomConfig } from '../server/game/config.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { viewFor } from '../server/game/view.js';
@@ -98,12 +99,14 @@ test('jobs.json: 17 regular + 6 hidden + 알바, valid requirements, ranks, outf
     assert.ok(j.injuryRisk >= 0 && j.injuryRisk < 0.5);
     for (const [k, v] of Object.entries(j.requires?.stats ?? {})) assert.ok(STAT_KEYS.includes(k) && v >= 0 && v <= 10, `${j.id}: ${k}`);
     if (j.requires?.education) assert.ok(['college', 'elite'].includes(j.requires.education));
+    for (const id of j.requires?.cards ?? []) assert.ok(REQUIREMENT_CARDS.includes(id), `${j.id}: requirement card ${id}`);
+    if (j.rankUp.merit != null) assert.ok(Number.isInteger(j.rankUp.merit) && j.rankUp.merit >= 1 && j.rankUp.merit <= 3, `${j.id}: merit`);
   }
   assert.equal(data.jobs.partTime.id, PART_TIME_ID);
   for (const j of hidden) {
     const u = j.unlock;
     assert.ok(u && u.desc, `${j.id} unlock`);
-    const KEYS = ['era', 'stats', 'money', 'netWorth', 'badEvents', 'wishes', 'maxRankOf', 'houseSwaps', 'house', 'anyOf', 'desc'];
+    const KEYS = ['era', 'stats', 'money', 'netWorth', 'badEvents', 'wishes', 'maxRankOf', 'houseSwaps', 'house', 'anyOf', 'cards', 'desc'];
     for (const k of Object.keys(u)) assert.ok(KEYS.includes(k), `${j.id}: ${k}`);
     for (const sub of u.anyOf ?? []) for (const k of Object.keys(sub)) assert.ok(KEYS.includes(k) && k !== 'anyOf', `${j.id}: anyOf ${k}`);
     for (const h of [...(u.house ?? []), ...(u.anyOf ?? []).flatMap((x) => x.house ?? [])]) assert.ok(data.houses.houses.some((x) => x.id === h), `${j.id}: house ${h}`);
@@ -145,7 +148,10 @@ test('events.json: ≥ 60 events across eras, valid effects / presentation / con
     if (e.scene) assert.ok(SCENES.includes(e.scene), `${e.id}: scene`);
     assert.ok(e.emotion === null || EMOTIONS.includes(e.emotion), `${e.id}: emotion`);
     if (e.lineTag) assert.ok(lines.tags[e.lineTag], `${e.id}: lineTag ${e.lineTag}`);
-    for (const k of Object.keys(e.conditions ?? {})) assert.ok(['job', 'education', 'route'].includes(k), `${e.id}: condition ${k}`);
+    for (const k of Object.keys(e.conditions ?? {})) assert.ok(['job', 'education', 'route', 'injured', 'lacksCard'].includes(k), `${e.id}: condition ${k}`);
+    for (const id of [e.conditions?.lacksCard ?? []].flat()) assert.ok(data.cards.cards.some((k) => k.id === id), `${e.id}: lacksCard ${id}`);
+    if (e.card) assert.ok(data.cards.cards.some((k) => k.id === e.card && k.kind !== 'status'), `${e.id}: card ${e.card}`);
+    if (e.heal) assert.equal(e.conditions?.injured, true, `${e.id}: heal events only for the injured`);
     for (const j of [e.conditions?.job ?? []].flat()) assert.ok(jobIds.has(j), `${e.id}: job ${j}`);
     for (const r of [e.conditions?.route ?? []].flat()) assert.ok(['love', 'career', 'money'].includes(r));
     for (const d of [e.conditions?.education ?? []].flat()) assert.ok(['none', 'college', 'elite'].includes(d));
@@ -218,6 +224,10 @@ test('job offer: requirements, education, news deltas; ≤ 3 distinct weighted c
   const noDegree = eligibleJobs(tx, c).map((j) => j.id);
   for (const id of ['doctor', 'researcher', 'teacher', 'office_worker']) assert.ok(!noDegree.includes(id), id);
   c.education = 'college';
+  // blue cards: doctor / researcher also need the 🔬 연구열심 requirement card in the hand
+  const noCard = eligibleJobs(tx, c).map((j) => j.id);
+  for (const id of ['doctor', 'researcher']) assert.ok(!noCard.includes(id), `${id} needs research`);
+  c.cards = [{ uid: 'k90', id: 'research' }];
   const degree = eligibleJobs(tx, c).map((j) => j.id);
   for (const id of ['doctor', 'researcher', 'teacher', 'office_worker', 'civil_servant']) assert.ok(degree.includes(id), id);
   assert.ok(!degree.some((id) => jobDef(data, id).hidden), 'hidden jobs are never offered');
@@ -294,12 +304,19 @@ test('rank-up: chance formula, passive at expNeeded (seeded), stat +1, history; 
   assert.equal(need, Math.max(1, Math.round(ru.expNeeded * (J.expNeededMult ?? 1))));
   assert.equal(tryRankUp(tx, c), need > 0 ? 'notReady' : 'fail');
   c.job.exp = need;
+  // 대기업 회사원 needs a 🏅 merit card for the review (jobs.json rankUp.merit), consumed on success
+  assert.equal(ru.merit, 1);
+  assert.equal(tryRankUp(tx, c), 'noMerit');
+  c.cards = [{ uid: 'k91', id: 'merit' }];
   tx.rng = fixedRng({ nexts: [0.999] });
   assert.equal(tryRankUp(tx, c), 'fail');
   assert.equal(c.job.rank, 1);
+  assert.equal(c.cards.length, 1, 'a failed review keeps the merit card');
   tx.rng = fixedRng({ nexts: [0] });
   assert.equal(tryRankUp(tx, c), 'up');
   assert.deepEqual([c.job.rank, c.job.exp], [2, 0]);
+  assert.deepEqual(c.cards, [], 'merit consumed');
+  assert.ok(tx.events.some((e) => e.type === 'cardLost' && e.cardId === 'merit' && e.reason === 'merit'));
   const up = tx.events.find((e) => e.type === 'rankUp');
   assert.deepEqual([up.jobId, up.rank, up.rankName], ['office_worker', 2, '대리']);
   assert.ok(tx.events.some((e) => e.type === 'statChanged' && e.stat === 'int' && e.reason === 'rankUp'));
@@ -409,10 +426,12 @@ test('hidden jobs: all 6 unlock conditions (boundaries), unlock event once, offe
   // 국민 MC: 개그맨/배우/유튜버 최고 랭크 + 매력 (current job or history)
   const M = need('national_mc').charm;
   const maxOf = (id) => def(id).ranks.length;
-  check('national_mc', { ...S({ charm: M }), job: { id: 'comedian', rank: maxOf('comedian'), exp: 0, injured: 0 } }, true);
-  check('national_mc', { ...S({ charm: M }), job: { id: 'civil_servant', rank: 1, exp: 0, injured: 0 }, jobHistory: [{ id: 'youtuber', rank: maxOf('youtuber'), era: 'young' }] }, true);
-  check('national_mc', { ...S({ charm: M - 1 }), job: { id: 'actor', rank: maxOf('actor'), exp: 0, injured: 0 } }, false);
-  check('national_mc', { ...S({ charm: M }), job: { id: 'actor', rank: maxOf('actor') - 1, exp: 0, injured: 0 } }, false);
+  const CH = [{ uid: 'k92', id: 'charisma' }]; // blue cards: 국민 MC also needs 🎤 카리스마◎ in the hand
+  check('national_mc', { ...S({ charm: M }), cards: CH, job: { id: 'comedian', rank: maxOf('comedian'), exp: 0, injured: 0 } }, true);
+  check('national_mc', { ...S({ charm: M }), cards: [], job: { id: 'comedian', rank: maxOf('comedian'), exp: 0, injured: 0 } }, false);
+  check('national_mc', { ...S({ charm: M }), cards: CH, job: { id: 'civil_servant', rank: 1, exp: 0, injured: 0 }, jobHistory: [{ id: 'youtuber', rank: maxOf('youtuber'), era: 'young' }] }, true);
+  check('national_mc', { ...S({ charm: M - 1 }), cards: CH, job: { id: 'actor', rank: maxOf('actor'), exp: 0, injured: 0 } }, false);
+  check('national_mc', { ...S({ charm: M }), cards: CH, job: { id: 'actor', rank: maxOf('actor') - 1, exp: 0, injured: 0 } }, false);
   // 재벌 총수: 대기업 최고 랭크 + 순자산
   const nw = def('chaebol').unlock.netWorth;
   check('chaebol', { job: { id: 'office_worker', rank: maxOf('office_worker'), exp: 0, injured: 0 }, money: nw, debt: 0 }, true);

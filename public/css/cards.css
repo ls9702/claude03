@@ -120,9 +120,10 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
 .item-ic.img { width: 1.25em; height: 1.25em; object-fit: contain; vertical-align: middle; }
 .gd-cards, .gd-items { display: flex; flex-wrap: wrap; gap: 4px; }
 .gd-card { font-size: 0.75rem; font-weight: 800; border-radius: 6px; padding: 1px 6px; border: 1.5px solid; white-space: nowrap; }
-.gd-card.k-instant { border-color: #3b82f6; background: #eff6ff; color: #1e3a8a; }
-.gd-card.k-passive { border-color: #22a55a; background: #f0fdf4; color: #14532d; }
-.gd-card.k-sabotage { border-color: #e2504c; background: #fef2f2; color: #7f1d1d; }
+.gd-card.c-red, .gd-card.k-instant, .gd-card.k-passive { border-color: #e2504c; background: #fef2f2; color: #7f1d1d; }
+.gd-card.k-sabotage { border-color: #c2410c; background: #fff7ed; color: #7c2d12; }
+.gd-card.c-blue { border-color: #2f6fe0; background: #eff6ff; color: #1e3a8a; }
+.gd-card.c-status { border-color: #8b919c; background: repeating-linear-gradient(135deg, #f3f4f6 0 5px, #e5e7eb 5px 10px); color: #374151; }
 .gd-item { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
 .gd-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .rk-items { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 2px 0; }
@@ -142,9 +143,10 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
   text-align: center; gap: 4px !important; padding: 10px 8px 10px !important; min-height: 0; min-width: 0;
 }
 .shop-item .si-tag { font-size: 0.68rem; font-weight: 900; color: #fff; background: #f39a3d; border-radius: 999px; padding: 0 8px; }
-.shop-item.k-instant .si-tag { background: #3b82f6; }
-.shop-item.k-passive .si-tag { background: #22a55a; }
-.shop-item.k-sabotage .si-tag { background: #e2504c; }
+.shop-item.k-instant .si-tag, .shop-item.c-red .si-tag { background: #e2504c; }
+.shop-item.k-passive .si-tag { background: #e2504c; }
+.shop-item.k-sabotage .si-tag { background: #c2410c; }
+.shop-item.c-blue .si-tag { background: #2f6fe0; }
 .shop-item .si-art { width: 64px; height: 64px; display: grid; place-items: center; }
 .shop-item .si-art img { width: 100%; height: 100%; object-fit: contain; }
 .shop-item .si-emoji { font-size: 2.4rem; line-height: 1; }
@@ -172,9 +174,12 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
 
 /* ---------- cut-ins: chips, extra panel, hwatu, lotto ---------- */
 .ci-chip.card { border: 2px solid currentColor; }
-.ci-chip.card.k-instant { background: #dbeafe; color: #1d4ed8; }
-.ci-chip.card.k-passive { background: #dcfce7; color: #15803d; }
-.ci-chip.card.k-sabotage { background: #fee2e2; color: #b91c1c; }
+.ci-chip.card.k-instant, .ci-chip.card.k-passive, .ci-chip.card.c-red { background: #fee2e2; color: #b91c1c; }
+.ci-chip.card.k-sabotage { background: #ffedd5; color: #9a3412; }
+.ci-chip.card.c-blue { background: #dbeafe; color: #1d4ed8; }
+.ci-chip.card.c-status { background: repeating-linear-gradient(135deg, #f3f4f6 0 5px, #e5e7eb 5px 10px); color: #374151; }
+.ci-chip.card.lost { background: #f1f5f9; color: #334155; }
+.ci-chip.card.lost.plus { background: #dcfce7; color: #15803d; }
 .ci-badge.card.k-sabotage { border-color: #e2504c; }
 .ci-badge.card.blocked { border-color: #22a55a; background: #f0fdf4; }
 .ci-badge.item { border-color: #f39a3d; }
@@ -310,3 +315,66 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
 .ti-tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ti-t .deadline { flex: none; }
 .gd-acts[hidden] { display: none; }
+
+/* ---------- blue (보유) / red (사용) / status (부상) cards ---------- */
+.cardf .cf-tag {
+  position: absolute; left: -4px; top: -5px; color: #fff; font-size: 0.6rem; font-weight: 900; padding: 0 5px; border-radius: 999px;
+  line-height: 1.5; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); white-space: nowrap; background: #b91c1c;
+}
+.cardf .cf-tag.t-blue { background: #1e4fb8; }
+.cardf .cf-tag.t-status { background: #4b5563; }
+.cardf .cf-tag.cf-auto { background: #fff; color: #b91c1c; box-shadow: inset 0 0 0 1.5px #e2504c, 0 1px 2px rgba(0, 0, 0, 0.2); }
+.cardf .cf-stack {
+  position: absolute; right: -5px; bottom: -5px; min-width: 1.6em; background: #f59e0b; color: #fff; font-size: 0.68rem; font-weight: 900;
+  border-radius: 999px; padding: 0 5px; line-height: 1.55; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); text-align: center;
+}
+.cardf.stacked .cf-frame { filter: drop-shadow(3px -3px 0 #93b4f0) drop-shadow(3px -3px 0 #6d93dd) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18)); }
+/* blue cards work while held: never dimmed like an unplayable red card */
+button.cardf.held { opacity: 1; filter: none; }
+button.cardf.held:hover, button.cardf.held:focus-visible { transform: translateY(-2px); }
+.cardf.status { cursor: default; }
+.cardf.status .cf-emoji { filter: grayscale(0.2); }
+.cardf.status .cf-name { color: #4b5563; }
+/* hand row: width from handLayout() (six cards fit a 390 px phone) */
+.hand-row { gap: var(--hand-gap, 8px); }
+.hand-row .cardf { --cw: min(var(--hand-cw, 62px), 62px); }
+@media (max-width: 480px) { .hand-row .cardf { --cw: min(var(--hand-cw, 54px), 54px); } }
+@media (min-width: 700px) {
+  .spin-dock:has(.hand:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(300px, 44%); }
+  .spin-dock:has(.hand:not([hidden])) .hand-row .cardf { --cw: min(var(--hand-cw, 56px), 56px); }
+}
+@media (max-width: 699px) { .spin-dock.can-spin .hand-row .cardf { --cw: min(var(--hand-cw, 44px), 44px); } }
+.hand-row { padding-top: 8px; padding-right: 6px; }
+.hand-n.full { color: var(--danger); }
+/* card sheet */
+.cs-kind.c-blue { background: #2f6fe0; }
+.cs-kind.c-red { background: #e2504c; }
+.cs-kind.c-status { background: #6b7280; }
+.cs-eff { margin: 6px 0; padding: 6px 9px; border-radius: 10px; font-size: 0.84rem; line-height: 1.4; background: #fef2f2; border-left: 4px solid #e2504c; }
+.cs-eff.c-blue { background: #eff6ff; border-left-color: #2f6fe0; }
+.cs-eff.c-status { background: #f3f4f6; border-left-color: #6b7280; }
+.cs-eff b { margin-right: 4px; }
+.cs-exact { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; max-width: 340px; }
+.cs-num {
+  appearance: none; font: inherit; font-size: 1.1rem; font-weight: 900; min-height: 44px; border-radius: 12px; border: 2px solid var(--line);
+  background: #fffaf3; color: inherit; cursor: pointer;
+}
+.cs-num.on { background: #e2504c; border-color: #b91c1c; color: #fff; box-shadow: 0 0 0 3px rgba(226, 80, 76, 0.2); }
+.cs-num:disabled { opacity: 0.45; cursor: not-allowed; }
+/* side list: 🔵 held-card icons, 🏅 merit count, 🤕 injury card */
+.gc-tag.held { background: #dbeafe; color: #1e3a8a; box-shadow: inset 0 0 0 1.5px #93b4f0; letter-spacing: 1px; }
+.gc-tag.held .gh-ic.req { text-decoration: underline 2px #2f6fe0; text-underline-offset: 2px; }
+.gc-tag.merit { background: #fef3c7; color: #92400e; }
+.gc-tag.injury { background: repeating-linear-gradient(135deg, #fee2e2 0 5px, #fecaca 5px 10px); }
+/* job requirement badges: missing = red */
+.req-badge { display: inline-block; font-size: 0.74rem; font-weight: 800; border-radius: 999px; padding: 1px 8px; margin: 0 4px 2px 0; white-space: nowrap; }
+.req-badge.ok { background: #dcfce7; color: #14532d; }
+.req-badge.miss { background: #fee2e2; color: #b91c1c; box-shadow: inset 0 0 0 1.5px #f87171; }
+.gd-reqs { display: flex; flex-wrap: wrap; gap: 2px; }
+.ci-opt-badge.req-card, .c-badge.req-card { background: #dbeafe; color: #1e3a8a; }
+.ci-opt-badge.miss, .c-badge.miss { background: #fee2e2; color: #b91c1c; box-shadow: inset 0 0 0 1.5px #f87171; }
+/* spin dock / skill panel: 큰 수 · 작은 수 · 딱 그 칸 · 월급날 직행 */
+.roll-lim { display: inline-block; font-weight: 800; font-size: 0.82rem; background: #fee2e2; color: #991b1b; border-radius: 10px; padding: 1px 9px; margin-bottom: 2px; }
+.roll-lim.rush { background: #fef3c7; color: #92400e; }
+.sk-cell.out { opacity: 0.35; background: repeating-linear-gradient(135deg, #eee 0 4px, #ddd 4px 8px) !important; color: #999 !important; }
+.sk-lim { text-align: center; margin: 6px 0 0; font-weight: 800; font-size: 0.85rem; color: #991b1b; }

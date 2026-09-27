@@ -74,10 +74,10 @@ test('decorateEvents: same seed → identical presentation (all clients show the
 });
 
 // Bland events never get a speech bubble; plain money / uneventful landings and small money follow-ups rarely do.
-const QUIET_TYPES = new Set(['turnStarted', 'spun', 'moved', 'log', 'eraChanged']);
+const QUIET_TYPES = new Set(['turnStarted', 'spun', 'moved', 'log', 'eraChanged', 'cardLost']);
 /** Quiet by rule: per-character eraChanged (the eraTransition speaks), a 찬스 광장 pass / buy / job change result (its
  * follow-up or the buff chip speaks), an expired buff. */
-const quietOk = (e) => (e.type === 'promptResolved' && e.kind === 'passTile' && !e.cutin) || (e.type === 'chanceBuff' && e.action === 'expired');
+const quietOk = (e) => (e.type === 'promptResolved' && e.kind === 'passTile' && !e.cutin) || (e.type === 'chanceBuff' && e.action === 'expired') || (e.type === 'cardGained' && e.source === 'status');
 const MAYBE_QUIET = new Set(['landed', 'moneyChanged']);
 
 test('every emitted event carries tone/emotion/scene/cutin (+ line) from the allowed sets', () => {
@@ -141,6 +141,7 @@ test('presentationFor: every event type maps to a tone, scene and emotion (synth
     educationChanged: { charId: c.id, education: 'college' },
     // Stage 7
     cardGained: { charId: c.id, cardId: 'study', uid: 'k1', source: 'tile' },
+    cardLost: { charId: c.id, cardId: 'marriage_luck', uid: 'k3', reason: 'married' },
     cardUsed: { charId: c.id, cardId: 'noise', uid: 'k2', cardKind: 'sabotage', targetId: room.characters[1].id },
     cardBlocked: { charId: c.id, targetId: room.characters[1].id, cardId: 'tax_audit', uid: 'k3' },
     itemBought: { charId: c.id, itemId: 'car', price: 300 },

@@ -85,7 +85,7 @@ test('runner: a CPU spins after 1.6 s, answers its prompt after 1.2 s and a trad
     t.mock.timers.tick(150);
     const traded = store.getRoom(room.id);
     assert.equal(traded.trades.length, 0);
-    assert.equal(traded.characters.find((c) => c.id === 'c2').cards[0]?.id, 'taxi', 'accepted');
+    assert.equal(traded.characters.find((c) => c.id === 'c2').cards.at(-1)?.id, 'taxi', 'accepted'); // (a graduate may start with a requirement card)
     runner.stop();
     t.mock.timers.reset();
     await store.close();

@@ -14691,6 +14691,342 @@
       }
     },
     {
+      "id": "card-marriage-luck",
+      "kind": "card",
+      "label": "카드 · 결혼운◎",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: two interlocking golden wedding rings with a small pink heart and sparkles above them. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/marriage-luck.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "marriage_luck"
+      }
+    },
+    {
+      "id": "card-popular",
+      "kind": "card",
+      "label": "카드 · 인기 폭발◎",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a shining golden star wearing sunglasses surrounded by small pink hearts and camera flashes. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/popular.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "popular"
+      }
+    },
+    {
+      "id": "card-research",
+      "kind": "card",
+      "label": "카드 · 연구열심",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a microscope next to a glowing test tube and a small notebook with a pencil. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/research.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "research"
+      }
+    },
+    {
+      "id": "card-charisma",
+      "kind": "card",
+      "label": "카드 · 카리스마◎",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a golden stage microphone with a spotlight beam and a few sparkles. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/charisma.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "charisma"
+      }
+    },
+    {
+      "id": "card-tongue",
+      "kind": "card",
+      "label": "카드 · 절대미각",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a chef hat above a steaming bowl with a small golden spoon and a sparkle. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/tongue.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "tongue"
+      }
+    },
+    {
+      "id": "card-iron-body",
+      "kind": "card",
+      "label": "카드 · 강철 체력",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a flexed muscular robot-like metal arm holding a dumbbell. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/iron-body.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "iron_body"
+      }
+    },
+    {
+      "id": "card-health-charm",
+      "kind": "card",
+      "label": "카드 · 건강기원 부적",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a round blue evil-eye style protective charm hanging from a red knotted string. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/health-charm.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "health_charm"
+      }
+    },
+    {
+      "id": "card-salary-charm",
+      "kind": "card",
+      "label": "카드 · 월급 부적",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a golden paper charm talisman with a stack of banknotes and a coin. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/salary-charm.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "salary_charm"
+      }
+    },
+    {
+      "id": "card-merit",
+      "kind": "card",
+      "label": "카드 · 공적 카드",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a golden medal on a red and blue ribbon with a laurel wreath. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/merit.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "merit"
+      }
+    },
+    {
+      "id": "card-big-roll",
+      "kind": "card",
+      "label": "카드 · 큰 수 카드",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a colorful roulette wheel with a big bright upward arrow on top. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/big-roll.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "big_roll"
+      }
+    },
+    {
+      "id": "card-small-roll",
+      "kind": "card",
+      "label": "카드 · 작은 수 카드",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a colorful roulette wheel with a small downward arrow on top. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/small-roll.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "small_roll"
+      }
+    },
+    {
+      "id": "card-exact-roll",
+      "kind": "card",
+      "label": "카드 · 딱 그 칸 카드",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a red and white archery target with an arrow exactly in the bullseye. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/exact-roll.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "exact_roll"
+      }
+    },
+    {
+      "id": "card-payday-rush",
+      "kind": "card",
+      "label": "카드 · 월급날 직행",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a running sneaker with speed lines racing toward a pay envelope with coins. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/payday-rush.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "payday_rush"
+      }
+    },
+    {
+      "id": "card-injury",
+      "kind": "card",
+      "label": "카드 · 부상",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game card illustration icon: a white arm cast with a bandage and a small first-aid cross. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "cards/injury.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "injury"
+      }
+    },
+    {
       "id": "item-car",
       "kind": "item",
       "label": "아이템 · 경차",

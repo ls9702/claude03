@@ -22,7 +22,7 @@ import { applyResult, castVote, closeVote, emitMvpDecided } from './result.js';
 import { createRng } from './rng.js';
 import { decorateEvents } from './presentation.js';
 import { promptComplete, resolvePrompt, resolveTile } from './spaces.js';
-import { ensureLife, initLife, lifeStep, preSpinStep, spinSteps } from './growth.js';
+import { ensureLife, grantSkillCard, initLife, lifeStep, preSpinStep, spinSteps } from './growth.js';
 import { ROULETTE_INPUTS, isSkillRoom, parseTarget, skillValue } from './roulette.js';
 import { militaryPay } from './jobs.js';
 import { applyEraNews, drawNews, drawStartNews } from './news.js';
@@ -37,6 +37,9 @@ import {
   itemsValue,
   offerTrade,
   respondTrade,
+  rollPlan,
+  rushDistance,
+  spinFixed,
   useCard,
 } from './cards.js';
 import { queueEraOpening, runEraOpenings } from './holidays.js';
@@ -132,6 +135,8 @@ export function startGame(room, ctx = {}) {
   Object.assign(next, { nextTreasureSeq: 0, treasureValues: {}, treasureFakes: {}, highlights: {}, highlightSeq: 0 });
   const tx = createTx(next, { rng, now, data });
   emit(tx, 'gameStarted', { eras: next.board.eras.map((e) => e.id), turns: next.board.eras.map((e) => e.turns), laps: next.board.eras.map((e) => e.lap) });
+  // blue cards: a game starting grown up (adult mode) gives graduates their best stat's job-requirement card
+  if (adult) for (const c of next.characters) if (c.education && c.education !== 'none') grantSkillCard(tx, c, 'start');
   drawStartNews(tx);
   next.turn.announce = true;
   continueTurn(tx); // turnStarted (+ the first character's pre-spin decisions, e.g. adult mode's job offer)
@@ -439,7 +444,7 @@ function continueTurn(tx) {
  * move; a pass tile (찬스 광장) passed with steps left pauses it (`turn.move = {charId, remaining}`) behind its prompt — the turn loop resumes it
  * (`resumed: true`) once the prompt (and a chained shop) resolved. Wrapping past the start counts a lap.
  */
-function walk(tx, c, steps, { resumed = false } = {}) {
+function walk(tx, c, steps, { resumed = false, rush = false } = {}) {
   const room = tx.room;
   const board = room.board;
   let pos = c.position;
@@ -464,7 +469,7 @@ function walk(tx, c, steps, { resumed = false } = {}) {
       halted = t.type;
       break;
     }
-    if (t.type === 'pass' && s < steps - 1) {
+    if (t.type === 'pass' && s < steps - 1 && !rush) { // 월급날 직행 goes straight past 찬스 광장
       halted = 'pass';
       remaining = steps - 1 - s;
       pass = t;
@@ -480,6 +485,7 @@ function walk(tx, c, steps, { resumed = false } = {}) {
     halted,
     ...(halted === 'pass' ? { remaining } : {}),
     ...(resumed ? { resumed: true } : {}),
+    ...(rush ? { rush: true } : {}),
     ...(wrapped ? { wrapped: true, laps: wrapped } : {}),
   });
   if (wrapped) addLog(tx, `🔁 ${josa(c.name, '이/가')} 출발점을 지나 한 바퀴를 돌았다! (${c.laps}바퀴째)`, { tone: 'info', charId: c.id });
@@ -589,6 +595,7 @@ function placeBet(tx, action) {
   if (bettor.finished) fail(409, '골인한 캐릭터는 훈수 베팅을 할 수 없어요.');
   if (bettor.ownerSessionId === 'cpu') fail(409, 'CPU는 베팅하지 않아요.');
   if (bettor.ownerSessionId === current.ownerSessionId) fail(403, '내 캐릭터의 턴에는 훈수 베팅을 할 수 없어요.');
+  if (spinFixed(current)) fail(409, '이번 룰렛은 카드로 정해져서 훈수 베팅을 할 수 없어요.');
   const cfg = tx.data.balance.bets;
   const { kind, pick } = action;
   if (!BET_KINDS.includes(kind)) fail(400, '베팅 종류가 올바르지 않습니다.');
@@ -684,14 +691,25 @@ function doSpin(tx, action) {
   const skillCfg = tx.data.balance.roulette?.skill ?? {};
   // Any number 1–10 every turn (the old per-character number deck was removed by user decision; a leftover
   // `character.aimUsed` in an old save is ignored).
-  const aimed = isSkillRoom(room) && !(action.auto && actor?.system) && !actor?.admin ? parseTarget(action.target, { min, max }) : null;
-  const first = aimed != null ? skillValue(tx.rng, aimed, { jitter: skillCfg.jitter, min, max }) : tx.rng.int(min, max);
+  // Red roulette cards played this turn: 딱 그 칸 = the chosen number (no draw, no aim), 큰 수 / 작은 수 = a uniform draw
+  // in the range (skill rooms: the aimed result clamped into it), 월급날 직행 = the move goes to the next payday.
+  const plan = rollPlan(c);
+  const lo = plan.range?.min ?? min;
+  const hi = plan.range?.max ?? max;
+  const canAim = isSkillRoom(room) && !(action.auto && actor?.system) && !actor?.admin && !plan.exact && !plan.rush;
+  const aimed = canAim ? parseTarget(action.target, { min, max }) : null;
+  let first;
+  if (plan.exact) first = Math.max(min, Math.min(max, plan.exact.value));
+  else if (aimed != null) first = Math.max(lo, Math.min(hi, skillValue(tx.rng, aimed, { jitter: skillCfg.jitter, min, max })));
+  else first = tx.rng.int(lo, hi);
   const input = aimed != null && ROULETTE_INPUTS.includes(action.input) ? action.input : null;
   // Stage 7: pending spin modifiers (택시 / 층간소음 second roll, 에너지 +2, 새치기 −3, 경차 1 → 2)
   const mod = applySpinMods(tx, c, first);
   const value = mod.value;
   const serving = c.military?.status === 'serving';
-  const steps = spinSteps(tx, c, mod.move); // 군 복무: half the move (rounded up)
+  const rushSteps = mod.rush ? rushDistance(room, c) : null; // 월급날 직행: exactly to the payday (no halving)
+  const halvedSteps = spinSteps(tx, c, mod.move); // 군 복무: half the move (rounded up); school / injury count down
+  const steps = rushSteps ?? halvedSteps;
   const aim = aimed != null ? { target: aimed, ...(input ? { input } : {}), skill: true } : {};
   turn.lastSpin = { charId: c.id, value, turnNo: turn.turnNo, ...(steps !== value ? { steps } : {}), ...(mod.rolls ? { rolls: mod.rolls } : {}), ...aim };
   turn.phase = 'resolveSpace';
@@ -702,7 +720,8 @@ function doSpin(tx, action) {
     charId: c.id,
     value,
     ...(steps !== value ? { steps } : {}),
-    ...(serving && steps !== mod.move ? { halved: true } : {}),
+    ...(serving && rushSteps == null && steps !== mod.move ? { halved: true } : {}),
+    ...(rushSteps != null ? { rush: true } : {}),
     ...(mod.rolls ? { rolls: mod.rolls } : {}),
     ...(mod.mods.length ? { mods: mod.mods } : {}),
     ...(mod.car ? { car: true } : {}),
@@ -713,7 +732,10 @@ function doSpin(tx, action) {
   if (mod.rolls) notes.push(`두 번 돌려 ${mod.rolls.join('·')} 중 ${value}`);
   if (mod.move !== value && !mod.car) notes.push(`카드 효과로 ${mod.move}칸`);
   if (mod.car) notes.push('경차 덕분에 2칸');
-  if (serving && steps !== mod.move) notes.push(`복무 중이라 ${steps}칸만 이동`);
+  if (plan.exact) notes.push('딱 그 칸 카드');
+  else if (plan.range) notes.push(`${plan.range.min}~${plan.range.max} 카드`);
+  if (rushSteps != null) notes.push(`월급날 직행 ${rushSteps}칸`);
+  else if (serving && steps !== mod.move) notes.push(`복무 중이라 ${steps}칸만 이동`);
   // skill mode: 「🎯 목표 7 → 결과 8」 (the first roll; a taxi / noise second roll stays random and shows in the notes)
   const shown = aimed != null ? `🎯 목표 ${aimed} → 결과 ${first}${first === aimed ? ' 명중!' : ''}` : String(value);
   addLog(tx, `🎡 ${c.name}의 룰렛: ${shown}${notes.length ? ` (${notes.join(', ')})` : ''}`, { charId: c.id });
@@ -721,7 +743,7 @@ function doSpin(tx, action) {
   if (serving) militaryPay(tx, c);
 
   turn.spun = true;
-  walk(tx, c, steps); // loop map: forced stops (payday / fork), 찬스 광장 pauses, laps
+  walk(tx, c, steps, { rush: rushSteps != null }); // loop map: forced stops (payday / fork), 찬스 광장 pauses, laps
   continueTurn(tx);
 }
 
@@ -785,7 +807,17 @@ const HANDLERS = Object.assign(Object.create(null), {
   timeout: doTimeout,
   skip: doSkip,
   // Stage 7 — the card one needs the turn; trades / gifts happen any time and never touch the turn state
-  useCard: (tx, action) => useCard(tx, action, currentCharId(tx.room)),
+  useCard: (tx, action) => {
+    useCard(tx, action, currentCharId(tx.room));
+    // a red roulette card fixes / bounds this spin: side bets already placed on it are void (stakes back)
+    const c = charById(tx.room, currentCharId(tx.room));
+    const slot = tx.room.bets?.[tx.room.turn.turnNo];
+    if (spinFixed(c) && slot && Object.keys(slot).length) {
+      refundBets(tx, slot);
+      delete tx.room.bets[tx.room.turn.turnNo];
+      addLog(tx, `🙅 ${c.name}의 룰렛이 카드로 정해져서 이번 훈수 베팅은 무효예요 (판돈 반환)`, { tone: 'info', charId: c.id });
+    }
+  },
   offerTrade,
   respondTrade,
   cancelTrade,
@@ -829,6 +861,13 @@ export function applyAction(room, action, ctx = {}) {
     if (!ch.record) ensureRecord(ch);
   }
   ensureRoomTreasures(next);
+  for (const ch of next.characters) {
+    // saves from before the blue / red cards: an ongoing injury gets its 🤕 status card (silently)
+    if (ch.job?.injured > 0 && !ch.cards.some((k) => k.id === 'injury')) {
+      next.nextCardSeq = (next.nextCardSeq ?? 0) + 1;
+      ch.cards.push({ uid: `k${next.nextCardSeq}`, id: 'injury' });
+    }
+  }
   next.highlights ??= {};
   next.news ??= {};
   ensureRoomCards(next);

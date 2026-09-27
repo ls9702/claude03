@@ -6,7 +6,9 @@ import { gameData } from '../server/data/index.js';
 import { applyAction, startGame } from '../server/game/engine.js';
 import { createTx } from '../server/game/effects.js';
 import {
+  CARD_COLORS,
   CARD_IDS,
+  REQUIREMENT_CARDS,
   ITEM_IDS,
   applyLoss,
   drawableCards,
@@ -63,14 +65,27 @@ const expect = (fn, status, re) =>
 
 test('data: cards.json / items.json / holidays.json schemas, fixed ids, manifest art items', () => {
   const cards = data.cards.cards;
-  assert.equal(data.cards.handLimit, 5);
+  assert.equal(data.cards.handLimit, 6);
   assert.deepEqual(cards.map((k) => k.id), CARD_IDS);
-  const kinds = { instant: ['study', 'insider', 'energy', 'taxi', 'pledge'], passive: ['bonus', 'insurance', 'amulet', 'lotto', 'coupon', 'lawyer'], sabotage: ['cut_line', 'noise', 'tax_audit', 'complaint', 'gossip'] };
+  const kinds = {
+    instant: ['study', 'insider', 'energy', 'taxi', 'pledge', 'big_roll', 'small_roll', 'exact_roll', 'payday_rush'],
+    passive: ['bonus', 'insurance', 'amulet', 'lotto', 'coupon', 'lawyer'],
+    sabotage: ['cut_line', 'noise', 'tax_audit', 'complaint', 'gossip'],
+    held: ['marriage_luck', 'popular', 'research', 'charisma', 'tongue', 'iron_body', 'health_charm', 'salary_charm'],
+    merit: ['merit'],
+    status: ['injury'],
+  };
   for (const [kind, ids] of Object.entries(kinds)) assert.deepEqual(cards.filter((k) => k.kind === kind).map((k) => k.id), ids, kind);
   for (const k of cards) {
     assert.ok(k.name && k.icon && k.desc && k.effect, k.id);
-    assert.ok(Number.isInteger(k.price) && k.price > 0 && k.weight > 0, k.id);
+    assert.ok(CARD_COLORS.includes(k.color), `${k.id}: color`);
+    assert.equal(k.color, ['held', 'merit', 'status'].includes(k.kind) ? 'blue' : 'red', `${k.id}: colour by kind`);
+    if (k.kind === 'status') assert.ok(k.price === 0 && k.weight === 0, k.id);
+    else if (k.kind === 'merit') assert.ok(k.price > 0 && k.weight === 0, k.id);
+    else assert.ok(Number.isInteger(k.price) && k.price > 0 && k.weight > 0, k.id);
   }
+  for (const id of REQUIREMENT_CARDS) assert.equal(cards.find((k) => k.id === id).effect.requirement, true, id);
+  for (const id of ['marriage_luck', 'popular']) assert.equal(cards.find((k) => k.id === id).hold?.until, 'married', id);
   assert.equal(cards.find((k) => k.id === 'pledge').jobOnly, 'politician');
   assert.deepEqual(data.items.items.map((i) => i.id), ITEM_IDS);
   for (const i of data.items.items) assert.ok(i.name && i.icon && i.desc && i.price > 0 && i.resale > 0 && i.resale < 1, i.id);
@@ -279,16 +294,18 @@ test('passive cards: insurance halves a loss tile, amulet cancels an injury / ba
   assert.equal(paySalary(tx4, c), base);
 });
 
-test('hand limit 5: the oldest card is discarded; card tile draws one (source tile); event card rewards', () => {
+test('hand limit 6: the oldest red card is discarded; card tile draws one (source tile); event card rewards', () => {
   const room = youngRoom();
   const c = room.characters[0];
   const tx = createTx(room, { rng: fixedRng(), now: 0, data });
-  for (const id of ['study', 'insider', 'energy', 'taxi', 'lotto']) gainCard(tx, c, id, 'shop');
+  for (const id of ['study', 'insider', 'energy', 'taxi', 'lotto', 'coupon']) gainCard(tx, c, id, 'shop');
   gainCard(tx, c, 'gossip', 'tile');
-  assert.deepEqual(c.cards.map((k) => k.id), ['insider', 'energy', 'taxi', 'lotto', 'gossip']);
+  assert.deepEqual(c.cards.map((k) => k.id), ['insider', 'energy', 'taxi', 'lotto', 'coupon', 'gossip']);
   const last = tx.events.filter((e) => e.type === 'cardGained').at(-1);
-  assert.deepEqual([last.cardId, last.source, last.discarded], ['gossip', 'tile', 'study']);
-  assert.equal(new Set(c.cards.map((k) => k.uid)).size, 5, 'uids are unique');
+  assert.deepEqual([last.cardId, last.source, last.discarded, last.color], ['gossip', 'tile', 'study', 'red']);
+  const lost = tx.events.find((e) => e.type === 'cardLost');
+  assert.deepEqual([lost.cardId, lost.reason], ['study', 'discarded']);
+  assert.equal(new Set(c.cards.map((k) => k.uid)).size, 6, 'uids are unique');
   const d = room.characters[1];
   d.cards = [];
   resolveTile(tx, d, { id: 'z', type: 'card', label: '카드' });

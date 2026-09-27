@@ -34,6 +34,8 @@ export const EVENT_TYPES = [
   // Stage 7 — cards, items, interaction
   'cardGained', 'cardUsed', 'cardBlocked', 'itemBought', 'tradeOffered', 'tradeResolved', 'gift', 'holidayStarted',
   'holidayResult', 'lottoDraw',
+  // blue / red cards — a card leaving the hand (결혼 / 부상 회복 / 버림 / 공적 소모)
+  'cardLost',
   // Stage 8 — romance, family, real estate
   'met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'allowance', 'houseBought', 'houseSold',
   'houseValueChanged',
@@ -338,6 +340,8 @@ export function presentationFor(ev, ctx) {
       const tt = ev.tileType;
       if (promptNext) {
         tag = PROMPT_TAGS[promptNext.kind] ?? 'stop';
+        const pj = promptNext.options?.find((o) => o.jobId)?.jobId; // a job tile opening a (hidden) job offer names {job}
+        if (!vars.job && pj) vars.job = jobOf(ctx.data, pj)?.name ?? '';
         tone ??= explicitTone(promptNext, tones) ?? PROMPT_TONES[promptNext.kind] ?? 'neutral';
       } else if (tt === 'money' || tt === 'loss' || tt === 'event') {
         const eventDef = tt === 'event' ? eventOf(ctx.data, o.eventId) : null;
@@ -584,6 +588,13 @@ export function presentationFor(ev, ctx) {
       tag = 'card';
       tone ??= 'good';
       emotion ??= 'joy';
+      if (ev.source === 'status') bland = 'always'; // the 🤕 injury card: the `injured` anchor speaks
+      break;
+    case 'cardLost': // a chip / banner on the client; the log line is the text
+      tag = 'card';
+      tone ??= 'neutral';
+      emotion ??= 'joy';
+      bland = 'always';
       break;
     case 'cardUsed':
       cutin = isCutinCardUse(ev);

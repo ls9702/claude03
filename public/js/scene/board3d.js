@@ -30,7 +30,7 @@ import { makeTextSprite, disposeSprite, canvasHasEmoji, canvasTexture, FONT_STAC
 import { clamp, lerp, hopHeight, easeInOutCubic, catmullRom, arcLengths, pointAt, rouletteRegion } from './math.js';
 import { loadAssetIndex, findAsset } from '../assets.js';
 import { won } from '../format.js';
-import { spinNote } from '../shared/cards.js';
+import { cardLostInfo, modRange, spinNote } from '../shared/cards.js';
 import { aimShort, aimText } from '../ui/rouletteSkill.js';
 
 const TILE_SIZE = 1.64;
@@ -54,6 +54,8 @@ const STAT_FLOAT = { int: ['🧠', '#2446a8'], str: ['💪', '#a33a14'], charm: 
 
 /** Stage 7 board reactions over the pawn (sabotage / block pop over the target). */
 const STAGE7_POP = { cardGained: '🃏', itemBought: '🛍️', gift: '🎁', lottoDraw: '🎱' };
+/** Red roulette cards: their own pop when used (큰 수 / 작은 수 / 딱 그 칸 / 월급날 직행). */
+const ROLL_CARD_POP = { big_roll: '🔼', small_roll: '🔽', exact_roll: '🎯', payday_rush: '💨' };
 /** Stage 8 board reactions over the pawn (the cut-in follows). */
 const STAGE8_POP = { met: '💘', dated: '💕', married: '💍', childBorn: '👶', allowance: '💌', houseBought: '🏠', houseSold: '🔁' };
 const CHILD_GROW_POP = { dol: '🎂', school: '🎒', exam: '📝', job: '💼' };
@@ -831,6 +833,9 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       const name = S.chars.find((c) => c.id === e.charId)?.name ?? '';
       // 룰렛 실력 모드: everyone sees what was aimed, then 「🎯 목표 7 → 결과 8」
       S.animSubtitle = e.skill ? `🎯 ${name}의 룰렛! 목표 ${e.target}` : `🎡 ${name}의 룰렛!`;
+      // 큰 수 / 작은 수 카드: the range this roulette is limited to (딱 그 칸 / 월급날 직행 say it after the wheel)
+      const rng = modRange((Array.isArray(e.mods) ? e.mods : []).find((m) => m?.kind === 'range'));
+      if (rng) S.animSubtitle += ` · ${rng.icon} ${rng.text}`;
       renderSubtitle();
       if (ctx.instant) {
         hooks.onSpinResult?.(e);
@@ -846,7 +851,11 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       }
       // Stage 6: while serving the pawn moves only `steps` (half the roulette)
       if (e.halved && Number.isFinite(e.steps) && e.steps !== e.value) emotion.pop(e.charId, `🪖${e.steps}칸`, { dur: 1.6 });
-      else if (spinNote(e)) emotion.pop(e.charId, spinNote(e).text.replace(' ', ''), { dur: 1.6 }); // Stage 7 card / item
+      else if (spinNote(e)) {
+        const note = spinNote(e); // Stage 7 card / item, 큰 수 · 작은 수 · 딱 그 칸 · 월급날 직행
+        emotion.pop(e.charId, note.text.replace(' ', ''), { dur: 1.6 });
+        if (note.rush) banner(`💨 ${name}, 월급날로 직행!`, 1600);
+      }
       await ctx.sleep(750);
       setRouletteMode('hidden');
     },
@@ -858,7 +867,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       const note = haltNote(e);
       if (!note || !e.halted) return;
       emotion.pop(e.charId, note.icon, { dur: 1.6 });
-      banner(e.halted === 'salary' ? '💵 월급날! 여기서 멈춰요' : e.halted === 'pass' ? '🎪 찬스 광장! 잠깐 멈춤' : '🔀 인생 갈림길!', 1500);
+      banner(e.halted === 'salary' ? (e.rush ? '💨 월급날 직행! 도착' : '💵 월급날! 여기서 멈춰요') : e.halted === 'pass' ? '🎪 찬스 광장! 잠깐 멈춤' : '🔀 인생 갈림길!', 1500);
       await ctx.sleep(e.halted === 'pass' ? 450 : 300);
     },
     // Loop maps: the whole table moves to the next era's map together (one transition per era)
@@ -963,8 +972,15 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       if (e.targetId) {
         emotion.pop(e.charId, '🃏', { dur: 1.2 });
         emotion.pop(e.targetId, '💢', { dur: 1.8 });
-      } else emotion.pop(e.charId, e.cardId === 'pledge' ? '🗳️' : '✨', { dur: 1.4 });
+      } else emotion.pop(e.charId, e.cardId === 'pledge' ? '🗳️' : ROLL_CARD_POP[e.cardId] ?? '✨', { dur: 1.4 });
       await ctx.sleep(420);
+    },
+    // blue / red cards: a card left the hand (💍 결혼운 소멸 · 🩹 부상 회복 · 🗑️ 버림 · 🏅 공적 사용)
+    cardLost: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant || !e.charId) return;
+      emotion.pop(e.charId, cardLostInfo(e, null).glyph, { dur: 1.3 });
+      await ctx.sleep(250);
     },
     cardBlocked: async (e, ctx) => {
       hooks.onStep?.(e);
@@ -1000,7 +1016,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
           const id = type === 'gift' ? e.toId : e.charId;
           if (type === 'lottoDraw') {
             for (const r of e.entries ?? []) if (Number(r.prize) > 0) emotion.pop(r.charId, '🎱', { dur: 1.8 });
-          } else if (id) emotion.pop(id, glyph, { dur: 1.5 });
+          } else if (id) emotion.pop(id, type === 'cardGained' && e.cardId === 'injury' ? '🤕' : glyph, { dur: 1.5 });
           await ctx.sleep(type === 'lottoDraw' ? 300 : 350);
         },
       ]),

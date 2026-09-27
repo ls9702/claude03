@@ -62,7 +62,7 @@ export function isPaydayGroup(g) {
 /** 찬스 광장: 「그냥 지나가기」 / 나가기 results. */
 export const isPassSkip = (a) => a?.type === 'promptResolved' && a.kind === 'passTile' && ['passed', 'left', 'pass', 'skip'].includes(String(a.result ?? ''));
 /** Always a small banner (also for my own characters): 전역 (Stage 6); card gained / plain card use / gift / trade (Stage 7). */
-export const BANNER_TYPES = ['militaryEnd', 'cardGained', 'gift', 'tradeResolved', 'chanceBuff'];
+export const BANNER_TYPES = ['militaryEnd', 'cardGained', 'cardLost', 'gift', 'tradeResolved', 'chanceBuff'];
 /** Stage 7: global shows that wait until my pending prompt is answered instead of shrinking to a banner. */
 export const DEFER_TYPES = ['lottoDraw', 'holidayResult'];
 
@@ -214,7 +214,7 @@ export function eraBannerText(names = [], eraName = '') {
 const ANCHOR_RANK = {
   hiddenJobUnlocked: 9, jobChanged: 8, rankUp: 8, finished: 6, eraTransition: 9, eraChanged: 5, militaryStart: 4, educationChanged: 4,
   injured: 3, routeChosen: 3, promptResolved: 2, landed: 1, militaryEnd: 0,
-  cardBlocked: 6, cardUsed: 5, itemBought: 3, gift: 0, cardGained: 0, tradeResolved: 0,
+  cardBlocked: 6, cardUsed: 5, itemBought: 3, gift: 0, cardGained: 0, cardLost: 0, tradeResolved: 0,
   // Stage 8
   married: 9, childBorn: 8, proposed: 7, schoolMeet: 7, houseValueChanged: 6, childGrew: 5, houseBought: 5, met: 4, dated: 2,
   // Stage 9

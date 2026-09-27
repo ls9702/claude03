@@ -1,15 +1,37 @@
-// Stage 7 — cards, shop items, trades and gifts (cards.json / items.json). Pure helpers over a tx.
+// Stage 7 — cards, shop items, trades and gifts (cards.json / items.json) + the original-style blue / red cards.
+// Pure helpers over a tx.
 //
-// character.cards = [{uid, id}] (uid = room-unique `k<seq>`, hand limit cards.json `handLimit`, oldest dropped)
-// character.items = [itemId] (one of each) · character.spinMods = [{kind: plus|minus|max2|min2, value?, by?, card}]
-//   (applied and cleared at the character's next spin) · character.lastTargetedBy = {attackerId: round}
+// character.cards = [{uid, id}] (uid = room-unique `k<seq>`, hand limit cards.json `handLimit`)
+// character.items = [itemId] (one of each) · character.spinMods = [{kind: plus|minus|max2|min2|range|exact|rush, value?,
+//   min?, max?, by?, card}] (applied and cleared at the character's next spin) · character.lastTargetedBy = {attackerId: round}
 // room.nextCardSeq · room.trades = [{id, fromId, toId, give, want, createdAt, expiresAt}] · room.nextTradeSeq
 // Hands, items and trades are public (cards are open information, like the original board game).
+//
+// Colours: blue = 보유 효과 (kind held / merit / status: works while in the hand, never played), red = 사용 효과 (kind
+// instant / sabotage played before the spin, passive = auto one-shot). Held cards leave the hand only by their
+// `hold.until` condition ('married'), the injury status card when the injury heals; a full hand discards the oldest red
+// card first, then the oldest blue non-requirement card, then the oldest requirement card — never the status card.
+import { HALT_TYPES, nextPosition, tileAt } from './board.js';
 import { addLog, addStats, assertOwner, changeMoney, charById, emit, fail, hasBuff, josa, particle, round5, won } from './effects.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 
-export const CARD_KINDS = ['instant', 'passive', 'sabotage'];
-export const CARD_IDS = ['study', 'insider', 'energy', 'taxi', 'pledge', 'bonus', 'insurance', 'amulet', 'lotto', 'coupon', 'lawyer', 'cut_line', 'noise', 'tax_audit', 'complaint', 'gossip'];
+export const CARD_COLORS = ['blue', 'red'];
+export const CARD_KINDS = ['instant', 'passive', 'sabotage', 'held', 'merit', 'status'];
+/** Kinds a player plays by hand (before the spin). */
+export const PLAYABLE_KINDS = ['instant', 'sabotage'];
+export const CARD_IDS = [
+  'study', 'insider', 'energy', 'taxi', 'pledge', 'bonus', 'insurance', 'amulet', 'lotto', 'coupon', 'lawyer', 'cut_line', 'noise', 'tax_audit', 'complaint', 'gossip',
+  // blue / red cards
+  'marriage_luck', 'popular', 'research', 'charisma', 'tongue', 'iron_body', 'health_charm', 'salary_charm', 'merit',
+  'big_roll', 'small_roll', 'exact_roll', 'payday_rush', 'injury',
+];
+/** Job requirement cards (jobs.json `requires.cards`, hidden jobs `unlock.cards`). */
+export const REQUIREMENT_CARDS = ['research', 'charisma', 'tongue', 'iron_body'];
+/** Red roulette cards (they fix / bound this spin; side bets on the turn are void). */
+export const ROLL_CARDS = ['big_roll', 'small_roll', 'exact_roll', 'payday_rush'];
+export const MERIT_ID = 'merit';
+export const INJURY_ID = 'injury';
+export const CARD_LOST_REASONS = ['married', 'healed', 'discarded', 'merit'];
 export const ITEM_IDS = ['car', 'laptop', 'gym_pass', 'designer_bag', 'lucky_cat', 'massage_chair'];
 export const TRADE_STATUSES = ['accepted', 'rejected', 'expired', 'cancelled'];
 
@@ -17,11 +39,19 @@ export const cardDefs = (data) => data.cards?.cards ?? [];
 export const cardDef = (data, id) => cardDefs(data).find((k) => k.id === id) ?? null;
 export const itemDefs = (data) => data.items?.items ?? [];
 export const itemDef = (data, id) => itemDefs(data).find((i) => i.id === id) ?? null;
-export const handLimit = (data) => data.cards?.handLimit ?? 5;
+export const handLimit = (data) => data.cards?.handLimit ?? 6;
 const eraScale = (data, era) => data.cards?.eraScale?.[era] ?? 1;
 
 export const hasCard = (c, id) => !!c?.cards?.some((k) => k.id === id);
+export const cardCount = (c, id) => c?.cards?.filter((k) => k.id === id).length ?? 0;
 export const hasItem = (c, id) => !!c?.items?.includes(id);
+/** Card colour (`color`, else by kind: held / merit / status → blue). */
+export const cardColor = (def) => def?.color ?? (['held', 'merit', 'status'].includes(def?.kind) ? 'blue' : 'red');
+export const isRequirementCard = (def) => !!def?.effect?.requirement;
+/** Can this card leave the hand by trade / gift (everything but the injury status card)? */
+export const transferable = (def) => def?.kind !== 'status';
+/** Merit cards in a hand. */
+export const meritCount = (c) => cardCount(c, MERIT_ID);
 
 /** Fill Stage 7 character fields (games started / saved before Stage 7). */
 export function ensureCards(c) {
@@ -50,14 +80,39 @@ export function ensureRoomCards(room) {
 
 // ---------- hand ----------
 
-/** Put a card object into a hand (hand limit: the oldest card is discarded). @returns the discarded card | null */
+/**
+ * Discard priority of a full hand: the oldest red card, then the oldest blue card that is not a job requirement
+ * (held / merit), then the oldest requirement card. The injury status card is never discarded. @returns index | -1
+ */
+export function discardIndex(data, cards) {
+  const rank = (k) => {
+    const def = cardDef(data, k.id);
+    if (!def || def.kind === 'status') return 9;
+    if (cardColor(def) === 'red') return 0;
+    return isRequirementCard(def) ? 2 : 1;
+  };
+  let best = -1;
+  for (let i = 0; i < cards.length; i++) if (rank(cards[i]) < 9 && (best < 0 || rank(cards[i]) < rank(cards[best]))) best = i;
+  return best;
+}
+
+/** `cardLost {charId, cardId, uid, reason: married|healed|discarded|merit}` */
+function emitLost(tx, c, card, reason) {
+  emit(tx, 'cardLost', { charId: c.id, cardId: card.id, uid: card.uid, reason, tone: reason === 'healed' || reason === 'merit' ? 'good' : 'neutral', emotion: reason === 'discarded' ? 'sweat' : 'joy' });
+}
+
+/** Put a card object into a hand (hand limit: see `discardIndex`). @returns the discarded card | null */
 function putInHand(tx, c, card) {
   ensureCards(c);
   let discarded = null;
   if (c.cards.length >= handLimit(tx.data)) {
-    discarded = c.cards.shift();
-    const d = cardDef(tx.data, discarded.id);
-    addLog(tx, `🗑️ ${c.name}의 손패가 가득 차서 「${d?.icon ?? ''} ${d?.name ?? discarded.id}」 카드를 버렸다`, { charId: c.id });
+    const i = discardIndex(tx.data, c.cards);
+    if (i >= 0) {
+      [discarded] = c.cards.splice(i, 1);
+      const d = cardDef(tx.data, discarded.id);
+      addLog(tx, `🗑️ ${c.name}의 손패가 가득 차서 「${d?.icon ?? ''} ${d?.name ?? discarded.id}」 카드를 버렸다`, { charId: c.id });
+      emitLost(tx, c, discarded, 'discarded');
+    }
   }
   c.cards.push(card);
   return discarded;
@@ -65,7 +120,7 @@ function putInHand(tx, c, card) {
 
 /**
  * Give a new card (fresh uid). Emits `cardGained {charId, cardId, uid, source, discarded?}`.
- * @param {'tile'|'shop'|'event'|'trade'|'gift'} source
+ * @param {'tile'|'shop'|'event'|'trade'|'gift'|'club'|'graduation'|'job'|'status'|'start'} source
  */
 export function gainCard(tx, c, cardId, source, { log = true } = {}) {
   const def = cardDef(tx.data, cardId);
@@ -74,14 +129,88 @@ export function gainCard(tx, c, cardId, source, { log = true } = {}) {
   room.nextCardSeq = (room.nextCardSeq ?? 0) + 1;
   const card = { uid: `k${room.nextCardSeq}`, id: def.id };
   const discarded = putInHand(tx, c, card);
-  emit(tx, 'cardGained', { charId: c.id, cardId: def.id, uid: card.uid, source, ...(discarded ? { discarded: discarded.id } : {}), tone: 'good', emotion: 'joy' });
+  const bad = def.kind === 'status';
+  emit(tx, 'cardGained', { charId: c.id, cardId: def.id, uid: card.uid, source, color: cardColor(def), ...(discarded ? { discarded: discarded.id } : {}), tone: bad ? 'bad' : 'good', emotion: bad ? 'cry' : 'joy' });
   if (log) addLog(tx, `🃏 ${josa(c.name, '이/가')} 「${def.icon} ${def.name}」 카드를 얻었다!`, { tone: 'good', charId: c.id, emotion: 'joy' });
   return card;
 }
 
-/** Cards a character may draw (job-only cards only for that job). */
+/** Remove the first card `cardId` (or every one of them with `all`) with a `cardLost` event. @returns cards removed */
+export function loseCard(tx, c, cardId, reason, { count = 1, all = false } = {}) {
+  let n = 0;
+  for (let i = 0; i < (c.cards?.length ?? 0) && (all || n < count); ) {
+    if (c.cards[i].id !== cardId) {
+      i++;
+      continue;
+    }
+    const [card] = c.cards.splice(i, 1);
+    emitLost(tx, c, card, reason);
+    n++;
+  }
+  return n;
+}
+
+/** Held (blue) cards whose `hold.until` condition happened (`'married'`) leave the hand. */
+export function dropHeldCards(tx, c, until) {
+  const ids = [...new Set((c.cards ?? []).map((k) => k.id))].filter((id) => cardDef(tx.data, id)?.hold?.until === until);
+  let n = 0;
+  for (const id of ids) {
+    const def = cardDef(tx.data, id);
+    n += loseCard(tx, c, id, until, { all: true });
+    addLog(tx, `${def.icon} ${c.name}: 「${def.name}」 카드는 이제 할 일을 다 했다!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+  }
+  return n;
+}
+
+/**
+ * The injury status card mirrors `job.injured` (the source of truth): added when an injury starts, removed when it
+ * heals / the job changes. Idempotent.
+ */
+export function syncInjuryCard(tx, c) {
+  ensureCards(c);
+  const hurt = (c.job?.injured ?? 0) > 0;
+  const has = hasCard(c, INJURY_ID);
+  if (hurt && !has) gainCard(tx, c, INJURY_ID, 'status', { log: false });
+  else if (!hurt && has) {
+    loseCard(tx, c, INJURY_ID, 'healed', { all: true });
+    addLog(tx, `💪 ${c.name}: 부상이 나아서 🤕 부상 카드가 사라졌다`, { tone: 'good', charId: c.id, emotion: 'joy' });
+  }
+}
+
+/** 동아리 card chance (`club.card` + `chance`): on joining and on every training payday until held. */
+export function clubCardRoll(tx, c, def, chance) {
+  const id = def?.card;
+  if (!id || !chance || hasCard(c, id) || !cardDef(tx.data, id)) return false;
+  if (!(tx.rng.next() < chance)) return false;
+  const card = cardDef(tx.data, id);
+  gainCard(tx, c, id, 'club', { log: false });
+  addLog(tx, `${def.icon} ${c.name}: ${def.name} 활동에서 재능을 인정받아 「${card.icon} ${card.name}」 카드를 얻었다!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+  return true;
+}
+
+// ---------- blue (held) effects ----------
+
+/** 결혼운◎: +affectionBonus on every affection gain while held. */
+export function affectionBonus(data, c) {
+  return hasCard(c, 'marriage_luck') ? cardDef(data, 'marriage_luck')?.effect?.affectionBonus ?? 0 : 0;
+}
+
+/** 인기 폭발◎ effect (or null when not held): {starChance, match, dateGain}. */
+export function popularEffect(data, c) {
+  return hasCard(c, 'popular') ? cardDef(data, 'popular')?.effect ?? {} : null;
+}
+
+/** 월급 부적: payday salary × (1 + salaryBonus) while held. */
+export function salaryCharmMult(data, c) {
+  return hasCard(c, 'salary_charm') ? 1 + (cardDef(data, 'salary_charm')?.effect?.salaryBonus ?? 0) : 1;
+}
+
+/** 건강기원 부적: no injuries while held. */
+export const injuryProof = (c) => hasCard(c, 'health_charm');
+
+/** Cards a character may draw (weight > 0; job-only cards only for that job; never merit / status cards). */
 export function drawableCards(data, c) {
-  return cardDefs(data).filter((k) => !k.jobOnly || c?.job?.id === k.jobOnly);
+  return cardDefs(data).filter((k) => (k.weight ?? 0) > 0 && k.kind !== 'status' && k.kind !== 'merit' && (!k.jobOnly || c?.job?.id === k.jobOnly));
 }
 
 /** Seeded weighted card draw. */
@@ -165,22 +294,41 @@ export function itemsValue(data, c) {
 // ---------- spin modifiers ----------
 
 /**
+ * The pending roulette-card mods of a character (red roulette cards played this turn): {exact, range, rush} (each
+ * the mod object or null). Read BEFORE the first roll — they decide how it is drawn.
+ */
+export function rollPlan(c) {
+  const mods = c?.spinMods ?? [];
+  return {
+    exact: mods.find((m) => m.kind === 'exact') ?? null,
+    range: mods.find((m) => m.kind === 'range') ?? null,
+    rush: mods.find((m) => m.kind === 'rush') ?? null,
+  };
+}
+
+/** Is this turn's roulette fixed / bounded by a red roulette card (side bets are void / refused then)? */
+export const spinFixed = (c) => (c?.spinMods ?? []).some((m) => m.kind === 'exact' || m.kind === 'range' || m.kind === 'rush');
+
+/**
  * Apply (and clear) a character's pending spin modifiers to a roulette result.
+ * exact (딱 그 칸) = the chosen number, no second roll; range (큰 수 / 작은 수) bounds a taxi / noise second roll too;
  * max2 (택시) / min2 (층간소음) roll a second time (both → cancel out); plus / minus change the move (≥ 1);
- * 경차 turns a move of 1 into 2.
- * @returns {{value, move, rolls: number[]|null, mods: object[], car: boolean}}
+ * 경차 turns a move of 1 into 2; rush (월급날 직행) is handled by the engine's walk (`rush: true`).
+ * @returns {{value, move, rolls: number[]|null, mods: object[], car: boolean, rush: boolean}}
  */
 export function applySpinMods(tx, c, first) {
   ensureCards(c);
   const mods = c.spinMods;
   c.spinMods = [];
   const { min, max } = tx.data.balance.spin;
+  const exact = mods.find((m) => m.kind === 'exact');
+  const range = mods.find((m) => m.kind === 'range');
   const hasMax = mods.some((m) => m.kind === 'max2');
   const hasMin = mods.some((m) => m.kind === 'min2');
   let value = first;
   let rolls = null;
-  if (hasMax || hasMin) {
-    const second = tx.rng.int(min, max);
+  if (!exact && (hasMax || hasMin)) {
+    const second = tx.rng.int(range?.min ?? min, range?.max ?? max);
     rolls = [first, second];
     if (hasMax && !hasMin) value = Math.max(first, second);
     else if (hasMin && !hasMax) value = Math.min(first, second);
@@ -199,12 +347,48 @@ export function applySpinMods(tx, c, first) {
       car = true;
     }
   }
-  return { value, move, rolls, mods: mods.map((m) => ({ ...m })), car };
+  return { value, move, rolls, mods: mods.map((m) => ({ ...m })), car, rush: mods.some((m) => m.kind === 'rush') };
+}
+
+/**
+ * 월급날 직행: tiles to the next payday ahead on the character's path (the loop wraps; the route it is on), or null
+ * when another forced stop (the fork / the goal) comes first or there is no payday ahead (the end of the final track).
+ */
+export function rushDistance(room, c) {
+  const board = room?.board;
+  if (!board || !c?.position) return null;
+  let pos = c.position;
+  for (let n = 1; n <= 400; n++) {
+    const np = nextPosition(board, pos, c.route);
+    if (!np) return null;
+    pos = np;
+    const t = tileAt(board, pos);
+    if (t?.type === 'salary') return n;
+    if (HALT_TYPES.includes(t?.type)) return null;
+  }
+  return null;
+}
+
+/**
+ * Why a card cannot be played now (null = playable) — the rules of `useCard` minus the turn / phase checks.
+ * `value` = the 딱 그 칸 number (checked only when given). Used by the simulators / CPU too.
+ */
+export function cardBlockReason(room, c, def, data) {
+  if (!def) return '알 수 없는 카드예요.';
+  if (def.kind === 'status') return '부상 카드는 쓸 수 없어요. 부상이 나으면 사라져요.';
+  if (def.kind === 'held' || def.kind === 'merit') return '보유 효과 카드라 손패에 가지고만 있으면 돼요.';
+  if (def.kind === 'passive') return '조건이 되면 자동으로 발동하는 카드라 직접 쓸 수 없어요.';
+  if (def.jobOnly && c.job?.id !== def.jobOnly) {
+    const jn = data.jobs?.jobs?.find((j) => j.id === def.jobOnly)?.name ?? def.jobOnly;
+    return `${jn} 전용 카드예요.`;
+  }
+  if (def.effect?.rush && rushDistance(room, c) == null) return '앞에 바로 갈 수 있는 월급날이 없어요.';
+  return null;
 }
 
 // ---------- useCard (current character, before the spin) ----------
 
-/** `useCard {characterId, cardUid, targetId?}` — see CLAUDE.md "Stage 7". */
+/** `useCard {characterId, cardUid, targetId?, value?}` — see CLAUDE.md "Stage 7" / "Blue / red cards". */
 export function useCard(tx, action, currentId) {
   const room = tx.room;
   const turn = room.turn;
@@ -217,10 +401,13 @@ export function useCard(tx, action, currentId) {
   if (idx < 0) fail(404, '손패에 없는 카드예요.');
   const def = cardDef(tx.data, c.cards[idx].id);
   if (!def) fail(400, '알 수 없는 카드예요.');
-  if (def.kind === 'passive') fail(409, '조건이 되면 자동으로 발동하는 카드라 직접 쓸 수 없어요.');
-  if (def.jobOnly && c.job?.id !== def.jobOnly) {
-    const jn = tx.data.jobs?.jobs?.find((j) => j.id === def.jobOnly)?.name ?? def.jobOnly;
-    fail(409, `${jn} 전용 카드예요.`);
+  const blocked = cardBlockReason(room, c, def, tx.data);
+  if (blocked) fail(409, blocked);
+  const { min, max } = tx.data.balance.spin;
+  let exact = null;
+  if (def.effect?.exact) {
+    exact = typeof action.value === 'string' && /^\d+$/.test(action.value) ? Number(action.value) : action.value;
+    if (!Number.isInteger(exact) || exact < min || exact > max) fail(400, `${min}~${max} 사이의 숫자를 골라 주세요.`);
   }
   let target = null;
   if (def.kind === 'sabotage') {
@@ -251,6 +438,7 @@ export function useCard(tx, action, currentId) {
     uid: card.uid,
     cardKind: def.kind,
     ...(target ? { targetId: target.id } : {}),
+    ...(exact != null ? { value: exact } : {}),
     tone: def.kind === 'sabotage' ? 'bad' : 'good',
     emotion: def.kind === 'sabotage' ? 'angry' : 'joy',
   });
@@ -264,6 +452,21 @@ export function useCard(tx, action, currentId) {
     case 'taxi':
       c.spinMods.push({ kind: 'max2', card: def.id });
       addLog(tx, `${head} 룰렛을 두 번 돌려 큰 값으로 간다`, { tone: 'good', charId: c.id, emotion: 'joy' });
+      return;
+    case 'big_roll':
+    case 'small_roll': {
+      const [lo, hi] = e.range ?? [min, max];
+      c.spinMods.push({ kind: 'range', min: lo, max: hi, card: def.id });
+      addLog(tx, `${head} 이번 룰렛은 ${lo}~${hi}만 나온다`, { tone: 'good', charId: c.id, emotion: 'joy' });
+      return;
+    }
+    case 'exact_roll':
+      c.spinMods.push({ kind: 'exact', value: exact, card: def.id });
+      addLog(tx, `${head} 이번 룰렛은 딱 ${exact}!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+      return;
+    case 'payday_rush':
+      c.spinMods.push({ kind: 'rush', card: def.id });
+      addLog(tx, `${head} 다음 월급날까지 곧장 달려간다 (${rushDistance(room, c)}칸)`, { tone: 'good', charId: c.id, emotion: 'joy' });
       return;
     case 'pledge': {
       const amount = round5((e.donation ?? 30) * eraScale(tx.data, c.era));
@@ -459,6 +662,7 @@ function normalizeSide(tx, side, owner, { mine }) {
   }
   const card = typeof side.cardUid === 'string' ? owner.cards?.find((k) => k.uid === side.cardUid) : null;
   if (!card) fail(409, mine ? '내 손패에 없는 카드예요.' : `${owner.name}의 손패에 없는 카드예요.`);
+  if (!transferable(cardDef(tx.data, card.id))) fail(409, '부상 카드는 주고받을 수 없어요.');
   return { cardUid: card.uid, cardId: card.id };
 }
 

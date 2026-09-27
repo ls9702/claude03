@@ -7,7 +7,7 @@
 import { STAT_KEYS, addLog, addStats, changeMoney, emit, hasBuff, josa, netWorth, round5, won } from './effects.js';
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
-import { itemSalaryMult, salaryCardMult, tryAmulet } from './cards.js';
+import { MERIT_ID, cardDef, clubCardRoll, gainCard, hasCard, injuryProof, itemSalaryMult, loseCard, meritCount, salaryCardMult, salaryCharmMult, syncInjuryCard, tryAmulet } from './cards.js';
 import { payAllowances, spouseSalary } from './family.js';
 
 export const PART_TIME_ID = 'parttime';
@@ -42,14 +42,33 @@ export function jobRequirements(def, eff) {
 
 const EDU_RANK = { none: 0, college: 1, elite: 2 };
 
-/** Does a character meet a (regular) job's requirements under the given news effects? */
+/** Requirement cards a job asks for (jobs.json `requires.cards`, blue cards held in the hand). */
+export const jobCardRequirements = (def) => def?.requires?.cards ?? [];
+
+/** Requirement cards of a job the character does not hold. */
+export const missingJobCards = (c, def) => jobCardRequirements(def).filter((id) => !hasCard(c, id));
+
+/** Does a character meet a (regular) job's requirements (stats, degree, requirement cards) under the given news effects? */
 export function meetsRequirements(c, def, eff) {
   const req = jobRequirements(def, eff);
   for (const [k, v] of Object.entries(req)) if ((c.stats?.[k] ?? 0) < v) return false;
   const edu = def?.requires?.education;
   if (edu && (EDU_RANK[c.education] ?? 0) < (EDU_RANK[edu] ?? 0)) return false;
+  if (missingJobCards(c, def).length) return false;
   return true;
 }
+
+/** Merit cards the next rank-up of a job needs (jobs.json `rankUp.merit`; 0 = none). */
+export const meritNeeded = (def) => Math.max(0, def?.rankUp?.merit ?? 0);
+
+/** Grant a 🏅 공적 카드 (`why` = a short Korean reason for the log). */
+export function grantMerit(tx, c, why) {
+  gainCard(tx, c, MERIT_ID, 'job', { log: false });
+  addLog(tx, `🏅 ${c.name}: ${why} 공적 카드를 얻었다!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+}
+
+/** Merit chances of `balance.jobs.merit` (`overtimeChance`, `paydayChance` for jobs that need merits). */
+const meritCfg = (data) => data.balance.jobs?.merit ?? {};
 
 /** Regular jobs a character may be offered now (hidden jobs never; `exclude` = ids to skip). */
 export function eligibleJobs(tx, c, { exclude = [] } = {}) {
@@ -65,7 +84,8 @@ export function offerWeight(def, data, c = null) {
   const w = data.balance.jobs?.offerWeight ?? { perReq: 0, education: 0 };
   const req = Object.values(def?.requires?.stats ?? {}).reduce((a, b) => a + b, 0);
   const club = clubDef(data, c?.club)?.jobs?.includes(def?.id) ? data.balance.clubs?.jobBonus ?? 0 : 0; // 동아리 출신
-  return 1 + (w.perReq ?? 0) * Math.max(0, req - 3) + (def?.requires?.education ? w.education ?? 0 : 0) + club;
+  const cards = jobCardRequirements(def).length ? w.card ?? 0 : 0; // a job asking for a requirement card the character holds
+  return 1 + (w.perReq ?? 0) * Math.max(0, req - 3) + (def?.requires?.education ? w.education ?? 0 : 0) + club + cards;
 }
 
 // ---------- 동아리 (middle school club) ----------
@@ -84,6 +104,7 @@ export function clubTraining(tx, c) {
   c.clubTrained = (c.clubTrained ?? 0) + 1;
   const changes = addStats(tx, c, { [stat]: cfg.trainGain ?? 1 }, 'club', { clubId: def.id });
   if (changes.length) addLog(tx, `${def.icon} ${c.name}: ${def.name} 활동으로 실력이 늘었다!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+  clubCardRoll(tx, c, def, cfg.cardChance?.train ?? 0); // the club's requirement card (운동부 → 강철 체력 …)
   return changes;
 }
 
@@ -104,6 +125,7 @@ export function hire(tx, c, jobId, reason) {
   const def = jobDef(tx.data, jobId);
   const from = c.job?.id ?? null;
   c.job = { id: def.id, rank: 1, exp: 0, injured: 0 };
+  syncInjuryCard(tx, c); // a new job starts healthy (the injury card goes)
   c.jobHistory ??= [];
   c.jobHistory.push({ id: def.id, rank: 1, era: c.era });
   const tone = def.tone ?? 'career';
@@ -131,6 +153,7 @@ export function salaryAmount(tx, c) {
   if (def?.id === PART_TIME_ID) mult *= eff.partTimeMult;
   if (job.injured > 0) mult *= cfg.injurySalaryMult ?? 0.5;
   mult *= itemSalaryMult(data, c); // Stage 7: 노트북 (+10 % for creative / e-sports jobs)
+  mult *= salaryCharmMult(data, c); // 💴 월급 부적 (blue card): +10 % while held
   return round5(base * mult);
 }
 
@@ -167,8 +190,17 @@ export function tryRankUp(tx, c, { exam = false } = {}) {
     addLog(tx, `🤕 ${c.name}: 부상 때문에 승진 심사를 받지 못했다…`, { tone: 'bad', charId: c.id, emotion: 'cry' });
     return 'blocked';
   }
+  const need = meritNeeded(def); // 🏅 some jobs need merit cards in the hand to be considered
+  if (need > meritCount(c)) {
+    if (exam) addLog(tx, `🏅 ${c.name}: 공적 카드가 ${need}장 있어야 승진 심사를 받을 수 있다…`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
+    return 'noMerit';
+  }
   const p = rankUpChance(tx, c, { exam });
   if (tx.rng.next() < p) {
+    if (need) {
+      loseCard(tx, c, MERIT_ID, 'merit', { count: need });
+      addLog(tx, `🏅 ${c.name}: 공적 카드 ${need}장을 인정받았다`, { tone: 'good', charId: c.id, emotion: 'joy' });
+    }
     job.rank += 1;
     job.exp = 0;
     const h = c.jobHistory?.findLast((x) => x.id === job.id);
@@ -178,6 +210,7 @@ export function tryRankUp(tx, c, { exam = false } = {}) {
     addLog(tx, `🎉 ${c.name} 승진! ${def.name} 「${rn}」 (★${job.rank})`, { tone: 'good', charId: c.id, emotion: 'joy' });
     const gain = data.balance.jobs.rankUpStatGain ?? 0;
     if (gain && def.rankUp?.stat) addStats(tx, c, { [def.rankUp.stat]: gain }, 'rankUp');
+    if (exam && need && meritCfg(data).exam !== false && job.rank < maxRank(def)) grantMerit(tx, c, '승진 시험 합격으로');
     return 'up';
   }
   if (exam) addLog(tx, `😓 ${c.name}, 승진 시험에서 아쉽게 떨어졌다`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
@@ -190,12 +223,19 @@ export function rollInjury(tx, c) {
   if (!def?.injuryRisk || c.job.injured > 0) return false;
   const p = def.injuryRisk * effectsFor(tx, c).injuryMult;
   if (!(tx.rng.next() < p)) return false;
+  if (injuryProof(c)) {
+    // 🧿 건강기원 부적 (blue card): no injury while held (never consumed)
+    const d = cardDef(tx.data, 'health_charm');
+    addLog(tx, `${d?.icon ?? '🧿'} ${c.name}: 다칠 뻔했지만 ${d?.name ?? '건강기원 부적'} 덕분에 멀쩡하다!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+    return false;
+  }
   if (tryAmulet(tx, c, 'injury')) return false; // Stage 7: 건강 부적
   const turns = tx.data.balance.jobs.injuryTurns ?? 2;
   c.job.injured = turns;
   c.badEvents = (c.badEvents ?? 0) + 1;
   emit(tx, 'injured', { charId: c.id, jobId: def.id, turns, tone: 'bad', emotion: 'cry' });
-  addLog(tx, `🤕 ${c.name} 부상! ${turns}턴 동안 급여가 줄고 승진할 수 없다`, { tone: 'bad', charId: c.id, emotion: 'cry' });
+  addLog(tx, `🤕 ${c.name} 부상! ${turns}턴 동안 급여가 줄고 승진할 수 없다 (부상 카드가 손패 한 칸을 차지)`, { tone: 'bad', charId: c.id, emotion: 'cry' });
+  syncInjuryCard(tx, c); // the 🤕 status card occupies a hand slot until it heals
   return true;
 }
 
@@ -231,6 +271,9 @@ export function paySalary(tx, c) {
   payAllowances(tx, c); // Stage 8: employed children send 용돈
   if (!job) return amount;
   job.exp += tx.data.balance.jobs.expPerSalary ?? 1;
+  const mc = meritCfg(tx.data);
+  // 🏅 jobs whose promotions need merit cards earn them on the job now and then
+  if (meritNeeded(def) && mc.paydayChance && tx.rng.next() < mc.paydayChance) grantMerit(tx, c, '맡은 일을 잘 해내서');
   tryRankUp(tx, c);
   rollInjury(tx, c);
   return amount;
@@ -282,6 +325,7 @@ export function unlockMet(tx, c, def) {
   if (u.houseSwaps != null && (c.houseSwaps ?? 0) < u.houseSwaps) return false;
   if (u.house && !u.house.includes(c.house?.id)) return false;
   if (u.anyOf && !u.anyOf.some((sub) => unlockMet(tx, c, { unlock: sub }))) return false;
+  if (u.cards && !u.cards.every((id) => hasCard(c, id))) return false; // requirement cards (국민 MC: 카리스마◎)
   return true;
 }
 
@@ -368,11 +412,20 @@ registerPrompts({
       if (!top) {
         const p = rankUpChance(tx, c, { exam: true });
         const next = rankName(def, c.job.rank + 1);
+        const need = meritNeeded(def);
+        const have = meritCount(c);
+        const short = need > have;
         options.push({
           id: 'promotion',
           label: '📝 승진 시험',
           icon: '📝',
-          desc: c.job.injured > 0 ? '부상 중이라 응시할 수 없어요' : `「${next}」 도전 · 성공 확률 약 ${pct(p)}%`,
+          ...(need ? { merit: need, merits: have } : {}),
+          desc: c.job.injured > 0
+            ? '부상 중이라 응시할 수 없어요'
+            : short
+              ? `🏅 공적 카드 ${need}장이 필요해요 (지금 ${have}장)`
+              : `「${next}」 도전 · 성공 확률 약 ${pct(p)}%${need ? ` · 🏅 공적 카드 ${need}장 사용` : ''}`,
+          ...(short ? { disabled: true } : {}),
         });
       } else {
         const b = tx.data.balance.jobs.maxRankBonus;
@@ -392,7 +445,7 @@ registerPrompts({
         title: `💼 ${def.name} 직업 칸`,
         text: `${def.icon} ${def.name} ${rankName(def, c.job.rank)} ${c.name}, 이번엔 뭘 할까?`,
         options,
-        defaultOptionId: options[0].id,
+        defaultOptionId: (options.find((o) => !o.disabled) ?? options[0]).id,
         context: { candidate: cand ?? null },
       };
     },
@@ -413,6 +466,7 @@ registerPrompts({
           const amount = round5(salaryAmount(tx, c) * b.salaryShare);
           changeMoney(tx, c, amount, 'bonus', { emotion: 'joy', tone: 'career' });
           addLog(tx, `💰 ${c.name} 성과급 협상 성공! +${won(amount)}`, { tone: 'good', charId: c.id, emotion: 'joy' });
+          if (meritCfg(tx.data).bonus && meritNeeded(def)) grantMerit(tx, c, '최고의 실적으로');
           return { result: 'bonus' };
         }
         addLog(tx, `😅 ${c.name}, 성과급 협상은 결렬됐다`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
@@ -429,8 +483,12 @@ registerPrompts({
       addLog(tx, `🌙 ${c.name} 야근! 수당 +${won(amount)} (${def.name})`, { tone: 'career', charId: c.id, emotion: 'sweat' });
       c.job.exp += ot.exp ?? 2;
       addStats(tx, c, ot.stats ?? {}, 'overtime');
+      // 🏅 a successful overtime push may earn a merit card (jobs whose promotions need them)
+      const oc = meritCfg(tx.data).overtimeChance ?? 0;
+      const merit = meritNeeded(def) > 0 && oc > 0 && tx.rng.next() < oc;
+      if (merit) grantMerit(tx, c, '야근 프로젝트 성공으로');
       tryRankUp(tx, c);
-      return { result: 'overtime' };
+      return { result: 'overtime', ...(merit ? { merit: true } : {}) };
     },
   },
 

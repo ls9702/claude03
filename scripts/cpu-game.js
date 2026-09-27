@@ -18,7 +18,7 @@ import { addCharacter, addCpuCharacter, joinRoom } from '../server/game/lobby.js
 import { cpuDecide, cpuPersonality, isCpu } from '../server/game/cpu.js';
 import { jobDef } from '../server/game/jobs.js';
 import { createRng } from '../server/game/rng.js';
-import { cardDef } from '../server/game/cards.js';
+import { cardBlockReason, cardDef } from '../server/game/cards.js';
 
 const MAX_ACTIONS = 20000;
 
@@ -41,12 +41,18 @@ function randomAction(room, charId, rng, data) {
     const round = room.turn.round;
     const playable = (c.cards ?? [])
       .map((k) => ({ k, def: cardDef(data, k.id) }))
-      .filter(({ def }) => def && def.kind !== 'passive' && (!def.jobOnly || c.job?.id === def.jobOnly));
+      .filter(({ def }) => def && !cardBlockReason(room, c, def, data)); // blue / status / passive, job-only, no payday ahead
     const targets = room.characters.filter((t) => t.id !== c.id && !t.finished && !((t.lastTargetedBy?.[c.id] ?? -Infinity) >= round - 1));
     const ok = playable.filter(({ def }) => def.kind !== 'sabotage' || targets.length);
     if (ok.length) {
       const { k, def } = rng.pick(ok);
-      return { type: 'useCard', characterId: c.id, cardUid: k.uid, ...(def.kind === 'sabotage' ? { targetId: rng.pick(targets).id } : {}) };
+      return {
+        type: 'useCard',
+        characterId: c.id,
+        cardUid: k.uid,
+        ...(def.kind === 'sabotage' ? { targetId: rng.pick(targets).id } : {}),
+        ...(def.effect?.exact ? { value: rng.int(data.balance.spin.min, data.balance.spin.max) } : {}),
+      };
     }
   }
   // 룰렛 실력 모드: an average human aims at a random number

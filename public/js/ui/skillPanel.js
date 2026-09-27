@@ -50,6 +50,8 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
     name: '',
     input: 'gauge',
     deadlineAt: null,
+    // 큰 수 / 작은 수 카드: {min, max, text} (cells outside are shaded — the server clamps the result into the range)
+    limit: null,
     sending: false,
     // gauge
     gaugeT0: 0,
@@ -104,15 +106,32 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
         </div>
         <div class="sk-body" data-sk="body">${body}</div>
         <p class="sk-result" data-sk="result" aria-live="assertive" hidden></p>
+        <p class="sk-lim" data-sk="lim"${S.limit ? '' : ' hidden'}>${esc(S.limit?.text ?? '')}</p>
         <p class="small muted sk-odds">목표 숫자 → ${esc(jitterHint(getMeta()))}</p>
         <p class="small muted sk-loop">💡 큰 숫자일수록 멀리 가서 💵 월급날·🎪 찬스 광장을 더 자주 만나요.</p>
         <p class="sk-warn" data-sk="warn" hidden>⏰ 곧 자동으로 돌아가요! 서둘러요</p>
       </div>`;
+    applyLimit();
     if (S.input === 'gauge') startGauge();
     else stopGauge();
     if (S.input === 'shake' && sup.ok && !sup.needsPermission) listen(true);
     else listen(false);
     tickWarn();
+  }
+
+  /** Shade the numbers a 큰 수 / 작은 수 card rules out (the aim still works: the result is clamped into the range). */
+  function applyLimit() {
+    const lim = S.limit;
+    el.classList.toggle('limited', !!lim);
+    el.querySelectorAll('.sk-cell').forEach((c) => {
+      const v = Number(c.dataset.v);
+      c.classList.toggle('out', !!lim && (v < lim.min || v > lim.max));
+    });
+    const p = el.querySelector('[data-sk="lim"]');
+    if (p) {
+      p.hidden = !lim;
+      p.textContent = lim?.text ?? '';
+    }
   }
 
   // ---------- gauge ----------
@@ -270,12 +289,18 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
     stopNeedle();
   };
 
-  function open({ charId, name, deadlineAt = null } = {}) {
+  function open({ charId, name, deadlineAt = null, limit = null } = {}) {
     const same = S.open && S.charId === charId;
     S.charId = charId;
     S.name = name ?? '';
     S.deadlineAt = deadlineAt;
-    if (same) return;
+    const limKey = JSON.stringify(limit ?? null);
+    const limChanged = limKey !== JSON.stringify(S.limit ?? null);
+    S.limit = limit ?? null;
+    if (same) {
+      if (limChanged) applyLimit();
+      return;
+    }
     S.env = detectShakeEnv(win);
     S.input = defaultInput(loadInputPref(storage()), S.env);
     S.open = true;
@@ -305,9 +330,16 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
     open,
     close,
     /** Keep the deadline fresh while open (state updates). */
-    update({ deadlineAt } = {}) {
+    update({ deadlineAt, limit } = {}) {
       if (!S.open) return;
       if (deadlineAt !== undefined) S.deadlineAt = deadlineAt;
+      if (limit !== undefined && JSON.stringify(limit ?? null) !== JSON.stringify(S.limit ?? null)) {
+        S.limit = limit ?? null;
+        applyLimit();
+      }
+    },
+    get limit() {
+      return S.limit;
     },
     get isOpen() {
       return S.open;

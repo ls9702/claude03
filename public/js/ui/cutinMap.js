@@ -89,7 +89,7 @@ export const STAGE7_ANCHORS = new Set(['cardBlocked', 'itemBought', 'holidayStar
 /** Cards whose use is a cut-in (besides sabotage cards, recognised by their `targetId`). */
 export const ANCHOR_CARDS = new Set(['pledge']);
 /** Stage 7 events that become their own (banner) group when no anchor covers them. */
-export const STAGE7_LONE = new Set(['cardGained', 'gift', 'tradeResolved', 'cardUsed', 'chanceBuff']);
+export const STAGE7_LONE = new Set(['cardGained', 'cardLost', 'gift', 'tradeResolved', 'cardUsed', 'chanceBuff']);
 
 /** `cardUsed` that is a cut-in anchor: sabotage (has a target) or 공약, or flagged by the server. */
 export const isCardAnchor = (e) => e?.type === 'cardUsed' && !e.auto && (e.cardKind === 'sabotage' || !!e.targetId || ANCHOR_CARDS.has(e.cardId));
@@ -153,7 +153,10 @@ export function planCutins(events = []) {
     const salary = follow.filter((e) => e.type === 'salary').map((e) => ({ charId: e.charId, jobId: e.jobId, rank: e.rank, amount: e.amount }));
     const discharged = follow.filter((e) => e.type === 'militaryEnd' && e.charId).map((e) => e.charId);
     // Stage 7 follow-ups → chips: cards gained / used (non-anchor), gifts
-    const cards = follow.filter((e) => e.type === 'cardGained' || (e.type === 'cardUsed' && !isCardAnchor(e))).map((e) => ({ type: e.type, charId: e.charId, cardId: e.cardId, source: e.source ?? null }));
+    // blue / red cards: cardLost (💍 결혼운 소멸 · 🩹 부상 회복 · 🗑️ 버림 · 🏅 공적 사용) → chips too
+    const cards = follow
+      .filter((e) => e.type === 'cardGained' || e.type === 'cardLost' || (e.type === 'cardUsed' && !isCardAnchor(e)))
+      .map((e) => ({ type: e.type, charId: e.charId, cardId: e.cardId, source: e.source ?? null, reason: e.reason ?? null }));
     // loop maps (ADDENDUM A1): 찬스 광장 buffs gained / expired → chips
     const buffs = follow.filter((e) => e.type === 'chanceBuff').map((e) => ({ charId: e.charId, buff: e.buff ?? null, action: e.action ?? 'gained' }));
     const gifts = follow.filter((e) => e.type === 'gift').map((e) => ({ fromId: e.fromId, toId: e.toId, money: e.money ?? null, cardId: e.cardId ?? null }));
@@ -319,6 +322,8 @@ export function fallbackText(anchor, name = '') {
       return '전국 로또 추첨!';
     case 'cardGained':
       return `${name} 카드 획득!`;
+    case 'cardLost':
+      return anchor.reason === 'healed' ? `${name}의 부상이 나았어요!` : anchor.reason === 'married' ? `${name}의 결혼운 카드가 할 일을 다 했어요` : anchor.reason === 'merit' ? `${name}, 공적 카드로 승진!` : `${name}의 카드가 사라졌어요`;
     case 'gift':
       return `${name}의 선물!`;
     case 'tradeResolved':
@@ -399,6 +404,7 @@ const STAGE7_TAGS = {
   holidayResult: (a) => (a.kind === 'chuseok' ? '🌕 추석 정산' : a.kind === 'seol' ? '🧧 설날 정산' : '🎴 명절 정산'),
   lottoDraw: () => '🎱 전국 로또',
   cardGained: () => '🃏 카드 획득',
+  cardLost: (a) => (a.reason === 'healed' ? '🩹 부상 회복' : a.reason === 'married' ? '💍 카드 소멸' : a.reason === 'merit' ? '🏅 공적 사용' : '🗑️ 카드 버림'),
   gift: () => '🎁 선물',
   tradeResolved: (a) => (a.status === 'accepted' ? '🤝 거래 성사' : '🤝 거래 불발'),
   chanceBuff: (a) => `${a.buff?.icon ?? '🎪'} 찬스 버프${a.action === 'expired' ? ' 종료' : ''}`,

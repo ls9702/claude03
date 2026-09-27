@@ -16,8 +16,8 @@ import { CAST_PRELOAD_MS, OTHERS_AUTO_MS, PREEMPT_KEEP_MS, routeOptionInfo } fro
 /** A new / changed prompt ignores option taps this long (a late tap meant for the previous one, A5). */
 export const PROMPT_GUARD_MS = 700;
 import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from './mc.js';
-import { educationLabel, jobInfo, optionExtras, optionLabel, rankName, rankStars, salaryChip, statChip } from '../shared/growth.js';
-import { CARD_KINDS, cardInfo, holidayRows, holidayTitle, itemInfo, lottoRows } from '../shared/cards.js';
+import { educationLabel, jobInfo, optionBadgeList, optionExtras, optionLabel, rankName, rankStars, salaryChip, statChip } from '../shared/growth.js';
+import { cardInfo, cardKindLabel, cardLostChips, holidayRows, holidayTitle, itemInfo, lottoRows } from '../shared/cards.js';
 import { HOLIDAY_OPTION_ICON, hwatuFlipHtml, hwatuSvg, lottoBallHtml, shopOptionsHtml } from './cardArt.js';
 import { CHILD_GROW, childInfo, familyCast, houseInfo, marketInfo, npcCharacter, partnerInfo, schoolMeetPairs, weddingGifts } from '../shared/family.js';
 import { dolTableSvg, houseArtHtml, houseOptionsHtml, marketChartSvg } from './houseArt.js';
@@ -66,7 +66,15 @@ function stage7Look(a) {
     case 'lottoDraw':
       return { tone: 'treasure', scene: 'studio', pose: 'idle', emotion: null, sfx: 'fanfare' };
     case 'cardGained':
-      return { tone: 'good', scene: null, pose: 'jump', emotion: 'joy', sfx: 'pop', glyph: '🃏' };
+      return a.cardId === 'injury'
+        ? { tone: 'bad', scene: 'hospital', pose: 'cry', emotion: 'cry', sfx: 'thud', glyph: '🤕' }
+        : { tone: 'good', scene: null, pose: 'jump', emotion: 'joy', sfx: 'pop', glyph: '🃏' };
+    case 'cardLost':
+      return a.reason === 'healed'
+        ? { tone: 'good', scene: 'hospital', pose: 'jump', emotion: 'joy', sfx: 'pop', glyph: '🩹' }
+        : a.reason === 'merit'
+          ? { tone: 'career', scene: 'office', pose: 'cheer', emotion: 'joy', sfx: 'pop', glyph: '🏅' }
+          : { tone: 'neutral', scene: null, pose: 'idle', emotion: a.reason === 'married' ? 'joy' : 'sweat', sfx: 'pop', glyph: a.reason === 'married' ? '💍' : '🗑️' };
     case 'gift':
       return { tone: 'love', scene: null, pose: 'wave', emotion: 'joy', sfx: 'heart', targetPose: 'jump', targetEmotion: 'joy', targetGlyph: '🎁' };
     case 'tradeResolved':
@@ -76,6 +84,12 @@ function stage7Look(a) {
     default:
       return null;
   }
+}
+/** 「🃏 결혼운◎ 카드 +1」 chip: 🔵 blue / 🔴 red / 🤕 status colour class. */
+function gainedChip(info, who = '') {
+  if (info?.kind === 'status') return { text: `🤕 ${who}부상 카드 · 손패 한 칸`, kind: 'card minus c-status' };
+  const dot = info?.color === 'blue' ? '🔵' : '🔴';
+  return { text: `🃏 ${who}${dot} ${info?.name ?? '카드'} +1`, kind: `card k-${info?.kind ?? 'instant'} c-${info?.color ?? 'red'}` };
 }
 const SLOT_X = { 1: [34], 2: [27, 73], 3: [18, 50, 82] };
 /** Max figures in the window (Stage 8: a family may bring the spouse + a child next to the characters). */
@@ -319,16 +333,21 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     // Stage 7: cards gained / used, gifts, a purchase without its own money chip
     for (const cd of g.cards ?? []) {
       if (a.type === 'gift' && cd.type === 'cardGained' && cd.source === 'gift') continue; // the 🎁 chip names the card
+      if (cd.type === 'cardLost') continue; // merged below (🏅 ×n)
       const info = cardInfo(cd.cardId, meta);
       const who = cd.charId && cd.charId !== g.charId ? `${nameOf(characters, cd.charId)} ` : '';
-      chips.push(cd.type === 'cardGained' ? { text: `🃏 ${who}${info.name} 카드 +1`, kind: `card k-${info.kind}` } : { text: `${info.icon} ${who}${info.name} 사용`, kind: `card k-${info.kind}` });
+      chips.push(cd.type === 'cardGained' ? gainedChip(info, who) : { text: `${info.icon} ${who}${info.name} 사용`, kind: `card k-${info.kind} c-${info.color}` });
+    }
+    // blue / red cards leaving the hand: 💍 결혼운◎ 소멸 · 🩹 부상 회복 · 🗑️ 버림 · 🏅 공적 카드 n장 사용
+    // (a lone 🩹 healed anchor: its tag + title already say it)
+    const lostList = [...(a.type === 'cardLost' && a.reason !== 'healed' ? [a] : []), ...(g.cards ?? []).filter((cd) => cd.type === 'cardLost')];
+    for (const lc of cardLostChips(lostList.map((x) => ({ ...x, type: 'cardLost' })), meta)) {
+      const who = lc.charId && lc.charId !== g.charId ? `${nameOf(characters, lc.charId)} ` : '';
+      chips.push({ text: who ? `${who}${lc.text}` : lc.text, kind: `card lost${lc.reason === 'healed' ? ' plus' : ''}` });
     }
     for (const gf of g.gifts ?? []) chips.push({ text: `🎁 ${nameOf(characters, gf.fromId)} → ${nameOf(characters, gf.toId)} ${giftWhat(gf, meta)}`, kind: 'plus' });
     if (a.type === 'gift') chips.unshift({ text: `🎁 ${giftWhat(a, meta)}`, kind: 'plus' });
-    if (a.type === 'cardGained') {
-      const info = cardInfo(a.cardId, meta);
-      chips.unshift({ text: `🃏 ${info.name} 카드 +1`, kind: `card k-${info.kind}` });
-    }
+    if (a.type === 'cardGained') chips.unshift(gainedChip(cardInfo(a.cardId, meta), ''));
     if (a.type === 'itemBought' && Number(a.price) > 0 && !g.money.some((m) => m.charId === a.charId && m.delta < 0)) chips.push({ text: `🛍️ -${won(Number(a.price))}`, kind: 'minus' });
     if (a.type === 'cardUsed' && isCardAnchor(a) && a.targetId) {
       const info = cardInfo(a.cardId, meta);
@@ -480,8 +499,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if ((a?.type === 'cardUsed' && isCardAnchor(a)) || a?.type === 'cardBlocked' || a?.type === 'cardGained') {
       const info = cardInfo(a.cardId, meta);
       if (!info) return null;
-      const sub = a.type === 'cardBlocked' ? '🛡️ 변호사가 막았다!' : `${CARD_KINDS[info.kind]?.label ?? ''} 카드${a.type === 'cardGained' ? ' 획득' : ''}`;
-      return { icon: info.icon, img: artFor('card', a.cardId), title: info.name, stars: '', sub, kind: `card k-${info.kind}${a.type === 'cardBlocked' ? ' blocked' : ''}` };
+      const sub = a.type === 'cardBlocked' ? '🛡️ 변호사가 막았다!' : `${cardKindLabel(info)}${a.type === 'cardGained' ? ' 획득' : ''}`;
+      return { icon: info.icon, img: artFor('card', a.cardId), title: info.name, stars: '', sub, kind: `card k-${info.kind} c-${info.color}${a.type === 'cardBlocked' ? ' blocked' : ''}` };
     }
     if (a?.type === 'itemBought') {
       const info = itemInfo(a.itemId, meta);
@@ -1276,9 +1295,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       }<div class="ci-opt-list">${p.options
         .map(
           (o) =>
-            `<button type="button" class="ci-opt${o.desc || o.badges?.length ? ' has-desc' : ''}" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"><span class="c-icon">${esc(o.icon ?? '')}</span><span class="ci-opt-l">${esc(o.label ?? o.id)}${
+            `<button type="button" class="ci-opt${o.desc || o.badges?.length ? ' has-desc' : ''}${o.disabled ? ' off' : ''}" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"${o.disabled ? ' disabled' : ''}><span class="c-icon">${esc(o.icon ?? '')}</span><span class="ci-opt-l">${esc(o.label ?? o.id)}${
               o.desc ? `<small class="ci-opt-desc">${esc(o.desc)}</small>` : ''
-            }${o.badges?.length ? `<span class="ci-opt-badges">${o.badges.map((b) => `<span class="ci-opt-badge">${esc(b)}</span>`).join('')}</span>` : ''}</span></button>`,
+            }${o.badges?.length ? `<span class="ci-opt-badges">${o.badges.map((b) => (typeof b === 'string' ? `<span class="ci-opt-badge">${esc(b)}</span>` : `<span class="ci-opt-badge${b.miss ? ' miss' : ''}${b.card ? ' req-card' : ''}"${b.miss ? ' title="아직 없어요"' : ''}>${b.miss ? '✗ ' : ''}${esc(b.text)}</span>`)).join('')}</span>` : ''}</span></button>`,
         )
         .join('')}</div>`;
     }
@@ -1423,7 +1442,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       opt.classList.add('picked');
       audio?.play('pop');
       Promise.resolve(cur.opts.onChoose({ characterId: opt.dataset.char, promptId: opt.dataset.prompt, optionId: opt.dataset.choose })).then((ok) => {
-        if (ok === false) for (const b of overlay.querySelectorAll('.ci-opt')) b.disabled = false;
+        if (ok === false) for (const b of overlay.querySelectorAll('.ci-opt:not(.off)')) b.disabled = false;
       });
       return;
     }
@@ -1524,11 +1543,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         charId: p.charId,
         kind: p.kind,
         options: (p.options ?? []).map((o) => {
-          const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
+          const x = optionExtras(p, o, { jobs: getMeta()?.jobs, character: subject, cards: getMeta()?.cards });
           const px = passOptionExtras(p, o, { won }); // loop maps: 찬스 광장 (시주 / 확률 / 찬스 버프)
           const desc = routeOptionInfo(p, o);
           const icon = o.icon || x.icon || px.icon || (p.kind === 'holiday' ? HOLIDAY_OPTION_ICON[o.id] ?? '' : '');
-          return { ...o, icon, label: optionLabel({ ...o, icon }), desc, badges: [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges, ...px.badges] };
+          return { ...o, icon, label: optionLabel({ ...o, icon }), desc, badges: optionBadgeList(x, px.badges, { won }) };
         }),
         forMe,
         room, // Stage 8 house listings: owners / capacity

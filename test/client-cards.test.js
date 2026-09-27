@@ -195,8 +195,10 @@ test('hand layout shrinks cards to fit, then scrolls; spin-mod badges', () => {
   assert.ok(b.cardW < 88 && b.cardW >= 64);
   assert.equal(b.scroll, false);
   const c = handLayout(5, 300);
-  assert.equal(c.cardW, 64);
-  assert.equal(c.scroll, true);
+  assert.equal(c.cardW, 55);
+  assert.equal(c.scroll, false);
+  const d = handLayout(8, 300); // gap tightens to 4, then the row scrolls at the 46 px minimum
+  assert.deepEqual([d.cardW, d.gap, d.scroll], [46, 4, true]);
   assert.deepEqual(
     spinModBadges([{ kind: 'plus', value: 2 }, { kind: 'minus', value: 3 }, { kind: 'max2' }, { kind: 'min2' }, { kind: '??' }]).map((b) => [b.text, b.kind]),
     [['⚡+2', 'good'], ['✂️−3', 'bad'], ['🚕×2', 'good'], ['📢×2↓', 'bad']],
@@ -360,7 +362,7 @@ test('scene fallbacks: own bg > sceneFallbacks chain bg > SVG of the first drawa
 
 test('markup builders: card frame by kind, hwatu 1..10, lotto balls, shop product cards', () => {
   const h = cardHtml({ uid: 'k1', id: 'cut_line' }, { meta: META, attrs: 'data-x="1"', cls: 'can' });
-  assert.match(h, /class="cardf k-sabotage can"/);
+  assert.match(h, /class="cardf k-sabotage c-red can"/);
   assert.match(h, /data-x="1"/);
   assert.match(h, /새치기/);
   assert.match(cardHtml({ id: 'lawyer' }, { meta: META }), /cf-auto">자동/);

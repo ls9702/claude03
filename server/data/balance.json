@@ -91,8 +91,9 @@
     "maxRankBonus": {"chance": 0.5, "luck": 0.03, "salaryShare": 1},
     "jobEras": ["young", "middle_age", "senior"],
     "educationBonus": {"none": 0, "college": 0.08, "elite": 0.15},
-    "offerWeight": {"perReq": 0.5, "education": 1.5},
-    "expNeededMult": 3
+    "offerWeight": {"perReq": 0.5, "education": 1.5, "card": 2},
+    "expNeededMult": 3,
+    "merit": {"_comment": "🏅 공적 카드(파랑): rankUp.merit 직업(공적이 필요한 직업)만 얻는다 — overtimeChance = 야근 성공 확률, paydayChance = 월급날마다 확률, exam = 승진 시험 합격 시 1장(다음 승진용), bonus = 최고 랭크 성과급 협상 성공 시 1장(최고 랭크라 보통 꺼 둠). 이벤트(project_win / crisis_save)는 조건에 맞는 누구나.", "overtimeChance": 0.35, "paydayChance": 0.2, "exam": true, "bonus": false}
   },
   "lotto": {
     "_comment": "전국 로또(Stage 7): 모드의 첫 시대가 아닌 시대가 처음 열릴 때 lotto 카드 보유자마다 한 장씩 소모. 1~pool 중 pick개 번호(시드)와 추첨 번호 pick개를 비교해 맞은 개수별 상금(만원). 기대값 < 카드 가격(테스트).",
@@ -162,6 +163,7 @@
     "trainGain": 1,
     "trainEras": ["middle", "high"],
     "jobBonus": 1.5,
+    "cardChance": {"_comment": "동아리 card(직업 요구 카드, 파랑): 가입할 때 join 확률, 동아리 훈련(용돈날)마다 train 확률 — 이미 있으면 없음.", "join": 0.5, "train": 0.35},
     "options": [
       {
         "id": "study",
@@ -169,6 +171,7 @@
         "icon": "📚",
         "stats": {"int": 1},
         "train": ["int"],
+        "card": "research",
         "jobs": ["doctor", "researcher", "office_worker", "teacher", "civil_servant", "politician"]
       },
       {
@@ -177,6 +180,7 @@
         "icon": "⚽",
         "stats": {"str": 1},
         "train": ["str"],
+        "card": "iron_body",
         "jobs": ["baseball", "soccer", "fighter", "police", "chef"]
       },
       {
@@ -185,6 +189,7 @@
         "icon": "🎸",
         "stats": {"charm": 1},
         "train": ["charm"],
+        "card": "charisma",
         "jobs": ["idol", "actor", "comedian"]
       },
       {
@@ -201,8 +206,13 @@
         "icon": "🎙️",
         "stats": {"charm": 1},
         "train": ["luck", "charm"],
+        "card": "charisma",
         "jobs": ["comedian", "youtuber", "actor"]
       }
     ]
+  },
+  "cardSources": {
+    "_comment": "파랑/빨강 카드 출처: statCards = 졸업(및 성인 모드 시작 시 대졸자)에 가장 높은 능력치로 받는 직업 요구 카드(이미 있으면 다음 능력치).",
+    "statCards": {"int": "research", "charm": "charisma", "str": "iron_body", "luck": "tongue"}
   }
 }

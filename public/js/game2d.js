@@ -30,12 +30,24 @@ import {
   CARD_KINDS,
   TRADE_STATUS,
   cardDefs,
+  cardEffectText,
   cardInfo,
+  cardKindLabel,
   cardPlayability,
+  handLayout,
   handOf,
+  handStacks,
+  heldCards,
+  meritCount,
+  rollConstraint,
+  statusCards,
+  tradableCards,
+  useCardBody,
   itemInfo,
   itemsOf,
   sabotageTargets,
+  cardLostInfo,
+  modRange,
   spinModBadges,
   tradeLists,
   tradeSideText,
@@ -45,7 +57,7 @@ import {
   handFull,
   spinNote,
 } from './shared/cards.js';
-import { HOLIDAY_OPTION_ICON, cardHtml, itemIconHtml, shopOptionsHtml } from './ui/cardArt.js';
+import { HOLIDAY_OPTION_ICON, cardChipHtml, cardHtml, itemIconHtml, shopOptionsHtml } from './ui/cardArt.js';
 import { familyIcons, familySummary, familyTagBadge, houseInfo, houseOf, marketInfo } from './shared/family.js';
 import { houseArtHtml, houseOptionsHtml } from './ui/houseArt.js';
 import { familyDetailHtml, familyOptionsHtml } from './ui/familyArt.js';
@@ -80,10 +92,13 @@ import {
   educationLabel,
   jobBadge,
   jobInfo,
+  meritNeed,
   militaryLabel,
+  optionBadgeList,
   optionExtras,
   optionLabel,
   rankStars,
+  requirementList,
   statCap,
   statRows,
 } from './shared/growth.js';
@@ -307,11 +322,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   function spinNow() {
     const cur = currentChar();
     if (!cur?.isMe || ui.room?.turn?.phase !== 'awaitSpin' || ui.room.turn.pending) return;
-    if (!skillOn()) {
+    // 딱 그 칸 / 월급날 직행 fix the move → nothing to aim at
+    const lim = rollConstraint(cur.spinMods);
+    if (!skillOn() || lim?.exact != null || lim?.rush) {
       run({ type: 'spin', characterId: cur.id });
       return;
     }
-    skillPanel.open({ charId: cur.id, name: cur.name, deadlineAt: ui.room.turn.spinDeadlineAt ?? null });
+    skillPanel.open({ charId: cur.id, name: cur.name, deadlineAt: ui.room.turn.spinDeadlineAt ?? null, limit: lim });
   }
   if (params.has('debug')) window.__skill = skillPanel;
   audio.install();
@@ -748,7 +765,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (skillPanel.isOpen) {
       if (!canSpin && !hold) skillPanel.close();
       else if (cur?.id !== skillPanel.charId) skillPanel.close();
-      else skillPanel.update({ deadlineAt: turn.spinDeadlineAt ?? null });
+      else skillPanel.update({ deadlineAt: turn.spinDeadlineAt ?? null, limit: rollConstraint(cur?.spinMods) });
     }
     ui.canSpin = canSpin;
     if (canSpin) el.spinfab.textContent = el.spin.textContent;
@@ -770,8 +787,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         ? `내 차례예요! 🎯 흔들기나 버튼으로 목표 숫자를 정해요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`
         : `내 차례예요! 룰렛을 돌리세요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
       if (cur?.finished) hint = `🏁 골인했어요! 보너스 룰렛으로 상금을 더 받아요.${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
+      // 큰 수 / 작은 수 / 딱 그 칸 / 월급날 직행 카드
+      const lim = rollConstraint(cur?.spinMods);
+      if (lim) hint = `<span class="roll-lim${lim.rush ? ' rush' : ''}">${esc(lim.text)}</span><br>${hint}`;
     } else if (cur) {
-      hint = `${esc(cur.ownerName)}님이 「${esc(cur.name)}」의 룰렛을 ${skill ? '🎯 조준하는' : '돌리기를 기다리는'} 중…${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
+      const lim = rollConstraint(cur.spinMods);
+      if (lim) hint = `<span class="roll-lim${lim.rush ? ' rush' : ''}">${esc(cur.name)} · ${esc(lim.short)}</span> `;
+      hint += `${esc(cur.ownerName)}님이 「${esc(cur.name)}」의 룰렛을 ${skill ? '🎯 조준하는' : '돌리기를 기다리는'} 중…${deadlineHtml(turn.spinDeadlineAt, '⏱')}`;
     }
     // 3D: don't spoil the roulette result before the wheel stops (render again on idle)
     const spoiler = ui.b3 && (ui.b3.isBusy() || performance.now() - ui.lastStateAt < 400);
@@ -800,7 +822,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     // betting on another family's roulette only (the server refuses my own family's turn)
     const mine = chars().filter((c) => c.isMe && !c.finished && c.ownerId !== cur?.ownerId); // finished characters can't bet
     // 룰렛 실력 모드: no side bets (the server refuses them)
-    const open = room.status === 'playing' && !hold && !isSkillRoom(room) && cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0;
+    // a red roulette card (큰 수 / 작은 수 / 딱 그 칸 / 월급날 직행) fixes this spin → no side bets (the server refuses + refunds)
+    const open = room.status === 'playing' && !hold && !isSkillRoom(room) && cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0 && !rollConstraint(cur.spinMods);
     el.bet.hidden = !open;
     if (!open) {
       el.bet.innerHTML = '';
@@ -886,40 +909,68 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     }
     const meta = getMeta();
     const hand = handOf(who, meta);
+    const stacks = handStacks(hand); // status → blue (held, 🏅 stacked) → red
     const lim = cardDefs(meta).handLimit;
     const mine = chars().filter((c) => c.isMe);
     const cur = currentChar();
     const myTurn = cur?.id === who.id;
-    const cards = hand
+    const cards = stacks
       .map((card) => {
-        const pl = hold ? { playable: false, reason: '이벤트 진행 중이에요.', kind: card.info.kind } : cardPlayability(room, who, card, { meta });
-        const cls = [pl.playable ? 'can' : 'dim', card.info.kind === 'passive' ? 'passive' : ''].filter(Boolean).join(' ');
-        return cardHtml(card, { art: artFor('card', card.id), meta, cls, attrs: `data-card-uid="${esc(card.uid)}" data-card-char="${esc(who.id)}"`, note: pl.reason ?? '' });
+        const kind = card.info.kind;
+        const attrs = `data-card-uid="${esc(card.uid)}" data-card-char="${esc(who.id)}" role="listitem"`;
+        // the 🤕 status card is not clickable (nothing to read beyond its title)
+        if (kind === 'status') return cardHtml(card, { art: artFor('card', card.id), meta, tag: 'div', cls: 'status', attrs: `role="listitem"`, note: '쓸 수 없어요 · 부상이 나으면 사라져요' });
+        const pl = hold ? { playable: false, reason: '이벤트 진행 중이에요.', kind } : cardPlayability(room, who, card, { meta });
+        const blue = card.info.color === 'blue';
+        const cls = [pl.playable ? 'can' : blue ? 'held' : 'dim', kind === 'passive' ? 'passive' : ''].filter(Boolean).join(' ');
+        return cardHtml(card, { art: artFor('card', card.id), meta, cls, attrs, note: blue ? card.info.desc : pl.reason ?? '' });
       })
       .join('');
+    const hasRed = hand.some((c) => c.info.color === 'red' && c.info.kind !== 'passive');
     let hint;
     if (!hand.length) hint = '카드가 없어요 · 🃏 카드 칸이나 🛍️ 상점에서 얻어요';
     else if (myTurn && room.turn.cardUsed) hint = '✅ 이번 턴 카드 사용 완료';
-    else if (myTurn && room.turn.phase === 'awaitSpin' && !room.turn.pending) hint = '룰렛 전에 1장 쓸 수 있어요 · 카드를 눌러 보세요';
-    else hint = '내 차례에 룰렛을 돌리기 전 1장 쓸 수 있어요';
+    else if (!hasRed) hint = '🔵 보유 카드는 가지고만 있어도 효과가 있어요';
+    else if (myTurn && room.turn.phase === 'awaitSpin' && !room.turn.pending) hint = '🔴 사용 카드는 룰렛 전에 1장 · 카드를 눌러 보세요';
+    else hint = '🔴 사용 카드는 내 차례 룰렛 전에 1장 · 🔵 보유 카드는 가지고만 있어도 효과';
     const tabs =
       mine.length > 1 && !(cur?.isMe && !cur.finished)
         ? `<span class="hand-tabs" role="group" aria-label="손패 볼 캐릭터">${mine
             .map((c) => `<button type="button" class="hand-tab${c.id === who.id ? ' on' : ''}" data-hand-for="${esc(c.id)}" aria-pressed="${c.id === who.id}">${esc(c.name)}</button>`)
             .join('')}</span>`
         : '';
-    const html = `<div class="hand-head"><span class="hand-t">🃏 <b>${esc(who.name)}</b>의 손패 <small>${hand.length}/${lim}</small></span>${tabs}<span class="hand-hint">${esc(hint)}</span></div>
-      <div class="hand-row" role="list">${cards}</div>`;
-    if (el.hand.dataset.html === html) return; // unchanged: keep the DOM (focus, scroll position, hover)
-    const scroll = el.hand.querySelector('.hand-row')?.scrollLeft ?? 0;
-    el.hand.innerHTML = html;
-    el.hand.dataset.html = html;
-    const row = el.hand.querySelector('.hand-row');
-    if (row && scroll) row.scrollLeft = scroll;
+    const full = hand.length >= lim ? ' full' : '';
+    const html = `<div class="hand-head"><span class="hand-t">🃏 <b>${esc(who.name)}</b>의 손패 <small class="hand-n${full}" title="${full ? '손패가 가득 찼어요 · 새 카드가 오면 오래된 카드가 버려져요' : ''}">${hand.length}/${lim}</small></span>${tabs}<span class="hand-hint">${esc(hint)}</span></div>
+      <div class="hand-row" role="list" data-n="${stacks.length}">${cards}</div>`;
+    if (el.hand.dataset.html !== html) {
+      const scroll = el.hand.querySelector('.hand-row')?.scrollLeft ?? 0;
+      el.hand.innerHTML = html;
+      el.hand.dataset.html = html;
+      const row = el.hand.querySelector('.hand-row');
+      if (row && scroll) row.scrollLeft = scroll;
+    }
+    fitHand();
   }
 
+  /** Card width of the hand row (`handLayout`): six cards fit a 390 px phone before the row scrolls. */
+  function fitHand() {
+    const row = el.hand.querySelector('.hand-row');
+    if (!row || el.hand.hidden) return;
+    const n = Number(row.dataset.n) || 0;
+    const cs = getComputedStyle(row);
+    const w = row.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    if (!n || w <= 0) return;
+    const L = handLayout(n, w, { max: 62, min: 46 });
+    const key = `${L.cardW}:${L.gap}`;
+    if (row.dataset.fit === key) return;
+    row.dataset.fit = key;
+    row.style.setProperty('--hand-cw', `${L.cardW}px`);
+    row.style.setProperty('--hand-gap', `${L.gap}px`);
+  }
+  window.addEventListener('resize', () => fitHand(), { passive: true });
+
   function openCardSheet(charId, uid) {
-    ui.cardSheet = { charId, uid, targetId: null };
+    ui.cardSheet = { charId, uid, targetId: null, value: null };
     renderCardSheet();
     el.cardsheet.querySelector('[data-card-use], [data-sheet-close]')?.focus({ preventScroll: true });
   }
@@ -930,13 +981,17 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     el.cardsheet.dataset.html = '';
   }
 
-  /** Card detail sheet: art, kind, effect, 「사용」 (+ target picker for sabotage cards). Re-rendered on state changes. */
+  /**
+   * Card detail sheet: art, colour / kind, effect (보유 효과 · 사용 효과 · 자동 · 부상 · 공적), 「사용」 only for red cards
+   * (+ a target picker for sabotage cards, a 1..10 number pad for 딱 그 칸). Re-rendered on state changes.
+   */
   function renderCardSheet() {
     const cs = ui.cardSheet;
     const room = ui.room;
     const who = cs ? byId(cs.charId) : null;
     const meta = getMeta();
-    const card = who ? handOf(who, meta).find((c) => c.uid === cs.uid) : null;
+    const hand = who ? handOf(who, meta) : [];
+    const card = hand.find((c) => c.uid === cs?.uid);
     if (!cs || !card || room?.status !== 'playing') {
       if (cs) closeCardSheet();
       return;
@@ -944,6 +999,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const info = card.info;
     const pl = cardPlayability(room, who, card, { meta, spectator: isSpectator() });
     const kind = CARD_KINDS[info.kind] ?? CARD_KINDS.instant;
+    const count = info.kind === 'merit' ? hand.filter((c) => c.id === card.id).length : 1;
+    const eff = cardEffectText(info);
+    const red = info.color === 'red' && info.kind !== 'passive';
     let targets = '';
     if (pl.needsTarget) {
       const list = sabotageTargets(room, who);
@@ -961,17 +1019,37 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           : '<p class="muted small">노릴 수 있는 캐릭터가 없어요.</p>'
       }</div>`;
     }
-    const ready = pl.playable && (!pl.needsTarget || !!cs.targetId);
-    const reason = pl.reason ?? (pl.needsTarget && !cs.targetId ? '대상을 고르세요.' : '');
-    const html = `<div class="g-sheet card-sheet k-${esc(info.kind)}">
-      <div class="cs-top">${cardHtml(card, { art: artFor('card', card.id), meta, tag: 'div', cls: 'big' })}
-        <div class="cs-info"><span class="cs-kind" style="--kc:${kind.color}">${esc(kind.label)} 카드</span><h2>${esc(info.icon)} ${esc(info.name)}</h2><p>${esc(info.desc)}</p>${
-          info.jobOnly ? `<p class="small muted">💼 ${esc(jobInfo(info.jobOnly, meta?.jobs)?.name ?? info.jobOnly)} 전용</p>` : ''
-        }<p class="small muted">${esc(who.name)}의 카드</p></div></div>
-      ${targets}
-      ${reason ? `<p class="cs-reason${pl.playable ? '' : ' no'}">${esc(reason)}</p>` : ''}
+    // 딱 그 칸 카드: pick the exact number of steps (sent as useCard {value})
+    let picker = '';
+    if (pl.needsValue) {
+      picker = `<h3 class="cs-sub">몇 칸 갈까요?</h3><div class="cs-exact" role="radiogroup" aria-label="이동할 칸 수">${Array.from({ length: 10 }, (_, i) => i + 1)
+        .map((v) => `<button type="button" class="cs-num${cs.value === v ? ' on' : ''}" data-card-value="${v}" role="radio" aria-checked="${cs.value === v}"${pl.playable ? '' : ' disabled'}>${v}</button>`)
+        .join('')}</div>`;
+    }
+    const body = useCardBody(who, card, { targetId: cs.targetId, value: cs.value, meta });
+    const ready = pl.playable && body.ok;
+    const reason = pl.reason ?? (body.ok ? '' : body.error);
+    const extra = [];
+    if (info.jobOnly) extra.push(`💼 ${esc(jobInfo(info.jobOnly, meta?.jobs)?.name ?? info.jobOnly)} 전용`);
+    // requirement cards: which jobs ask for it
+    if (info.color === 'blue' && info.kind === 'held') {
+      const jobsList = Array.isArray(meta?.jobs) ? meta.jobs : Array.isArray(meta?.jobs?.jobs) ? meta.jobs.jobs : [];
+      const need = jobsList.filter((j) => requirementList(j?.requires).some((r) => r.kind === 'card' && r.id === card.id));
+      if (need.length) extra.push(`🔑 취업 조건: ${need.map((j) => `${esc(j.icon ?? '💼')} ${esc(j.name ?? j.id)}`).join(' · ')}`);
+    }
+    if (info.kind === 'merit') {
+      const mn = meritNeed(who, meta?.jobs);
+      extra.push(`🏅 ${count}장 보유${mn ? ` · 다음 승진에 ${mn.need}장 필요${mn.ok ? ' ✅' : ''}` : ''}`);
+    }
+    const note = info.color === 'blue' ? '' : reason;
+    const html = `<div class="g-sheet card-sheet k-${esc(info.kind)} c-${esc(info.color)}">
+      <div class="cs-top">${cardHtml({ ...card, count }, { art: artFor('card', card.id), meta, tag: 'div', cls: 'big' })}
+        <div class="cs-info"><span class="cs-kind c-${esc(info.color)}" style="--kc:${kind.color}">${esc(cardKindLabel(info))}</span><h2>${esc(info.icon)} ${esc(info.name)}</h2><p>${esc(info.desc)}</p>
+        <p class="cs-eff c-${esc(info.color)}"><b>${esc(eff.title)}</b> ${esc(eff.text)}</p>${extra.map((x) => `<p class="small muted">${x}</p>`).join('')}<p class="small muted">${esc(who.name)}의 카드</p></div></div>
+      ${targets}${picker}
+      ${note ? `<p class="cs-reason${pl.playable ? '' : ' no'}">${esc(note)}</p>` : ''}
       <div class="cs-actions"><button type="button" class="btn ghost" data-sheet-close>닫기</button>${
-        info.kind === 'passive' ? '' : `<button type="button" class="btn primary" data-card-use${ready ? '' : ' disabled'}>${info.kind === 'sabotage' ? '💢 뒤통수 치기' : '✨ 사용'}</button>`
+        red ? `<button type="button" class="btn primary" data-card-use${ready ? '' : ' disabled'}>${info.kind === 'sabotage' ? '💢 뒤통수 치기' : pl.needsValue && cs.value ? `🎯 ${cs.value}칸 가기` : '✨ 사용'}</button>` : ''
       }</div></div>`;
     el.cardsheet.hidden = false;
     if (el.cardsheet.dataset.html === html) return; // unchanged → keep focus / portraits
@@ -985,12 +1063,12 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const who = cs ? byId(cs.charId) : null;
     const card = who ? handOf(who, getMeta()).find((c) => c.uid === cs.uid) : null;
     if (!card) return closeCardSheet();
-    const body = { type: 'useCard', characterId: who.id, cardUid: card.uid };
-    if (card.info.kind === 'sabotage') body.targetId = cs.targetId;
-    const ok = await run(body);
+    const body = useCardBody(who, card, { targetId: cs.targetId, value: cs.value, meta: getMeta() });
+    if (!body.ok) return renderCardSheet();
+    const ok = await run(body.body);
     if (ok) {
       closeCardSheet();
-      if (card.info.kind !== 'sabotage' && card.id !== 'pledge') toast(`${card.info.icon} ${card.info.name} 카드를 썼어요!`);
+      if (card.info.kind !== 'sabotage' && card.id !== 'pledge') toast(`${card.info.icon} ${card.info.name} 카드를 썼어요!${body.body.value ? ` (딱 ${body.body.value}칸)` : ''}`);
     }
   }
 
@@ -1002,7 +1080,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const from = mine.find((c) => c.id === cur?.id) ?? mine.find((c) => !c.finished) ?? mine[0];
     const to = byId(toId);
     // default: my money for one of their cards (money ↔ money is not a trade)
-    const giveKind = mode === 'trade' && !to?.cards?.length && from.cards?.length ? 'card' : 'money';
+    const meta = getMeta();
+    const giveKind = mode === 'trade' && !tradableCards(to, meta).length && tradableCards(from, meta).length ? 'card' : 'money';
     const wantKind = giveKind === 'card' ? 'money' : 'card';
     ui.trade = { mode, toId, fromId: from.id, give: { kind: giveKind, money: '', cardUid: null }, want: { kind: wantKind, money: '', cardUid: null } };
     renderTradeDlg();
@@ -1021,7 +1100,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   }
   function sideHtml(side, key, owner, { label }) {
     const meta = getMeta();
-    const hand = handOf(owner, meta);
+    // never the 🤕 status card
+    const hand = tradableCards(owner, meta);
     const kinds = [['money', '💰 돈'], ['card', '🃏 카드']];
     return `<fieldset class="td-side"><legend>${esc(label)}</legend>
       <div class="td-kinds" role="radiogroup">${kinds
@@ -1052,7 +1132,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (!from) return closeTrade();
     const check = tradeCheck();
     // a trade needs a card on at least one side (money ↔ money is not a trade): nothing to pick → say so
-    if (t.mode === 'trade' && !mine.some((c) => (c.cards ?? []).length) && !(to.cards ?? []).length) {
+    if (t.mode === 'trade' && !mine.some((c) => tradableCards(c, getMeta()).length) && !tradableCards(to, getMeta()).length) {
       el.tradedlg.innerHTML = `<div class="g-sheet trade-sheet">
         <div class="sheet-who">${portraitHtml(to, { size: 48 })}<div><h2>🤝 거래 제안</h2><p class="small muted">받는 사람: <b>${nameHtml(to.name)}</b></p></div></div>
         <p class="td-empty">🃏 거래할 카드가 없어요.</p>
@@ -1224,8 +1304,22 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           jb.stars ? `<span class="jb-stars">${esc(jb.stars)}</span>` : ''
         }</span>`,
       );
-      if (jb.injured) out.push(`<span class="gc-tag bad" title="부상">🤕 ${jb.injured}턴</span>`);
+      if (jb.injured) out.push(`<span class="gc-tag bad injury" title="부상 · 🤕 부상 카드가 손패 한 칸을 차지해요">🤕 ${jb.injured}턴</span>`);
     }
+    // blue / red cards: the 🤕 status card (when the job badge doesn't show it), 🔵 held-card icons (effects everyone should
+    // know about), 🏅 공적 카드 count
+    const meta0 = getMeta();
+    if (!jb?.injured && statusCards(c, meta0).length) out.push('<span class="gc-tag bad injury" title="🤕 부상 카드 · 부상이 나으면 사라져요">🤕 부상</span>');
+    const held = heldCards(c, meta0);
+    if (held.length) {
+      out.push(
+        `<span class="gc-tag held" title="${esc(`🔵 보유 카드 · ${held.map((h) => `${h.name}${h.count > 1 ? ` ×${h.count}` : ''}: ${h.desc}`).join(' / ')}`)}">${held
+          .map((h) => `<span class="gh-ic${h.requirement ? ' req' : ''}">${esc(h.icon)}</span>`)
+          .join('')}</span>`,
+      );
+    }
+    const merits = meritCount(c, meta0);
+    if (merits) out.push(`<span class="gc-tag merit" title="🏅 공적 카드 ${merits}장">🏅×${merits}</span>`);
     // loop maps (ADDENDUM A1): the 찬스 광장 buff until the next 찬스 광장
     if (c.chanceBuff) out.push(`<span class="gc-tag buff" title="${esc(`찬스 버프 · ${c.chanceBuff.desc ?? c.chanceBuff.name ?? ''} (다음 찬스 광장까지)`)}">${esc(buffText(c.chanceBuff))}</span>`);
     const edu = educationLabel(c.education);
@@ -1312,12 +1406,24 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     // Stage 7: hand (public), items, 🤝 거래 제안 / 🎁 선물
     const meta = getMeta();
     if (Array.isArray(c.cards)) {
-      const hand = handOf(c, meta);
+      const stacks = handStacks(handOf(c, meta));
       facts.push(
         `<div class="gd-fact"><span class="gd-k">손패</span><span class="gd-v gd-cards">${
-          hand.length ? hand.map((h) => `<span class="gd-card k-${esc(h.info.kind)}" title="${esc(h.info.desc)}">${esc(h.info.icon)} ${esc(h.info.name)}</span>`).join('') : '<span class="muted">없음</span>'
+          stacks.length ? stacks.map((h) => cardChipHtml(h.id, { meta, count: h.count })).join('') : '<span class="muted">없음</span>'
         }</span></div>`,
       );
+    }
+    // the current job's card requirements (✓ / ✗) and the 🏅 공적 카드 the next promotion asks for
+    if (jb) {
+      const reqs = requirementList(jobInfo(c.job.id, jobs)?.requires, { character: c, cards: meta?.cards }).filter((r) => r.kind === 'card');
+      const mn = meritNeed(c, jobs);
+      if (reqs.length || mn) {
+        facts.push(
+          `<div class="gd-fact"><span class="gd-k">직업 카드</span><span class="gd-v gd-reqs">${reqs
+            .map((r) => `<span class="req-badge${r.ok ? ' ok' : ' miss'}" title="${r.ok ? '가지고 있어요' : '없어요'}">${r.ok ? '✓' : '✗'} ${esc(r.ok ? r.text.replace(/ 필요$/, '') : r.text)}</span>`)
+            .join('')}${mn ? `<span class="req-badge${mn.ok ? ' ok' : ' miss'}" title="다음 승진 조건 (승진하면 사용돼요)">🏅 다음 승진에 공적 ${mn.need}장 · 보유 ${mn.have}</span>` : ''}</span></div>`,
+        );
+      }
     }
     const items = itemsOf(c, meta);
     if (items.length) {
@@ -1482,14 +1588,14 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
                 ? `<div class="choice-list fam-choices">${familyOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice' })}</div>`
                 : `<div class="choice-list">${p.options
           .map((o) => {
-            const x = optionExtras(p, o, { jobs: getMeta()?.jobs });
+            const x = optionExtras(p, o, { jobs: getMeta()?.jobs, character: subject ?? who, cards: getMeta()?.cards });
             const px = passOptionExtras(p, o, { won }); // loop maps: 찬스 광장 (시주 / 확률 / 찬스 버프)
-            const badges = [...(x.salary != null ? [`💵 첫 월급 ${won(x.salary)}`] : []), ...x.badges, ...px.badges];
+            const badges = optionBadgeList(x, px.badges, { won });
             const icon = o.icon || x.icon || px.icon || (p.kind === 'holiday' ? HOLIDAY_OPTION_ICON[o.id] ?? '' : '');
             return `<button type="button" class="btn choice" data-choose="${esc(o.id)}" data-prompt="${esc(p.promptId)}" data-char="${esc(who.id)}"${o.disabled ? ' disabled' : ''}>
                 <span class="c-icon">${esc(icon)}</span><span class="c-label">${esc(optionLabel({ ...o, icon }))}${
                   routeOptionInfo(p, o) ? `<small class="c-desc">${esc(routeOptionInfo(p, o))}</small>` : ''
-                }${badges.length ? `<span class="c-badges">${badges.map((b) => `<span class="c-badge">${esc(b)}</span>`).join('')}</span>` : ''}</span></button>`;
+                }${badges.length ? `<span class="c-badges">${badges.map((b) => `<span class="c-badge${b.miss ? ' miss' : ''}${b.card ? ' req-card' : ''}"${b.miss ? ' title="아직 없어요"' : ''}>${b.miss ? '✗ ' : ''}${esc(b.text)}</span>`).join('')}</span>` : ''}</span></button>`;
           })
           .join('')}</div>`
         }
@@ -1698,6 +1804,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         if (!b.disabled) {
           ui.cardSheet.targetId = b.dataset.cardTarget;
           renderCardSheet();
+        }
+      } else if (t.closest('[data-card-value]') && ui.cardSheet) {
+        const b = t.closest('[data-card-value]');
+        if (!b.disabled) {
+          ui.cardSheet.value = Number(b.dataset.cardValue);
+          renderCardSheet();
+          el.cardsheet.querySelector(`[data-card-value="${ui.cardSheet.value}"]`)?.focus({ preventScroll: true });
         }
       } else if (t.closest('[data-card-use]')) useCard();
       return true;
@@ -2105,7 +2218,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const pop = el.pop;
     pop.hidden = false;
     const aim = e?.skill && Number.isInteger(e.target);
-    pop.innerHTML = `<div class="rp-name">${esc(name)}의 룰렛</div>${aim ? `<div class="rp-aim">🎯 목표 ${e.target}</div>` : ''}<div class="rp-num">?</div>${
+    // 큰 수 / 작은 수 카드: the range this roulette is limited to; 딱 그 칸 / 월급날 직행 name the move
+    const rng = modRange((Array.isArray(e?.mods) ? e.mods : []).find((m) => m?.kind === 'range'));
+    const cardNote = e && spinNote(e) && (spinNote(e).rush || spinNote(e).icon === '🎯') ? spinNote(e).text : '';
+    pop.innerHTML = `<div class="rp-name">${esc(name)}의 룰렛</div>${aim ? `<div class="rp-aim">🎯 목표 ${e.target}</div>` : ''}${rng ? `<div class="rp-aim rp-range">${esc(rng.icon)} ${esc(rng.text)}만!</div>` : ''}<div class="rp-num">?</div>${cardNote ? `<div class="rp-aim-res rp-card" hidden>${esc(cardNote)}</div>` : ''}${
       aim ? `<div class="rp-aim-res" hidden>${esc(aimText(e))}</div>` : ''
     }`;
     const num = pop.querySelector('.rp-num');
@@ -2119,10 +2235,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       if (n >= 10) {
         clearInterval(iv);
         num.classList.add('final');
-        const res = pop.querySelector('.rp-aim-res');
-        if (res) res.hidden = false;
+        pop.querySelectorAll('.rp-aim-res').forEach((res) => (res.hidden = false));
         el.dial.classList.remove('rolling');
-        setTimeout(() => (pop.hidden = true), aim ? 1700 : 900);
+        setTimeout(() => (pop.hidden = true), aim || cardNote ? 1700 : 900);
       }
     }, 60);
   }
@@ -2353,9 +2468,16 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           if (!cutinsOn()) toast('🏆 게임 종료! 결과 발표'); // else the result intro cut-in announces it
           break;
         // ---------- Stage 7 ----------
+        case 'cardLost': {
+          const lost = cardLostInfo(e, getMeta());
+          floatOn(e.charId, lost.text, e.reason === 'healed' ? 'plus' : 'minus');
+          if (c?.isMe && e.reason === 'discarded') toast(`🗑️ ${c.name}: 손패가 가득 차서 ${lost.info.icon} ${lost.info.name} 카드를 버렸어요`, 'info');
+          else if (c?.isMe && !cutinsOn()) toast(`${c.name}: ${lost.text}`, 'info');
+          break;
+        }
         case 'cardGained': {
           const info = cardInfo(e.cardId, getMeta());
-          floatOn(e.charId, `🃏 ${info.name}`, 'plus');
+          floatOn(e.charId, info.kind === 'status' ? '🤕 부상 카드' : `🃏 ${info.name}`, info.kind === 'status' ? 'minus' : 'plus');
           if (c?.isMe && (!cutinsOn() || e.source === 'gift' || e.source === 'trade')) toast(`🃏 ${c.name}: ${info.icon} ${info.name} 카드를 얻었어요!`);
           break;
         }
@@ -2365,7 +2487,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
             floatOn(e.targetId, `💢 ${info.name}`, 'minus');
             const tgt = byId(e.targetId);
             if (tgt?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(`💢 ${josa(c?.name ?? '누군가', '이/가')} ${tgt.name}에게 「${info.name}」 카드를 썼어요!`, 'error');
-          } else floatOn(e.charId, `${info.icon} ${info.name}`, 'plus');
+          } else floatOn(e.charId, `${info.icon} ${info.name}${Number(e.value) > 0 ? ` ${e.value}칸` : ''}`, 'plus');
           break;
         }
         case 'cardBlocked':

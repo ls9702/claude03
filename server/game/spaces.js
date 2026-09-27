@@ -8,7 +8,7 @@ import { resolveHabitTile } from './growth.js';
 import { PART_TIME_ID, payday, resolveJobTile } from './jobs.js';
 import { effectsFor } from './news.js';
 import { PROMPTS, openPrompt, promptComplete, registerPrompts, resolvePrompt } from './prompts.js';
-import { applyLoss, cardDef, gainCard, guardStats, resolveCardTile, resolveShopTile, tryAmulet } from './cards.js';
+import { applyLoss, cardDef, gainCard, guardStats, resolveCardTile, resolveShopTile, syncInjuryCard, tryAmulet } from './cards.js';
 import { loveRouteChosen, resolveHeartTile } from './family.js';
 import { resolveHouseTile } from './houses.js';
 import { SUBMAPS, resolveSubmapTile } from './submaps.js';
@@ -102,6 +102,9 @@ export function eventConditionsMet(ev, c) {
   if (edu && !edu.includes(c.education ?? 'none')) return false;
   const routes = asList(cond.route);
   if (routes && !routes.includes(c.route)) return false;
+  if (cond.injured != null && (c.job?.injured > 0) !== !!cond.injured) return false; // 병원 치료 (heal) events
+  const lacks = asList(cond.lacksCard); // card-reward events only for characters without that card
+  if (lacks && lacks.some((id) => c.cards?.some((k) => k.id === id))) return false;
   return true;
 }
 
@@ -149,6 +152,10 @@ function runEvent(tx, c, era) {
   const extras = [delta ? `${delta > 0 ? '+' : ''}${won(delta)}` : '', changes.length ? statText(tx.data, changes) : ''].filter(Boolean);
   addLog(tx, `❗ ${text}${extras.length ? ` (${extras.join(', ')})` : ''}`, { tone, charId: c.id, emotion, eventId: ev.id });
   if (ev.card && cardDef(tx.data, ev.card)) gainCard(tx, c, ev.card, 'event'); // Stage 7: card rewards
+  if (ev.heal && c.job?.injured > 0) {
+    c.job.injured = 0; // 병원 치료: the injury heals at once (the 🤕 card leaves the hand)
+    syncInjuryCard(tx, c);
+  }
   return null;
 }
 

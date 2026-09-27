@@ -52,7 +52,7 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs } = getBalance();
+    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, jobs } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
@@ -63,7 +63,8 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       minTurns: minTurnsTable(),
       finalLength: finalLengthLimits(),
       // roulette: 실력 모드 jitter; loop maps: salary (용돈), passTile (찬스 광장), chanceBuffs, clubs; final race goalPrizes
-      balance: { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs },
+      // blue / red cards: cardSources (graduation stat → requirement card), merit (🏅 공적 카드 chances of balance.jobs)
+      balance: { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, merit: jobs?.merit ?? null },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
       mc: { ...getMc(), lines: getLines().mc ?? {} }, // Stage 5.6: MC NPC profiles + line pools (lobby greeting, result fallback)
@@ -200,6 +201,7 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       // Stage 7: cards, trades, gifts
       cardUid: str(body.cardUid),
       targetId: str(body.targetId),
+      value: typeof body.value === 'number' || typeof body.value === 'string' ? body.value : undefined, // 🎯 딱 그 칸 (1..10)
       toId: str(body.toId),
       tradeId: str(body.tradeId),
       accept: body.accept,

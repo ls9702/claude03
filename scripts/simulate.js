@@ -17,6 +17,12 @@
 // lifetime games, bonus vs the average winner total), titles (every one reached?), 산신령 unlocks, the composition
 // of the final totals (cash / house / items / treasures / awards), highlights per character and a random MVP vote.
 //
+// Blue / red cards: random card play skips blue / status cards (`cardBlockReason`), 딱 그 칸 picks a random number, no
+// side bets on a card-fixed spin; the 「파랑/빨강 카드」 block prints cards gained by colour and id, the end-of-game hand
+// (blue / merit / red / injury), cards lost by reason, roulette-card use and the payday arrival rate per card vs plain
+// spins, injury slot pressure, merit cards gained / spent, the share of first hires holding a requirement card and the
+// 1st-place share of adult-era characters holding a requirement card vs not.
+//
 // Post-simulation fixes: the route block also prints each route relative to the SAME game (mean total vs the game's
 // mean, 1st-place share vs fair) — raw averages mix games with different start money / length.
 //
@@ -46,6 +52,7 @@ import { createRng } from '../server/game/rng.js';
 import { lottoExpectedValue } from '../server/game/holidays.js';
 import { cpuDecide, cpuPassScores, cpuSkillTarget, cpuTradeAccept } from '../server/game/cpu.js';
 import { ROULETTE_MODES } from '../server/game/roulette.js';
+import { cardBlockReason, spinFixed, transferable } from '../server/game/cards.js';
 
 function arg(name, def) {
   const i = process.argv.indexOf(`--${name}`);
@@ -74,6 +81,8 @@ const MODES = Object.keys(data.eras.modes);
 const ERA_IDS = data.eras.eras.map((e) => e.id);
 const BET_PICKS = { oddEven: ['odd', 'even'], range: Object.keys(data.balance.bets.ranges) };
 const CARD_DEFS = new Map(data.cards.cards.map((d) => [d.id, d]));
+const ROLL_IDS = ['big_roll', 'small_roll', 'exact_roll', 'payday_rush'];
+const REQ_IDS = ['research', 'charisma', 'tongue', 'iron_body'];
 
 const FAMILY_POLICY = arg('family', 'random'); // Stage 8: 'default' = 만남 / 데이트 / 프러포즈 take the prompt's default
 const FAMILY_KINDS = new Set(['meet', 'date', 'propose']);
@@ -87,8 +96,7 @@ export function playableCards(room, c) {
   const out = [];
   for (const k of c.cards ?? []) {
     const def = CARD_DEFS.get(k.id);
-    if (!def || def.kind === 'passive') continue;
-    if (def.jobOnly && c.job?.id !== def.jobOnly) continue;
+    if (!def || cardBlockReason(room, c, def, data)) continue; // blue / status / passive cards, job-only, no payday ahead
     if (def.kind === 'sabotage') {
       const targets = room.characters.filter((t) => t.id !== c.id && !t.finished && !((t.lastTargetedBy?.[c.id] ?? -Infinity) >= room.turn.round - 1));
       if (targets.length) out.push({ card: k, def, targets });
@@ -102,7 +110,13 @@ export function randomCardAction(room, c, rng, chance = 0.5) {
   const options = playableCards(room, c);
   if (!options.length || !(rng.next() < chance)) return null;
   const pick = rng.pick(options);
-  return { type: 'useCard', characterId: c.id, cardUid: pick.card.uid, ...(pick.targets ? { targetId: rng.pick(pick.targets).id } : {}) };
+  return {
+    type: 'useCard',
+    characterId: c.id,
+    cardUid: pick.card.uid,
+    ...(pick.targets ? { targetId: rng.pick(pick.targets).id } : {}),
+    ...(pick.def.effect?.exact ? { value: rng.int(data.balance.spin.min, data.balance.spin.max) } : {}),
+  };
 }
 
 function makeLobbyRoom(meta, gameNo) {
@@ -217,6 +231,25 @@ const stats = {
   loop: { paydays: {}, pocket: 0, laps: 0, halts: {}, passChoices: {}, buffs: {}, clubs: {}, final: {}, byMode: {}, lifeIncome: { all: 0, payday: 0, noBet: 0 }, byReason: {} },
   rankUps: 0,
   injuries: 0,
+  // blue / red cards
+  bc: {
+    gainedByColor: { blue: 0, red: 0 },
+    gainedById: {}, // cardId → n (all sources)
+    lost: {}, // reason → n
+    rollUsed: {}, // big_roll | small_roll | exact_roll | payday_rush → n (played by hand)
+    rollLanding: {}, // cardId → {salary, total}
+    plainLanding: { salary: 0, total: 0 }, // spins without a roulette card
+    injuries: 0,
+    injuryFullHand: 0, // injuries that hit an already full hand (a card had to go)
+    injuryDiscards: 0, // discards while the injury card sat in the hand
+    handAtEnd: { blue: 0, red: 0, status: 0, merit: 0, chars: 0 },
+    meritGained: 0,
+    meritSpent: 0,
+    reqAtHire: { with: 0, without: 0 }, // first regular hire: holding ≥ 1 requirement card?
+    reqHolders: { chars: 0, wins: 0, fair: 0 }, // adult-mode characters holding ≥ 1 requirement card at the end
+    reqNon: { chars: 0, wins: 0, fair: 0 },
+    reqJobs: {}, // jobId → [final count holding the needed card] (sanity: always all)
+  },
   // Stage 7
   s7: {
     chars: 0,
@@ -284,6 +317,7 @@ function playGame(g) {
   let actions = 0;
   let spins = 0;
   const charIncome = new Map(); // charId → {all, spouse, allowance} (positive money changes)
+  const rollPending = new Map(); // charId → roulette card played before its spin (until its landing)
   const apply = (action) => {
     now += 1000;
     const before = room;
@@ -363,6 +397,38 @@ function playGame(g) {
       // Stage 7
       const s7 = stats.s7;
       if (ev.type === 'cardGained') s7.gained[ev.source] = (s7.gained[ev.source] ?? 0) + 1;
+      // blue / red cards
+      const bc = stats.bc;
+      if (ev.type === 'cardGained') {
+        const def = CARD_DEFS.get(ev.cardId);
+        if (def?.kind !== 'status') bc.gainedByColor[def?.color ?? 'red']++;
+        bc.gainedById[ev.cardId] = (bc.gainedById[ev.cardId] ?? 0) + 1;
+        if (ev.cardId === 'merit') bc.meritGained++;
+        if (ev.cardId === 'injury') {
+          bc.injuries++;
+          if (ev.discarded) bc.injuryFullHand++;
+        }
+      }
+      if (ev.type === 'cardLost') {
+        bc.lost[ev.reason] = (bc.lost[ev.reason] ?? 0) + 1;
+        if (ev.reason === 'merit') bc.meritSpent++;
+        if (ev.reason === 'discarded' && ev.cardId !== 'injury' && room.characters.find((x) => x.id === ev.charId)?.cards.some((k) => k.id === 'injury')) bc.injuryDiscards++;
+      }
+      if (ev.type === 'cardUsed' && ROLL_IDS.includes(ev.cardId) && !ev.auto) {
+        bc.rollUsed[ev.cardId] = (bc.rollUsed[ev.cardId] ?? 0) + 1;
+        rollPending.set(ev.charId, ev.cardId);
+      }
+      if (ev.type === 'jobChanged' && ev.jobId !== 'parttime' && ev.reason === 'hire' && !ev.fromJobId) {
+        const who = room.characters.find((x) => x.id === ev.charId);
+        bc.reqAtHire[who?.cards.some((k) => REQ_IDS.includes(k.id)) ? 'with' : 'without']++;
+      }
+      if (ev.type === 'landed') {
+        const card = rollPending.get(ev.charId);
+        const row = card ? (bc.rollLanding[card] ??= { salary: 0, total: 0 }) : bc.plainLanding;
+        row.total++;
+        if (ev.tileType === 'salary') row.salary++;
+        rollPending.delete(ev.charId);
+      }
       if (ev.type === 'cardUsed') {
         if (ev.auto) s7.auto[ev.cardId] = (s7.auto[ev.cardId] ?? 0) + 1;
         else s7.used++;
@@ -479,6 +545,7 @@ function playGame(g) {
     if (cardAction) apply(cardAction);
     for (const c of room.characters) {
       if (ROULETTE === 'skill') break; // no side bets in skill mode (the server refuses them)
+      if (spinFixed(room.characters.find((x) => x.id === cur.id))) break; // a red roulette card fixed this spin
       if (cpuPolicy(c) || c.finished) continue; // CPU-policy / finished characters never bet
       if (c.ownerSessionId === cur.ownerSessionId || c.money < 5 || meta.next() > 0.3) continue;
       const kind = meta.pick(['oddEven', 'range']);
@@ -545,6 +612,24 @@ function playGame(g) {
     s9.mvp.games++;
     if (room.result.mvp.winner === res.ranking[0].charId) s9.mvp.first++;
     if (room.result.mvp.note) s9.mvp.noVotes++;
+  }
+  {
+    const bc = stats.bc;
+    const winnerIds = new Set(room.result.ranking.filter((r) => r.rank === 1).map((r) => r.charId));
+    for (const c of room.characters) {
+      bc.handAtEnd.chars++;
+      for (const k of c.cards) {
+        const def = CARD_DEFS.get(k.id);
+        const key = def?.kind === 'status' ? 'status' : def?.kind === 'merit' ? 'merit' : def?.color ?? 'red';
+        bc.handAtEnd[key]++;
+      }
+      if (room.config.mode === 'kids') continue;
+      const holds = c.cards.some((k) => REQ_IDS.includes(k.id));
+      const row = holds ? bc.reqHolders : bc.reqNon;
+      row.chars++;
+      row.fair += 1 / room.characters.length;
+      if (winnerIds.has(c.id)) row.wins++;
+    }
   }
   stats.s7.chars += room.characters.length;
   for (const c of room.characters) {
@@ -681,7 +766,8 @@ function interact(live, rng, apply) {
     const tos = chars.filter((x) => x.id !== from.id && !x.finished); // finished characters never gift / receive
     if (from.finished || !tos.length) return interactAnswers(live, rng, apply);
     const to = rng.pick(tos);
-    if (from.cards.length && rng.next() < 0.5) apply({ type: 'gift', characterId: from.id, toId: to.id, cardUid: rng.pick(from.cards).uid });
+    const giftable = from.cards.filter((k) => transferable(CARD_DEFS.get(k.id)));
+    if (giftable.length && rng.next() < 0.5) apply({ type: 'gift', characterId: from.id, toId: to.id, cardUid: rng.pick(giftable).uid });
     else if (from.money >= 10) apply({ type: 'gift', characterId: from.id, toId: to.id, money: rng.int(1, Math.max(1, Math.floor(from.money / 10))) });
   }
   const r = live();
@@ -691,7 +777,8 @@ function interact(live, rng, apply) {
     const others = r.characters.filter((x) => !x.finished && x.ownerSessionId !== from?.ownerSessionId);
     if (from && others.length && !r.trades.some((t) => t.fromId === from.id)) {
       const to = rng.pick(others);
-      const side = (c, allowMoney) => (c.cards.length && (!allowMoney || rng.next() < 0.6) ? { cardUid: rng.pick(c.cards).uid } : allowMoney && c.money >= 5 ? { money: rng.int(1, Math.max(1, Math.floor(c.money / 5))) } : null);
+      const tradable = (c) => c.cards.filter((k) => transferable(CARD_DEFS.get(k.id)));
+      const side = (c, allowMoney) => (tradable(c).length && (!allowMoney || rng.next() < 0.6) ? { cardUid: rng.pick(tradable(c)).uid } : allowMoney && c.money >= 5 ? { money: rng.int(1, Math.max(1, Math.floor(c.money / 5))) } : null);
       const give = side(from, true);
       const want = give?.money != null ? side(to, false) : side(to, true);
       if (give && want && !(give.money != null && want.money != null) && !(want.money != null && want.money > to.money)) apply({ type: 'offerTrade', characterId: from.id, toId: to.id, give, want });
@@ -1050,6 +1137,17 @@ function mainRandom() {
   const price = data.cards.cards.find((k) => k.id === 'lotto')?.price;
   console.log(`로또 ${s7.lottoTickets}장 · 평균 당첨금 ${(s7.lottoPrize / Math.max(1, s7.lottoTickets)).toFixed(2)}만원 (기대값 ${ev.toFixed(2)} < 카드 가격 ${price}) · 맞춘 개수 ${JSON.stringify(s7.lottoWins)}`);
   console.log(`선물 ${s7.gifts}회 · 거래 제안 ${s7.offers}건 → ${JSON.stringify(s7.trades)}`);
+  const bc = stats.bc;
+  const hc = bc.handAtEnd;
+  console.log(`\n--- 파랑/빨강 카드 ---`);
+  console.log(`획득 색깔별: 파랑 ${bc.gainedByColor.blue} · 빨강 ${bc.gainedByColor.red} (캐릭터당 ${perChar(bc.gainedByColor.blue)} / ${perChar(bc.gainedByColor.red)}) · 카드별 ${Object.entries(bc.gainedById).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
+  console.log(`끝난 뒤 손패 캐릭터당: 파랑 ${(hc.blue / Math.max(1, hc.chars)).toFixed(2)} · 공적 ${(hc.merit / Math.max(1, hc.chars)).toFixed(2)} · 빨강 ${(hc.red / Math.max(1, hc.chars)).toFixed(2)} · 부상 ${(hc.status / Math.max(1, hc.chars)).toFixed(2)} · 사라진 카드 ${JSON.stringify(bc.lost)}`);
+  const land = (r) => `${pct(r?.salary ?? 0, r?.total ?? 0)} (${r?.total ?? 0})`;
+  console.log(`룰렛 카드 사용: ${ROLL_IDS.map((id) => `${id} ${bc.rollUsed[id] ?? 0}`).join(' · ')} · 월급날 도착률: 일반 ${land(bc.plainLanding)} · ${ROLL_IDS.map((id) => `${id} ${land(bc.rollLanding[id])}`).join(' · ')}`);
+  console.log(`부상 카드 ${bc.injuries}장 · 손패가 가득 찬 상태에서 부상 ${pct(bc.injuryFullHand, bc.injuries)} · 부상 카드가 있는 동안 버린 카드 ${bc.injuryDiscards}장`);
+  console.log(`공적 카드 획득 ${bc.meritGained} · 승진에 사용 ${bc.meritSpent} · 첫 취업 때 직업 요구 카드 보유 ${pct(bc.reqAtHire.with, bc.reqAtHire.with + bc.reqAtHire.without)}`);
+  const share = (r) => `${pct(r.wins, r.chars)} (공정 ${pct(r.fair, r.chars)}, ${r.chars}명)`;
+  console.log(`청년 이후 모드 1위 비율: 요구 카드 보유 ${share(bc.reqHolders)} · 미보유 ${share(bc.reqNon)}`);
   const s8 = stats.s8;
   const per8 = (n) => (n / Math.max(1, s8.chars)).toFixed(2);
   console.log(`\n--- 8단계: 연애·가족·부동산 (청년 이후 모드 ${s8.chars}명) ---`);

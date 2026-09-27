@@ -179,7 +179,8 @@ test('jobOffer options: icon, starting salary (rank 1), requirement badges', () 
   assert.deepEqual(requirementBadges({ int: 7, education: 'college' }), ['🧠 7+', '🎓 대졸']);
   assert.deepEqual(requirementBadges({ stats: { charm: 6, luck: 0 } }), ['✨ 6+']);
   const x = optionExtras({ kind: 'jobOffer' }, { id: 'doctor', label: '의사' }, { jobs });
-  assert.deepEqual(x, { icon: '🩺', salary: 300, badges: ['🧠 7+', '🎓 대졸'], jobId: 'doctor' });
+  assert.deepEqual({ ...x, reqs: undefined }, { icon: '🩺', salary: 300, badges: ['🧠 7+', '🎓 대졸'], jobId: 'doctor', reqs: undefined });
+  assert.deepEqual(x.reqs.map((r) => [r.kind, r.ok]), [['stat', null], ['edu', null]]);
   assert.equal(optionExtras({ kind: 'career' }, { id: 'college', icon: '🎓' }, { jobs }).salary, null);
   assert.equal(optionExtras({ kind: 'habit' }, { id: 'doctor', jobId: 'idol' }, { jobs }).salary, 100);
   assert.equal(optionExtras({ kind: 'jobOffer' }, { id: 'doctor', icon: '👩‍⚕️' }, { jobs }).icon, '👩‍⚕️');

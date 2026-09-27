@@ -13,6 +13,7 @@ import { STAT_KEYS, addLog, addStats, changeMoney, charById, emit, josa, round5,
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 import { sanitizeAvatar } from './avatar.js';
+import { affectionBonus, dropHeldCards, popularEffect } from './cards.js';
 
 export const TRAITS = ['int', 'str', 'charm', 'luck'];
 export const CHILD_STAGES = ['baby', 'kid', 'teen', 'adult'];
@@ -72,6 +73,30 @@ export const traitMatch = (c, trait) => !!trait && topStats(c).includes(trait);
 export const traitName = (data, t) => cfgOf(data).traits?.[t]?.name ?? t;
 export const traitIcon = (data, t) => cfgOf(data).traits?.[t]?.icon ?? '💗';
 export const starsText = (n) => '★'.repeat(Math.max(1, n ?? 1));
+
+/**
+ * An affection gain: + 결혼운◎'s `affectionBonus` while the card is held, capped at `affection.max`. `set` = a new
+ * relationship's starting affection (meet + match) — the bonus applies to it too. @returns the new affection
+ */
+export function gainAffection(tx, c, gain, { set = false } = {}) {
+  const aff = cfgOf(tx.data).affection ?? {};
+  const bonus = gain > 0 ? affectionBonus(tx.data, c) : 0;
+  c.love.affection = Math.max(0, Math.min(aff.max ?? 100, (set ? 0 : c.love.affection ?? 0) + gain + bonus));
+  return c.love.affection;
+}
+
+/**
+ * 인기 폭발◎ (blue card) on new candidates: one of them always 찰떡궁합 (the character's best stat as its trait) and
+ * each non-school candidate gets ★+1 with `starChance` (≤ the top grade). No card → the list is returned as is.
+ */
+function popularize(tx, c, people, { school = false } = {}) {
+  const eff = popularEffect(tx.data, c);
+  if (!eff || !people.length) return people;
+  const top = Math.max(...Object.keys(cfgOf(tx.data).stars ?? { 4: 1 }).map(Number));
+  if (!school && eff.starChance) for (const p of people) if (p.stars < top && tx.rng.next() < eff.starChance) p.stars += 1;
+  if (eff.match && !people.some((p) => traitMatch(c, p.trait))) people[0].trait = topStats(c)[0];
+  return people;
+}
 
 /** Spouse salary per salary tile (★ salary × the job era multiplier). */
 export function spouseSalary(tx, c) {
@@ -179,7 +204,7 @@ export function schoolMeet(tx, eraId) {
     if (c.love.partner || c.spouse) continue;
     const partner = makePartner(tx, c, { stars: 1, taken });
     c.love.partner = partner;
-    c.love.affection = Math.min(aff.max ?? 100, (aff.meet ?? 25) + (traitMatch(c, partner.trait) ? aff.matchBonus ?? 0 : 0));
+    gainAffection(tx, c, (aff.meet ?? 25) + (traitMatch(c, partner.trait) ? aff.matchBonus ?? 0 : 0), { set: true });
     pairs.push({ charId: c.id, partner: personSpec(partner) });
   }
   if (!pairs.length) return null;
@@ -264,10 +289,10 @@ export function blindDate(tx, c) {
   ensureFamily(c);
   if (c.love.partner || c.spouse || c.finished) return null;
   const aff = cfgOf(tx.data).affection ?? {};
-  const partner = makePartner(tx, c);
+  const [partner] = popularize(tx, c, [makePartner(tx, c)]);
   const match = traitMatch(c, partner.trait);
   c.love.partner = partner;
-  c.love.affection = Math.min(aff.max ?? 100, (aff.meet ?? 25) + (match ? aff.matchBonus ?? 0 : 0));
+  gainAffection(tx, c, (aff.meet ?? 25) + (match ? aff.matchBonus ?? 0 : 0), { set: true });
   c.love.dates = 0;
   emit(tx, 'met', { charId: c.id, partner: personSpec(partner), affection: c.love.affection, match, blindDate: true, tone: 'love', emotion: 'love' });
   addLog(tx, `💘 연애 루트에 들어선 ${c.name}, 소개팅에서 ${josa(partner.name, '과/와')} 사귀기 시작! (${traitName(tx.data, partner.trait)} ${starsText(partner.stars)})${match ? ' 찰떡궁합!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
@@ -284,7 +309,7 @@ export function loveRouteChosen(tx, c) {
   if (!c.love.partner) return blindDate(tx, c);
   const aff = cfgOf(tx.data).affection ?? {};
   if (aff.loveRoute) {
-    c.love.affection = Math.min(aff.max ?? 100, (c.love.affection ?? 0) + aff.loveRoute);
+    gainAffection(tx, c, aff.loveRoute);
     addLog(tx, `💕 ${josa(c.name, '과/와')} ${c.love.partner.name}, 연애 루트에서 사랑이 깊어진다 (호감도 ${c.love.affection})`, { tone: 'love', charId: c.id, emotion: 'love' });
   }
   return c.love.partner;
@@ -335,6 +360,7 @@ function marry(tx, c) {
   c.spouse = { ...partner, salary, marriedTurn: room.turn?.turnNo ?? 0 };
   c.love.partner = null;
   c.love.candidates = [];
+  dropHeldCards(tx, c, 'married'); // 결혼운◎ / 인기 폭발◎ did their job
   const per = round5((cfg.costs?.weddingGift ?? 20) * scale);
   const gifts = [];
   for (const o of room.characters) {
@@ -404,7 +430,7 @@ function familyOuting(tx, c) {
   const cfg = cfgOf(tx.data);
   const list = cfg.outings ?? [];
   const aff = cfg.affection ?? {};
-  c.love.affection = Math.min(aff.max ?? 100, (c.love.affection ?? 0) + (aff.familyGain ?? 0));
+  gainAffection(tx, c, aff.familyGain ?? 0);
   if (!list.length) return;
   const o = tx.rng.pick(list);
   const [lo, hi] = o.money ?? [0, 0];
@@ -476,7 +502,7 @@ export function growChildrenOnEra(tx, c) {
   if (cfg.children?.allowanceOnEra !== false) payAllowances(tx, c);
   for (const child of c.children ?? []) growChild(tx, c, child);
   const aff = cfg.affection ?? {};
-  if (c.love.partner && !c.spouse && aff.eraGain) c.love.affection = Math.min(aff.max ?? 100, (c.love.affection ?? 0) + aff.eraGain);
+  if (c.love.partner && !c.spouse && aff.eraGain) gainAffection(tx, c, aff.eraGain);
   if (c.spouse) tryBirth(tx, c);
 }
 
@@ -532,10 +558,12 @@ function dateOptions(tx, c) {
   const partner = c.love.partner;
   const scale = scaleOf(tx.data, c.era);
   const bonus = cfg.affection?.matchBonus ?? 0;
+  // blue cards: 결혼운◎ (+affectionBonus on every gain) and 인기 폭발◎ (+dateGain) — shown in the option's gain
+  const cardBonus = affectionBonus(tx.data, c) + (popularEffect(tx.data, c)?.dateGain ?? 0);
   return (cfg.dates ?? []).map((d) => {
     const cost = d.cost ? round5(d.cost * scale) : 0;
     const match = !!d.trait && d.trait === partner.trait;
-    const gain = (d.gain ?? 0) + (match ? bonus : 0);
+    const gain = (d.gain ?? 0) + (match ? bonus : 0) + cardBonus;
     const opt = {
       id: `date:${d.id}`,
       dateId: d.id,
@@ -562,7 +590,7 @@ registerPrompts({
       const taken = usedNames(tx.room);
       // 고교 첫 만남 (loop maps: the first high-school turn): two ★1 classmates
       const stars = school ? 1 : null;
-      const candidates = [makePartner(tx, c, { taken, stars }), makePartner(tx, c, { taken, stars })];
+      const candidates = popularize(tx, c, [makePartner(tx, c, { taken, stars }), makePartner(tx, c, { taken, stars })], { school });
       c.love.candidates = candidates.map(personSpec);
       const bonus = cfg.affection?.matchBonus ?? 0;
       const options = candidates.map((p) => {
@@ -606,7 +634,7 @@ registerPrompts({
       }
       const match = traitMatch(c, partner.trait);
       c.love.partner = personSpec(partner);
-      c.love.affection = Math.min(aff.max ?? 100, (aff.meet ?? 25) + (match ? aff.matchBonus ?? 0 : 0));
+      gainAffection(tx, c, (aff.meet ?? 25) + (match ? aff.matchBonus ?? 0 : 0), { set: true });
       c.love.dates = 0;
       emit(tx, 'met', { charId: c.id, partner: personSpec(partner), affection: c.love.affection, match, ...(school ? { school: true } : {}), tone: 'love', emotion: 'love' });
       addLog(tx, `${school ? '🏫' : '💘'} ${josa(c.name, '과/와')} ${partner.name}(${traitName(tx.data, partner.trait)} ${starsText(partner.stars)}) 사귀기 시작!${match ? ' 찰떡궁합!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
@@ -645,7 +673,7 @@ registerPrompts({
       if (!partner) return { result: 'none' };
       const opt = dateOptions(tx, c).find((o) => o.id === p.answers[c.id] && !o.disabled) ?? dateOptions(tx, c)[0];
       if (opt.cost > 0) changeMoney(tx, c, -Math.min(opt.cost, Math.max(0, c.money)), 'date', { tone: 'love', emotion: 'love' });
-      c.love.affection = Math.min(aff.max ?? 100, (c.love.affection ?? 0) + opt.gain);
+      c.love.affection = Math.min(aff.max ?? 100, (c.love.affection ?? 0) + opt.gain); // opt.gain includes the card bonuses
       c.love.dates = (c.love.dates ?? 0) + 1;
       emit(tx, 'dated', { charId: c.id, partnerId: partner.id, partner: personSpec(partner), dateId: opt.dateId, trait: opt.trait, cost: opt.cost, gain: opt.gain, affection: c.love.affection, match: opt.match, tone: 'love', emotion: 'love' });
       addLog(tx, `${opt.icon} ${josa(c.name, '과/와')} ${partner.name}의 ${opt.label.replace(/^\S+\s/, '')}! 호감도 +${opt.gain} (${c.love.affection})${opt.match ? ' 취향 저격!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
@@ -681,8 +709,8 @@ registerPrompts({
       const partner = c.love.partner;
       if (!partner) return null;
       if (p.answers[c.id] === 'steady') {
-        const gain = aff.steadyGain ?? 10;
-        c.love.affection = Math.min(aff.max ?? 100, c.love.affection + gain);
+        const before = c.love.affection ?? 0;
+        const gain = gainAffection(tx, c, aff.steadyGain ?? 10) - before;
         c.love.dates = (c.love.dates ?? 0) + 1;
         emit(tx, 'dated', { charId: c.id, partnerId: partner.id, partner: personSpec(partner), dateId: 'steady', trait: null, cost: 0, gain, affection: c.love.affection, match: false, tone: 'love', emotion: 'love' });
         addLog(tx, `💕 ${josa(c.name, '은/는')} ${josa(partner.name, '과/와')} 조금 더 천천히 사귀기로 했다 (호감도 ${c.love.affection})`, { tone: 'love', charId: c.id, emotion: 'love' });

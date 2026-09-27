@@ -13,11 +13,11 @@ import { gameData } from '../data/index.js';
 import { HALT_TYPES, nextPosition, tileAt } from './board.js';
 import { STAT_KEYS, statCap } from './effects.js';
 import { examChances } from './growth.js';
-import { PART_TIME_ID, clubDef, inJobEra, jobDef, jobRequirements, rankUpChance, regularJobs, salaryAmount } from './jobs.js';
+import { PART_TIME_ID, clubDef, inJobEra, jobDef, jobRequirements, meritNeeded, missingJobCards, rankUpChance, regularJobs, salaryAmount } from './jobs.js';
 import { spouseSalary } from './family.js';
 import { nextPlace } from './finish.js';
 import { effectsFor } from './news.js';
-import { cardDef, handLimit, itemDef } from './cards.js';
+import { cardBlockReason, cardColor, cardDef, discardIndex, handLimit, itemDef, rushDistance } from './cards.js';
 import { computeRanking } from './result.js';
 import { createRng } from './rng.js';
 import { isSkillRoom, skillDistribution } from './roulette.js';
@@ -101,6 +101,7 @@ export function jobDeficit(ctx, c, def) {
   const rank = { none: 0, college: 1, elite: 2 };
   const enrolled = rank[c.school?.tier] ?? 0; // graduates later with that degree
   if (edu && Math.max(rank[c.education] ?? 0, enrolled) < (rank[edu] ?? 0)) d += c.careerDone ? 99 : statOf(c, 'int') >= 6 ? 1 : 3;
+  d += 2 * missingJobCards(c, def).length; // a requirement card (blue) still to find ≈ 2 stat points
   return d;
 }
 
@@ -147,12 +148,41 @@ function totals(room, data) {
   }
 }
 
-/** Value (만원) of a card to a character — shop price, adjusted for cards it cannot use / negative-EV lotto. */
-export function cardValue(data, c, cardId) {
+/**
+ * Value (만원) of a card to a character — shop price, adjusted for cards it cannot use / negative-EV lotto; blue cards
+ * by what they do for this character (`room` given: requirement cards for its target job, 건강기원 부적 for risky jobs,
+ * 월급 부적 by salary, 결혼운◎ / 인기 폭발◎ while single, 공적 카드 for jobs that need them).
+ */
+export function cardValue(data, c, cardId, room = null) {
   const def = cardDef(data, cardId);
   if (!def) return 0;
+  if (def.kind === 'status') return 0;
   if (def.jobOnly) return c.job?.id === def.jobOnly ? def.price * 1.5 : def.price * 0.1;
   if (def.id === 'lotto') return def.price * 0.45; // EV 8.93 < 20
+  if (cardColor(def) === 'blue' && room) return blueWorth(view(room, data), c, def);
+  return def.price ?? 0;
+}
+
+
+/** Worth (만원) of holding a blue card (see cardValue). */
+function blueWorth(ctx, c, def) {
+  const e = def.effect ?? {};
+  const regular = c.job && c.job.id !== PART_TIME_ID;
+  if (e.requirement) {
+    // needed at hiring time (or for a job change): worth a lot while the character's best job asks for it
+    const needers = regularJobs(ctx.data).filter((j) => (j.requires?.cards ?? []).includes(def.id));
+    const t = targetJob(ctx, { ...c, cards: [...(c.cards ?? []), { id: def.id }] });
+    const wants = t && needers.some((j) => j.id === t.id);
+    if (wants && !regular) return 130;
+    return wants ? 50 : 20;
+  }
+  if (e.noInjury) {
+    const risk = jobDef(ctx.data, c.job?.id)?.injuryRisk ?? targetJob(ctx, c)?.injuryRisk ?? 0;
+    return risk > 0 ? 60 + risk * 400 : 15;
+  }
+  if (e.salaryBonus) return inJobEra(ctx.data, c) || c.job ? Math.max(30, salaryAmount(ctx, c) * e.salaryBonus * 8) : 35;
+  if (e.affectionBonus || e.dateGain || e.match) return c.spouse ? 0 : 55;
+  if (e.merit) return meritNeeded(jobDef(ctx.data, c.job?.id)) ? 90 : 20;
   return def.price ?? 0;
 }
 
@@ -291,6 +321,7 @@ function shopWorth(ctx, c, o, leaderGap) {
   }
   const def = cardDef(ctx.data, o.cardId);
   if (!def) return 0;
+  if (cardColor(def) === 'blue') return blueWorth(ctx, c, def);
   switch (def.id) {
     case 'bonus':
       return c.job ? salaryAmount(ctx, c) : 20;
@@ -305,6 +336,13 @@ function shopWorth(ctx, c, o, leaderGap) {
     case 'insurance':
     case 'amulet':
       return 40;
+    case 'exact_roll':
+      return 70;
+    case 'payday_rush':
+      return inJobEra(ctx.data, c) ? paydayWorth(ctx, c) * 0.8 : 30;
+    case 'big_roll':
+    case 'small_roll':
+      return 30;
     case 'tax_audit':
     case 'cut_line':
     case 'noise':
@@ -638,13 +676,16 @@ export function cpuAnswer(room, charId, data = gameData()) {
 export function cpuTradeAccept(room, trade, data = gameData()) {
   const to = room.characters.find((x) => x.id === trade.toId);
   if (!to) return false;
-  const worth = (side, owner) => (side?.money != null ? side.money : cardValue(data, owner, side?.cardId));
+  const worth = (side, owner) => (side?.money != null ? side.money : cardValue(data, owner, side?.cardId, room));
   const get = worth(trade.give, to);
   let give = worth(trade.want, to);
   if (trade.want?.money != null && trade.want.money > (to.money ?? 0)) return false;
   if (trade.want?.cardUid && !to.cards?.some((k) => k.uid === trade.want.cardUid)) return false;
   // a card received into a full hand pushes out the oldest one (unless that is the card given away)
-  if (trade.give?.cardId && trade.want?.cardUid == null && (to.cards?.length ?? 0) >= handLimit(data)) give += cardValue(data, to, to.cards[0].id);
+  if (trade.give?.cardId && trade.want?.cardUid == null && (to.cards?.length ?? 0) >= handLimit(data)) {
+    const out = discardIndex(data, to.cards);
+    if (out >= 0) give += cardValue(data, to, to.cards[out].id, room);
+  }
   return get > 0 && get >= give * knobs(to, room).tradeMargin;
 }
 
@@ -866,10 +907,12 @@ export function cpuCardAction(room, charId, data = gameData()) {
   if (!c || !t || t.cardUsed || t.phase !== 'awaitSpin' || t.pending) return null;
   if (t.order?.[t.currentIndex] !== c.id) return null;
   const ctx = view(room, data);
-  const hand = (c.cards ?? []).map((k) => ({ k, def: cardDef(data, k.id) })).filter((x) => x.def && x.def.kind !== 'passive' && (!x.def.jobOnly || c.job?.id === x.def.jobOnly));
+  const hand = (c.cards ?? []).map((k) => ({ k, def: cardDef(data, k.id) })).filter((x) => x.def && !cardBlockReason(room, c, x.def, data));
   if (!hand.length) return null;
-  const full = (c.cards?.length ?? 0) >= handLimit(data) - 1;
-  const use = (x, targetId) => ({ type: 'useCard', characterId: c.id, cardUid: x.k.uid, ...(targetId ? { targetId } : {}) });
+  // a (nearly) full hand of red cards plays anyway (blue cards never leave by play)
+  const reds = (c.cards ?? []).filter((k) => cardColor(cardDef(data, k.id)) === 'red').length;
+  const full = (c.cards?.length ?? 0) >= handLimit(data) - 1 && reds > 0;
+  const use = (x, targetId, extra = {}) => ({ type: 'useCard', characterId: c.id, cardUid: x.k.uid, ...(targetId ? { targetId } : {}), ...extra });
   const find = (id) => hand.find((x) => x.def.id === id);
 
   const pledge = find('pledge');
@@ -909,6 +952,51 @@ export function cpuCardAction(room, charId, data = gameData()) {
     if (!x) continue;
     if (near || full || expectedLanding(ctx, c, kind) - base >= 25) return use(x);
   }
+  // red roulette cards: 딱 그 칸 (the best number), 큰 수 / 작은 수 (the better half), 월급날 직행 (payday now)
+  const roll = rollCardChoice(ctx, c, hand, { full, near });
+  if (roll) return use(roll.x, null, roll.value != null ? { value: roll.value } : {});
+  return null;
+}
+
+/**
+ * The red roulette card worth playing now (or null): each option's expected landing worth (tile + 찬스 광장 passed +
+ * aimSpeed × progress per tile, like the skill-mode aim) against the plain roulette (skill rooms: the CPU's own aim).
+ * Thresholds: 딱 그 칸 ≥ 40, 월급날 직행 ≥ 30, 큰 수 / 작은 수 ≥ 20 (any gain when the hand is full / near the end).
+ */
+function rollCardChoice(ctx, c, hand, { full, near }) {
+  const room = ctx.room;
+  const data = ctx.data;
+  const { min, max } = data.balance.spin;
+  const k = knobs(c, room);
+  const speed = progressWorth(ctx, c);
+  const worthOf = (v) => {
+    const { tile, steps, passes } = landingFor(ctx, c, v);
+    const w = aimTileWorth(ctx, c, tile) + passes * PASS_WORTH;
+    return (w < 0 ? w * (k.lossAversion ?? 1) : w) + (k.aimSpeed ?? 0) * speed * steps;
+  };
+  const values = [];
+  for (let v = min; v <= max; v++) values.push(worthOf(v));
+  const mean = (lo, hi) => values.slice(lo - min, hi - min + 1).reduce((a, b) => a + b, 0) / (hi - lo + 1);
+  const aimScores = isSkillRoom(room) ? cpuAimScores(room, c.id, data) : null;
+  const base = aimScores ? Math.max(...Object.values(aimScores)) : mean(min, max);
+  const opts = [];
+  for (const x of hand) {
+    const e = x.def.effect ?? {};
+    if (e.exact) {
+      let best = max;
+      for (let v = max; v >= min; v--) if (values[v - min] > values[best - min] + 1e-9) best = v;
+      opts.push({ x, value: best, gain: values[best - min] - base, need: 40 });
+    } else if (Array.isArray(e.range)) {
+      opts.push({ x, gain: mean(Math.max(min, e.range[0]), Math.min(max, e.range[1])) - base, need: 20 });
+    } else if (e.rush) {
+      const n = rushDistance(room, c);
+      if (n == null) continue;
+      opts.push({ x, gain: paydayWorth(ctx, c) + (k.aimSpeed ?? 0) * speed * n - base, need: 30 });
+    }
+  }
+  const best = byMax(opts, (o) => o.gain - o.need);
+  if (!best) return null;
+  if (best.gain >= best.need || ((full || near) && best.gain > 0)) return best;
   return null;
 }
 

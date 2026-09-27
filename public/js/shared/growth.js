@@ -228,20 +228,50 @@ export function militaryLabel(military) {
 
 // ---------- prompt options (jobOffer etc.) ----------
 const REQ_EDU_LABEL = { college: '대졸', elite: '명문대', none: '' };
+const EDU_RANK = { none: 0, college: 1, elite: 2 };
+
+/** Requirement cards (blue 보유 cards, jobs.json `requires.cards`) — fallback names when `/api/meta.cards` is missing. */
+export const REQUIREMENT_CARDS = Object.freeze({
+  research: { icon: '🔬', name: '연구열심' },
+  charisma: { icon: '🎤', name: '카리스마◎' },
+  tongue: { icon: '👅', name: '절대미각' },
+  iron_body: { icon: '🦾', name: '강철 체력' },
+});
+
+const cardsOfMeta = (cards) => (Array.isArray(cards) ? cards : Array.isArray(cards?.cards) ? cards.cards : []);
+/** Card name / icon for a requirement badge: `/api/meta.cards` > REQUIREMENT_CARDS > the id. */
+export function requirementCard(id, cards = null) {
+  const def = cardsOfMeta(cards).find((c) => c?.id === id);
+  const fb = REQUIREMENT_CARDS[id];
+  return { id, icon: def?.icon ?? fb?.icon ?? '🃏', name: def?.name ?? fb?.name ?? id };
+}
+
+const cardIdsOf = (v) => (Array.isArray(v) ? v : typeof v === 'string' && v ? [v] : []).map((c) => (typeof c === 'string' ? c : c?.id)).filter(Boolean);
 
 /**
- * Requirement badges of a job (`requires` in jobs.json; tolerant of {int: 5}, {stats: {int: 5}}, {education}).
- * @returns {string[]} e.g. ['🧠 5+', '🎓 대졸']
+ * Requirement list of a job (`requires` in jobs.json; tolerant of {int: 5}, {stats: {int: 5}}, {education}, {cards: [id]})
+ * checked against a character when given: [{text, kind: stat|edu|military|card, id, need, ok: boolean|null}]
+ * (`ok` null = no character to check). Card badges read 「🔬 연구열심 필요」.
  */
-export function requirementBadges(requires) {
+export function requirementList(requires, { character = null, cards = null } = {}) {
   const out = [];
+  const hand = character ? new Set(cardIdsOf(character.cards)) : null;
   const walk = (obj) => {
     if (!isObj(obj)) return;
     for (const [k, v] of Object.entries(obj)) {
-      if (STAT_INFO[k] && Number.isFinite(Number(v)) && Number(v) > 0) out.push(`${STAT_INFO[k].icon} ${Number(v)}+`);
-      else if (k === 'stats' || k === 'minStats') walk(v);
-      else if (k === 'education' && REQ_EDU_LABEL[v]) out.push(`🎓 ${REQ_EDU_LABEL[v]}`);
-      else if (k === 'military' && (v === true || v === 'done')) out.push('🪖 군필');
+      if (STAT_INFO[k] && Number.isFinite(Number(v)) && Number(v) > 0) {
+        const have = Number(character?.stats?.[k]);
+        out.push({ text: `${STAT_INFO[k].icon} ${Number(v)}+`, kind: 'stat', id: k, need: Number(v), ok: character ? Number.isFinite(have) && have >= Number(v) : null });
+      } else if (k === 'stats' || k === 'minStats') walk(v);
+      else if (k === 'education' && REQ_EDU_LABEL[v]) {
+        out.push({ text: `🎓 ${REQ_EDU_LABEL[v]}`, kind: 'edu', id: v, need: v, ok: character ? (EDU_RANK[character.education] ?? 0) >= (EDU_RANK[v] ?? 0) : null });
+      } else if (k === 'military' && (v === true || v === 'done')) out.push({ text: '🪖 군필', kind: 'military', id: 'military', need: 'done', ok: character ? character.military?.status === 'done' : null });
+      else if (k === 'cards' || k === 'card') {
+        for (const id of cardIdsOf(v)) {
+          const c = requirementCard(id, cards);
+          out.push({ text: `${c.icon} ${c.name} 필요`, kind: 'card', id, need: id, ok: hand ? hand.has(id) : null });
+        }
+      }
     }
   };
   walk(requires);
@@ -249,18 +279,56 @@ export function requirementBadges(requires) {
 }
 
 /**
- * Extra info for a prompt option: job offers get the job icon, the starting salary (rank 1) and requirement
- * badges from `/api/meta.jobs`. → {icon, salary: number|null, badges: string[], jobId}
+ * Requirement badges of a job (text only).
+ * @returns {string[]} e.g. ['🧠 5+', '🎓 대졸', '🔬 연구열심 필요']
  */
-export function optionExtras(pending, option, { jobs = null } = {}) {
+export function requirementBadges(requires, opts = {}) {
+  return requirementList(requires, opts).map((r) => r.text);
+}
+
+/**
+ * 공적 카드 needed for the next rank of a job (`rankUp.merit` n, or `rankUp.merit[rank-1]` per rank) → {need, have, ok} | null.
+ */
+export function meritNeed(character, jobs) {
+  const j = character?.job;
+  if (!isObj(j) || !j.id) return null;
+  const info = jobInfo(j.id, jobs);
+  const m = info?.rankUp?.merit ?? info?.merit;
+  const rank = Math.max(1, Number(j.rank) || 1);
+  if (info && rank >= info.maxRank) return null;
+  const need = Array.isArray(m) ? Number(m[rank - 1]) : Number(m);
+  if (!Number.isFinite(need) || need <= 0) return null;
+  const have = (Array.isArray(character.cards) ? character.cards : []).filter((c) => (typeof c === 'string' ? c : c?.id) === 'merit').length;
+  return { need, have, ok: have >= need };
+}
+
+/**
+ * Extra info for a prompt option: job offers get the job icon, the starting salary (rank 1) and requirement
+ * badges from `/api/meta.jobs` (+ `reqs` checked against `character`: missing = `ok: false` → red badge).
+ * → {icon, salary: number|null, badges: string[], reqs: object[], jobId}
+ */
+export function optionExtras(pending, option, { jobs = null, character = null, cards = null } = {}) {
   const kind = pending?.kind;
   const jobKinds = ['jobOffer', 'jobTile', 'hiddenJobOffer', 'career'];
   const id = option?.jobId ?? (jobKinds.includes(kind) ? option?.id : null);
   const info = id ? jobInfo(id, jobs) : null;
-  if (!info) return { icon: option?.icon ?? '', salary: null, badges: [], jobId: null };
+  // 승진 시험 of a job with `rankUp.merit`: the option carries `merit` (needed) / `merits` (held) → 🏅 badge (missing = red)
+  const need = Number(option?.merit);
+  const meritReq = need > 0 ? [{ text: `🏅 공적 카드 ${need}장${Number.isFinite(Number(option.merits)) ? ` (보유 ${Number(option.merits)})` : ''}`, kind: 'merit', id: 'merit', need, ok: Number.isFinite(Number(option.merits)) ? Number(option.merits) >= need : null }] : [];
+  if (!info) return { icon: option?.icon ?? '', salary: null, badges: meritReq.map((r) => r.text), reqs: meritReq, jobId: null };
   // the server's one-line desc may already name the pay ("… · 첫 월급 90만원") → no second salary badge
   const salary = /월급/.test(String(option?.desc ?? '')) ? null : rankSalary(info, 1);
-  return { icon: option?.icon || info.icon, salary, badges: requirementBadges(info.requires), jobId: info.id };
+  const reqs = requirementList(isObj(option?.requires) ? option.requires : info.requires, { character, cards });
+  return { icon: option?.icon || info.icon, salary, badges: reqs.map((r) => r.text), reqs, jobId: info.id };
+}
+
+/** Option badges for rendering: salary text + requirement badges (`{text, miss}`) + extra strings. */
+export function optionBadgeList(x, extra = [], { won = (n) => `${n}만원` } = {}) {
+  return [
+    ...(x?.salary != null ? [{ text: `💵 첫 월급 ${won(x.salary)}`, miss: false }] : []),
+    ...(x?.reqs ?? []).map((r) => ({ text: r.text, miss: r.ok === false, card: r.kind === 'card' })),
+    ...extra.map((b) => (typeof b === 'string' ? { text: b, miss: false } : b)),
+  ];
 }
 
 /** Option label without a leading copy of its icon ("📹 유튜버" + icon 📹 → "유튜버"). */
