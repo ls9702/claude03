@@ -8,8 +8,9 @@
 //   (x, y) sees a((x − cx)/s + 31.5, (y − cy)/s + 31.5) (area-averaged over the pixel footprint).
 // `removeWatermark` searches around the predicted spot (integer offsets, then sub-pixel offsets × scale), scores a
 // candidate with a matched filter on luminance gradients (see scoreCandidate / findWatermark), reverses the blend
-// (orig = (obs − 255a)/(1 − a), clamped; a ≥ 0.9 is inpainted from neighbours) and is a no-op when no candidate
-// clearly improves the image (images without a watermark are returned untouched).
+// (orig = (obs − 255a)/(1 − a), clamped; a ≥ 0.9 is inpainted from neighbours), then replaces the faint ring left on
+// the outline by the local median (`cleanEdgeBand`, line art kept), and is a no-op when no candidate clearly
+// matches (images without a watermark are returned untouched).
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -220,9 +221,133 @@ export async function removeWatermarkDetailed(buffer, opts = {}) {
       if (n) out[i + c] = Math.round(sum / n);
     }
   }
+  if (opts.edgeCleanup !== false) cleanEdgeBand(out, w, h, ch, alpha, found.box, found.s, opts);
   const png = await sharp(out, { raw: { width: w, height: h, channels: ch } }).png().toBuffer();
   const { box, ...rest } = found;
   return { buffer: png, found: rest };
+}
+
+/** Binary dilation (square, radius r) of a mask. */
+function dilate(mask, w, h, r) {
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!mask[y * w + x]) continue;
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= h) continue;
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = x + dx;
+          if (xx >= 0 && xx < w) out[yy * w + xx] = 1;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Cleanup after the un-blend. Compression (chroma subsampling) and anti-aliasing leave a faint ring along the sparkle
+ * outline and a chroma cast inside it. For every pixel of the sparkle area (a > 0.02, grown by r ≈ 2 px at source
+ * scale) the reference is the median luma / chroma of the untouched pixels around it (a ≤ 0.01, window grown until it
+ * has samples):
+ * - chroma (B−Y, R−Y) is replaced when within `chromaTolerance` (24) of the reference — line art with its own colour
+ *   keeps it;
+ * - luma on the edge band (dilate − erode of a > 0.08) is replaced when within `edgeTolerance` (12) of the reference,
+ *   or up to 4× that when that luma has (almost) no support around (a compression spike); inside the sparkle only
+ *   such unsupported spikes (≥ 8) are replaced, so texture and line art (whose luma continues outside) survive.
+ * Mutates `out` (raw pixels); returns the number of pixels changed.
+ */
+export function cleanEdgeBand(out, w, h, ch, alpha, box, s, { edgeTolerance = 12, chromaTolerance = 24, edgeRadius } = {}) {
+  const { x: bx, y: by, w: bw, h: bh } = box;
+  const r = edgeRadius ?? Math.max(2, Math.round(2 * s));
+  const N = bw * bh;
+  const core = new Uint8Array(N);
+  const notCore = new Uint8Array(N);
+  const any = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    core[i] = alpha[i] > 0.08 ? 1 : 0;
+    notCore[i] = core[i] ? 0 : 1;
+    any[i] = alpha[i] > 0.02 ? 1 : 0;
+  }
+  const grownCore = dilate(core, bw, bh, r);
+  const notEroded = dilate(notCore, bw, bh, r);
+  const area = dilate(any, bw, bh, r);
+  const ref = new Uint8Array(N); // untouched reference pixels
+  for (let i = 0; i < N; i++) ref[i] = alpha[i] <= 0.01 && !area[i] ? 1 : 0;
+  // luma / chroma planes of the un-blended pixels
+  const Y = new Float32Array(N);
+  const Cb = new Float32Array(N);
+  const Cr = new Float32Array(N);
+  for (let v = 0; v < bh; v++) {
+    for (let u = 0; u < bw; u++) {
+      const j = ((by + v) * w + bx + u) * ch;
+      const k = v * bw + u;
+      Y[k] = out[j] * 0.299 + out[j + 1] * 0.587 + out[j + 2] * 0.114;
+      Cb[k] = out[j + 2] - Y[k];
+      Cr[k] = out[j] - Y[k];
+    }
+  }
+  const med = (a) => {
+    a.sort((x, y) => x - y);
+    return a[a.length >> 1];
+  };
+  const maxR = Math.max(bw, bh);
+  const ys = [];
+  const cbs = [];
+  const crs = [];
+  let changed = 0;
+  for (let v = 0; v < bh; v++) {
+    for (let u = 0; u < bw; u++) {
+      const k = v * bw + u;
+      if (!area[k]) continue;
+      ys.length = 0;
+      cbs.length = 0;
+      crs.length = 0;
+      for (let R = r + 3; R <= maxR && ys.length < 24; R = Math.ceil(R * 1.6)) {
+        ys.length = 0;
+        cbs.length = 0;
+        crs.length = 0;
+        for (let vv = Math.max(0, v - R); vv <= Math.min(bh - 1, v + R); vv++) {
+          for (let uu = Math.max(0, u - R); uu <= Math.min(bw - 1, u + R); uu++) {
+            const q = vv * bw + uu;
+            if (!ref[q]) continue;
+            ys.push(Y[q]);
+            cbs.push(Cb[q]);
+            crs.push(Cr[q]);
+          }
+        }
+      }
+      const n = ys.length;
+      if (n < 6) continue;
+      let support = 0;
+      for (let q = 0; q < n; q++) if (Math.abs(ys[q] - Y[k]) <= edgeTolerance) support++;
+      const my = med(ys);
+      const mcb = med(cbs);
+      const mcr = med(crs);
+      let y = Y[k];
+      let cb = Cb[k];
+      let cr = Cr[k];
+      const dy = Math.abs(y - my);
+      const spike = dy <= edgeTolerance * 4 && support < n * 0.08;
+      const inBand = grownCore[k] && notEroded[k];
+      if (inBand ? dy <= edgeTolerance || spike : spike && dy >= edgeTolerance * 0.66) y = my;
+      if (Math.abs(cb - mcb) <= chromaTolerance && Math.abs(cr - mcr) <= chromaTolerance) {
+        cb = mcb;
+        cr = mcr;
+      }
+      if (y === Y[k] && cb === Cb[k] && cr === Cr[k]) continue;
+      const R8 = y + cr;
+      const B8 = y + cb;
+      const G8 = (y - 0.299 * R8 - 0.114 * B8) / 0.587;
+      const j = ((by + v) * w + bx + u) * ch;
+      out[j] = Math.max(0, Math.min(255, Math.round(R8)));
+      out[j + 1] = Math.max(0, Math.min(255, Math.round(G8)));
+      out[j + 2] = Math.max(0, Math.min(255, Math.round(B8)));
+      changed++;
+    }
+  }
+  return changed;
 }
 
 /** `removeWatermarkDetailed(...).buffer`. */
