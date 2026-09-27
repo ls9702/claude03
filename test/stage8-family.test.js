@@ -14,7 +14,9 @@ import {
   birthChance,
   growChildrenOnEra,
   growChildrenOnSpin,
+  loveRouteChosen,
   proposeChance,
+  proposeStep,
   schoolMeet,
   spouseSalary,
 } from '../server/game/family.js';
@@ -135,7 +137,7 @@ test('schoolMeet: the first character entering 고등학생 gives every single u
   assert.equal(p.avatar.body, 'girl');
   const a1 = ch(r.room, c1.id);
   assert.deepEqual(a1.love.partner, p);
-  assert.equal(a1.love.affection, P.affection.meet + P.affection.matchBonus, '지력형 partner for a 지력-top character');
+  assert.equal(a1.love.affection, P.affection.meet + P.affection.matchBonus + P.affection.eraGain, '지력형 partner for a 지력-top character (+ the era-entry gain)');
   assert.equal(ch(r.room, c2.id).love.partner.id, 'pt50');
   assert.equal(r.room.schoolMeetDone, true);
   assert.equal(ev[0].cutin, true);
@@ -188,7 +190,9 @@ test('meet: a single character on a heart tile gets 2 candidates + pass; picking
 test('date: 5 options (costs × era scale, disabled when broke), trait match bonus; reaching proposeAt opens 프로포즈', () => {
   const { tx, c } = sandbox({ money: 25 });
   c.love.partner = partnerOf({ trait: 'int' });
-  c.love.affection = 30;
+  const lib = P.dates.find((d) => d.id === 'library').gain + P.affection.matchBonus;
+  const start = P.affection.proposeAt - lib; // the matched date reaches proposeAt exactly
+  c.love.affection = start;
   heart(tx, c);
   const p = tx.room.turn.pending;
   assert.equal(p.kind, 'date');
@@ -204,7 +208,7 @@ test('date: 5 options (costs × era scale, disabled when broke), trait match bon
   assert.equal(p.defaultOptionId, 'date:library', 'default = the matched (affordable) date');
   answer(tx, c, 'date:library');
   const dated = tx.events.find((e) => e.type === 'dated');
-  assert.deepEqual([dated.dateId, dated.match, dated.gain, dated.affection], ['library', true, 30, 60]);
+  assert.deepEqual([dated.dateId, dated.match, dated.gain, dated.affection], ['library', true, lib, P.affection.proposeAt]);
   assert.equal(c.money, 5);
   assert.equal(c.love.dates, 1);
   assert.equal(tx.events.find((e) => e.type === 'promptResolved').kind, 'date', 'date result cut-in');
@@ -212,15 +216,15 @@ test('date: 5 options (costs × era scale, disabled when broke), trait match bon
   // high school: no proposal
   const h = sandbox({ era: 'high' });
   h.c.love.partner = partnerOf();
-  h.c.love.affection = 45;
+  h.c.love.affection = P.affection.proposeAt - 5;
   heart(h.tx, h.c);
   answer(h.tx, h.c, 'date:library');
-  assert.equal(h.c.love.affection, 75);
+  assert.equal(h.c.love.affection, P.affection.proposeAt - 5 + lib);
   assert.equal(h.tx.room.turn.pending, null);
   // a heart with affection ≥ proposeAt → the propose prompt directly
   const s = sandbox();
   s.c.love.partner = partnerOf();
-  s.c.love.affection = 50;
+  s.c.love.affection = P.affection.proposeAt;
   heart(s.tx, s.c);
   assert.equal(s.tx.room.turn.pending.kind, 'propose');
 });
@@ -228,10 +232,10 @@ test('date: 5 options (costs × era scale, disabled when broke), trait match bon
 test('propose: chance formula; seeded success → wedding (축의금 conserved, capped at cash, cost); fail → affection drop', () => {
   const { tx, c, others } = sandbox();
   c.love.partner = partnerOf({ stars: 3, trait: 'int' });
-  c.love.affection = 70;
+  c.love.affection = P.affection.proposeAt + 20;
   c.stats = { int: 6, str: 1, charm: 5, luck: 3 };
   const pc = P.propose;
-  const want = Math.min(pc.max, pc.base + (70 - P.affection.proposeAt) * pc.perAffection + pc.charm * 5 + pc.luck * 3 + pc.match);
+  const want = Math.min(pc.max, pc.base + 20 * pc.perAffection + pc.charm * 5 + pc.luck * 3 + pc.match);
   assert.ok(Math.abs(proposeChance(c, data) - want) < 1e-9);
   heart(tx, c);
   const opt = tx.room.turn.pending.options;
@@ -261,21 +265,21 @@ test('propose: chance formula; seeded success → wedding (축의금 conserved, 
   // fail
   const f = sandbox();
   f.c.love.partner = partnerOf();
-  f.c.love.affection = 55;
+  f.c.love.affection = P.affection.proposeAt + 5;
   heart(f.tx, f.c);
   f.tx.rng = fixedRng({ nexts: [0.999] });
   answer(f.tx, f.c, 'propose');
   assert.equal(f.tx.events.find((e) => e.type === 'proposed').success, false);
   assert.equal(f.c.spouse, null);
-  assert.equal(f.c.love.affection, 55 - P.affection.failDrop);
+  assert.equal(f.c.love.affection, P.affection.proposeAt + 5 - P.affection.failDrop);
   assert.ok(!types(f.tx).includes('married'));
   // steady: free affection
   const st = sandbox();
   st.c.love.partner = partnerOf();
-  st.c.love.affection = 55;
+  st.c.love.affection = P.affection.proposeAt + 5;
   heart(st.tx, st.c);
   answer(st.tx, st.c, 'steady');
-  assert.equal(st.c.love.affection, 55 + P.affection.steadyGain);
+  assert.equal(st.c.love.affection, P.affection.proposeAt + 5 + P.affection.steadyGain);
   assert.equal(st.tx.events.find((e) => e.type === 'dated').dateId, 'steady');
 });
 
@@ -417,6 +421,63 @@ test('engine: a married parent entering a new era grows the children and rolls a
   assert.equal(a.children.length, 2);
   assert.equal(r.events.find((e) => e.type === 'childGrew').cutin, true, '돌잔치 cut-in');
   assert.equal(r.events.find((e) => e.type === 'childBorn').mcKey, 'birth');
+});
+
+test('automatic romance: love route → 소개팅 or affection +loveRoute; one epilogue 프로포즈 per era; era affection gain', () => {
+  const aff = P.affection;
+  // single → 소개팅 (met, no prompt)
+  const a = sandbox();
+  assert.ok(loveRouteChosen(a.tx, a.c));
+  assert.equal(a.tx.events.find((e) => e.type === 'met').blindDate, true);
+  assert.equal(a.tx.room.turn.pending ?? null, null);
+  // dating → affection + loveRoute
+  const b = sandbox();
+  b.c.love.partner = partnerOf();
+  b.c.love.affection = 30;
+  loveRouteChosen(b.tx, b.c);
+  assert.equal(b.c.love.affection, 30 + aff.loveRoute);
+  // epilogue proposal: only at proposeAt, in a propose era, once per era
+  const s = sandbox();
+  s.c.love.partner = partnerOf();
+  s.c.love.affection = aff.proposeAt - 1;
+  assert.equal(proposeStep(s.tx, s.c), false);
+  s.c.love.affection = aff.proposeAt;
+  assert.equal(proposeStep(s.tx, s.c), true);
+  assert.equal(s.tx.room.turn.pending.kind, 'propose');
+  assert.equal(s.c.love.askedEra, 'young');
+  s.tx.room.turn.pending = null;
+  assert.equal(proposeStep(s.tx, s.c), false, 'once per era');
+  s.c.era = 'middle_age';
+  assert.equal(proposeStep(s.tx, s.c), true, 'again in the next era');
+  const h = sandbox({ era: 'high' });
+  h.c.love.partner = partnerOf();
+  h.c.love.affection = 90;
+  assert.equal(proposeStep(h.tx, h.c), false, 'no proposals in high school');
+  // era entry: dating affection + eraGain
+  const e = sandbox();
+  e.c.love.partner = partnerOf();
+  e.c.love.affection = 10;
+  growChildrenOnEra(e.tx, e.c);
+  assert.equal(e.c.love.affection, 10 + aff.eraGain);
+});
+
+test('family income: employed children also send 용돈 at era entries; married parents may have a baby on a spin', () => {
+  const { tx, c } = sandbox({ era: 'middle_age' });
+  c.spouse = { ...partnerOf({ stars: 2 }), salary: P.stars[2].salary, marriedTurn: 1 };
+  c.children = [{ id: 'ch1', name: '하윤', trait: 'int', talent: 'normal', stage: 'adult', bornTurn: 1, avatar: avatars.default, body: 'girl', growth: GROWTH_STEPS.length, turns: 0 }];
+  growChildrenOnEra(tx, c);
+  const al = tx.events.find((e) => e.type === 'allowance');
+  assert.equal(al.amount, allowanceAmount(tx, c, c.children[0]));
+  // spin birth roll = birthChance × perSpin
+  tx.events.length = 0;
+  tx.rng = fixedRng({ nexts: [0] });
+  growChildrenOnSpin(tx, c);
+  assert.ok(tx.events.some((e) => e.type === 'childBorn'));
+  assert.equal(c.children.length, 2);
+  tx.events.length = 0;
+  tx.rng = fixedRng({ nexts: [birthChance(c, data) * P.birth.perSpin + 0.001] });
+  growChildrenOnSpin(tx, c);
+  assert.ok(!tx.events.some((e) => e.type === 'childBorn'));
 });
 
 // ---------- presentation / MC ----------

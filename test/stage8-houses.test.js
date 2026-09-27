@@ -143,7 +143,7 @@ test('house tile → prompt: buy / pass, cash-only (disabled), one net moneyChan
   answer(tx, c, 'buy:villa');
   const bought = tx.events.find((e) => e.type === 'houseBought');
   assert.deepEqual([bought.houseId, bought.price, bought.tradeIn, bought.swap], ['villa', 700, 0, false]);
-  assert.deepEqual(c.house, { id: 'villa', price: 700, value: 700, boughtTurn: tx.room.turn.turnNo });
+  assert.deepEqual(c.house, { id: 'villa', price: 700, value: def('villa').value, boughtTurn: tx.room.turn.turnNo });
   assert.equal(c.money, 100);
   assert.deepEqual(tx.events.filter((e) => e.type === 'moneyChanged').map((e) => [e.reason, e.delta]), [['house', -700]]);
   assert.deepEqual(tx.room.houseOwners, { villa: [c.id] });

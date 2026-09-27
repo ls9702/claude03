@@ -793,24 +793,25 @@
 ## Stage 8 — romance, family, real estate (server)
 - Data (`loadData` / `gameData().partners|houses|avatars`, `/api/meta.partners|houses`): `server/data/partners.json` — `traits`
   (int 지력형 / str 체력형 / charm 매력형 / luck 운형 `{name, icon, desc, weight}`), `stars` 1..4 `{salary, allowanceMult, weight}`
-  (60/100/150/200 만원 per salary tile; 고교 전원 만남 is always ★1), `names.boy|girl` (24 each), `meetEras`, `affection {meet 30,
-  dateGain, matchBonus 10, proposeAt 50, max 100, failDrop 15, steadyGain 10, familyGain 10}`, `propose {base, perAffection, charm,
-  luck, match, min, max, eras}`, `dates[]` (walk / library int / hiking str / concert charm / amusement luck: `{cost, gain}`), `costs
-  {scale per era, wedding, weddingGift, birth}`, `birth {eras young/middle_age, base, perAffection, perChild, max}`, `children {max 4,
-  genius {base, match, luck}, growTurns 2, dolGift, schoolCost, examGift, allowance 50, talentMult}`, `outings[]`, `avatar` (hair /
+  (190/270/370/500 만원 per salary tile; 고교 전원 만남 is always ★1), `names.boy|girl` (24 each), `meetEras`, `affection {meet 30,
+  dateGain, matchBonus 8, proposeAt 60, max 100, failDrop 15, steadyGain 10, familyGain 10, eraGain 5, loveRoute 30}`, `propose {base 0.45, perAffection, charm,
+  luck, match, min, max, eras}`, `dates[]` (walk 5 / library int 12 / hiking str 12 / concert charm 16 / amusement luck 16: `{cost, gain}`), `costs
+  {scale per era, wedding, weddingGift, birth}`, `birth {eras young/middle_age, base 0.6, perAffection, perChild, max, perSpin 0.3}`, `children {max 4,
+  genius {base, match, luck}, growTurns 1, dolGift, schoolCost, examGift, allowance 70, talentMult, allowanceOnEra?}`, `outings[]`, `avatar` (hair /
   outfit (boy / girl / child) / colour pools, `traitAccessory`). `server/data/houses.json` — 6 fixed ids `oneroom villa apartment
-  hanok penthouse jeju_villa` `{name, icon, price, value, capacity 1 | null (apartment), eras, lucky? (jeju), desc}`, `listings` 3,
+  hanok penthouse jeju_villa` `{name, icon, price, value (= price × 1.1; jeju 1500 → 2500), capacity 1 | null (apartment), eras, lucky? (jeju), desc}`, `listings` 3,
   `tradeIn` 0.7, `subscription {houseId apartment, chance, discount}`, `luckyChance {money, other, perLuck}`, `market {era senior,
   min 0.8, max 1.5}`. news.json: `housing_boom` (young/middle_age ×1.3), new `housing_slump` (middle_age/senior ×0.8) and
   `redevelopment` (senior ×1.2) = `housePriceMult`; `birth_bonus.birthBonus` 300 = 출산장려금. Board: `heart` love route 7 (career /
-  money 1, high 2, senior 1), `house` money route 2 + senior 1; heart / house left `placeholders` (only treasure remains).
+  money 1, high 1, senior 1), `house` money route 6, senior 6, love / career 2; heart / house left `placeholders` (only treasure remains).
   manifest: `bg-park` / `bg-house` (todo; scenes `park` → mountain-trail, `house` → office in `sceneFallbacks`).
 - Modules: `server/game/family.js` (init / `ensureFamily` / `ensureRoomFamily`, `topStats` / `traitMatch` (찰떡궁합 = partner trait
   is one of my best stats), `makePartner` / `randomLook` (seeded, sanitized full avatars; children inherit a parent's skin / hair
-  colour), `schoolMeet`, `resolveHeartTile`, `blindDate`, `proposeChance`, `birthChance`, `bearChild`, `growChildrenOnEra|OnSpin`,
+  colour), `schoolMeet`, `resolveHeartTile`, `blindDate`, `loveRouteChosen`, `proposeStep`, `proposeChance`, `birthChance`, `bearChild`, `growChildrenOnEra|OnSpin`,
   `allowanceAmount` / `payAllowances`, `spouseSalary`; prompts meet / date / propose) and `server/game/houses.js` (`houseOwners` /
   `syncHouseOwners`, `houseAvailable`, `priceMult`, `tradeInValue`, `houseListings`, `resolveHouseTile`, `buyHouse`,
-  `drawHousingMarket`; prompt house). spaces.js: `heart` / `house` tile cases; routeChoice `love` → `blindDate`.
+  `drawHousingMarket`; prompt house). spaces.js: `heart` / `house` tile cases; routeChoice `love` → `loveRouteChosen`; growth.js `lifeStep` ends with
+  `proposeStep`.
 - Character (public): `love {candidates [partnerSpec] (the open 만남 prompt's people, else []), partner, affection, dates}`,
   partnerSpec = `{id 'pt<n>', name, trait, stars, body (opposite of the character), avatar}`; `spouse` = partnerSpec + `{salary,
   marriedTurn}` | null; `children [{id 'ch<n>', name, trait, talent genius|normal, stage baby|kid|teen|adult, bornTurn, avatar, body,
@@ -821,15 +822,17 @@
   (affection meet + matchBonus on 찰떡궁합) → ONE `schoolMeet {eraId, pairs [{charId, partner}]}` (no prompt). Heart tile: single →
   `meet` prompt (meetEras: high+, earlier eras only a log); partner → `date` prompt, or `propose` when affection ≥ proposeAt in a
   propose era (young+; a date that reaches it opens the propose prompt at once); married → birth roll (`birthChance`, birth eras,
-  < 4 children) else a family outing (outings money × scale, stats, affection + familyGain). 소개팅: choosing the love route while
-  single → a partner at once (`met {blindDate: true}`, no prompt). Proposal: `proposeChance` = base + (affection − proposeAt) ×
+  < 4 children) else a family outing (outings money × scale, stats, affection + familyGain). Love route (`loveRouteChosen`): single →
+  소개팅 = a partner at once (`met {blindDate: true}`, no prompt); dating → affection + `loveRoute`. Era entries add `eraGain` to a
+  dating couple. Epilogue proposal (`proposeStep`, end of `lifeStep`): a dating couple at ≥ proposeAt in a propose era gets ONE
+  `propose` prompt per era (`love.askedEra`, set by every propose prompt; heart tiles may still ask again). Proposal: `proposeChance` = base + (affection − proposeAt) ×
   perAffection + charm × 매력 + luck × 운 (+ match), clamped → success = wedding, fail = affection − failDrop. Wedding: spouse (salary = ★
   salary), 축의금 `weddingGift × scale` from EVERY other character capped at their cash (moneyChanged `weddingGift` pairs → Σ
   conserved) − wedding cost (capped at cash). Salary tiles: `salary.spouseAmount` = ★ salary × salaryEraMult × news salaryMult →
   moneyChanged `spouseSalary`; employed children send 용돈 (`allowance` + moneyChanged `allowance`) = allowance × talentMult ×
-  spouse ★ allowanceMult × salaryEraMult. Birth (`bearChild`): genius = base + match (spouse trait is my best stat) + luck ×
+  spouse ★ allowanceMult × salaryEraMult — also paid at every era entry of the parent (before the children's growth step). Birth (`bearChild`): genius = base + match (spouse trait is my best stat) + luck ×
   genius.luck; trait = spouse's (50 %) or my best stat; moneyChanged `birth` (cost) + `birthBonus` (news). A married parent also
-  rolls a birth at every era entry. Growth steps (`GROWTH_STEPS`): each era entry of the parent + every `growTurns` parent spins
+  rolls a birth at every era entry and `birthChance × birth.perSpin` on every spin. Growth steps (`GROWTH_STEPS`): each era entry of the parent + every `growTurns` parent spins
   (no double step on an era-entry spin) → dol (stage kid; 돌잔치 gifts `dolGift × scale` from every other character, capped) →
   school (teen; cost `school`) → exam (teen; genius → elite 축하금, normal → college (chance) small 축하금 / fail) → job (adult;
   용돈 from then on). House tile (job eras): `houseListings` = `listings` distinct available houses of the era (capacity: holders
@@ -866,6 +869,12 @@
   school (schoolMeet, child school / exam), office (child job), house (houses / market). MC situations: marriage (married, big),
   proposeFail (medium), birth (childBorn, big), house (houseBought, medium), market (houseValueChanged, big, studio), schoolMeet
   (medium); `tileSituations` stays `{}` (never on a heart / house TILE landing).
+- Tuning (lifetime mode, seed 11 × 300 `random | --family default | --policy cpu`): married 53.6 / 69.5 / 50.7 % (love-route takers
+  79 / 97 / 99 %), children per married 1.16 / 1.42 / 1.31, genius 25 / 25 / 27 %, 용돈 = 4.3 / 4.0 / 4.4 % of parents' income,
+  spouse salary = 6.0 / 5.9 / 5.6 % of married characters' income, house at the end 26 / 28 / 36 %; route net worth ±7 % (random /
+  default; the CPU policy's ±55 % is route SELECTION: rich CPUs pick the money route); lifetime spins 79.0–79.5, 14.4–14.8
+  decisions per lifetime character; bias 2000 × seed 1: 11.5–13.5 %, spread −0.01. The simulate.js Stage 8 block prints a
+  `[인생 전체 …명]` line with these. First version (below) for reference.
 - Simulation (`scripts/simulate.js` Stage 8 block; `--family default` answers 만남 / 데이트 / 프로포즈 with the prompt default):
   seed 11 × 300 random: lifetime 79.4 spins (Stage 7: 79.0), 13.8 decisions per lifetime character (date 0.65, propose 0.48,
   house 0.24), married 14.7 % (young love route 24 % vs career 12 % / money 10 %); `--family default`: married 27.4 % (love route

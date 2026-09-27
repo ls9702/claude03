@@ -178,8 +178,10 @@ test('prompt heuristics: route by stats / cash, jobs by salary fit, exam by odds
   // career: college when admitted
   assert.equal(pick('career', () => {}), 'college');
   // job tile: promotion with a good chance, overtime with a poor one (injured → no promotion)
-  assert.equal(pick('jobTile', (c) => (normal(c), (c.stats = { int: 10, str: 2, charm: 2, luck: 10 }), (c.education = 'elite'))), 'promotion');
-  assert.equal(pick('jobTile', (c) => (normal(c), (c.stats = { int: 10, str: 2, charm: 2, luck: 10 }), (c.job.injured = 2))), 'overtime');
+  // (the seeded 전직 candidate depends on the board RNG → dropped here; the change rule has its own case)
+  const noChange = (r) => (r.turn.pending.options = r.turn.pending.options.filter((o) => o.id !== 'change'));
+  assert.equal(pick('jobTile', (c, r) => (normal(c), (c.stats = { int: 10, str: 2, charm: 2, luck: 10 }), (c.education = 'elite'), noChange(r))), 'promotion');
+  assert.equal(pick('jobTile', (c, r) => (normal(c), (c.stats = { int: 10, str: 2, charm: 2, luck: 10 }), (c.job.injured = 2), noChange(r))), 'overtime');
   // hidden job: accept
   assert.equal(pick('hiddenJobOffer', () => {}), 'accept');
   // shop: nothing below the reserve
