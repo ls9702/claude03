@@ -13,9 +13,10 @@
 - Tests: `npm test` runs `node --test` over `test/*.test.js` (Node 22 no longer accepts a bare directory argument).
   Use `node:test` + `node:assert/strict`, temp dirs for any disk I/O. Keep the whole suite fast (<10s).
 - Never commit secrets; keys via env or `data/secrets.json` (gitignored along with all of `data/`).
-- **Gemini API is OFF by the user's decision (billing).** Never set a key, never call the API or run `scripts/gen-assets.js` /
-  `part-qa.js --fix`. New art comes from the user's hand-made Gemini-app images: `assets-inbox/<asset id>.png|webp` →
-  `node scripts/import-assets.js` (prompts in `docs/asset-prompts.md`).
+- **Gemini API is OFF in this repo's tooling by the user's decision (billing).** Never set a key, never call the API or run
+  `scripts/gen-assets.js` / `part-qa.js --fix`. Exception: the user's OWN local Gemini skill (on their PC) may generate images
+  for an explicit request file in `docs/asset-requests/*.json` — it saves PNGs to `assets-inbox/` (test batches: `assets-inbox/test/`).
+  New art comes from the user's hand-made images: `assets-inbox/<asset id>.png|webp` → `node scripts/import-assets.js` (prompts in `docs/asset-prompts.md`).
 - Do not run git commands; the orchestrator commits.
 
 ## Layout (Stage 1)

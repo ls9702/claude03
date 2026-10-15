@@ -6,3 +6,4 @@ node_modules/
 public/vendor/
 assets-inbox/*
 !assets-inbox/README.md
+!assets-inbox/test/

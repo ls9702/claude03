@@ -1,0 +1,73 @@
+{
+  "batch": "chiikawa-test",
+  "purpose": "Feasibility test before switching the game art to the Chiikawa style. Generate every item, save each as <id>.png into assets-inbox/test/, then report the questions in docs/asset-requests/chiikawa-test.md.",
+  "output_dir": "assets-inbox/test",
+  "style": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border.",
+  "common": {
+    "character_canvas": "Portrait 2:3 (1024x1536). ONE character, full body, front view, standing on an invisible floor, centred horizontally, feet at about 85% of the height, the character about 55% of the image height. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+    "icon_canvas": "Square 1:1 (1024x1024). One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+    "background_canvas": "Landscape 16:9 (1920x1080). Scenery only, no characters, no text. Leave open empty ground in the lower centre for characters to stand."
+  },
+  "items": [
+    {
+      "id": "ch-chiikawa-base",
+      "canvas": "character_canvas",
+      "refs": [],
+      "prompt": "{{style}} Chiikawa, the small round white creature with tiny round ears on top of the head, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. {{canvas}}"
+    },
+    {
+      "id": "ch-chiikawa-noarms",
+      "canvas": "character_canvas",
+      "refs": ["ch-chiikawa-base"],
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Do not move or redraw anything else."
+    },
+    {
+      "id": "ch-chiikawa-eyes-closed",
+      "canvas": "character_canvas",
+      "refs": ["ch-chiikawa-base"],
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same and ONLY change the eyes to closed eyes (two small gentle downward-curved lines). Same position, size, framing and magenta background."
+    },
+    {
+      "id": "ch-chiikawa-mouth-open",
+      "canvas": "character_canvas",
+      "refs": ["ch-chiikawa-base"],
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same and ONLY change the mouth to a small open mouth, as if talking. Same position, size, framing and magenta background."
+    },
+    {
+      "id": "ch-chiikawa-cry",
+      "canvas": "character_canvas",
+      "refs": ["ch-chiikawa-base"],
+      "prompt": "Edit the attached image. Keep the same character, position, size, framing and magenta background, and change ONLY the face to Chiikawa's famous crying face: eyes squeezed, big wobbly mouth, big tear drops streaming down. Arms stay where they are."
+    },
+    {
+      "id": "ch-chiikawa-sheet-jump",
+      "canvas": "Square 1:1 (1024x1024), a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": ["ch-chiikawa-base"],
+      "prompt": "{{style}} A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. {{canvas}}"
+    },
+    {
+      "id": "ch-hachiware-base",
+      "canvas": "character_canvas",
+      "refs": ["ch-chiikawa-base"],
+      "prompt": "{{style}} Hachiware, the small round white cat-like creature with pointed cat ears and a blue-grey 'hachiware' split pattern on the top of the head, standing front view with a cheerful smile. Same art style, same pose, same scale and same position in the frame as the attached image. Both short arms held slightly away from the body. {{canvas}}"
+    },
+    {
+      "id": "npc-friend-penguin",
+      "canvas": "character_canvas",
+      "refs": ["ch-chiikawa-base"],
+      "prompt": "{{style}} An ORIGINAL character (not from the manga) in the same art style and at the same scale as the attached image: a small chubby baby penguin with a tiny yellow beak and a little red scarf, standing front view, friendly smile, short flippers held slightly away from the body. {{canvas}}"
+    },
+    {
+      "id": "prop-hat-chef",
+      "canvas": "icon_canvas",
+      "refs": [],
+      "prompt": "{{style}} A small white chef's toque hat, simple cute shape with a thin warm-grey outline, as a game costume prop. {{canvas}}"
+    },
+    {
+      "id": "bg-ch-park",
+      "canvas": "background_canvas",
+      "refs": [],
+      "prompt": "{{style}} A peaceful small park in the Chiikawa world: soft green grass, round pastel trees, a little wooden bench, flowers, a pale blue sky with fluffy clouds, gentle crayon-like soft colours. {{canvas}}"
+    }
+  ]
+}
