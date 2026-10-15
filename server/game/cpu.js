@@ -397,7 +397,7 @@ function affordable(ctx, c, o, reserveShare = 0.5) {
   return (c.money ?? 0) - priceOf(o) >= knobs(c, ctx.room).reserve * reserveShare;
 }
 
-/** 만남: the best candidate (★, 맞벌이 월급, 찰떡궁합) — a CPU never passes on love. */
+/** 새 친구 (meet): the best candidate (★, 단짝 생활비, 찰떡궁합) — a CPU never passes on a friend. */
 function answerMeet(ctx, c, p) {
   const people = enabled(p).filter((o) => hasField(o, 'partnerId') || hasField(o, 'stars'));
   if (!people.length) return null;
@@ -405,7 +405,7 @@ function answerMeet(ctx, c, p) {
   return byMax(people, (o) => num(o.stars) + num(o.salary) / 100 + (o.match ? 1.5 : 0) + rng.next() * 0.01)?.id;
 }
 
-/** 데이트: most affection for the money (호감도 gain − cost), within the reserve; else the cheapest. */
+/** 같이 놀기 (date): most 친밀도 for the money (gain − cost), within the reserve; else the cheapest. */
 function answerDate(ctx, c, p) {
   const opts = enabled(p);
   const ok = opts.filter((o) => affordable(ctx, c, o));

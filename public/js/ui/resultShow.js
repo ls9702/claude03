@@ -8,7 +8,7 @@
 //   const rs = createResultScreen({ getMeta, cutin, act, toast, … });
 //   rs.render(displayRoom, host, { autoplay }); rs.onEvents(events); rs.play(); rs.skip(); rs.reset();
 import { esc, won } from '../format.js';
-import { hydratePortraits, portraitHtml } from './avatar2d.js';
+import { hydratePortraits, portraitHtml } from './chara.js';
 import { createMcBooth, mcHash, mcScriptMs, playMcScript, resultMcFrom } from './mc.js';
 import { poseFor, TONES } from './cutinMap.js';
 import {
@@ -346,7 +346,7 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
       import('../scene/podium3d.js')
         .then(({ createPodium3D }) => {
           if (!el.isConnected && !el.parentNode) return;
-          view.pd = createPodium3D(el.querySelector('canvas'), { defs: meta().avatars, entries: podiumEntries(room), reducedMotion: reduced() });
+          view.pd = createPodium3D(el.querySelector('canvas'), { defs: meta(), entries: podiumEntries(room), reducedMotion: reduced() });
           if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug')) globalThis.__podium3d = view.pd;
         })
         .catch((err) => {

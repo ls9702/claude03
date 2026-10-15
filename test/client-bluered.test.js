@@ -47,7 +47,7 @@ const META = {
       { id: 'taxi', name: '택시', icon: '🚕', kind: 'instant', color: 'red', desc: '큰 값', price: 40 },
       { id: 'lawyer', name: '변호사 상담권', icon: '⚖️', kind: 'passive', color: 'red', desc: '방어', price: 60 },
       { id: 'cut_line', name: '새치기', icon: '🏃', kind: 'sabotage', color: 'red', desc: '−3칸', price: 40 },
-      { id: 'marriage_luck', name: '결혼운◎', icon: '💞', kind: 'held', color: 'blue', desc: '호감도 +5', hold: { until: 'married' } },
+      { id: 'marriage_luck', name: '단짝운◎', icon: '💞', kind: 'held', color: 'blue', desc: '친밀도 +5', hold: { until: 'married' } },
       { id: 'research', name: '연구열심', icon: '🔬', kind: 'held', color: 'blue', desc: '의사·연구원', effect: { requirement: true } },
       { id: 'merit', name: '공적 카드', icon: '🏅', kind: 'merit', color: 'blue', desc: '승진' },
       { id: 'big_roll', name: '큰 수 카드', icon: '🔼', kind: 'instant', color: 'red', desc: '6~10', effect: { range: [6, 10] } },
@@ -116,7 +116,7 @@ test('colours and tags: blue 보유 / red 사용 · 자동 / status 부상 (stat
   assert.equal(cardColor({ kind: 'instant', color: 'blue' }), 'blue');
   assert.equal(cardTag({ kind: 'passive' }), '자동');
   assert.equal(cardKindLabel(cardInfo('merit', META)), '🏅 공적 카드 · 보유');
-  assert.match(cardEffectText(cardInfo('marriage_luck', META)).text, /결혼하면 사라져요/);
+  assert.match(cardEffectText(cardInfo('marriage_luck', META)).text, /단짝과 같이 살면 사라져요/);
   assert.match(cardEffectText(cardInfo('injury', META)).text, /쓸 수도, 주고받을 수도 없어요/);
   // an unknown blue card from a newer server is a held card
   assert.equal(cardInfo('mystery', { cards: { cards: [{ id: 'mystery', color: 'blue', kind: 'weird' }] } }).kind, 'held');
@@ -253,8 +253,8 @@ test('requirement badges: 🔬 card badges, checked against a character (missing
   assert.equal(meritNeed({ job: { id: 'politician', rank: 1 } }, META.jobs), null);
 });
 
-test('cardLost: chips (💍 소멸 · 🩹 회복 · 🗑️ 버림 · 🏅 ×n), follow-up chips + lone banners, tags', () => {
-  assert.equal(cardLostInfo({ cardId: 'marriage_luck', reason: 'married' }, META).text, '💍 💞 결혼운◎ 소멸');
+test('cardLost: chips (💞 소멸 · 🩹 회복 · 🗑️ 버림 · 🏅 ×n), follow-up chips + lone banners, tags', () => {
+  assert.equal(cardLostInfo({ cardId: 'marriage_luck', reason: 'married' }, META).text, '💞 💞 단짝운◎ 소멸');
   assert.equal(cardLostInfo({ cardId: 'injury', reason: 'healed' }, META).text, '🩹 부상 회복 · 🤕 부상 카드 사라짐');
   assert.equal(cardLostInfo({ cardId: 'taxi', reason: 'discarded' }, META).text, '🗑️ 🚕 택시 버림');
   const chips = cardLostChips(

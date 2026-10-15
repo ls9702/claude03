@@ -85,7 +85,7 @@ test('awards.json / titles.json: schema (metrics exist, tie rules, bonuses withi
     assert.ok(t.name && t.icon && t.desc && Number.isFinite(t.priority), t.id);
     if (!t.fallback) walk(t.when);
   }
-  for (const name of ['흙수저 신화', '파산의 왕', '만년 공무원', '연애 고자', '대가족', '부동산 큰손', '로또 인생', '워커홀릭']) assert.ok(T.some((t) => t.name === name), name);
+  for (const name of ['흙수저 신화', '파산의 왕', '만년 공무원', '영원한 솔로', '대가족', '부동산 큰손', '로또 인생', '워커홀릭']) assert.ok(T.some((t) => t.name === name), name);
 });
 
 test('computeAwards: best value wins; ties all / split / place; medals qualify everyone; min thresholds', () => {
@@ -155,7 +155,7 @@ test('titles: conditions (all / any / not / eq / min / max, missing facts fail);
   assert.deepEqual(titles[c.id], ['ordinary']);
   assert.deepEqual(titles[d.id], ['turtle'], 'last to arrive (≥ 3 characters)');
   for (const list of Object.values(titles)) assert.ok(list.length >= 1 && list.length <= data.titles.perCharacter);
-  // 연애 고자: adult life, never married, a failed proposal
+  // 영원한 솔로: adult life, never married, a failed proposal
   const lz = endRoom([{ era: 'senior', spouse: null, record: { proposeFails: 1, submaps: {} } }, { era: 'senior', spouse: { name: 'x' } }]);
   const lt = computeTitles(lz, data, { ranking: computeRanking(lz, { data }) });
   assert.ok(lt[lz.characters[0].id].includes('love_zero'));
@@ -198,7 +198,7 @@ test('highlights: dramatic moments per character, top 8 by score kept (chronolog
   const [a, b] = room.characters;
   const ev = (e) => ({ tone: 'good', scene: 'office', emotion: 'joy', ...e });
   const events = [
-    ev({ type: 'married', charId: a.id, spouse: { name: '서연', avatar: { body: 'girl' } } }),
+    ev({ type: 'married', charId: a.id, spouse: { name: '콩이', species: 'penguin', avatar: { npc: 'penguin', props: {} } } }),
     ev({ type: 'childBorn', charId: a.id, child: { name: '하윤', talent: 'genius' } }),
     ev({ type: 'submapResult', charId: a.id, submap: 'reversal', optionId: 'lotto', result: 'jackpot', amount: 2965, prize: 3000 }),
     ev({ type: 'cardUsed', charId: b.id, cardId: 'tax_audit', uid: 'k1', cardKind: 'sabotage', targetId: a.id }),
@@ -208,14 +208,14 @@ test('highlights: dramatic moments per character, top 8 by score kept (chronolog
   recordHighlights(room, events, { data });
   const ha = room.highlights[a.id];
   assert.deepEqual(ha.map((h) => h.type), ['married', 'childBorn', 'submapResult', 'cardUsed']);
-  assert.match(ha[0].text, /서연/);
+  assert.match(ha[0].text, /콩이/);
   assert.ok(ha[2].score > ha[0].score, 'the jackpot beats the wedding');
   assert.deepEqual(room.highlights[b.id].map((h) => h.type), ['cardUsed', 'moneyChanged']);
   for (const h of ha) {
     assert.ok(h.turnNo >= 1 && h.tone && h.scene && h.text);
     for (const v of Object.values(h.eventRef)) assert.ok(v === null || typeof v !== 'object', 'scalar eventRef');
   }
-  assert.equal(ha[0].eventRef.spouseName, '서연');
+  assert.equal(ha[0].eventRef.spouseName, '콩이');
   // cap: 12 more big money swings → 8 kept, the best scores, still in order
   const many = Array.from({ length: 12 }, (_, i) => ev({ type: 'moneyChanged', charId: a.id, delta: 300 + i * 100, reason: 'tile', money: 5000, debt: 0 }));
   recordHighlights(room, many, { data });

@@ -1,0 +1,23 @@
+{
+  "_comment": "반려동물 (CH-1, 예전 '자녀'). 단짝과 함께 사는 캐릭터가 하트 칸·시대 진입·룰렛마다 입양 판정(partners.json birth / children 규칙 그대로) → character.children[] = {id 'ch<n>', name, species, trait, talent genius|normal, stage baby|kid|teen|adult, bornTurn, avatar: {pet: 종 id}, growth, turns}. 로스터 종(토끼·해달·하늘다람쥐·시사·고양이)과 겹치지 않는 종만. stages = 성장 단계 이름·크기(클라이언트 표시용 배수). 성장 단계 kind: dol 🎂 입양 파티 → school 🎒 펫 훈련 학교 → exam 🏆 펫 경연대회(천재 펫 → 우승 / 입상 / 탈락) → job ⭐ 펫 스타 데뷔(이후 월급날마다 펫 광고 수입). id는 에셋 pet-<id>-* 키(바꾸지 말 것).",
+  "species": [
+    { "id": "goldfish", "name": "금붕어", "icon": "🐠", "colors": { "body": "#ff8a3a", "line": "#7a3410", "blush": "#ffb4c2", "accent": "#ffd0a0" }, "size": 0.8, "promptDesc": "a round chibi orange goldfish with a flowing tail fin and big shiny eyes, simple cute style" },
+    { "id": "chick", "name": "병아리", "icon": "🐤", "colors": { "body": "#fff07a", "line": "#6a5a1a", "blush": "#ffb08a", "accent": "#ff9f3a" }, "size": 0.75, "promptDesc": "a tiny round chibi yellow chick with a small orange beak and stubby wings, simple cute style" },
+    { "id": "turtle", "name": "거북이", "icon": "🐢", "colors": { "body": "#9fd27a", "line": "#2f5a22", "blush": "#ffb4c2", "accent": "#6a8a3a" }, "size": 0.85, "promptDesc": "a round chibi green turtle with a patterned shell and a friendly smile, simple cute style" },
+    { "id": "hedgehog", "name": "고슴도치", "icon": "🦔", "colors": { "body": "#f2dcc0", "line": "#5a4030", "blush": "#ffb4c2", "accent": "#8a6a4a" }, "size": 0.8, "promptDesc": "a round chibi hedgehog with soft brown spines, a cream face and a tiny black nose, simple cute style" },
+    { "id": "parrot", "name": "앵무새", "icon": "🦜", "colors": { "body": "#5ccf6a", "line": "#1f5a2a", "blush": "#ffb08a", "accent": "#ffcf3a", "extra": "#ff5a4a" }, "size": 0.85, "promptDesc": "a round chibi green parrot with a yellow face, a red head crest and a curved beak, simple cute style" },
+    { "id": "guinea_pig", "name": "기니피그", "icon": "🐁", "colors": { "body": "#e8b47a", "line": "#5a3a1a", "blush": "#ffb4c2", "accent": "#ffffff" }, "size": 0.85, "promptDesc": "a round chibi guinea pig with tan and white patches, tiny ears and a pink nose, simple cute style" },
+    { "id": "puppy", "name": "강아지", "icon": "🐶", "colors": { "body": "#f5e6d0", "line": "#5a4430", "blush": "#ffb4c2", "accent": "#c8945a" }, "size": 0.9, "promptDesc": "a round chibi cream puppy with floppy brown ears and a wagging tail, simple cute style" },
+    { "id": "snail", "name": "달팽이", "icon": "🐌", "colors": { "body": "#f5d8b0", "line": "#5a4430", "blush": "#ffb4c2", "accent": "#e08a6a" }, "size": 0.75, "promptDesc": "a round chibi snail with a pink swirl shell, two eye stalks and a sleepy smile, simple cute style" }
+  ],
+  "names": [
+    "방울", "꼬물", "포도", "사과", "자두", "감자", "고구마", "까미", "뽀삐", "도리", "몽실", "꼬꼬", "삐약", "느릿",
+    "통통", "말랑", "보들", "동글", "찰떡", "꿀비", "새싹", "콩떡", "바둑", "치즈", "누룽지", "만두", "꼬마콩", "알콩"
+  ],
+  "stages": {
+    "baby": { "name": "새끼", "scale": 0.5 },
+    "kid": { "name": "꼬마", "scale": 0.64 },
+    "teen": { "name": "청소년", "scale": 0.78 },
+    "adult": { "name": "어른", "scale": 0.9 }
+  }
+}

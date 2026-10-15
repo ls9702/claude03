@@ -27,13 +27,16 @@ import { createOrbitControls } from './controls.js';
 import { buildProps } from './props.js';
 import { stripGeometry, mergeColored, colored, mat4 } from './geo.js';
 import { makeTextSprite, disposeSprite, canvasHasEmoji, canvasTexture, FONT_STACK } from './sprites.js';
-import { clamp, lerp, hopHeight, easeInOutCubic, catmullRom, arcLengths, pointAt, rouletteRegion } from './math.js';
+import { clamp, lerp, easeInOutCubic, catmullRom, arcLengths, pointAt, rouletteRegion, hopPose, landPose, bobPose, breathePose } from './math.js';
 import { loadAssetIndex, findAsset } from '../assets.js';
 import { won } from '../format.js';
 import { cardLostInfo, modRange, spinNote } from '../shared/cards.js';
 import { aimShort, aimText } from '../ui/rouletteSkill.js';
 
 const TILE_SIZE = 1.64;
+const SETTLE_SEC = 0.28; // CH-1 pawn settle wobble after a move
+const REST_POSE = { y: 0, sy: 1, sxz: 1 };
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TILE_TOP = 0.27;
 const NARROW_TAGS_PX = 700; // canvas CSS width below which only current / mine / moving pawns show name tags
 /** Asset-studio icon ids (manifest meta.tile) per tile type. */
@@ -149,7 +152,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     wantEra: null, // the state's era (switched when the eraTransition animation plays, else once idle)
     staticGroup: null,
     labels: { routes: {}, eras: [] },
-    pawns: new Map(), // charId → { pawn, tileId, moving, order, target: Vector3, finished }
+    pawns: new Map(), // charId → { pawn, tileId, moving, order, target: Vector3, finished, settleAt? }
+    reduced: reducedMotion(), // prefers-reduced-motion: no idle breathing / settle wobble (hops stay)
     chars: [],
     current: null, // state's current char (applied when idle)
     shownCurrent: null, // ring / follow target actually shown
@@ -789,21 +793,24 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     const hopSec = preset.name === 'high' ? 0.3 : 0.26;
     const a = new THREE.Vector3();
     const b = new THREE.Vector3();
+    const bs = P.pawn.baseScale ?? 0.82;
     for (const id of path) {
       a.copy(P.pawn.group.position);
       tileWorld(id, b);
       P.yaw = Math.atan2(b.x - a.x, b.z - a.z);
+      // CH-1 squash & stretch: anticipation squash → stretched take-off → landing squash (travel only while airborne)
       await tweens.add(hopSec, (k) => {
-        P.pawn.group.position.lerpVectors(a, b, k);
-        P.pawn.holder.position.y = hopHeight(k, 0.75);
-        const sq = k > 0.85 ? 1 - (k - 0.85) * 1.2 : 1;
-        P.pawn.holder.scale.set(0.82 / Math.sqrt(sq), 0.82 * sq, 0.82 / Math.sqrt(sq));
+        const pose = hopPose(k, 0.75);
+        P.pawn.group.position.lerpVectors(a, b, pose.move);
+        P.pawn.holder.position.y = pose.y;
+        P.pawn.holder.scale.set(bs * pose.sxz, bs * pose.sy, bs * pose.sxz);
       });
       P.tileId = id;
       if (id === startId && path.length > 1) emotion.pop(e.charId, '🔁', { dur: 1.1 }); // wrapped past the start
     }
-    P.pawn.holder.scale.setScalar(0.82);
+    P.pawn.holder.scale.setScalar(bs);
     P.pawn.holder.position.y = 0;
+    P.settleAt = performance.now() / 1000; // settle wobble (frame loop)
     P.moving = false;
     arrange();
   }
@@ -1188,8 +1195,14 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       const grp = P.pawn.group;
       if (!P.moving) {
         grp.position.lerp(P.target, 1 - Math.exp(-dt * 10));
-        const bob = id === S.shownCurrent && !animator.busy() ? Math.abs(Math.sin(t * 3.2)) * 0.14 : 0;
-        P.pawn.holder.position.y = lerp(P.pawn.holder.position.y, bob, 0.3);
+        // CH-1: settle wobble after a move > the current pawn's squashy bounce > gentle breathing for everyone
+        const settle = P.settleAt != null ? (t - P.settleAt) / SETTLE_SEC : 2;
+        const calm = preset.name === 'tv' || S.reduced;
+        const pose = settle < 1 && !calm ? landPose(settle) : id === S.shownCurrent && !animator.busy() ? bobPose(t) : calm ? REST_POSE : breathePose(t, P.order * 1.7);
+        const bs = P.pawn.baseScale ?? 0.82;
+        const h = P.pawn.holder;
+        h.position.y = lerp(h.position.y, pose.y, 0.3);
+        h.scale.set(lerp(h.scale.x, bs * pose.sxz, 0.35), lerp(h.scale.y, bs * pose.sy, 0.35), lerp(h.scale.z, bs * pose.sxz, 0.35));
       }
       grp.rotation.y = lerp(grp.rotation.y, P.yaw ?? 0, 1 - Math.exp(-dt * 12));
     }
@@ -1309,7 +1322,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         seen.add(c.id);
         let P = S.pawns.get(c.id);
         if (!P) {
-          const pawn = createPawn({ avatar: c.avatar, defs: meta?.avatars, name: tagName(c), isMe: !!c.isMe });
+          const pawn = createPawn({ avatar: c.avatar, defs: meta, name: tagName(c), isMe: !!c.isMe }); // CH-1: roster / props from /api/meta
           if (S.template) pawn.useTemplate(S.template);
           scene.add(pawn.group);
           P = { pawn, tileId: startTileId(), moving: false, order, target: new THREE.Vector3(), yaw: 0, isMe: !!c.isMe, crowded: false, avatar: c.avatar, avatarKey: JSON.stringify(c.avatar) };

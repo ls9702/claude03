@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Headless full-game simulation over the pure engine.
 //   node scripts/simulate.js --games 200 --seed 1 [--verbose]
-// Random decisions, 2–8 characters (random body) owned by 1–4 sessions, random modes/eraTurns.
+// Random decisions, 2–8 characters (random roster look, CH-1: no gender) owned by 1–4 sessions, random modes/eraTurns.
 // Exits non-zero on any exception or stuck game. Stage 6 report: job distribution, 알바 %, hidden-job unlocks,
 // salary share of income, stats by era, final net worth by education / route, prompts per character, spins.
 // Stage 7 policy: 50 % chance to play a playable card before a spin (random sabotage target), random shop /
@@ -44,7 +44,7 @@
 // `simulateBias({games, seed})` (used by test/balance.test.js).
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { gameData } from '../server/data/index.js';
+import { gameData, getRoster } from '../server/data/index.js';
 import { minEraTurns, validateRoomConfig } from '../server/game/config.js';
 import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
@@ -53,6 +53,9 @@ import { lottoExpectedValue } from '../server/game/holidays.js';
 import { cpuDecide, cpuPassScores, cpuSkillTarget, cpuTradeAccept } from '../server/game/cpu.js';
 import { ROULETTE_MODES } from '../server/game/roulette.js';
 import { cardBlockReason, spinFixed, transferable } from '../server/game/cards.js';
+
+/** CH-1: player looks are roster characters (no gender); a random one per character. */
+const ROSTER_IDS = getRoster().characters.map((x) => x.id);
 
 function arg(name, def) {
   const i = process.argv.indexOf(`--${name}`);
@@ -159,7 +162,7 @@ function makeLobbyRoom(meta, gameNo) {
   for (let s = 0; s < sessions; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
   const chars = meta.int(2, 8);
   for (let i = 0; i < chars; i++) {
-    const avatar = { body: meta.next() < 0.5 ? 'boy' : 'girl' };
+    const avatar = { character: ROSTER_IDS[Math.min(ROSTER_IDS.length - 1, Math.floor(meta.next() * ROSTER_IDS.length))] }; // one draw, like the old body roll
     room = addCharacter(room, `sess${meta.int(0, sessions - 1)}`, { name: `C${i + 1}`, avatar }, 0).room;
   }
   return room;
@@ -701,7 +704,7 @@ function playGame(g) {
     if (mode === 'lifetime') {
       stats.examResults[c.examResult ?? 'none'] = (stats.examResults[c.examResult ?? 'none'] ?? 0) + 1;
       stats.careerChoice[c.careerChoice ?? 'none'] = (stats.careerChoice[c.careerChoice ?? 'none'] ?? 0) + 1;
-      const ms = `${c.avatar.body}:${c.military.status}`;
+      const ms = c.military.status; // CH-1: no gender — volunteers only
       stats.military[ms] = (stats.military[ms] ?? 0) + 1;
     }
     stats.jobChars++;
@@ -876,7 +879,7 @@ export function simulateAim({ games = 200, seed = 1, characters = 8, strategies 
     const v = validateRoomConfig({ mode, maxCharacters: characters, turnOrder: 'index', rouletteMode: 'skill' });
     let room = { id: `aim${g}`, code: 'AIMAIM', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
     for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
-    for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}`, avatar: { body: meta.next() < 0.5 ? 'boy' : 'girl' } }, 0).room;
+    for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}`, avatar: { character: ROSTER_IDS[Math.min(ROSTER_IDS.length - 1, Math.floor(meta.next() * ROSTER_IDS.length))] } }, 0).room;
     const strat = new Map(room.characters.map((c, i) => [c.id, strategies[(i + g) % strategies.length]]));
     let now = 1_000_000;
     const started = startGame(room, { now, data: simData });
@@ -950,7 +953,7 @@ export function simulatePass({ games = 200, seed = 1, characters = 8, strategies
     const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', ...(eraTurns ? { eraTurns } : {}) });
     let room = { id: `pass${g}`, code: 'PASSPS', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
     for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
-    for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}`, avatar: { body: meta.next() < 0.5 ? 'boy' : 'girl' } }, 0).room;
+    for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}`, avatar: { character: ROSTER_IDS[Math.min(ROSTER_IDS.length - 1, Math.floor(meta.next() * ROSTER_IDS.length))] } }, 0).room;
     const strat = new Map(room.characters.map((c, i) => [c.id, strategies[(i + g) % strategies.length]]));
     let now = 1_000_000;
     room = startGame(room, { now, data: simData }).room;
@@ -1047,7 +1050,7 @@ function mainRandom() {
     console.log(`  ${mode.padEnd(8)} ${String(m.games).padStart(4)}판 · 평균 턴 ${(m.turns / m.games).toFixed(1)} · 평균 순자산 ${(m.avgMoney / m.games).toFixed(0)}`);
   }
   console.log(
-    `루트 선택: 연애 ${pct(stats.routes.love, routeTotal)} / 커리어 ${pct(stats.routes.career, routeTotal)} / 금전 ${pct(stats.routes.money, routeTotal)} (총 ${routeTotal}, 완주 ${stats.routeCompleted})`,
+    `루트 선택: 단짝·반려 ${pct(stats.routes.love, routeTotal)} / 커리어 ${pct(stats.routes.career, routeTotal)} / 금전 ${pct(stats.routes.money, routeTotal)} (총 ${routeTotal}, 완주 ${stats.routeCompleted})`,
   );
   console.log(`1등 골인자의 턴 순서 위치: ${JSON.stringify(stats.firstFinisherOrderIndex)} · 1등 골인자가 최종 1위 ${pct(stats.winnerWasFirstFinisher, stats.games)}`);
   console.log(
@@ -1083,7 +1086,7 @@ function mainRandom() {
       console.log(`찬스 광장 선택 (${who === 'cpu' ? 'CPU' : '랜덤'} ${tot}회): ${Object.entries(row).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${pct(n, tot)}`).join(' · ')}`);
     }
     console.log(`지나가기 버프: ${JSON.stringify(L.buffs)} · 동아리: ${JSON.stringify(L.clubs)} · 인생역전섬 올인/은퇴: ${JSON.stringify(L.final)}`);
-    console.log(`인생 전체 수입 중 월급날(급여 + 맞벌이, 용돈 포함) 비중 ${pct(L.lifeIncome.payday, L.lifeIncome.all)} · 훈수 베팅 제외 ${pct(L.lifeIncome.payday, L.lifeIncome.noBet)}`);
+    console.log(`인생 전체 수입 중 월급날(급여 + 단짝 생활비, 용돈 포함) 비중 ${pct(L.lifeIncome.payday, L.lifeIncome.all)} · 훈수 베팅 제외 ${pct(L.lifeIncome.payday, L.lifeIncome.noBet)}`);
     const lifeChars = L.byMode.lifetime?.chars ?? 0;
     if (lifeChars) console.log(`인생 전체 캐릭터당 돈 흐름(사유별): ${Object.entries(L.byReason).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([k, v]) => `${k} ${(v / lifeChars).toFixed(0)}`).join(' · ')}`);
   }
@@ -1150,20 +1153,20 @@ function mainRandom() {
   console.log(`청년 이후 모드 1위 비율: 요구 카드 보유 ${share(bc.reqHolders)} · 미보유 ${share(bc.reqNon)}`);
   const s8 = stats.s8;
   const per8 = (n) => (n / Math.max(1, s8.chars)).toFixed(2);
-  console.log(`\n--- 8단계: 연애·가족·부동산 (청년 이후 모드 ${s8.chars}명) ---`);
-  console.log(`고교 전원 만남 ${s8.schoolMeets}회 · 만남 ${per8(s8.met)} · 데이트 ${per8(s8.dates)} · 프러포즈 ${per8(s8.proposals)} (성공 ${pct(s8.proposeOk, s8.proposals)}) · 결혼 ${pct(s8.married, s8.chars)} · 축의금 결혼당 ${(s8.weddingGifts / Math.max(1, s8.proposeOk)).toFixed(0)}만원`);
+  console.log(`\n--- 8단계: 친구·동거·반려동물·부동산 (청년 이후 모드 ${s8.chars}명) ---`);
+  console.log(`고교 첫 친구 ${s8.schoolMeets}회 · 새 친구 ${per8(s8.met)} · 같이 놀기 ${per8(s8.dates)} · 「같이 살자!」 ${per8(s8.proposals)} (성공 ${pct(s8.proposeOk, s8.proposals)}) · 단짝 동거 ${pct(s8.married, s8.chars)} · 집들이 선물 동거당 ${(s8.weddingGifts / Math.max(1, s8.proposeOk)).toFixed(0)}만원`);
   for (const era of ['young', 'middle_age']) {
-    console.log(`${era} 루트별 결혼율: ${['love', 'career', 'money'].map((r) => { const [m, n] = s8.marriedByRoute[`${era}:${r}`] ?? [0, 0]; return `${r} ${pct(m, n)}`; }).join(' · ')}`);
+    console.log(`${era} 루트별 단짝 동거율: ${['love', 'career', 'money'].map((r) => { const [m, n] = s8.marriedByRoute[`${era}:${r}`] ?? [0, 0]; return `${r} ${pct(m, n)}`; }).join(' · ')}`);
   }
-  console.log(`자녀 캐릭터당 ${per8(s8.children)}명 · 천재 ${pct(s8.genius, s8.children)} · 성장 ${JSON.stringify(s8.grew)}`);
+  console.log(`반려동물 캐릭터당 ${per8(s8.children)}마리 · 천재 펫 ${pct(s8.genius, s8.children)} · 성장 ${JSON.stringify(s8.grew)}`);
   const inc = s8.income;
-  console.log(`수입 비중: 맞벌이 ${pct(inc.spouse, stats.income.all)} · 용돈 ${pct(inc.allowance, stats.income.all)} · 축의금 ${pct(inc.weddingGift, stats.income.all)} · 돌잔치 ${pct(inc.dolGift, stats.income.all)} · 자녀 수능 ${pct(inc.childExam, stats.income.all)} · 출산장려금 ${pct(inc.birthBonus, stats.income.all)}`);
+  console.log(`수입 비중: 단짝 생활비 ${pct(inc.spouse, stats.income.all)} · 펫 광고 수입 ${pct(inc.allowance, stats.income.all)} · 집들이 선물 ${pct(inc.weddingGift, stats.income.all)} · 입양 파티 ${pct(inc.dolGift, stats.income.all)} · 펫 경연대회 ${pct(inc.childExam, stats.income.all)} · 입양 지원금 ${pct(inc.birthBonus, stats.income.all)}`);
   console.log(`부동산 칸 ${s8.houseVisits}회 · 구매 ${s8.houseBuys} (${pct(s8.houseBuys, s8.houseVisits)}) · 갈아타기 ${s8.swaps} · 청약 ${s8.subscription} · 골드 매물 ${s8.lucky} · 최종 보유 ${pct(Object.values(s8.finalHouses).reduce((a, b) => a + b, 0), s8.chars)} ${JSON.stringify(s8.finalHouses)} · 평균 집값 ${(s8.houseValue / Math.max(1, Object.values(s8.finalHouses).reduce((a, b) => a + b, 0))).toFixed(0)}`);
   const mk = s8.markets;
   console.log(`노년 시세 ${mk.length}회 · 평균 ×${(mk.reduce((a, b) => a + b, 0) / Math.max(1, mk.length)).toFixed(2)} (최소 ${Math.min(...mk).toFixed(2)} · 최대 ${Math.max(...mk).toFixed(2)}) · 집값 변동 합 ${s8.marketDelta}만원 · 건물주 해금/취임 ${pct(s8.landlord, s8.chars)}`);
   const L = s8.life;
   console.log(
-    `[인생 전체 ${L.chars}명] 결혼 ${pct(L.married, L.chars)} · 연애 루트 선택자 결혼 ${pct(L.loveMarried, L.loveTakers)} (${L.loveTakers}명) · 기혼자당 자녀 ${(L.children / Math.max(1, L.married)).toFixed(2)} (최대 ${L.maxKids}) · 천재 ${pct(L.genius, L.children)} · 부모 수입 중 용돈 ${pct(L.parentInc.allowance, L.parentInc.all)} · 기혼자 수입 중 맞벌이 ${pct(L.marriedInc.spouse, L.marriedInc.all)} · 집 보유 ${pct(L.houses, L.chars)}`,
+    `[인생 전체 ${L.chars}명] 단짝 동거 ${pct(L.married, L.chars)} · 단짝·반려 루트 선택자 동거 ${pct(L.loveMarried, L.loveTakers)} (${L.loveTakers}명) · 동거 가구당 반려동물 ${(L.children / Math.max(1, L.married)).toFixed(2)} (최대 ${L.maxKids}) · 천재 펫 ${pct(L.genius, L.children)} · 집사 수입 중 펫 광고 수입 ${pct(L.parentInc.allowance, L.parentInc.all)} · 동거 가구 수입 중 단짝 생활비 ${pct(L.marriedInc.spouse, L.marriedInc.all)} · 집 보유 ${pct(L.houses, L.chars)}`,
   );
   // ---------- Stage 9 ----------
   const s9 = stats.s9;

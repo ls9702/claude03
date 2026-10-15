@@ -4,7 +4,7 @@
 //   houseArtHtml(id, {art, size}) → generated art (`findAsset({kind:'house', house: id})`) when accepted, else the SVG
 //   houseOptionsHtml(p, who, …)   → 매물 listing cards of the `house` prompt (cut-in + 2D modal)
 //   marketChartSvg(mult)          → 부동산 시세 chart (↑ / ↓) for the houseValueChanged cut-in
-//   dolTableSvg()                 → 돌잡이 table (childGrew kind dol)
+//   dolTableSvg()                 → 입양 파티 table (childGrew kind dol)
 import { esc, won as wonFmt } from '../format.js';
 import { houseInfo, houseOptions } from '../shared/family.js';
 import { optionLabel } from '../shared/growth.js';
@@ -144,17 +144,17 @@ export function marketChartSvg(mult) {
   );
 }
 
-/** 돌잡이 table: 상 with 실 / 연필 / 돈 / 마이크 / 청진기 / 판사봉. */
+/** 입양 파티 table (childGrew kind dol): a cake with a candle, a bone, a ball, a cushion and a little gift box. */
 export function dolTableSvg() {
   return svg(
     `<ellipse cx="60" cy="84" rx="54" ry="10" fill="#7b3f1d" opacity=".25"/>
-    <rect x="8" y="56" width="104" height="14" rx="5" fill="#b5542c" stroke="#7b3f1d" stroke-width="2"/><rect x="16" y="70" width="8" height="18" fill="#7b3f1d"/><rect x="96" y="70" width="8" height="18" fill="#7b3f1d"/>
-    <rect x="18" y="40" width="4" height="18" rx="2" fill="#fbbf24"/><path d="M18 40 l2 -5 2 5z" fill="#1f2937"/>
-    <circle cx="36" cy="52" r="6" fill="#fff" stroke="#ef4444" stroke-width="2"/><path d="M31 48 q5 8 10 0" fill="none" stroke="#ef4444" stroke-width="1.5"/>
-    <rect x="48" y="44" width="18" height="11" rx="1.5" fill="#86c98a" stroke="#2f7a3a" stroke-width="1.5"/><text x="57" y="52.5" text-anchor="middle" font-size="7" font-weight="900" fill="#1f5a2a" font-family="system-ui,sans-serif">₩</text>
-    <rect x="72" y="38" width="5" height="14" rx="2" fill="#4b5563"/><circle cx="74.5" cy="36" r="5" fill="#9ca3af"/>
-    <path d="M86 42 q0 10 8 10 q8 0 8 -10" fill="none" stroke="#3b82f6" stroke-width="2"/><circle cx="102" cy="42" r="3" fill="#3b82f6"/>
-    <text x="60" y="20" text-anchor="middle" font-size="12" font-weight="900" fill="#b5542c" font-family="system-ui,sans-serif">🎂 돌잡이</text>`,
-    { label: '돌잡이 상', cls: 'dol-svg' },
+    <rect x="8" y="56" width="104" height="14" rx="5" fill="#f2a1b8" stroke="#b5546f" stroke-width="2"/><rect x="16" y="70" width="8" height="18" fill="#b5546f"/><rect x="96" y="70" width="8" height="18" fill="#b5546f"/>
+    <rect x="44" y="36" width="32" height="20" rx="4" fill="#fff6e8" stroke="#b5546f" stroke-width="2"/><path d="M44 43 q4 4 8 0 q4 4 8 0 q4 4 8 0 q4 4 8 0" fill="none" stroke="#ff8fb8" stroke-width="2"/>
+    <rect x="58.5" y="26" width="3" height="10" rx="1" fill="#7ec8f2"/><path d="M60 20 q3 4 0 6 q-3 -2 0 -6z" fill="#ffb547"/>
+    <path d="M14 50 l6 -4 q4 -2 5 2 l8 0 q1 -4 5 -2 l6 4 q-2 4 -6 2 l-12 0 q-4 2 -6 -2z" fill="#fffaf0" stroke="#8a6a4a" stroke-width="1.5"/>
+    <circle cx="90" cy="49" r="6.5" fill="#7cc6e8" stroke="#2f6f94" stroke-width="1.5"/><path d="M84 49 q6 -4 12 0" fill="none" stroke="#fff" stroke-width="1.5"/>
+    <rect x="100" y="42" width="11" height="11" rx="1.5" fill="#ffd23f" stroke="#b58a1d" stroke-width="1.5"/><path d="M105.5 42 v11 M100 47.5 h11" stroke="#ef5b6b" stroke-width="2"/>
+    <text x="60" y="16" text-anchor="middle" font-size="12" font-weight="900" fill="#b5546f" font-family="system-ui,sans-serif">🎂 입양 파티</text>`,
+    { label: '입양 파티 상', cls: 'dol-svg' },
   );
 }

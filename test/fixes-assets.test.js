@@ -140,14 +140,15 @@ test('AI art limits: counted per request — failed, edit-cancelled and delete/r
     let room = store.createRoom(validateRoomConfig({}).config);
     room = joinRoom(room, 'A', '에이').room;
     room = joinRoom(room, 'B', '비').room;
-    const add = (sess, name, hair) => {
-      const r = addCharacter(store.getRoom(room.id), sess, { name, avatar: { ...D, hair } });
+    // CH-1 roster looks (each character a different look → a different art key)
+    const add = (sess, name, character) => {
+      const r = addCharacter(store.getRoom(room.id), sess, { name, avatar: { character } });
       store.put(r.room);
       return r.character.id;
     };
     store.put(room);
-    const c1 = add('A', '하나', 'bob');
-    const c2 = add('A', '둘', 'curly');
+    const c1 = add('A', '하나', 'chiikawa');
+    const c2 = add('A', '둘', 'hachiware');
 
     // 1) a failed job still used the character's request
     assert.equal((await runner.request(room.id, c1, { sessionId: 'A' })).ok, true);
@@ -161,7 +162,7 @@ test('AI art limits: counted per request — failed, edit-cancelled and delete/r
 
     // 2) edit → the running job is cancelled, but the request stays counted on the character
     assert.equal((await runner.request(room.id, c2, { sessionId: 'A' })).ok, true);
-    const edited = updateCharacter(store.getRoom(room.id), 'A', c2, { avatar: { ...D, hair: 'long' } });
+    const edited = updateCharacter(store.getRoom(room.id), 'A', c2, { avatar: { character: 'usagi' } });
     runner.syncCharacter(edited.room, c2);
     store.commit(edited.room);
     await tick();
@@ -172,18 +173,18 @@ test('AI art limits: counted per request — failed, edit-cancelled and delete/r
     const del = removeCharacter(store.getRoom(room.id), 'A', c2);
     runner.cancel(room.id, c2);
     store.commit(del.room);
-    const c3 = add('A', '셋', 'ponytail');
+    const c3 = add('A', '셋', 'momonga');
     const fresh = await runner.request(room.id, c3, { sessionId: 'A' });
     assert.deepEqual([fresh.ok, fresh.status], [false, 409]);
     assert.match(fresh.error, /한 사람당 이 방에서 2번/);
     assert.equal(store.getRoom(room.id).artRequests.A, 2);
 
     // 4) room cap (4 here): B uses 1 → 3 total; the admin (bypasses per-player limits) makes it 4
-    const b1 = add('B', '비하나', 'bun');
+    const b1 = add('B', '비하나', 'kurimanju');
     assert.equal((await runner.request(room.id, b1, { sessionId: 'B' })).ok, true);
     assert.equal((await runner.request(room.id, c3, { admin: true })).ok, true);
     assert.equal(store.getRoom(room.id).artRequestTotal, 4);
-    const b2 = add('B', '비둘', 'twintail');
+    const b2 = add('B', '비둘', 'rakko');
     const capped = await runner.request(room.id, b2, { sessionId: 'B' });
     assert.deepEqual([capped.ok, capped.status], [false, 409]);
     assert.match(capped.error, /이 방의 AI 일러스트 생성 한도\(4번\)/);

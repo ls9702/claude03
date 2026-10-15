@@ -1,4 +1,4 @@
-// Blue (held) / red (used) cards: hand discard order, held effects (requirement cards, 결혼운◎, 인기 폭발◎, 건강기원 부적,
+// Blue (held) / red (used) cards: hand discard order, held effects (requirement cards, 단짝운◎, 인기 폭발◎, 건강기원 부적,
 // 월급 부적), the injury status card, 공적 카드 (merit) rank-ups, the red roulette cards (큰 수 / 작은 수 / 딱 그 칸 /
 // 월급날 직행), side bets on a fixed spin, trades / gifts, CPU use and valuation, old-save migration.
 import { test } from 'node:test';
@@ -261,7 +261,7 @@ test('injury card mirrors job.injured: added on injury, healed by the countdown 
   assert.ok(ch(r2, b.id).cards.some((k) => k.id === 'popular'));
 });
 
-test('월급 부적 +10 % salary while held; 결혼운◎ / 인기 폭발◎ romance bonuses, both gone on marriage', () => {
+test('월급 부적 +10 % salary while held; 단짝운◎ / 인기 폭발◎ friendship bonuses, both gone once living with a 단짝', () => {
   const room = young();
   const c = room.characters[0];
   const tx = tx0(room);
@@ -269,14 +269,14 @@ test('월급 부적 +10 % salary while held; 결혼운◎ / 인기 폭발◎ rom
   const base = salaryAmount(tx, c);
   give(c, 'salary_charm');
   assert.equal(salaryAmount(tx, c), Math.round((base * 1.1) / 5) * 5);
-  // 결혼운◎: every affection gain +5
-  c.love = { candidates: [], partner: { id: 'pt9', name: '연인', trait: 'luck', stars: 2, body: 'girl', avatar: {} }, affection: 30, dates: 0 };
+  // 단짝운◎: every affection gain +5
+  c.love = { candidates: [], partner: { id: 'pt9', name: '콩이', trait: 'luck', stars: 2, species: 'penguin', avatar: { npc: 'penguin', props: {} } }, affection: 30, dates: 0 };
   gainAffection(tx, c, 10);
   assert.equal(c.love.affection, 40);
   give(c, 'marriage_luck');
   gainAffection(tx, c, 10);
   assert.equal(c.love.affection, 55);
-  // 인기 폭발◎: +2 on dates (and 결혼운◎ +5) shown in the option's gain; one 찰떡궁합 candidate
+  // 인기 폭발◎: +2 on dates (and 단짝운◎ +5) shown in the option's gain; one 찰떡궁합 candidate
   give(c, 'popular');
   const date = openPrompt(tx, 'date', c);
   const walk = date.options.find((o) => o.dateId === 'walk');
@@ -288,7 +288,7 @@ test('월급 부적 +10 % salary while held; 결혼운◎ / 인기 폭발◎ rom
   assert.ok(meet.options.some((o) => o.match), 'a 찰떡궁합 candidate is guaranteed');
   // a wedding drops both held romance cards
   room.turn.pending = null;
-  c.love = { candidates: [], partner: { id: 'pt9', name: '연인', trait: 'int', stars: 2, body: 'girl', avatar: {} }, affection: 90, dates: 3 };
+  c.love = { candidates: [], partner: { id: 'pt9', name: '콩이', trait: 'int', stars: 2, species: 'penguin', avatar: { npc: 'penguin', props: {} } }, affection: 90, dates: 3 };
   const tx3 = tx0(room, { nexts: [0] });
   const p = openPrompt(tx3, 'propose', c);
   const r = applyAction(room, { type: 'choose', characterId: c.id, promptId: p.promptId, optionId: 'propose' }, { rng: fixedRng({ nexts: [0] }), now: 1 });

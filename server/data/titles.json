@@ -53,8 +53,8 @@
     {
       "id": "big_family",
       "name": "대가족",
-      "icon": "👨‍👩‍👧‍👦",
-      "desc": "자녀 셋 이상, 북적북적한 집",
+      "icon": "🐾",
+      "desc": "반려동물 셋 이상, 북적북적한 집",
       "priority": 75,
       "when": {"fact": "children", "min": 3}
     },
@@ -92,9 +92,9 @@
     },
     {
       "id": "love_zero",
-      "name": "연애 고자",
+      "name": "영원한 솔로",
       "icon": "💔",
-      "desc": "끝내 결혼하지 못한 솔로",
+      "desc": "끝내 단짝과 같이 살지 못한 솔로",
       "priority": 60,
       "when": {
         "all": [
@@ -154,7 +154,7 @@
     },
     {
       "id": "filial",
-      "name": "효자·효녀",
+      "name": "고향 지킴이",
       "icon": "🏡",
       "desc": "고향 시골집을 세 번 이상 찾았다",
       "priority": 46,
@@ -194,7 +194,7 @@
     },
     {
       "id": "lucky_star",
-      "name": "럭키 가이",
+      "name": "럭키 스타",
       "icon": "🍀",
       "desc": "운 9 이상",
       "priority": 39,

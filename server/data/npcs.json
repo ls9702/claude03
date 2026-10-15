@@ -1,0 +1,26 @@
+{
+  "_comment": "단짝 후보 NPC 친구들 (CH-1, 원작 캐릭터가 아닌 치이카와풍 오리지널 동물 친구). 만남·소개팅·고교 첫 친구 후보 = 종(species) 무작위 + 이름 풀(성별 없는 귀여운 이름) + 성향(partners.json traits) + ★. avatar = {npc: 종 id, props: {슬롯: 소품 id}} (props.json의 choice 소품만; traitProps = 성향별 소품, 50% 확률). ears = 귀 모양 타입(로스터 타입 + none/round/fox/lamb/tuft/frog). id는 에셋 npc-<id>-* 키(바꾸지 말 것).",
+  "species": [
+    { "id": "penguin", "name": "펭귄", "icon": "🐧", "colors": { "body": "#3d4a5c", "line": "#1f2733", "blush": "#ffb4c2", "accent": "#ffffff", "extra": "#ffb347" }, "ears": "none", "promptDesc": "a round chibi penguin with a dark slate back, a white belly and face patch, a tiny orange beak and flippers, Chiikawa-like simple style" },
+    { "id": "hamster", "name": "햄스터", "icon": "🐹", "colors": { "body": "#f6d3a0", "line": "#6a4a2a", "blush": "#ffb4c2", "accent": "#ffffff" }, "ears": "nub", "promptDesc": "a round chibi hamster with golden fur, a white muzzle and belly, tiny round ears and puffy cheeks, Chiikawa-like simple style" },
+    { "id": "duckling", "name": "오리", "icon": "🐥", "colors": { "body": "#ffe36a", "line": "#6a5a1a", "blush": "#ffb08a", "accent": "#ff9f3a" }, "ears": "tuft", "promptDesc": "a round chibi yellow duckling with a small orange bill, a little head tuft and tiny wings, Chiikawa-like simple style" },
+    { "id": "panda", "name": "판다", "icon": "🐼", "colors": { "body": "#ffffff", "line": "#2a2a2a", "blush": "#ffb4c2", "accent": "#2f2f33" }, "ears": "round", "promptDesc": "a round chibi panda with black round ears, black eye patches and black arms on white fur, Chiikawa-like simple style" },
+    { "id": "squirrel", "name": "다람쥐", "icon": "🌰", "colors": { "body": "#d98c4a", "line": "#5a3518", "blush": "#ffb08a", "accent": "#fff1dd", "extra": "#7a4a22" }, "ears": "squirrel", "promptDesc": "a round chibi chipmunk squirrel with orange-brown fur, back stripes, a cream belly and a big bushy tail, Chiikawa-like simple style" },
+    { "id": "lamb", "name": "아기양", "icon": "🐑", "colors": { "body": "#fffaf0", "line": "#6a5e50", "blush": "#ffb4c2", "accent": "#d8c8b4" }, "ears": "lamb", "promptDesc": "a round chibi lamb with a fluffy cloud-like white fleece, small floppy ears and a beige face, Chiikawa-like simple style" },
+    { "id": "frog", "name": "개구리", "icon": "🐸", "colors": { "body": "#8fd46a", "line": "#2f5a22", "blush": "#ffb08a", "accent": "#e8f8c8" }, "ears": "frog", "promptDesc": "a round chibi green frog with big round eyes on top of the head and a pale belly, Chiikawa-like simple style" },
+    { "id": "bear_cub", "name": "아기곰", "icon": "🧸", "colors": { "body": "#b07a4e", "line": "#4a2e18", "blush": "#ffa98a", "accent": "#e8c8a0" }, "ears": "round", "promptDesc": "a round chibi brown bear cub with round ears and a light muzzle, Chiikawa-like simple style" },
+    { "id": "fox", "name": "여우", "icon": "🦊", "colors": { "body": "#f08a3a", "line": "#5a2e12", "blush": "#ffb4c2", "accent": "#ffffff" }, "ears": "fox", "promptDesc": "a round chibi orange fox with big pointed ears, a white muzzle and a fluffy white-tipped tail, Chiikawa-like simple style" },
+    { "id": "owl", "name": "부엉이", "icon": "🦉", "colors": { "body": "#a88a6a", "line": "#4a3a2a", "blush": "#ffb4c2", "accent": "#f2e2c8", "extra": "#ffcf3a" }, "ears": "tuft", "promptDesc": "a round chibi owl with brown feathers, ear tufts, a cream face disc and big round yellow eyes, Chiikawa-like simple style" }
+  ],
+  "names": [
+    "콩이", "몽이", "보리", "두부", "쿠키", "모찌", "라떼", "구름", "솜이", "호두", "땅콩", "망고", "우유", "꿀떡",
+    "찹쌀", "단비", "별이", "토리", "뭉치", "깨비", "초코", "젤리", "마루", "하루", "푸딩", "루루", "밤톨", "슈슈"
+  ],
+  "traitProps": {
+    "int": { "face": "round_glasses" },
+    "str": { "neck": "bandana" },
+    "charm": { "head": "flower_pin" },
+    "luck": { "neck": "bell_collar" }
+  },
+  "traitPropChance": 0.5
+}

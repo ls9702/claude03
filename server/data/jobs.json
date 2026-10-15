@@ -1,5 +1,5 @@
 {
-  "_comment": "Stage 6 직업 23종(일반 17 + 숨은 6) + 알바. requires = 취업 후보 조건(능력치 최소값·학력), ranks = 랭크별 급여(만원, 급여 칸 1회), rankUp = 승진 판정(확률 = base + perStat × stats[stat] + 운 보너스, 경험치 expNeeded 이상이면 급여 칸에서 자동 심사), injuryRisk = 급여 칸·승진 시험마다 부상 확률, outfit = avatars.json 의상 id(성장 의상), scene = 컷인 배경(presentation SCENES), unlock = 숨은 직업 해금 조건(모두 만족; anyOf = 그중 하나; cards = 손패에 있어야 하는 파랑 카드). requires.cards = 취업 후보가 되려면 손패에 있어야 하는 직업 요구 카드(파랑: 연구열심·카리스마◎·절대미각·강철 체력), rankUp.merit = 다음 랭크 승진 심사에 필요한 🏅 공적 카드 수(승진하면 소모). 건물주 = 8단계 부동산(houseSwaps / house), 산신령 조건은 9단계(사찰 소원) 전까지의 임시 조건.",
+  "_comment": "Stage 6 직업 23종(일반 17 + 숨은 6) + 알바. requires = 취업 후보 조건(능력치 최소값·학력), ranks = 랭크별 급여(만원, 급여 칸 1회), rankUp = 승진 판정(확률 = base + perStat × stats[stat] + 운 보너스, 경험치 expNeeded 이상이면 급여 칸에서 자동 심사), injuryRisk = 급여 칸·승진 시험마다 부상 확률, props = 직업 소품 {슬롯: 소품 id} (props.json jobProps와 같은 표, 성장 소품; CH-1에서 사람 의상 outfit 대신), scene = 컷인 배경(presentation SCENES), unlock = 숨은 직업 해금 조건(모두 만족; anyOf = 그중 하나; cards = 손패에 있어야 하는 파랑 카드). requires.cards = 취업 후보가 되려면 손패에 있어야 하는 직업 요구 카드(파랑: 연구열심·카리스마◎·절대미각·강철 체력), rankUp.merit = 다음 랭크 승진 심사에 필요한 🏅 공적 카드 수(승진하면 소모). 건물주 = 8단계 부동산(houseSwaps / house), 산신령 조건은 9단계(사찰 소원) 전까지의 임시 조건.",
   "jobs": [
     {
       "id": "civil_servant",
@@ -16,7 +16,7 @@
       ],
       "rankUp": {"stat": "int", "base": 0.4, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "suit",
+      "props": {"neck": "id_card"},
       "scene": "office",
       "tone": "career"
     },
@@ -36,7 +36,7 @@
       ],
       "rankUp": {"stat": "int", "base": 0.35, "perStat": 0.05, "expNeeded": 1, "merit": 1},
       "injuryRisk": 0,
-      "outfit": "suit",
+      "props": {"neck": "necktie"},
       "scene": "office",
       "tone": "career"
     },
@@ -55,7 +55,7 @@
       ],
       "rankUp": {"stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "hoodie",
+      "props": {"head": "beret", "hand": "pen"},
       "scene": "office",
       "tone": "career"
     },
@@ -74,7 +74,7 @@
       ],
       "rankUp": {"stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 2, "merit": 2},
       "injuryRisk": 0,
-      "outfit": "suit",
+      "props": {"neck": "sash"},
       "scene": "office",
       "tone": "career"
     },
@@ -93,7 +93,7 @@
       ],
       "rankUp": {"stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
       "injuryRisk": 0.12,
-      "outfit": "stadium",
+      "props": {"head": "baseball_cap", "hand": "bat"},
       "scene": "stadium",
       "tone": "career"
     },
@@ -112,7 +112,7 @@
       ],
       "rankUp": {"stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
       "injuryRisk": 0.12,
-      "outfit": "soccer",
+      "props": {"hand": "soccer_ball"},
       "scene": "stadium",
       "tone": "career"
     },
@@ -131,7 +131,7 @@
       ],
       "rankUp": {"stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
       "injuryRisk": 0.06,
-      "outfit": "hoodie",
+      "props": {"head": "headset"},
       "scene": "stage",
       "tone": "career"
     },
@@ -150,7 +150,7 @@
       ],
       "rankUp": {"stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
       "injuryRisk": 0.2,
-      "outfit": "taekwondo",
+      "props": {"head": "fighter_headband"},
       "scene": "gym",
       "tone": "career"
     },
@@ -169,7 +169,7 @@
       ],
       "rankUp": {"stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1, "merit": 1},
       "injuryRisk": 0,
-      "outfit": "trenchcoat",
+      "props": {"head": "beret", "hand": "script"},
       "scene": "stage",
       "tone": "career"
     },
@@ -188,7 +188,7 @@
       ],
       "rankUp": {"stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1, "merit": 1},
       "injuryRisk": 0.04,
-      "outfit": "idol",
+      "props": {"hand": "mic"},
       "scene": "stage",
       "tone": "career"
     },
@@ -207,7 +207,7 @@
       ],
       "rankUp": {"stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "hoodie",
+      "props": {"hand": "camera"},
       "scene": "office",
       "tone": "career"
     },
@@ -226,7 +226,7 @@
       ],
       "rankUp": {"stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0.03,
-      "outfit": "chef",
+      "props": {"head": "chef_hat"},
       "scene": "kitchen",
       "tone": "career"
     },
@@ -245,7 +245,7 @@
       ],
       "rankUp": {"stat": "int", "base": 0.3, "perStat": 0.05, "expNeeded": 2, "merit": 1},
       "injuryRisk": 0,
-      "outfit": "doctor",
+      "props": {"head": "head_mirror", "neck": "stethoscope"},
       "scene": "hospital",
       "tone": "career"
     },
@@ -264,7 +264,7 @@
       ],
       "rankUp": {"stat": "int", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "doctor",
+      "props": {"face": "round_glasses", "hand": "flask"},
       "scene": "lab",
       "tone": "career"
     },
@@ -283,7 +283,7 @@
       ],
       "rankUp": {"stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0.05,
-      "outfit": "police",
+      "props": {"head": "police_cap"},
       "scene": "police",
       "tone": "career"
     },
@@ -302,7 +302,7 @@
       ],
       "rankUp": {"stat": "charm", "base": 0.3, "perStat": 0.05, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "hawaiian",
+      "props": {"head": "party_hat"},
       "scene": "stage",
       "tone": "career"
     },
@@ -321,7 +321,7 @@
       ],
       "rankUp": {"stat": "int", "base": 0.4, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "cardigan",
+      "props": {"face": "round_glasses", "hand": "book"},
       "scene": "school",
       "tone": "career"
     },
@@ -335,7 +335,7 @@
       "ranks": [{"name": "꼬마 빌딩주", "salary": 125}, {"name": "빌딩 부자", "salary": 175}, {"name": "강남 건물주", "salary": 240}],
       "rankUp": {"stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "trenchcoat",
+      "props": {"hand": "key_ring"},
       "scene": "office",
       "tone": "treasure",
       "unlock": {
@@ -357,7 +357,7 @@
       ],
       "rankUp": {"stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "idol",
+      "props": {"hand": "sparkle_mic"},
       "scene": "stage",
       "tone": "result",
       "unlock": {"era": ["senior"], "stats": {"charm": 9, "luck": 9}, "desc": "노년 시대에 매력 9·운 9 이상"}
@@ -372,7 +372,7 @@
       "ranks": [{"name": "후보생", "salary": 115}, {"name": "우주비행사", "salary": 175}, {"name": "달 탐사대장", "salary": 250}],
       "rankUp": {"stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0.02,
-      "outfit": "longpadding",
+      "props": {"head": "space_helmet"},
       "scene": "space",
       "tone": "result",
       "unlock": {"stats": {"int": 9, "str": 9}, "desc": "지력 9·체력 9 이상"}
@@ -387,7 +387,7 @@
       "ranks": [{"name": "동네 도사", "salary": 100}, {"name": "산신령", "salary": 165}, {"name": "백두산 산신령", "salary": 225}],
       "rankUp": {"stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "hanbokTrad",
+      "props": {"face": "beard"},
       "scene": "mountain-trail",
       "tone": "treasure",
       "unlock": {"wishes": 8, "desc": "소원(사찰·찬스 광장)을 8번 이상 이루기"}
@@ -402,7 +402,7 @@
       "ranks": [{"name": "계열사 사장", "salary": 150}, {"name": "부회장", "salary": 215}, {"name": "그룹 회장", "salary": 300}],
       "rankUp": {"stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "suit",
+      "props": {"head": "crown"},
       "scene": "office",
       "tone": "result",
       "unlock": {"maxRankOf": ["office_worker"], "netWorth": 2000, "desc": "대기업 회사원 최고 랭크(임원) + 순자산 2,000만원 이상"}
@@ -417,7 +417,7 @@
       "ranks": [{"name": "고정 MC", "salary": 115}, {"name": "간판 MC", "salary": 175}, {"name": "국민 MC", "salary": 250}],
       "rankUp": {"stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1},
       "injuryRisk": 0,
-      "outfit": "suit",
+      "props": {"hand": "golden_mic"},
       "scene": "stage",
       "tone": "result",
       "unlock": {
@@ -437,7 +437,7 @@
     "ranks": [{"name": "알바생", "salary": 15}, {"name": "주말 매니저", "salary": 20}, {"name": "점장", "salary": 35}],
     "rankUp": {"stat": "luck", "base": 0.35, "perStat": 0.03, "expNeeded": 1},
     "injuryRisk": 0,
-    "outfit": "apron",
+    "props": {"neck": "apron"},
     "scene": "office",
     "tone": "career"
   }

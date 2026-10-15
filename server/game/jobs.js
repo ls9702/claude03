@@ -259,16 +259,16 @@ export function paySalary(tx, c) {
   const amount = round5(salaryAmount(tx, c) * salaryCardMult(tx, c) * buff); // Stage 7: 성과급 봉투 ×2
   const def = jobDef(tx.data, job?.id ?? PART_TIME_ID);
   const rank = job?.rank ?? 1;
-  const spouseAmount = round5(spouseSalary(tx, c) * buff); // Stage 8: 맞벌이
+  const spouseAmount = round5(spouseSalary(tx, c) * buff); // Stage 8: 단짝 생활비
   emit(tx, 'salary', { charId: c.id, jobId: def.id, rank, amount, ...(spouseAmount ? { spouseAmount } : {}), ...(buff > 1 ? { buff: 'salaryX2' } : {}), tone: 'career', emotion: 'joy' });
   changeMoney(tx, c, amount, 'salary', { emotion: 'joy', tone: 'career', jobId: def.id });
   const who = job ? `${def.name} ${rankName(def, rank)}` : c.school ? '대학생 알바' : def.name;
   addLog(tx, `💵 ${c.name} 월급날! (${who}) +${won(amount)}${job?.injured > 0 ? ' (부상으로 감액)' : ''}`, { tone: 'good', charId: c.id, emotion: 'joy' });
   if (spouseAmount) {
     changeMoney(tx, c, spouseAmount, 'spouseSalary', { emotion: 'love', tone: 'love' });
-    addLog(tx, `💑 ${c.spouse.name}의 맞벌이 월급 +${won(spouseAmount)}`, { tone: 'love', charId: c.id, emotion: 'love' });
+    addLog(tx, `💑 단짝 ${c.spouse.name}의 생활비 +${won(spouseAmount)}`, { tone: 'love', charId: c.id, emotion: 'love' });
   }
-  payAllowances(tx, c); // Stage 8: employed children send 용돈
+  payAllowances(tx, c); // Stage 8: star pets earn 펫 광고 수입
   if (!job) return amount;
   job.exp += tx.data.balance.jobs.expPerSalary ?? 1;
   const mc = meritCfg(tx.data);

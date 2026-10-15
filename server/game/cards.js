@@ -190,7 +190,7 @@ export function clubCardRoll(tx, c, def, chance) {
 
 // ---------- blue (held) effects ----------
 
-/** 결혼운◎: +affectionBonus on every affection gain while held. */
+/** 단짝운◎ (marriage_luck): +affectionBonus on every 친밀도 gain while held. */
 export function affectionBonus(data, c) {
   return hasCard(c, 'marriage_luck') ? cardDef(data, 'marriage_luck')?.effect?.affectionBonus ?? 0 : 0;
 }

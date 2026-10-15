@@ -10,8 +10,9 @@
 // Pure HTML/CSS (no WebGL) → identical on low-end / TV mode. Every asset is optional: the frame falls back to
 // a CSS pattern, the background to an SVG scene, characters to the SVG portrait.
 import { won, esc } from '../format.js';
-import { renderAvatarLayers, portraitHtml, hydratePortraits, preloadAvatarLayers } from './avatar2d.js';
-import { autoAdvanceMs, expressionFor, fallbackText, isBigWin, isCardAnchor, planCutins, poseFor, resolveSceneBg, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
+import { renderCutinFigure, portraitHtml, hydratePortraits, preloadChara } from './chara.js';
+import { attachParallax, parallaxLayers, screenShake } from './rig.js';
+import { autoAdvanceMs, fallbackText, isBigWin, isCardAnchor, planCutins, poseFor, resolveSceneBg, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
 import { CAST_PRELOAD_MS, OTHERS_AUTO_MS, PREEMPT_KEEP_MS, routeOptionInfo } from './cutinPolicy.js';
 /** A new / changed prompt ignores option taps this long (a late tap meant for the previous one, A5). */
 export const PROMPT_GUARD_MS = 700;
@@ -19,7 +20,7 @@ import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from '.
 import { educationLabel, jobInfo, optionBadgeList, optionExtras, optionLabel, rankName, rankStars, salaryChip, statChip } from '../shared/growth.js';
 import { cardInfo, cardKindLabel, cardLostChips, holidayRows, holidayTitle, itemInfo, lottoRows } from '../shared/cards.js';
 import { HOLIDAY_OPTION_ICON, hwatuFlipHtml, hwatuSvg, lottoBallHtml, shopOptionsHtml } from './cardArt.js';
-import { CHILD_GROW, childInfo, familyCast, houseInfo, marketInfo, npcCharacter, partnerInfo, schoolMeetPairs, weddingGifts } from '../shared/family.js';
+import { CHILD_GROW, PET_CONTEST, childInfo, familyCast, houseInfo, marketInfo, npcCharacter, partnerInfo, schoolMeetPairs, weddingGifts } from '../shared/family.js';
 import { dolTableSvg, houseArtHtml, houseOptionsHtml, marketChartSvg } from './houseArt.js';
 import { familyOptionsHtml } from './familyArt.js';
 import { isSubmapBig, parseOptionId, racePlan, submapInfo, submapOf, submapSuccess, treasureInfo } from '../shared/submaps.js';
@@ -31,7 +32,8 @@ const REASON_ICON = {
   // Stage 7
   shop: '🛍️', card: '🃏', sabotage: '💢', tax_audit: '🧾', complaint: '📮', pledge: '🗳️', trade: '🤝', sebae: '🧧', gostop: '🎴', holiday: '🎉', lotto: '🎱',
   // Stage 8
-  wedding: '💒', weddingGift: '💌', dolGift: '🎂', date: '💑', house: '🏠', houseSold: '🔁', allowance: '💌', school: '🎒', childExam: '🎓', spouse: '💑', birth: '👶', birthBonus: '🍼', family: '👨‍👩‍👧',
+  // (Chiikawa theme: wedding = 🎉 집들이 파티, birth = 🐣 반려동물 입양, allowance = 펫 광고 수입, spouse = 단짝 생활비)
+  wedding: '🎉', weddingGift: '💌', dolGift: '🎂', date: '💑', house: '🏠', houseSold: '🔁', allowance: '💌', school: '🎒', childExam: '🏆', spouse: '🏠', birth: '🐣', birthBonus: '🐾', family: '🐾',
 };
 /** Stage 6 anchors → presentation defaults (the server's tone / scene / emotion win when set). */
 const STAGE6_LOOK = {
@@ -74,7 +76,7 @@ function stage7Look(a) {
         ? { tone: 'good', scene: 'hospital', pose: 'jump', emotion: 'joy', sfx: 'pop', glyph: '🩹' }
         : a.reason === 'merit'
           ? { tone: 'career', scene: 'office', pose: 'cheer', emotion: 'joy', sfx: 'pop', glyph: '🏅' }
-          : { tone: 'neutral', scene: null, pose: 'idle', emotion: a.reason === 'married' ? 'joy' : 'sweat', sfx: 'pop', glyph: a.reason === 'married' ? '💍' : '🗑️' };
+          : { tone: 'neutral', scene: null, pose: 'idle', emotion: a.reason === 'married' ? 'joy' : 'sweat', sfx: 'pop', glyph: a.reason === 'married' ? '💞' : '🗑️' };
     case 'gift':
       return { tone: 'love', scene: null, pose: 'wave', emotion: 'joy', sfx: 'heart', targetPose: 'jump', targetEmotion: 'joy', targetGlyph: '🎁' };
     case 'tradeResolved':
@@ -85,7 +87,7 @@ function stage7Look(a) {
       return null;
   }
 }
-/** 「🃏 결혼운◎ 카드 +1」 chip: 🔵 blue / 🔴 red / 🤕 status colour class. */
+/** 「🃏 단짝운◎ 카드 +1」 chip: 🔵 blue / 🔴 red / 🤕 status colour class. */
 function gainedChip(info, who = '') {
   if (info?.kind === 'status') return { text: `🤕 ${who}부상 카드 · 손패 한 칸`, kind: 'card minus c-status' };
   const dot = info?.color === 'blue' ? '🔵' : '🔴';
@@ -96,7 +98,7 @@ const SLOT_X = { 1: [34], 2: [27, 73], 3: [18, 50, 82] };
 const MAX_CAST = 5;
 
 /**
- * Stage 8 anchors → presentation defaults (server tone / scene / emotion win). `fx`: wedding (confetti + 💒 frame),
+ * Stage 8 anchors → presentation defaults (server tone / scene / emotion win). `fx`: wedding = 집들이 파티 (confetti + 🎉 frame),
  * hearts (❤️ burst), heartbreak (💔), house / market / dol panels come from the spec.
  */
 function stage8Look(a) {
@@ -107,14 +109,14 @@ function stage8Look(a) {
       return { tone: 'love', scene: null, pose: 'cheer', emotion: 'love', sfx: 'heart' };
     case 'proposed':
       return a.success
-        ? { tone: 'love', scene: 'wedding-hall', pose: 'jump', emotion: 'love', sfx: 'fanfare', fx: 'hearts', bigWin: true }
+        ? { tone: 'love', scene: 'park', pose: 'jump', emotion: 'love', sfx: 'fanfare', fx: 'hearts', bigWin: true }
         : { tone: 'bad', scene: null, pose: 'cry', emotion: 'cry', sfx: 'thud', fx: 'heartbreak', glyph: '💔' };
     case 'married':
-      return { tone: 'love', scene: 'wedding-hall', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', fx: 'wedding', bigWin: true };
+      return { tone: 'love', scene: 'house', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', fx: 'wedding', bigWin: true };
     case 'schoolMeet':
       return { tone: 'love', scene: 'school', pose: 'wave', emotion: 'shy', sfx: 'heart' };
     case 'childBorn':
-      return { tone: 'love', scene: 'hospital', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', fx: 'hearts' };
+      return { tone: 'love', scene: 'house', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', fx: 'hearts' };
     case 'childGrew':
       return { tone: a.kind === 'job' ? 'career' : 'good', scene: CHILD_GROW[a.kind]?.scene ?? null, pose: 'cheer', emotion: 'joy', sfx: 'fanfare' };
     case 'houseBought':
@@ -313,7 +315,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       const c = salaryChip(s, won);
       chips.push({ ...c, text: who ? c.text.replace('월급', `${who}월급`) : c.text });
     }
-    // Stage 8: 축의금 / 돌잔치 축하금 transfers are listed per guest (💌 chips) instead of one money chip per side
+    // Stage 8: 집들이 선물 / 입양 파티 축하금 transfers are listed per guest (💌 chips) instead of one money chip per side
     const giftReasons = Array.isArray(a.gifts) && (a.type === 'married' || a.type === 'childGrew') ? new Set(['weddingGift', 'dolGift']) : null;
     // a 입학 follow-up chip names the child and the 학원비 → its own money chip is dropped
     const schoolChip = (g.family ?? []).some((f) => f.type === 'childGrew' && f.kind === 'school' && Number(f.amount));
@@ -338,7 +340,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       const who = cd.charId && cd.charId !== g.charId ? `${nameOf(characters, cd.charId)} ` : '';
       chips.push(cd.type === 'cardGained' ? gainedChip(info, who) : { text: `${info.icon} ${who}${info.name} 사용`, kind: `card k-${info.kind} c-${info.color}` });
     }
-    // blue / red cards leaving the hand: 💍 결혼운◎ 소멸 · 🩹 부상 회복 · 🗑️ 버림 · 🏅 공적 카드 n장 사용
+    // blue / red cards leaving the hand: 💞 단짝운◎ 소멸 · 🩹 부상 회복 · 🗑️ 버림 · 🏅 공적 카드 n장 사용
     // (a lone 🩹 healed anchor: its tag + title already say it)
     const lostList = [...(a.type === 'cardLost' && a.reason !== 'healed' ? [a] : []), ...(g.cards ?? []).filter((cd) => cd.type === 'cardLost')];
     for (const lc of cardLostChips(lostList.map((x) => ({ ...x, type: 'cardLost' })), meta)) {
@@ -418,7 +420,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       }
       cast.splice(0, cast.length, ...out.slice(0, 4));
     } else if (fam.cast.length) {
-      if (cast[0] && look?.glyph && fam.cast.some((m) => m.glyph === look.glyph)) cast[0].glyph = null; // one 💍 is enough
+      if (cast[0] && look?.glyph && fam.cast.some((m) => m.glyph === look.glyph)) cast[0].glyph = null; // one 🎉 is enough
       cast.push(...fam.cast);
     }
     const ownerChar = characters.find((c) => c.id === g.charId);
@@ -465,9 +467,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       own: owner, // mine (or involves my character): kept when my turn pre-empts other players' cut-ins
       holiday, // Stage 7: 고스톱 flip row + result table
       house: fam.house, // Stage 8: 🏠 illustration panel (houseBought)
-      dol: fam.dol, // 돌잡이 table
+      dol: fam.dol, // 입양 파티 table
       pairs: fam.pairs, // 고교 첫 만남: every pair in the box
-      gifts: fam.gifts, // 💌 축의금 list
+      gifts: fam.gifts, // 💌 집들이 선물 list
       fx8: look?.fx && ['wedding', 'hearts', 'heartbreak'].includes(look.fx) ? look.fx : null,
       fx9: look?.fx9 ?? null, // Stage 9: race / wish / wishfail / lotto
       race: s9.race, // 경마: deterministic race panel
@@ -510,8 +512,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   }
 
   /**
-   * Stage 8 chips / panels of a group (mutates `chips`): 💌 축의금 per guest + total, 👶 birth, 🎂 / 📝 / 💼 child events,
-   * 🏠 purchase (price, 🔁 보상판매, 🎫 청약), 용돈 / 보상판매 / 입학 follow-ups, 💑 맞벌이 on pay day. → {cast, house, dol, pairs,
+   * Stage 8 chips / panels of a group (mutates `chips`): 💌 집들이 선물 per guest + total, 🐣 반려동물 입양, 🎂 / 🏆 / ⭐ pet
+   * events, 🏠 purchase (price, 🔁 보상판매, 🎫 청약), 펫 광고 수입 / 보상판매 / 펫 훈련 학교 follow-ups, 🏠 단짝 생활비 on pay
+   * day. → {cast, house, dol, pairs,
    * pairCast, gifts}
    */
   function stage8Extras(g, { characters, chips, meta }) {
@@ -521,7 +524,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const main = characters.find((c) => c.id === g.charId) ?? null;
     const kidName = (charId, childId) => (characters.find((c) => c.id === charId)?.children ?? []).find((k) => k.id === childId)?.name ?? '';
     try {
-      out.cast = familyCast(g, characters, { avatars: meta?.avatars });
+      out.cast = familyCast(g, characters, { meta });
     } catch {
       out.cast = [];
     }
@@ -530,28 +533,28 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         const gifts = weddingGifts(a, characters);
         out.gifts = gifts;
         const sp = partnerInfo(a.spouse ?? main?.spouse, meta);
-        if (sp) chips.unshift({ text: `💍 ${sp.name} ${sp.traitIcon}${sp.starsText ? ` ${sp.starsText}` : ''}`, kind: 'plus love' });
-        for (const r of gifts.rows) chips.push({ text: `💌 ${r.name} 축의금 +${won(r.amount)}`, kind: 'plus' });
-        if (!gifts.rows.length) chips.push({ text: '💌 축의금은 마음만…', kind: '' });
-        if (gifts.total > 0 && gifts.rows.length > 1) chips.push({ text: `💒 축의금 합계 +${won(gifts.total)}`, kind: 'plus' });
+        if (sp) chips.unshift({ text: `💞 단짝 ${sp.name} ${sp.speciesIcon} ${sp.traitIcon}${sp.starsText ? ` ${sp.starsText}` : ''}`, kind: 'plus love' });
+        for (const r of gifts.rows) chips.push({ text: `💌 ${r.name} 집들이 선물 +${won(r.amount)}`, kind: 'plus' });
+        if (!gifts.rows.length) chips.push({ text: '💌 집들이 선물은 마음만…', kind: '' });
+        if (gifts.total > 0 && gifts.rows.length > 1) chips.push({ text: `🎉 집들이 선물 합계 +${won(gifts.total)}`, kind: 'plus' });
         break;
       }
       case 'childBorn': {
         const k = childInfo(a.child, meta);
-        if (k) chips.unshift({ text: `👶 ${k.name}${k.genius ? ' 🌟 천재' : ''}${k.traitName ? ` · ${k.traitIcon} ${k.traitName}` : ''}`, kind: 'plus love' });
+        if (k) chips.unshift({ text: `🐣 ${k.speciesIcon} ${k.name}${k.genius ? ' 🌟 천재 펫' : ''}${k.traitName ? ` · ${k.traitIcon} ${k.traitName}` : ''}`, kind: 'plus love' });
         break;
       }
       case 'childGrew': {
         const info = CHILD_GROW[a.kind];
         const name = kidName(g.charId, a.childId);
         if (info) chips.unshift({ text: `${info.icon} ${name ? `${name} ` : ''}${info.label}`, kind: '' });
-        if (a.kind === 'exam' && a.result) chips.push({ text: { elite: '🎓 명문대 합격!', college: '🎓 대학 합격', fail: '📖 다음 기회에' }[a.result] ?? '📝 수능', kind: a.result === 'fail' ? '' : 'plus' });
+        if (a.kind === 'exam' && a.result) chips.push({ text: PET_CONTEST[a.result] ?? '🏆 경연대회', kind: a.result === 'fail' ? '' : 'plus' });
         if (a.kind === 'dol') {
           out.dol = true;
           const gifts = weddingGifts(a, characters);
           out.gifts = gifts;
-          for (const r of gifts.rows) chips.push({ text: `💌 ${r.name} 축하금 +${won(r.amount)}`, kind: 'plus' });
-        } else if (a.kind === 'job' && Number(a.amount) > 0) chips.push({ text: `💌 앞으로 용돈 +${won(Number(a.amount))}`, kind: 'plus' });
+          for (const r of gifts.rows) chips.push({ text: `💌 ${r.name} 입양 축하금 +${won(r.amount)}`, kind: 'plus' });
+        } else if (a.kind === 'job' && Number(a.amount) > 0) chips.push({ text: `💌 앞으로 펫 광고 수입 +${won(Number(a.amount))}`, kind: 'plus' });
         else if (Number(a.amount) && !g.money.some((m) => m.charId === g.charId)) chips.push({ text: `${info?.icon ?? '💰'} ${Number(a.amount) > 0 ? '+' : ''}${won(Number(a.amount))}`, kind: Number(a.amount) > 0 ? 'plus' : 'minus' });
         break;
       }
@@ -576,47 +579,47 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       }
       case 'met': {
         const pi = partnerInfo(a.partner ?? main?.love?.partner, meta);
-        if (pi) chips.unshift({ text: `💘 ${pi.name} · ${pi.traitIcon} ${pi.traitName}${pi.starsText ? ` ${pi.starsText}` : ''}`, kind: 'plus love' });
+        if (pi) chips.unshift({ text: `💘 ${pi.speciesIcon} ${pi.name} · ${pi.traitIcon} ${pi.traitName}${pi.starsText ? ` ${pi.starsText}` : ''}`, kind: 'plus love' });
         if (a.match) chips.push({ text: '💞 찰떡궁합!', kind: 'plus love' });
-        if (Number(a.affection) > 0) chips.push({ text: `❤️ 호감도 ${Number(a.affection)}`, kind: 'love' });
+        if (Number(a.affection) > 0) chips.push({ text: `❤️ 친밀도 ${Number(a.affection)}`, kind: 'love' });
         break;
       }
       case 'dated': {
         const gain = Number(a.gain);
-        if (gain > 0) chips.push({ text: `❤️ 호감도 +${gain}${Number(a.affection) > 0 ? ` (${Number(a.affection)})` : ''}`, kind: 'plus love' });
+        if (gain > 0) chips.push({ text: `❤️ 친밀도 +${gain}${Number(a.affection) > 0 ? ` (${Number(a.affection)})` : ''}`, kind: 'plus love' });
         if (a.match) chips.push({ text: '🎯 취향 저격!', kind: 'plus love' });
         break;
       }
       case 'proposed':
-        chips.unshift(a.success ? { text: '💍 프러포즈 성공!', kind: 'plus love' } : { text: '💔 거절…', kind: 'minus' });
+        chips.unshift(a.success ? { text: '🏡 「같이 살자!」 성공!', kind: 'plus love' } : { text: '💔 아직은 이르대요…', kind: 'minus' });
         break;
       default:
         break;
     }
-    // follow-ups: 용돈 / 집 보상판매 / 입학 (학원비)
+    // follow-ups: 펫 광고 수입 / 집 보상판매 / 펫 훈련 학교 (훈련비)
     for (const f of g.family ?? []) {
-      if (f.type === 'allowance') chips.push({ text: `💌 ${who(f.charId)}${kidName(f.charId, f.childId) || '자녀'} 용돈 +${won(Number(f.amount) || 0)}`, kind: 'plus' });
+      if (f.type === 'allowance') chips.push({ text: `💌 ${who(f.charId)}${kidName(f.charId, f.childId) || '반려동물'} 펫 광고 수입 +${won(Number(f.amount) || 0)}`, kind: 'plus' });
       else if (f.type === 'houseSold') chips.push({ text: `🔁 ${who(f.charId)}${houseInfo(f.houseId, meta)?.name ?? '집'} 보상판매${Number(f.amount) ? ` +${won(Number(f.amount))}` : ''}`, kind: 'plus' });
       else if (f.type === 'childGrew') {
         const info = CHILD_GROW[f.kind];
-        chips.push({ text: `${info?.icon ?? '🧒'} ${who(f.charId)}${kidName(f.charId, f.childId)} ${info?.label ?? '성장'}${Number(f.amount) ? ` ${Number(f.amount) > 0 ? '+' : ''}${won(Number(f.amount))}` : ''}`, kind: Number(f.amount) < 0 ? 'minus' : '' });
+        chips.push({ text: `${info?.icon ?? '🐾'} ${who(f.charId)}${kidName(f.charId, f.childId)} ${info?.label ?? '성장'}${Number(f.amount) ? ` ${Number(f.amount) > 0 ? '+' : ''}${won(Number(f.amount))}` : ''}`, kind: Number(f.amount) < 0 ? 'minus' : '' });
       }
     }
-    // 💑 맞벌이: the spouse's share of a pay day
-    for (const s of g.salary ?? []) if (Number(s.spouseAmount) > 0) chips.push({ text: `💑 ${who(s.charId)}맞벌이 +${won(Number(s.spouseAmount))}`, kind: 'salary' });
+    // 🏠 단짝 생활비: the 단짝's share of a pay day
+    for (const s of g.salary ?? []) if (Number(s.spouseAmount) > 0) chips.push({ text: `🏠 ${who(s.charId)}단짝 생활비 +${won(Number(s.spouseAmount))}`, kind: 'salary' });
     return out;
   }
 
-  /** Stage 8 badges: 💘 the new partner (trait · ★), 👶 the baby. */
+  /** Stage 8 badges: 💘 the new friend (species · trait · ★), 🐣 the new pet. */
   function stage8Badge(a, g, { characters, meta }) {
     if (a?.type === 'met') {
       const c = characters.find((x) => x.id === g.charId);
       const pi = partnerInfo(a.partner ?? c?.love?.partner, meta);
-      if (pi) return { icon: pi.traitIcon, img: null, title: pi.name, stars: pi.starsText, sub: pi.traitName, kind: 'partner' };
+      if (pi) return { icon: pi.speciesIcon ?? pi.traitIcon, img: null, title: pi.name, stars: pi.starsText, sub: `${pi.speciesName ?? ''} · ${pi.traitIcon} ${pi.traitName}`, kind: 'partner' };
     }
     if (a?.type === 'childBorn') {
       const k = childInfo(a.child, meta);
-      if (k) return { icon: '👶', img: null, title: k.name, stars: '', sub: `${k.genius ? '🌟 천재 · ' : ''}${k.traitName || '건강하게 태어났어요'}`, kind: `baby${k.genius ? ' genius' : ''}` };
+      if (k) return { icon: k.speciesIcon ?? '🐣', img: null, title: k.name, stars: '', sub: `${k.speciesName} · ${k.genius ? '🌟 천재 펫 · ' : ''}${k.traitName || '우리 집에 왔어요'}`, kind: `baby${k.genius ? ' genius' : ''}` };
     }
     return null;
   }
@@ -834,9 +837,21 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     });
     $.bg.dataset.scene = scene ?? 'none';
     $.bg.dataset.bgScene = r.url ? r.scene : r.svgScene;
+    plx?.stop();
+    plx = null;
+    // CH-1 parallax: layered `bg-<scene>-far|mid|near` art drifts by depth (rig.js); a single bg keeps its Ken Burns zoom
+    const layers = scene ? parallaxLayers(scene, (id) => assets.assetUrl?.(id) ?? null) : [];
+    if (layers.length) {
+      $.bg.innerHTML = '';
+      $.bg.dataset.bgScene = scene;
+      plx = attachParallax($.bg, layers, { reduced: isReduced() });
+      $.win.classList.add('generated');
+      return;
+    }
     $.bg.innerHTML = r.url ? `<img class="ci-bg-img" src="${esc(r.url)}" alt="" decoding="async">` : sceneSvg(r.svgScene, tone);
     $.win.classList.toggle('generated', !!r.url);
   }
+  let plx = null;
 
   function renderCast(spec) {
     $.cast.innerHTML = '';
@@ -848,17 +863,17 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const els = [];
     list.forEach((m, i) => {
       const slot = document.createElement('div');
-      slot.className = `ci-slot${m.role ? ` fam ${m.role}` : ''}${m.stage ? ` st-${m.stage}` : ''}${m.genius ? ' genius' : ''}`;
+      slot.className = `ci-slot chara-slot${m.role ? ` fam ${m.role}` : ''}${m.stage ? ` st-${m.stage}` : ''}${m.genius ? ' genius' : ''}`;
       slot.style.left = `${xs[i]}%`;
-      if ((m.scale ?? 1) !== 1) slot.style.height = `${(86 * m.scale).toFixed(1)}%`;
+      if ((m.scale ?? 1) !== 1) slot.style.height = `${(80 * m.scale).toFixed(1)}%`;
       slot.classList.toggle('right', xs[i] > 50);
       slot.dataset.char = m.char.id;
-      // first pose is a neutral stand; the target pose cross-fades in (keypose + procedural motion)
-      const av = renderAvatarLayers(m.char.avatar, { pose: 'idle', emotion: null, name: m.char.name, flip: n > 1 && xs[i] > 50, art: m.char.art ?? null });
+      // first pose is a neutral stand; the target pose follows after the entry squash (cut-out rig + procedural fx)
+      const av = renderCutinFigure(m.char, { pose: 'idle', emotion: null, name: m.char.name, flip: n > 1 && xs[i] > 50 });
       if (m.role && m.char.name) {
         const tag = document.createElement('span');
         tag.className = 'ci-famtag';
-        tag.textContent = `${m.role === 'spouse' ? '💍 ' : m.role === 'partner' ? '💕 ' : m.genius ? '🌟 ' : ''}${m.char.name}`;
+        tag.textContent = `${m.role === 'spouse' ? '💞 ' : m.role === 'partner' ? '💕 ' : m.genius ? '🌟 ' : ''}${m.char.name}`;
         slot.appendChild(tag);
       }
       slot.appendChild(av);
@@ -984,7 +999,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     }
   }
 
-  // ---------- Stage 8: wedding / hearts / heartbreak fx, house panel, market chart, 돌잡이, 고교 첫 만남 pairs ----------
+  // ---------- Stage 8: 집들이 party / hearts / heartbreak fx, house panel, market chart, 입양 파티, 고교 첫 친구 pairs ----------
   function renderStage8(item) {
     const { spec } = item;
     if (spec.prompt?.kind === 'house') {
@@ -1003,7 +1018,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       fx.className = `ci-famfx ${spec.fx8}`;
       const glyphs = spec.fx8 === 'wedding' ? ['🎊', '💐', '🎉', '💖', '✨', '🎊', '🌸'] : spec.fx8 === 'hearts' ? ['💗', '💕', '💖', '❤️', '💞'] : ['💔', '💧', '💔'];
       const n = spec.fx8 === 'heartbreak' ? 5 : 16;
-      fx.innerHTML = `${spec.fx8 === 'wedding' ? '<span class="ci-wedframe" aria-hidden="true">💒</span>' : ''}${Array.from(
+      fx.innerHTML = `${spec.fx8 === 'wedding' ? '<span class="ci-wedframe" aria-hidden="true">🏡</span>' : ''}${Array.from(
         { length: n },
         (_, i) => `<i style="--i:${i};--x:${(i * 61) % 100}%;--d:${((i * 37) % 17) / 10}s">${glyphs[i % glyphs.length]}</i>`,
       ).join('')}`;
@@ -1234,7 +1249,10 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         renderBubble(spec, els);
         if (spec.line) audio?.play('babble', { seed: spec.line.length, count: Math.min(6, 2 + Math.floor(spec.line.length / 6)) });
         const main = els.find((e) => e.m.char.id === spec.speaker) ?? els[0];
+        // the speaker's mouth flaps while the bubble line is read (rig `talk`), unless a one-shot action plays
+        if (spec.line && main && !['jump', 'shock'].includes(main.m.pose) && !isReduced()) main.av.talk?.(Math.min(2600, 500 + spec.line.length * 70));
         if (main?.m.emotion === 'cry') audio?.play('tears');
+        if (main?.m.pose === 'shock' || spec.tone === 'bad' && main?.m.emotion === 'shock') screenShake($.win, { amp: 7, ms: 380 });
         if (spec.bigWin && main && !isReduced()) {
           item.timers.push(
             setTimeout(() => {
@@ -1307,7 +1325,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     tickDeadline();
   }
 
-  /** Stage 8 prompts: 만남 candidate cards, 데이트 cost / ❤️, 프러포즈 chance meter, 매물 listing cards. */
+  /** Stage 8 prompts: 새 친구 candidate cards, 같이 놀기 cost / ❤️, 「같이 살자!」 chance meter, 매물 listing cards. */
   function stage8OptionsHtml(p) {
     const who = p.forMe[0];
     const sm = submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt', won }); // Stage 9 submaps
@@ -1333,8 +1351,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const cast = (spec.cast ?? []).slice(0, (spec.cast ?? []).some((m) => m.role) ? MAX_CAST : 3);
     if (!cast.length) return Promise.resolve();
     const jobs = cast.map((m) => {
-      const part = expressionFor(m.emotion).part;
-      return preloadAvatarLayers(m.char, { expressions: part ? [part] : [] }).catch(() => {});
+      return preloadChara(m.char).catch(() => {});
     });
     const cap = spec.prompt ? Math.min(300, CAST_PRELOAD_MS) : CAST_PRELOAD_MS;
     return Promise.race([Promise.all(jobs), new Promise((r) => setTimeout(r, cap))]);
@@ -1491,7 +1508,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         // Stage 8
         meet: { tone: 'love', scene: 'none' },
         date: { tone: 'love', scene: 'none' },
-        propose: { tone: 'love', scene: 'wedding-hall' },
+        propose: { tone: 'love', scene: 'park' },
         house: { tone: 'treasure', scene: 'none' },
         // Stage 9 submaps
         hometown: { tone: 'good', scene: 'hometown' },

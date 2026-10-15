@@ -209,7 +209,7 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
     case 'shop':
       resolveShopTile(tx, c);
       return 'prompt';
-    case 'heart': // Stage 8: 만남 / 데이트 / 프러포즈 prompt, or family (출산 / 가족 나들이)
+    case 'heart': // Stage 8 (CH-1 wording): 새 친구 / 같이 놀기 / 「같이 살자!」 prompt, or family (반려동물 입양 / 가족 나들이)
       return resolveHeartTile(tx, c) ? 'prompt' : null;
     case 'house': // Stage 8: 부동산 매물 prompt
       return resolveHouseTile(tx, c, tile) ? 'prompt' : null;

@@ -125,7 +125,7 @@ test('myPendingChars: my unanswered characters of the pending prompt', () => {
 
 test('routeOptionInfo: one-line route descriptions (server desc wins)', () => {
   const p = { kind: 'routeChoice' };
-  assert.match(routeOptionInfo(p, { id: 'love' }), /만남·결혼·육아/);
+  assert.match(routeOptionInfo(p, { id: 'love' }), /새 친구·단짝 동거·반려동물/);
   assert.match(routeOptionInfo(p, { id: 'career' }), /급여·승진·직업/);
   assert.match(routeOptionInfo(p, { id: 'money' }), /리스크/);
   assert.equal(routeOptionInfo(p, { id: 'love', desc: '서버 설명' }), '서버 설명');
@@ -148,10 +148,10 @@ test('tagLabel: prompt tags are the title only (no "일·커리어 · 📝 수�
   assert.equal(tagLabel({ type: 'prompt', tone: 'career', title: '선택' }, { tones }), '💼 선택');
 });
 
-test('tagLabel: route tags do not repeat the route name (연애·육아 · 연애·육아 루트)', () => {
-  const tones = { love: { icon: '💕', label: '연애·육아' }, treasure: { icon: '💰', label: '보물·금전' }, good: { icon: '✨', label: '좋은 일' } };
-  const routes = { love: { name: '연애·육아' }, money: { name: '보물·부동산·금전' } };
-  assert.equal(tagLabel({ type: 'routeChosen', tone: 'love', route: 'love' }, { tones, routes }), '💕 연애·육아 루트');
+test('tagLabel: route tags do not repeat the route name (단짝·반려 · 단짝·반려 루트)', () => {
+  const tones = { love: { icon: '💕', label: '단짝·반려' }, treasure: { icon: '💰', label: '보물·금전' }, good: { icon: '✨', label: '좋은 일' } };
+  const routes = { love: { name: '단짝·반려' }, money: { name: '보물·부동산·금전' } };
+  assert.equal(tagLabel({ type: 'routeChosen', tone: 'love', route: 'love' }, { tones, routes }), '💕 단짝·반려 루트');
   assert.equal(tagLabel({ type: 'routeChosen', tone: 'treasure', route: 'money' }, { tones, routes }), '💰 보물·금전 · 보물·부동산·금전 루트');
   assert.equal(tagLabel({ type: 'landed', tone: 'good', tileType: 'money' }, { tones, tileTypes: { money: { name: '돈' } } }), '✨ 좋은 일 · 돈 칸');
 });

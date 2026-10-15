@@ -67,9 +67,9 @@
     "adultEducation": {"none": 45, "college": 40, "elite": 15}
   },
   "military": {
-    "_comment": "군 복무: mandatory 체형은 필수(대학생은 지금/졸업 후 1회 선택, 그 외는 취업 후 자동 입대), volunteer 체형은 체력 volunteerMinStr 이상이면 자원 입대 선택. 복무 중 룰렛 turns번(순환 맵: 4번) 절반 이동(올림), 매 룰렛 군 월급 pay, 전역 시 체력 +strGain.",
-    "mandatory": ["boy"],
-    "volunteer": ["girl"],
+    "_comment": "군 복무 (CH-1: 성별 없음): mandatory = 모두 의무 입대(기본 false — 아무도 자동 입대하지 않는다; true면 대학생은 지금/졸업 후 1회 선택, 그 외는 취업 후 자동 입대), volunteer = 누구나 체력 volunteerMinStr 이상이면 자원 입대 선택(기본 true). 복무 중 룰렛 turns번(순환 맵: 4번) 절반 이동(올림), 매 룰렛 군 월급 pay, 전역 시 체력 +strGain.",
+    "mandatory": false,
+    "volunteer": true,
     "volunteerMinStr": 4,
     "turns": 4,
     "strGain": 1,
@@ -153,7 +153,7 @@
     "wishAll": {"offering": 8, "gift": 2, "luckGain": 1}
   },
   "chanceBuffs": [
-    {"id": "salaryX2", "name": "월급 두 배", "icon": "💵", "desc": "월급날(용돈·배우자 월급 포함)이 두 배", "weight": 4},
+    {"id": "salaryX2", "name": "월급 두 배", "icon": "💵", "desc": "월급날(용돈·단짝 생활비·펫 광고 수입 포함)이 두 배", "weight": 4},
     {"id": "moneyX15", "name": "행운 주머니", "icon": "💰", "desc": "돈 칸·좋은 일로 버는 돈 1.5배", "weight": 3},
     {"id": "lossShield", "name": "액땜", "icon": "🛡️", "desc": "지출·나쁜 일로 잃는 돈 절반", "weight": 3},
     {"id": "statUp", "name": "성장 버프", "icon": "📈", "desc": "능력치가 오를 때마다 +1 더", "weight": 2}

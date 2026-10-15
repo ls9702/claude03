@@ -1,7 +1,7 @@
 // Stage 9-C — CPU players (pure): decisions for every prompt kind, cards / sabotage, trades, lobby rules, full games.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gameData } from '../server/data/index.js';
+import { gameData, loadData } from '../server/data/index.js';
 import { applyAction, startGame } from '../server/game/engine.js';
 import { createTx } from '../server/game/effects.js';
 import { PROMPTS, openPrompt } from '../server/game/prompts.js';
@@ -46,15 +46,17 @@ test('lobby: CPU characters get a pool name, a seeded look + personality; max ch
   assert.deepEqual(cpus.map((c) => c.name), CPU_NAMES.slice(0, 3), 'first unused pool names');
   for (const c of cpus) {
     assert.ok(PERSONALITIES.includes(c.cpuPersonality));
-    assert.equal(typeof c.avatar.hair, 'string');
+    // CH-1: a seeded roster character + 0–2 choosable props
+    assert.ok(loadData('roster').characters.some((r) => r.id === c.avatar.character), c.avatar.character);
+    assert.ok(Object.keys(c.avatar.props).length <= 2);
     assert.equal(cpuPersonality(c, room), c.cpuPersonality);
   }
   // deterministic per room + seq
   assert.deepEqual(lobby({ cpus: 3 }).characters.map((c) => [c.avatar, c.cpuPersonality]), lobby({ cpus: 3 }).characters.map((c) => [c.avatar, c.cpuPersonality]));
   // a given name / avatar is kept
-  const named = addCpuCharacter(room, { name: '  로봇  태권 ', avatar: { body: 'girl' } }, 0);
+  const named = addCpuCharacter(room, { name: '  로봇  태권 ', avatar: { character: 'rakko', props: { hand: 'wand' } } }, 0);
   assert.equal(named.character.name, '로봇 태권');
-  assert.equal(named.character.avatar.body, 'girl');
+  assert.deepEqual(named.character.avatar, { character: 'rakko', props: { hand: 'wand' } });
   assert.equal(addCpuCharacter(room, { name: 'x'.repeat(20) }, 0).status, 400);
   // view: owner 'cpu' / 'CPU', personality public, no session tokens
   const v = viewFor(room, 'H');
@@ -107,7 +109,7 @@ function withPrompt(room, kind, charId) {
   c.money = 5000;
   c.job = { id: 'civil_servant', rank: 1, exp: 0, injured: 0 };
   c.jobHistory = [{ id: 'civil_servant', rank: 1, era: 'young' }];
-  if (c.love) c.love = { ...c.love, partner: { id: 'pt9', name: '연인', trait: 'int', stars: 2, body: 'girl' }, affection: 60 };
+  if (c.love) c.love = { ...c.love, partner: { id: 'pt9', name: '콩이', trait: 'int', stars: 2, species: 'penguin', avatar: { npc: 'penguin', props: {} } }, affection: 60 };
   const extras = {
     groupGift: [{ event: { text: '{name}의 생일!', gift: 20 } }, next.characters.find((x) => x.id !== charId)],
     exam: [{ retake: false }],

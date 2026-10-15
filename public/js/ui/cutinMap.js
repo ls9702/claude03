@@ -95,8 +95,8 @@ export const STAGE7_LONE = new Set(['cardGained', 'cardLost', 'gift', 'tradeReso
 export const isCardAnchor = (e) => e?.type === 'cardUsed' && !e.auto && (e.cardKind === 'sabotage' || !!e.targetId || ANCHOR_CARDS.has(e.cardId));
 
 /**
- * Stage 8 cut-in anchors (always anchors): 만남, 데이트, 프러포즈, 결혼식, 고교 첫 만남, 출산, 집 구매, 부동산 시세;
- * `childGrew` only for 돌잔치 / 수능 / 취업 (입학 = a chip). `dated` is an anchor too (minor: a banner for others).
+ * Stage 8 cut-in anchors (always anchors): 새 친구, 같이 놀기, 「같이 살자!」, 집들이 파티, 고교 첫 친구, 반려동물 입양, 집 구매, 부동산 시세;
+ * `childGrew` only for 입양 파티 / 펫 경연대회 / 펫 스타 데뷔 (펫 훈련 학교 = a chip). `dated` is an anchor too (minor: a banner for others).
  */
 export const STAGE8_ANCHORS = new Set(['met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged']);
 /** childGrew kinds that open a cut-in. */
@@ -153,14 +153,14 @@ export function planCutins(events = []) {
     const salary = follow.filter((e) => e.type === 'salary').map((e) => ({ charId: e.charId, jobId: e.jobId, rank: e.rank, amount: e.amount }));
     const discharged = follow.filter((e) => e.type === 'militaryEnd' && e.charId).map((e) => e.charId);
     // Stage 7 follow-ups → chips: cards gained / used (non-anchor), gifts
-    // blue / red cards: cardLost (💍 결혼운 소멸 · 🩹 부상 회복 · 🗑️ 버림 · 🏅 공적 사용) → chips too
+    // blue / red cards: cardLost (💞 단짝운 소멸 · 🩹 부상 회복 · 🗑️ 버림 · 🏅 공적 사용) → chips too
     const cards = follow
       .filter((e) => e.type === 'cardGained' || e.type === 'cardLost' || (e.type === 'cardUsed' && !isCardAnchor(e)))
       .map((e) => ({ type: e.type, charId: e.charId, cardId: e.cardId, source: e.source ?? null, reason: e.reason ?? null }));
     // loop maps (ADDENDUM A1): 찬스 광장 buffs gained / expired → chips
     const buffs = follow.filter((e) => e.type === 'chanceBuff').map((e) => ({ charId: e.charId, buff: e.buff ?? null, action: e.action ?? 'gained' }));
     const gifts = follow.filter((e) => e.type === 'gift').map((e) => ({ fromId: e.fromId, toId: e.toId, money: e.money ?? null, cardId: e.cardId ?? null }));
-    // Stage 8 follow-ups → chips: 용돈 (allowance), 집 보상판매 (houseSold), 자녀 입학 (childGrew school), 맞벌이 (salary.spouseAmount)
+    // Stage 8 follow-ups → chips: 펫 광고 수입 (allowance), 집 보상판매 (houseSold), 펫 훈련 학교 (childGrew school), 단짝 생활비 (salary.spouseAmount)
     const family = follow
       .filter((e) => e.type === 'allowance' || e.type === 'houseSold' || e.type === 'childGrew')
       .map((e) => ({ type: e.type, charId: e.charId, childId: e.childId ?? null, kind: e.kind ?? null, stage: e.stage ?? null, amount: e.amount ?? e.price ?? e.value ?? null, houseId: e.houseId ?? null }));
@@ -323,7 +323,7 @@ export function fallbackText(anchor, name = '') {
     case 'cardGained':
       return `${name} 카드 획득!`;
     case 'cardLost':
-      return anchor.reason === 'healed' ? `${name}의 부상이 나았어요!` : anchor.reason === 'married' ? `${name}의 결혼운 카드가 할 일을 다 했어요` : anchor.reason === 'merit' ? `${name}, 공적 카드로 승진!` : `${name}의 카드가 사라졌어요`;
+      return anchor.reason === 'healed' ? `${name}의 부상이 나았어요!` : anchor.reason === 'married' ? `${name}의 단짝운 카드가 할 일을 다 했어요` : anchor.reason === 'merit' ? `${name}, 공적 카드로 승진!` : `${name}의 카드가 사라졌어요`;
     case 'gift':
       return `${name}의 선물!`;
     case 'tradeResolved':
@@ -332,19 +332,19 @@ export function fallbackText(anchor, name = '') {
       return anchor.action === 'expired' ? `${name}의 ${anchor.buff?.name ?? '찬스'} 버프가 끝났어요` : `${name}에게 ${anchor.buff?.icon ?? '🎪'} ${anchor.buff?.name ?? '찬스'} 버프!`;
     // Stage 8
     case 'met':
-      return `${name}에게 새로운 인연이! 💘`;
+      return `${name}에게 새 친구가 생겼어요! 💘`;
     case 'dated':
-      return `${name}의 두근두근 데이트 💑`;
+      return `${name}, 단짝 후보와 같이 놀아요 💑`;
     case 'proposed':
-      return anchor.success ? `${name}의 프러포즈 대성공! 💍` : `${name}의 프러포즈… 거절당했어요 💔`;
+      return anchor.success ? `「같이 살자!」 ${name}의 제안 대성공! 🏡` : `「같이 살자!」… ${name}, 아직은 이르대요 💔`;
     case 'married':
-      return `${name} 결혼합니다! 💒`;
+      return `${name} 단짝과 함께 살아요! 🎉 집들이 파티!`;
     case 'schoolMeet':
-      return '고등학교에서 운명의 첫 만남! 🏫💘';
+      return '고등학교에서 첫 친구를 만났어요! 🏫💘';
     case 'childBorn':
-      return `${name}네 집에 아기가 태어났어요! 👶`;
+      return `${name}네 집에 반려동물이 왔어요! 🐣`;
     case 'childGrew':
-      return anchor.kind === 'dol' ? '돌잔치 날! 돌잡이는 과연? 🎂' : anchor.kind === 'exam' ? '자녀의 수능 결과 발표! 📝' : anchor.kind === 'job' ? '자녀가 취업했어요! 💼' : `${name}네 아이가 자랐어요!`;
+      return anchor.kind === 'dol' ? '입양 파티 날! 🎂' : anchor.kind === 'exam' ? '펫 경연대회 결과 발표! 🏆' : anchor.kind === 'job' ? '반려동물이 펫 스타로 데뷔했어요! ⭐' : anchor.kind === 'school' ? '펫 훈련 학교 입학! 🎒' : `${name}네 반려동물이 자랐어요!`;
     case 'houseBought':
       return Number(anchor.tradeIn) > 0 ? `${name} 집 갈아타기 성공! 🏠` : `${name} 내 집 마련 성공! 🏠`;
     case 'houseValueChanged': {
@@ -361,7 +361,7 @@ export function fallbackText(anchor, name = '') {
   }
 }
 
-/** Tag chip text for the illustration window ("💕 연애·육아 · 하트 칸"). */
+/** Tag chip text for the illustration window ("💕 단짝·반려 · 하트 칸"). */
 export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {}) {
   const tone = tones[anchor?.tone] ?? tones.neutral ?? { icon: '', label: '' };
   let place = '';
@@ -372,12 +372,12 @@ export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {
   else if (anchor?.type === 'finished') place = '골인';
   else if ((anchor?.type === 'gameOver' || anchor?.type === 'result') && anchor?.tone !== 'result') place = '결과 발표';
   else if (anchor?.type === 'prompt') return promptTag(anchor, tone);
-  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '만남', date: '데이트', propose: '프러포즈', house: '부동산', hometown: '고향 시골집', temple: '산사', jeju: '제주도', reversal: '인생역전', passTile: '찬스 광장' }[anchor.kind] ?? '결과';
+  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '새 친구', date: '같이 놀기', propose: '「같이 살자!」', house: '부동산', hometown: '고향 시골집', temple: '산사', jeju: '제주도', reversal: '인생역전', passTile: '찬스 광장' }[anchor.kind] ?? '결과';
   else if (STAGE6_TAGS[anchor?.type]) return STAGE6_TAGS[anchor.type](anchor);
   else if (STAGE7_TAGS[anchor?.type]) return STAGE7_TAGS[anchor.type](anchor);
   else if (STAGE8_TAGS[anchor?.type]) return STAGE8_TAGS[anchor.type](anchor);
   else if (STAGE9_TAGS[anchor?.type]) return STAGE9_TAGS[anchor.type](anchor);
-  // the tone label repeats the route name for routes ("💕 연애·육아 · 연애·육아 루트") → keep just the place
+  // the tone label repeats the route name for routes ("💕 단짝·반려 · 단짝·반려 루트") → keep just the place
   if (place && tone.label && place.startsWith(tone.label)) return `${tone.icon ?? ''} ${place}`.trim();
   return `${tone.icon ?? ''} ${tone.label ?? ''}${place ? ` · ${place}` : ''}`.trim();
 }
@@ -404,7 +404,7 @@ const STAGE7_TAGS = {
   holidayResult: (a) => (a.kind === 'chuseok' ? '🌕 추석 정산' : a.kind === 'seol' ? '🧧 설날 정산' : '🎴 명절 정산'),
   lottoDraw: () => '🎱 전국 로또',
   cardGained: () => '🃏 카드 획득',
-  cardLost: (a) => (a.reason === 'healed' ? '🩹 부상 회복' : a.reason === 'married' ? '💍 카드 소멸' : a.reason === 'merit' ? '🏅 공적 사용' : '🗑️ 카드 버림'),
+  cardLost: (a) => (a.reason === 'healed' ? '🩹 부상 회복' : a.reason === 'married' ? '💞 카드 소멸' : a.reason === 'merit' ? '🏅 공적 사용' : '🗑️ 카드 버림'),
   gift: () => '🎁 선물',
   tradeResolved: (a) => (a.status === 'accepted' ? '🤝 거래 성사' : '🤝 거래 불발'),
   chanceBuff: (a) => `${a.buff?.icon ?? '🎪'} 찬스 버프${a.action === 'expired' ? ' 종료' : ''}`,
@@ -412,13 +412,13 @@ const STAGE7_TAGS = {
 
 /** Stage 8 anchors: own tag. */
 const STAGE8_TAGS = {
-  met: () => '💘 새로운 만남',
-  dated: () => '💑 데이트',
-  proposed: (a) => (a.success ? '💍 프러포즈 성공' : '💔 프러포즈 실패'),
-  married: () => '💒 결혼식',
-  schoolMeet: () => '🏫 고교 첫 만남',
-  childBorn: () => '👶 출산',
-  childGrew: (a) => ({ dol: '🎂 돌잔치', school: '🎒 초등 입학', exam: '📝 자녀 수능', job: '💼 자녀 취업' })[a.kind] ?? '🧒 자녀 성장',
+  met: () => '💘 새 친구',
+  dated: () => '💑 같이 놀기',
+  proposed: (a) => (a.success ? '🏡 「같이 살자!」 성공' : '💔 「같이 살자!」 실패'),
+  married: () => '🎉 집들이 파티',
+  schoolMeet: () => '🏫 고교 첫 친구',
+  childBorn: () => '🐣 반려동물 입양',
+  childGrew: (a) => ({ dol: '🎂 입양 파티', school: '🎒 펫 훈련 학교', exam: '🏆 펫 경연대회', job: '⭐ 펫 스타 데뷔' })[a.kind] ?? '🐾 반려동물 성장',
   houseBought: (a) => (Number(a.tradeIn) > 0 ? '🏠 집 갈아타기' : '🏠 내 집 마련'),
   houseValueChanged: (a) => ((Number(a.mult) || 1) >= 1 ? '📈 부동산 시세 급등' : '📉 부동산 시세 폭락'),
 };

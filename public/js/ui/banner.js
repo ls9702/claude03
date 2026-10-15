@@ -5,7 +5,7 @@
 //   banner.show(spec, { ms });   // spec = cutin.specFromGroup(...) or {tag, who, text[], chips[], cast[], tone, colors}
 //   banner.clear(); banner.busy(); banner.destroy();
 import { esc, nameHtml } from '../format.js';
-import { hydratePortraits, portraitHtml } from './avatar2d.js';
+import { hydratePortraits, portraitHtml } from './chara.js';
 import { BANNER_MS } from './cutinPolicy.js';
 
 const MAX_QUEUE = 2;

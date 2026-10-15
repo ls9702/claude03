@@ -1,0 +1,104 @@
+{
+  "_comment": "치이카와 캐릭터 로스터 (CH-1). 플레이어 캐릭터 = 로스터 캐릭터 1명 + 소품(props.json, 슬롯 head/face/neck/hand/back). 같은 캐릭터를 여러 명이 골라도 된다(소품으로 구분). id는 고정 계약(에셋 ch-<id>-* 키), 한 항목을 통째로 바꿔도 코드 수정 없이 동작하게 데이터로만 정의한다. colors = SVG 리그/3D 말 색(body 몸, line 외곽선, blush 볼터치, accent 무늬·소품 기본색, extra? 보조 무늬). ears = 귀 모양 타입. size = 상대 키(0.8~1.25, 귀 제외 몸 높이 기준). anchors = 1024×1536 캐릭터 캔버스(발 y 1303, 가운데 x 512)에서 소품이 붙는 점 [x, y]. traits = 표시용 성격 태그(규칙에 영향 없음). promptDesc = 그림 요청용 영어 설명(사용자의 로컬 생성용, 비상업 팬 사용).",
+  "default": "chiikawa",
+  "canvas": [1024, 1536],
+  "earTypes": ["nub", "cat", "rabbit", "squirrel", "bun", "otter", "lion", "pouch"],
+  "characters": [
+    {
+      "id": "chiikawa",
+      "name": "치이카와",
+      "icon": "🤍",
+      "colors": { "body": "#ffffff", "line": "#5b4a44", "blush": "#ffb4c2", "accent": "#ff9db5" },
+      "ears": "nub",
+      "size": 1,
+      "traits": ["울보", "노력파"],
+      "desc": "작고 동글동글한 하얀 아이. 잘 울지만 누구보다 열심히 해요.",
+      "promptDesc": "a tiny round white chibi creature with two small round bear-like ears on top of a big round head, a short stubby body, dot eyes, a small smiling mouth and soft pink blush, thin dark-brown outline, Chiikawa style",
+      "anchors": { "head": [512, 420], "face": [512, 640], "neck": [512, 880], "handL": [330, 1010], "handR": [694, 1010], "back": [512, 1000] }
+    },
+    {
+      "id": "hachiware",
+      "name": "하치와레",
+      "icon": "🐱",
+      "colors": { "body": "#ffffff", "line": "#4a4e5a", "blush": "#ffb4c2", "accent": "#5f7fa8", "extra": "#2f3e57" },
+      "ears": "cat",
+      "size": 1,
+      "traits": ["긍정왕", "노래쟁이"],
+      "desc": "머리에 파란 하치와레 무늬가 있는 고양이 같은 친구. 언제나 밝아요.",
+      "promptDesc": "a round white chibi cat-like creature with pointed cat ears and a blue-grey hachiware (split cap) pattern covering the top of the head and ears, dot eyes, an open cheerful mouth, pink blush, Chiikawa style",
+      "anchors": { "head": [512, 410], "face": [512, 640], "neck": [512, 880], "handL": [330, 1010], "handR": [694, 1010], "back": [512, 1000] }
+    },
+    {
+      "id": "usagi",
+      "name": "우사기",
+      "icon": "🐰",
+      "colors": { "body": "#fff3c4", "line": "#5e5038", "blush": "#ffb08a", "accent": "#ffcf5a" },
+      "ears": "rabbit",
+      "size": 1.1,
+      "traits": ["엉뚱", "괴성"],
+      "desc": "기다란 귀의 노란 토끼. 엉뚱하고 에너지가 넘쳐요. 우라!",
+      "promptDesc": "a cream-yellow chibi rabbit-like creature with two long upright rabbit ears, a round head, wide happy dot eyes, a big open mouth, orange-pink blush, energetic pose, Chiikawa style",
+      "anchors": { "head": [512, 450], "face": [512, 660], "neck": [512, 890], "handL": [326, 1015], "handR": [698, 1015], "back": [512, 1005] }
+    },
+    {
+      "id": "momonga",
+      "name": "모몽가",
+      "icon": "🐿️",
+      "colors": { "body": "#ffffff", "line": "#55505a", "blush": "#ffb4c2", "accent": "#c9d4ea", "extra": "#9aa9c8" },
+      "ears": "squirrel",
+      "size": 0.85,
+      "traits": ["관심 받기", "응석쟁이"],
+      "desc": "커다란 눈망울의 하늘다람쥐. 관심 받는 걸 제일 좋아해요.",
+      "promptDesc": "a small white chibi flying squirrel with big sparkly eyes, small rounded squirrel ears, a fluffy curled tail and a pale blue-grey gliding membrane, pink blush, Chiikawa style",
+      "anchors": { "head": [512, 540], "face": [512, 720], "neck": [512, 930], "handL": [360, 1040], "handR": [664, 1040], "back": [512, 1040] }
+    },
+    {
+      "id": "kurimanju",
+      "name": "쿠리만쥬",
+      "icon": "🌰",
+      "colors": { "body": "#d9a46c", "line": "#5a3b22", "blush": "#f19a7a", "accent": "#8a5a32" },
+      "ears": "bun",
+      "size": 0.95,
+      "traits": ["어른스러움", "미식가"],
+      "desc": "밤만쥬처럼 동그란 갈색 친구. 맛있는 걸 먹고 \"하아…\" 하고 감탄해요.",
+      "promptDesc": "a round chestnut-bun shaped chibi creature with warm brown fur, a darker brown top like a baked chestnut bun, tiny bun-like ears, sleepy content eyes and a small smile, Chiikawa style",
+      "anchors": { "head": [512, 460], "face": [512, 660], "neck": [512, 890], "handL": [336, 1015], "handR": [688, 1015], "back": [512, 1005] }
+    },
+    {
+      "id": "rakko",
+      "name": "랏코",
+      "icon": "🦦",
+      "colors": { "body": "#eadbc4", "line": "#5a4a3a", "blush": "#f2b3a2", "accent": "#a88a66" },
+      "ears": "otter",
+      "size": 1.2,
+      "traits": ["토벌 고수", "멋쟁이"],
+      "desc": "키가 크고 듬직한 해달 선배. 토벌 실력이 최고예요.",
+      "promptDesc": "a tall beige chibi sea otter with small round otter ears low on the head, a light muzzle, calm confident eyes, a slightly longer body, Chiikawa style",
+      "anchors": { "head": [512, 330], "face": [512, 580], "neck": [512, 850], "handL": [318, 995], "handR": [706, 995], "back": [512, 985] }
+    },
+    {
+      "id": "shisa",
+      "name": "시사",
+      "icon": "🦁",
+      "colors": { "body": "#f5cf73", "line": "#6a4a22", "blush": "#ffa98a", "accent": "#e2873a" },
+      "ears": "lion",
+      "size": 1,
+      "traits": ["성실", "라멘 수습생"],
+      "desc": "갈기가 복슬복슬한 시사. 성실하게 일하는 라멘집 수습생이에요.",
+      "promptDesc": "a round golden-yellow chibi shisa lion-dog with a fluffy curly orange mane around the face, small rounded ears, cheerful dot eyes and a wide smile, Chiikawa style",
+      "anchors": { "head": [512, 400], "face": [512, 640], "neck": [512, 885], "handL": [330, 1010], "handR": [694, 1010], "back": [512, 1000] }
+    },
+    {
+      "id": "pochette",
+      "name": "포셰트",
+      "icon": "👛",
+      "colors": { "body": "#f1e4fb", "line": "#5a4a66", "blush": "#ffb4d2", "accent": "#b98ad8" },
+      "ears": "pouch",
+      "size": 0.9,
+      "traits": ["수집가", "꼼꼼함"],
+      "desc": "작은 파우치를 늘 메고 다니는 연보라색 친구. 반짝이는 걸 모아요.",
+      "promptDesc": "a small lavender chibi creature with soft drooping pouch-shaped ears and a tiny purple pouch bag on a strap, dot eyes, pink blush, Chiikawa style",
+      "anchors": { "head": [512, 490], "face": [512, 690], "neck": [512, 910], "handL": [346, 1025], "handR": [678, 1025], "back": [512, 1020] }
+    }
+  ]
+}

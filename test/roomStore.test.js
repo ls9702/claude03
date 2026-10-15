@@ -15,7 +15,7 @@ test('save → restore roundtrip (rooms + sessions)', async () => {
     let room = a.createRoom(defaultRoomConfig());
     assert.match(room.code, /^[A-Z2-9]{6}$/);
     room = joinRoom(room, token, '철수').room;
-    room = addCharacter(room, token, { name: '영희', avatar: { hair: 'bun' } }).room;
+    room = addCharacter(room, token, { name: '영희', avatar: { character: 'momonga', props: { head: 'beanie' } } }).room;
     room = setConnected(room, token, true).room;
     a.commit(room);
     await a.close();
@@ -27,7 +27,7 @@ test('save → restore roundtrip (rooms + sessions)', async () => {
     const restored = b.getRoom(room.id);
     assert.ok(restored);
     assert.equal(restored.code, room.code);
-    assert.equal(restored.characters[0].avatar.hair, 'bun');
+    assert.deepEqual(restored.characters[0].avatar, { character: 'momonga', props: { head: 'beanie' } });
     assert.equal(restored.players[0].connected, false, 'presence reset on restore');
     assert.equal(restored.version, room.version);
     assert.equal(b.findByCode(room.code.toLowerCase()).id, room.id);

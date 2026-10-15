@@ -1,6 +1,6 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getAwards, getBalance, getBoardData, getCards, getEras, getHolidays, getHouses, getItems, getJobs, getLines, getMc, getNews, getPartners, getTitles, getTones, getTreasures } from '../data/index.js';
+import { getAvatars, getAwards, getBalance, getBoardData, getCards, getEras, getHolidays, getHouses, getItems, getJobs, getLines, getMc, getNews, getNpcs, getPartners, getPets, getProps, getRoster, getTitles, getTones, getTreasures } from '../data/index.js';
 import {
   addCharacter,
   addCpuCharacter,
@@ -56,6 +56,12 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
+      // CH-1 (Chiikawa conversion): roster characters, props (choosable + era / job growth props), NPC friends (단짝
+      // 후보), pets (반려동물). `avatars` = LEGACY human paper-doll options (asset pipeline / old clients only).
+      roster: getRoster(),
+      props: getProps(),
+      npcs: getNpcs(),
+      pets: getPets(),
       avatars: getAvatars(),
       reactions: REACTIONS,
       // loop maps: `board.loop` {lapPerTurn, lapMin, lapMax, payday, pass}; `minTurns[mode][era]` (final era → null)
@@ -73,7 +79,7 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       cards: getCards(), // Stage 7: cards.json (hand cards; character.cards = [{uid, id}])
       items: getItems(), // Stage 7: items.json (shop items; character.items = [id])
       holidays: getHolidays(), // Stage 7: holidays.json (명절 대잔치)
-      partners: getPartners(), // Stage 8: partners.json (traits, ★ grades, dates, children; character.love / spouse / children)
+      partners: getPartners(), // Stage 8: partners.json (traits, ★ grades, 같이 놀기, pets; character.love / spouse (단짝) / children (반려동물))
       houses: getHouses(), // Stage 8: houses.json (6 fixed ids; character.house, room.houseOwners / housingMarket)
       // Stage 9: treasures.json (names / icons / ranges — the drawn values stay hidden until the result), awards.json,
       // titles.json (ending titles; conditions are informational)

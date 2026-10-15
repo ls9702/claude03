@@ -18,7 +18,13 @@ export const EDUCATIONS = ['none', 'college', 'elite'];
 export const EXAM_RESULTS = ['elite', 'college', 'fail'];
 export const MILITARY_STATUSES = ['none', 'serving', 'done', 'exempt'];
 
-const bodyOf = (c) => (c?.avatar?.body === 'girl' ? 'girl' : 'boy');
+/**
+ * CH-1: no gender — nobody is drafted (`balance.military.mandatory` false) and everyone may volunteer with
+ * 체력 ≥ `volunteerMinStr` (`volunteer` true). A legacy array value counts as "on" when non-empty (old data overrides).
+ */
+const militaryFlag = (v, dflt) => (Array.isArray(v) ? v.length > 0 : typeof v === 'boolean' ? v : dflt);
+export const militaryMandatory = (data) => militaryFlag(data.balance.military?.mandatory, false);
+export const militaryVolunteer = (data) => militaryFlag(data.balance.military?.volunteer, true);
 
 /** A fresh life record. `adult` = the game starts in 청년 (adult mode): grown-up stats, a random education. */
 export function initLife(c, { rng, data, adult = false }) {
@@ -34,7 +40,7 @@ export function initLife(c, { rng, data, adult = false }) {
   if (adult) {
     const w = data.balance.career.adultEducation ?? { none: 1 };
     education = rng.weighted(Object.entries(w).map(([id, weight]) => ({ id, weight }))).id;
-    military = { status: (data.balance.military.mandatory ?? []).includes(bodyOf(c)) ? 'done' : 'exempt', turnsLeft: 0 };
+    military = { status: militaryMandatory(data) ? 'done' : 'exempt', turnsLeft: 0 };
   }
   return {
     stats,
@@ -209,15 +215,14 @@ function careerStep(tx, c) {
     if (c.examResult == null) c.careerDone = true;
     else if (openCareer(tx, c)) return true;
   }
-  const body = bodyOf(c);
-  const mandatory = (mcfg.mandatory ?? []).includes(body);
+  const mandatory = militaryMandatory(data);
   if (c.military.status === 'none' && !c.military.deferred) {
     if (mandatory) {
       if (c.school) {
         openPrompt(tx, 'military', c, { mode: 'mandatory' });
         return true;
       }
-    } else if ((mcfg.volunteer ?? []).includes(body) && (c.stats.str ?? 0) >= (mcfg.volunteerMinStr ?? 0)) {
+    } else if (militaryVolunteer(data) && (c.stats.str ?? 0) >= (mcfg.volunteerMinStr ?? 0)) {
       openPrompt(tx, 'military', c, { mode: 'volunteer' });
       return true;
     } else c.military.status = 'exempt';
@@ -243,7 +248,7 @@ export function preSpinStep(tx, c) {
     openPrompt(tx, 'club', c);
     return true;
   }
-  if (schoolMeetDue(tx, c) && openSchoolMeet(tx, c)) return true; // 고교 첫 만남: the first high-school turn
+  if (schoolMeetDue(tx, c) && openSchoolMeet(tx, c)) return true; // 고교 첫 친구: the first high-school turn
   if (examDue(tx, c)) {
     openPrompt(tx, 'exam', c, {});
     return true;

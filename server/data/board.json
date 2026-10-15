@@ -22,7 +22,7 @@
     "goal": {"name": "골", "icon": "🏁", "color": "#2d2a32"}
   },
   "routes": {
-    "love": {"name": "연애·육아", "icon": "💕", "color": "#ff7eb6", "tone": "love"},
+    "love": {"name": "단짝·반려", "icon": "💕", "color": "#ff7eb6", "tone": "love"},
     "career": {"name": "일·커리어", "icon": "💼", "color": "#4f8ee0", "tone": "career"},
     "money": {"name": "보물·부동산·금전", "icon": "💰", "color": "#d4a017", "tone": "money"}
   },
@@ -66,7 +66,7 @@
         {"type": "event", "weight": 3},
         {"type": "habit", "weight": 3}
       ],
-      "money": {"min": 5, "max": 15, "labels": ["돌잔치 축하금", "세뱃돈", "할머니 용돈", "아기 모델 촬영"]},
+      "money": {"min": 5, "max": 15, "labels": ["첫 생일 축하금", "세뱃돈", "할머니 용돈", "아기 모델 촬영"]},
       "loss": {"min": 5, "max": 10, "labels": ["분유값", "기저귀 대란", "장난감 파손"]}
     },
     "elem": {
@@ -137,7 +137,7 @@
         {"type": "treasure", "weight": 1}
       ],
       "money": {"min": 25, "max": 110, "labels": ["연말정산 환급", "연말 보너스", "적금 만기", "부업 수익"]},
-      "loss": {"min": 20, "max": 70, "labels": ["자녀 학원비", "차 수리비", "경조사비", "건강검진 재검"]}
+      "loss": {"min": 20, "max": 70, "labels": ["펫 미용비", "차 수리비", "경조사비", "건강검진 재검"]}
     },
     "senior": {
       "pool": [
@@ -153,8 +153,8 @@
         {"type": "temple", "weight": 3},
         {"type": "reversal", "weight": 4}
       ],
-      "money": {"min": 20, "max": 90, "labels": ["연금 수령", "손주 용돈 역송금", "텃밭 수확", "퇴직금 이자"]},
-      "loss": {"min": 20, "max": 70, "labels": ["병원비", "보청기", "손주 선물", "효도 관광 바가지"]}
+      "money": {"min": 20, "max": 90, "labels": ["연금 수령", "펫 굿즈 판매 수익", "텃밭 수확", "퇴직금 이자"]},
+      "loss": {"min": 20, "max": 70, "labels": ["병원비", "보청기", "반려동물 병원비", "단체 관광 바가지"]}
     }
   },
   "routePools": {
@@ -170,7 +170,7 @@
         {"type": "jeju", "weight": 1}
       ],
       "eraOverrides": {"_comment": "시대별 루트 칸 가중치·금액 배수 덮어쓰기 {시대: {칸 종류: {weight?, scale?}}}", "middle_age": {"money": {"scale": 1.5}}},
-      "labels": {"money": ["맞벌이 월급", "축의금", "육아 수당"], "loss": ["데이트 비용", "기념일 선물", "기저귀·분유"]}
+      "labels": {"money": ["단짝 생활비", "집들이 선물", "펫 모델 수입"], "loss": ["같이 놀기 비용", "기념일 선물", "펫 사료·간식"]}
     },
     "career": {
       "pool": [

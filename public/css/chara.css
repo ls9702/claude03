@@ -1,0 +1,126 @@
+/* Chiikawa conversion (CH-1): character renderer (public/js/ui/chara.js) + rig animation (public/js/ui/rig.js).
+   Idle motion runs as CSS on inner groups (breathing, ear twitch, head sway, tail wag); actions are driven by the rig
+   (transform attributes on [data-rig] groups); blinking / talking toggle classes on the svg. */
+
+/* eye / mouth states: closed eyes and the open mouth are hidden by a presentation attribute fallback (group photo
+   images have no page CSS) — the page CSS decides here */
+.chara-svg .ch-ec, .chara-svg .ch-mo { display: none; }
+.chara-svg.blink .ch-eo { display: none; }
+.chara-svg.blink .ch-ec { display: inline; }
+.chara-svg.mouth-open .ch-mc { display: none; }
+.chara-svg.mouth-open .ch-mo { display: inline; }
+/* raster art: the closed-eye / open-mouth overlays sit on top of the base figure (shown only while blinking / talking) */
+.chara-svg .ch-raster .ch-ec, .chara-svg .ch-raster .ch-mo { display: none; }
+.chara-svg.blink .ch-raster .ch-ec, .chara-svg.mouth-open .ch-raster .ch-mo { display: inline; }
+
+/* live figure */
+.chara { position: relative; display: inline-block; line-height: 0; }
+.chara > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chara .ch-sheet { position: absolute; inset: 0; background-repeat: no-repeat; pointer-events: none; }
+.chara.sheet-on > svg [data-rig='root'] { visibility: hidden; }
+
+.chara.anim .ch-idle { transform-box: fill-box; transform-origin: 50% 100%; animation: ch-breathe 2.8s ease-in-out infinite; }
+.chara.anim .ch-head-i { transform-box: fill-box; transform-origin: 50% 100%; animation: ch-sway 4.6s ease-in-out infinite; }
+.chara.anim .ch-ear-i { transform-box: fill-box; transform-origin: 50% 100%; animation: ch-ear 5.2s ease-in-out infinite; }
+.chara.anim [data-rig='earR'] .ch-ear-i { animation-duration: 6.3s; animation-delay: 1.4s; }
+.chara.anim .ch-ear-i.droop { transform-origin: 50% 0%; animation-name: ch-ear-droop; }
+.chara.anim .ch-tail-i { transform-box: fill-box; transform-origin: 8% 92%; animation: ch-wag 1.7s ease-in-out infinite; }
+.chara.anim .ch-wings { transform-box: fill-box; transform-origin: 50% 60%; animation: ch-flap 1.4s ease-in-out infinite; }
+@keyframes ch-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(0.988, 1.018); } }
+@keyframes ch-sway { 0%, 100% { transform: rotate(-1.1deg); } 50% { transform: rotate(1.1deg); } }
+@keyframes ch-ear { 0%, 84%, 100% { transform: rotate(0deg); } 88% { transform: rotate(-10deg); } 92% { transform: rotate(6deg); } 96% { transform: rotate(-2deg); } }
+@keyframes ch-ear-droop { 0%, 80%, 100% { transform: rotate(0deg); } 87% { transform: rotate(6deg); } 94% { transform: rotate(-4deg); } }
+@keyframes ch-wag { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(7deg); } }
+@keyframes ch-flap { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.06, 0.97); } }
+
+/* particles (rig.js particlesSvg): canvas units, --dx / --dy travel */
+.chara .ch-pt { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; animation: ch-pt-float 1.6s ease-out infinite both; }
+.chara .ch-pt.tear, .chara .ch-pt.sweat { animation-name: ch-pt-fall; animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+.chara .ch-pt.puff { animation-name: ch-pt-puff; }
+@keyframes ch-pt-fall {
+  0% { transform: translate(0, 0) scale(0.55); opacity: 0; }
+  14% { opacity: 0.95; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; }
+}
+@keyframes ch-pt-float {
+  0% { transform: translate(0, 0) scale(0.4) rotate(0deg); opacity: 0; }
+  22% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes ch-pt-puff { 0% { transform: scale(0.3); opacity: 0.9; } 100% { transform: translate(var(--dx), var(--dy)) scale(1.3); opacity: 0; } }
+
+/* portraits (round slots everywhere) */
+.ch-pt { display: inline-block; line-height: 0; vertical-align: middle; }
+.ch-pt > svg { display: block; }
+svg.ch-token { display: block; }
+
+/* cut-in figure: fills its slot, feet on the slot floor (the `full` view is shared by everyone → relative sizes) */
+.ci-slot.chara-slot { aspect-ratio: 0.78; height: 80%; }
+.ci-chara { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ci-chara > svg { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.18)); }
+.ci-chara.enter { animation: ch-enter 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both; transform-origin: 50% 100%; }
+@keyframes ch-enter { 0% { transform: translateY(14%) scale(0.86, 0.7); opacity: 0; } 55% { transform: scale(1.06, 0.94); opacity: 1; } 100% { transform: none; } }
+
+/* parallax background layers (rig.js attachParallax: JS drives the transform) */
+.ci-bg-img.ci-plx { animation: none; will-change: transform; }
+
+/* lobby picker (reuses the .cz-* dialog shell of the legacy customizer) */
+.cp .cz-stage { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 16px 6px; }
+.cp .cz-stage-tools { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.cp .cz-name { width: 100%; }
+.cp .cz-editor { padding: 8px 12px 4px; }
+.cp-head { margin: 0 4px 6px; flex-wrap: wrap; }
+.cp-preview { position: relative; width: min(240px, 62vw); height: min(250px, 30vh); margin: 0 auto; flex: none; }
+.cp-2d, .cp-preview .chara { width: 100%; height: 100%; }
+.cp-preview canvas.cz-3d { position: absolute; inset: 0; margin: auto; width: min(100%, 250px); height: min(100%, 250px); border-radius: 50%; }
+.cp-who { text-align: center; margin: 0; font-weight: 900; }
+.cp-who small { display: block; font-weight: 600; color: var(--muted, #7a6f66); line-height: 1.35; font-size: 0.78rem; }
+.cp-roster { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.cp-card {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px 6px; min-width: 0;
+  border: 2px solid transparent; border-radius: 14px; background: #fff8ef; cursor: pointer; font: inherit; color: inherit;
+}
+.cp-card:hover { background: #fff1de; }
+.cp-card.on { border-color: var(--primary, #ff8a3d); background: #fff1de; box-shadow: 0 3px 10px rgba(255, 138, 61, 0.25); }
+.cp-card:focus-visible { outline: 3px solid #4f8ee0; outline-offset: 2px; }
+.cp-card .chara { width: 100%; max-width: 92px; aspect-ratio: 0.85; }
+.cp-card b { font-size: 0.82rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-slots { display: flex; gap: 4px; margin: 10px 0 6px; }
+.cp-slots [role='tab'] {
+  appearance: none; flex: 1 1 0; min-width: 0; border: 0; border-radius: 10px; background: var(--bg-2, #fbeee0); font: inherit;
+  font-weight: 800; font-size: 0.84rem; padding: 7px 2px; cursor: pointer; color: var(--muted, #7a6f66); white-space: nowrap;
+}
+.cp-slots [role='tab'][aria-selected='true'] { background: var(--primary, #ff8a3d); color: #fff; }
+.cp-slots [role='tab']:focus-visible { outline: 3px solid #4f8ee0; outline-offset: 2px; }
+.cp-props { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; }
+.cp-prop {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px; min-width: 0; border-radius: 12px;
+  border: 2px solid transparent; background: #fff8ef; cursor: pointer; font: inherit; color: inherit; font-size: 0.72rem; font-weight: 700;
+}
+.cp-prop.on { border-color: var(--primary, #ff8a3d); background: #fff1de; }
+.cp-prop:focus-visible { outline: 3px solid #4f8ee0; outline-offset: 2px; }
+.cp-prop .cp-thumb { width: 60px; height: 60px; display: grid; place-items: center; }
+.cp-prop .cp-thumb svg { width: 60px; height: 60px; }
+.cp-prop .cp-none { font-size: 1.5rem; line-height: 60px; }
+.cp-prop > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-chosen { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 22px; }
+.cp-chip { background: #fff1de; border-radius: 999px; padding: 1px 8px; font-size: 0.74rem; font-weight: 800; }
+.cp-randoms { padding: 8px 0 4px; }
+.cp .cz-actions { z-index: 3; }
+@media (min-width: 769px) {
+  .cp .cz-stage { width: 300px; justify-content: flex-start; gap: 8px; padding: 16px; }
+  .cp-preview { width: 250px; height: 280px; }
+  .cp .cz-editor { padding: 10px 14px 6px; }
+  .cp-card .chara { max-width: 84px; }
+}
+@media (max-width: 400px) {
+  .cp-slots [role='tab'] { font-size: 0.76rem; }
+  .cp-props { grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); }
+  .cp-prop .cp-thumb, .cp-prop .cp-thumb svg { width: 50px; height: 50px; }
+  .cp-prop .cp-none { line-height: 50px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chara, .chara * { animation: none !important; transition: none !important; }
+  .chara .ch-pt { opacity: 0.9; }
+}

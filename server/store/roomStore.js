@@ -3,6 +3,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { viewFor } from '../game/view.js';
+import { migrateRoomLooks } from '../game/avatar.js';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 const ROOM_ID_RE = /^[a-f0-9]{8,32}$/;
@@ -68,6 +69,7 @@ export class RoomStore {
         const room = JSON.parse(await readFile(path.join(this.savesDir, file), 'utf8'));
         if (!room || !ROOM_ID_RE.test(room.id)) continue;
         for (const p of room.players) p.connected = false;
+        migrateRoomLooks(room); // CH-1: human avatars → roster characters, partners → NPC friends, children → pets
         this.rooms.set(room.id, room);
       } catch (err) {
         this.log(`방 복원 실패 (${file}): ${err.message}`);

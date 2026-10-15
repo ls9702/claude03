@@ -142,8 +142,9 @@
 - `viewFor` masks: other sessions' pending answers (exposes `pending.answered[]` instead) and unresolved bets.
 - Hooks: every tile type has a handler since Stage 9 (`board.json.placeholders` is `{}`; `resolveTile`'s default branch
   stays for future types); add new tiles as handlers + `PROMPTS` entries.
-- Avatar part ids in `server/data/avatars.json` are stable contracts (generated PNG layers will key off them);
-  add new options, don't rename existing ids. `eraOutfits` is reserved for era/job costume mapping.
+- Player looks (CH-1): `character.avatar = {character: rosterId, props: {head?, face?, neck?, hand?, back?}}` (roster.json /
+  props.json, see "Chiikawa conversion (CH-1) — server"); partners `{npc, props}`, pets `{pet}`. LEGACY: avatar part ids in
+  `server/data/avatars.json` (human paper doll) stay stable contracts for the asset pipeline only; `eraOutfits` is legacy.
 - Reactions are SSE-only (`reaction` event), never stored in room state.
 
 ## Asset studio (Stage 3)
@@ -264,7 +265,7 @@
   (`avatars.json` `eraOutfits`, e.g. doctor/suit) via `layerPlan({outfit})`; new scenes = new `bg-<scene>` items +
   `tones.json.scenes` (+ `SCENES` in presentation.js); new line tags just need a pool in lines.json.
 
-## Customization UI (Stage 5.5-A)
+## Customization UI (Stage 5.5-A) — LEGACY since CH-1 (human paper-doll avatars; player looks are roster characters + props, see "Chiikawa conversion (CH-1)")
 - `avatar2d.renderAvatar(parts, {size, bg, title, expression?, crop?, hat?})` — SVG head-and-shoulders portrait for every
   avatars.json option (build = torso `scaleX` group, face = head path, 20 hairs, 30 outfits via the `OUTFIT_PAINTERS`
   table + `OUTFIT_HATS`/`OUTFIT_BACKS` for police cap/chef toque/dino hood/idol headset). Gradient/clip ids are unique per
@@ -284,7 +285,7 @@
 - Preview hook: `setPreviewRenderer(fn|null)`; `fn(avatar, {expression, size, defs})` → markup string | Node |
   Promise of either (stale results dropped; null/throw → SVG fallback). Open customizers re-render immediately.
 
-## Paper-doll layers (Stage 5.5-B)
+## Paper-doll layers (Stage 5.5-B) — LEGACY since CH-1 (human paper-doll avatars; player looks are roster characters + props, see "Chiikawa conversion (CH-1)")
 - Every avatar option is a transparent layer on ONE shared 1024×1536 canvas, same front-facing pose, so composing =
   drawing the stack at (0,0). Made by Gemini *edits* of a bald, blank-faced mannequin ("keep everything, ONLY add X")
   + `diffExtract` (edit − base inside a category region). Neutral colours are tinted in the browser.
@@ -326,7 +327,7 @@
   `node scripts/part-qa.js [--fix]` (alignment/coverage QA, regenerates outliers) → `node scripts/part-sheets.js --out
   <dir>` (contact sheets) for a visual check.
 
-## AI character art (Stage 5.5-D)
+## AI character art (Stage 5.5-D) — LEGACY since CH-1 (human paper-doll avatars; player looks are roster characters + props, see "Chiikawa conversion (CH-1)")
 - Optional per-character illustration set generated with Gemini that matches the customization exactly. Room state:
   `character.art = {key, status: 'pending'|'ready'|'failed', progress: 0..1, reason?, files?: {base, poses: {idle, wave,
   jump, cheer, cry, shock}, expressions: {joy, cry, shock, angry}}}` + `character.artGenerations` (successful player
@@ -367,7 +368,7 @@
   exhausted; `CHAR_ART_FAKE_DELAY_MS`, default 250) → `server/assets/fakeGemini.js`. Never set it in production.
   Tests (`test/charArt*.test.js`) inject `assets.studioOptions.fetchImpl` / `charArtOptions` / `charArtThrottleMs`.
 
-## Layered avatars (Stage 5.5-C)
+## Layered avatars (Stage 5.5-C) — LEGACY since CH-1 (human paper-doll avatars; player looks are roster characters + props, see "Chiikawa conversion (CH-1)")
 - Shared pure modules: `public/js/shared/partStack.js` + `public/js/shared/tintMath.js` are the ONLY implementations
   (served as `/js/shared/*`); `server/assets/partStack.js` / `tintMath.js` are `export *` re-exports, so server code,
   scripts and tests keep their imports. Keep both files free of Node/DOM imports (a test greps for it).
@@ -550,9 +551,10 @@
 - Rules: habit prompt (4 options, stat +gain (+1 at `bonusChance`), money cost/roll × era scale × news). 수능: `r = rng.next()`
   vs `examChances` (base + int×지력 + luck×운 + news `examBonus` (+ `retakeBonus`)), the better result is kept. 진로: college
   (tuition as debt, `collegeTurns` of school, then graduation → job offer), 바로 취업, 재수 (not for elite, once: skip
-  `retakeSkipTurns`, retake exam → a pass enrolls, a fail goes to work — no second 진로 prompt). 군: mandatory bodies
-  (`boy`) — enrolled → prompt 지금/졸업 후 (once), otherwise automatic after hiring (job kept); volunteers (`girl`) with str ≥
-  `volunteerMinStr` → prompt; else exempt. Serving: spins move `ceil(value/2)` (`spun.steps`, `halved: true`), military pay
+  `retakeSkipTurns`, retake exam → a pass enrolls, a fail goes to work — no second 진로 prompt). 군 (CH-1: no gender —
+  `balance.military.mandatory` false / `volunteer` true): everyone with str ≥ `volunteerMinStr` → volunteer prompt, else exempt;
+  only with `mandatory: true` (data override) everyone is drafted — enrolled → prompt 지금/졸업 후 (once), otherwise automatic
+  after hiring (job kept). Serving: spins move `ceil(value/2)` (`spun.steps`, `halved: true`), military pay
   `military.pay` per spin and on salary tiles (0 since the post-simulation fixes → no pay, a log line on salary tiles), str
   +`strGain` (1) at 전역; school is paused. Jobs: `eligibleJobs` = requirements + news
   (`jobRequireDelta`, `jobDelta`) + education; offers weighted by `offerWeight` (1 + 0.5×(Σreq−3) + 1.5 with a degree), no
@@ -805,12 +807,13 @@
 ## Stage 8 — romance, family, real estate (server)
 - Data (`loadData` / `gameData().partners|houses|avatars`, `/api/meta.partners|houses`): `server/data/partners.json` — `traits`
   (int 지력형 / str 체력형 / charm 매력형 / luck 운형 `{name, icon, desc, weight}`), `stars` 1..4 `{salary, allowanceMult, weight}`
-  (30/45/65/85 만원 per payday since the loop maps; 고교 전원 만남 is always ★1), `names.boy|girl` (24 each), `meetEras`, `affection {meet 30,
+  (30/45/65/85 만원 per payday since the loop maps; 고교 전원 만남 is always ★1), (`names.boy|girl` and the `avatar` pools were removed
+  in CH-1: names / looks come from npcs.json / pets.json), `meetEras`, `affection {meet 30,
   dateGain, matchBonus 8, proposeAt 60, max 100, failDrop 15, steadyGain 10, familyGain 10, eraGain 5, loveRoute 30}`, `propose {base 0.45, perAffection, charm,
   luck, match, min, max, eras}`, `dates[]` (walk 5 / library int 12 / hiking str 12 / concert charm 16 / amusement luck 16: `{cost, gain}`), `costs
   {scale per era, wedding, weddingGift, birth}`, `birth {eras young/middle_age, base 0.6, perAffection, perChild, max, perSpin 0.15}`, `children {max 4,
-  genius {base, match, luck}, growTurns 1, dolGift, schoolCost, examGift (genius 60 / college 20), allowance 50, talentMult, allowanceOnEra?}`, `outings[]`, `avatar` (hair /
-  outfit (boy / girl / child) / colour pools, `traitAccessory`). `server/data/houses.json` — 6 fixed ids `oneroom villa apartment
+  genius {base, match, luck}, growTurns 1, dolGift, schoolCost, examGift (genius 60 / college 20), allowance 50, talentMult, allowanceOnEra?}`, `outings[]`.
+  `server/data/houses.json` — 6 fixed ids `oneroom villa apartment
   hanok penthouse jeju_villa` `{name, icon, price, value (= price × 1.05; jeju 1500 → 2000), capacity 1 | null (apartment), eras, lucky? (jeju), desc}`, `listings` 3,
   `tradeIn` 0.7, `subscription {houseId apartment, chance, discount}`, `luckyChance {money, other, perLuck}`, `market {era senior,
   min 0.8, max 1.3}`. news.json: `housing_boom` (young/middle_age ×1.3), new `housing_slump` (middle_age/senior ×0.8) and
@@ -818,16 +821,15 @@
   money 1, high 1, senior 1), `house` money route 6, senior 6, love / career 2; heart / house left `placeholders` (only treasure remains).
   manifest: `bg-park` / `bg-house` (todo; scenes `park` → mountain-trail, `house` → office in `sceneFallbacks`).
 - Modules: `server/game/family.js` (init / `ensureFamily` / `ensureRoomFamily`, `topStats` / `traitMatch` (찰떡궁합 = partner trait
-  is one of my best stats), `makePartner` / `randomLook` (seeded, sanitized full avatars; children inherit a parent's skin / hair
-  colour), `schoolMeet`, `resolveHeartTile`, `blindDate`, `loveRouteChosen`, `proposeStep`, `proposeChance`, `birthChance`, `bearChild`, `growChildrenOnEra|OnSpin`,
+  is one of my best stats), `makePartner` (CH-1: an NPC friend, `npcLook`), `schoolMeet`, `resolveHeartTile`, `blindDate`, `loveRouteChosen`, `proposeStep`, `proposeChance`, `birthChance`, `bearChild`, `growChildrenOnEra|OnSpin`,
   `allowanceAmount` / `payAllowances`, `spouseSalary`; prompts meet / date / propose) and `server/game/houses.js` (`houseOwners` /
   `syncHouseOwners`, `houseAvailable`, `priceMult`, `tradeInValue`, `houseListings`, `resolveHouseTile`, `buyHouse`,
   `drawHousingMarket`; prompt house). spaces.js: `heart` / `house` tile cases; routeChoice `love` → `loveRouteChosen`; growth.js `lifeStep` ends with
   `proposeStep`.
 - Character (public): `love {candidates [partnerSpec] (the open 만남 prompt's people, else []), partner, affection, dates}`,
-  partnerSpec = `{id 'pt<n>', name, trait, stars, body (opposite of the character), avatar}`; `spouse` = partnerSpec + `{salary,
-  marriedTurn}` | null; `children [{id 'ch<n>', name, trait, talent genius|normal, stage baby|kid|teen|adult, bornTurn, avatar, body,
-  growth 0..4, turns}]` (max 4); `house {id, price, value, boughtTurn}` | null; `houseSwaps`. Room: `nextPartnerSeq`,
+  partnerSpec = `{id 'pt<n>', name, trait, stars, species, avatar {npc, props}}` (CH-1: an NPC friend, no body); `spouse` =
+  partnerSpec + `{salary, marriedTurn}` | null; `children` (CH-1: pets) `[{id 'ch<n>', name, species, trait, talent genius|normal,
+  stage baby|kid|teen|adult, bornTurn, avatar {pet}, growth 0..4, turns}]` (max 4); `house {id, price, value, boughtTurn}` | null; `houseSwaps`. Room: `nextPartnerSeq`,
   `nextChildSeq`, `schoolMeetDone`, `houseOwners {houseId: [charId]}` (kept in sync), `housingMarket {eraId, mult}` | null — the last
   two in `viewFor`. Older saves migrate in `applyAction` (a save already past 고등학생 never gets a late 전원 만남).
 - Rules: 고교 첫 만남 (loop maps, ADDENDUM A3): at each character's FIRST high-school turn (`preSpinStep`) a single character gets a
@@ -960,7 +962,8 @@
 - Owner id `'cpu'` (`lobby.CPU_OWNER`, `cpu.CPU_OWNER`): `viewFor` shows `ownerId 'cpu'`, `ownerName 'CPU'`; order.js puts
   CPUs after the players' characters (family order). CPU characters carry `cpuPersonality` cautious|normal|bold (public).
 - Lobby (pure, `server/game/lobby.js`): `addCpuCharacter(room, {name?, avatar?}, now, {by})` (lobby only, max characters,
-  name = first unused `CPU_NAMES` entry unless given, look = `randomAvatar(seed)` seeded by room seed + id + seq,
+  name = first unused `CPU_NAMES` entry unless given, look = `randomAvatar(seed)` (CH-1: `avatar.randomLook` = roster character +
+  0–2 props) seeded by room seed + id + seq,
   personality seeded the same way), `removeCpuCharacter(room, charId, now, {by})` (CPU only → 409, lobby only),
   `roomHost(room)` (= first joined non-spectator), `canManageCpu(room, sessionId)` (409 without `config.allowCpu`, 403
   for non-hosts / spectators). A CPU-only room starts like any other (≥ 2 characters, no ready check) — admin only.
@@ -1616,3 +1619,198 @@ Contract: session scratchpad `cards-contract.md` (FIXED CONTRACT) + `cards-devia
   `cardKindLabel` + `c-<color>`. 3D (board3d): `cardLost` pop (animator `ANIMATED_EVENTS`), injury card gained 🤕, 🔼 / 🔽 / 🎯 / 💨 pops on
   `cardUsed`, `spun` subtitle 「· 🔼 6~10」, rush banner 「💨 ○○, 월급날로 직행!」, name-tag badges via `spinModBadges`.
 - CSS: end of `public/css/cards.css` (colour chips / tags / stack / status stripes / number pad / requirement badges / roll hints).
+
+## Chiikawa conversion (CH-1) — server
+Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (final ids / fields / decisions). Tests:
+`test/chiikawa-server.test.js` (+ updated lobby / cpu / stage6 / stage8 / charArt / roomStore / presentation tests). Roadmap row 13 in
+`docs/PLAN.md`. Event types / field names / line-tag ids / MC keys of Stage 8 are unchanged — only texts, looks and rules changed.
+- Data (`loadData` / `gameData().roster|props|npcs|pets`, `/api/meta.roster|props|npcs|pets`; `/api/meta.avatars` stays, LEGACY):
+  `roster.json` (8 fixed ids chiikawa hachiware usagi momonga kurimanju rakko shisa pochette, `default` chiikawa, `canvas`, `earTypes`;
+  `{id, name, icon, colors {body, line, blush, accent, extra?}, ears, size 0.8–1.25, traits (display only), desc, promptDesc, anchors
+  {head, face, neck, handL, handR, back}}` in the 1024×1536 canvas — data-driven, an entry can be swapped without code), `props.json`
+  (`slots` head face neck hand back; `props [{id, slot, name, icon, choice, color, tintable?, promptDesc}]` = 30 `choice: true` player
+  props + growth / job props; `eraProps {era: {slot: prop} | {job: true}}`; `jobProps {jobId: {slot: prop}}` = jobs.json job `props`
+  (a test keeps them equal; jobs.json `outfit` is gone)), `npcs.json` (10 단짝 후보 species `{id, name, icon, colors, ears,
+  promptDesc}`, 28 gender-free `names`, `traitProps` + `traitPropChance` 0.5), `pets.json` (8 반려동물 species `{id, name, icon,
+  colors, size, promptDesc}` — no roster duplicates, 28 `names`, `stages` baby 새끼 / kid 꼬마 / teen 청소년 / adult 어른 + scale).
+- Avatar model (`server/game/avatar.js`, pure): `character.avatar = {character, props}` (props = only set slots, in slot order,
+  `choice` props of that slot). `sanitizeAvatar(input, data?)`: unknown character → roster default; a legacy human avatar →
+  `migrateHumanAvatar` (roster pick = `hash32('look', stableJson(old)) % 8`; `ACCESSORY_PROPS` glasses → round_glasses, sunglasses,
+  cap → beanie, ribbon, headband, earrings → necklace, hairpin → flower_pin). `randomLook(seed)` (CPU: seeded character + 0–2
+  props in distinct slots; lobby `randomAvatar` delegates), `sanitizeNpcLook` → `{npc, props}`, `sanitizePetLook` → `{pet}`,
+  `sanitizeHumanAvatar` (LEGACY). Config `growthOutfits` keeps its key (= growth props on / off, 「성장 소품 값은 true/false여야
+  합니다.」); the server never applies growth props (the client's `effectiveLook`).
+- Migration `migrateRoomLooks(room, data?)` (idempotent, mutates, true when changed): player avatars (human → roster, the human
+  AI `art` dropped), `love.candidates` / `love.partner` / `spouse` → NPC friends (species = hash of id + name + old avatar;
+  `species`; accessory → props; `body` dropped), `children` → pets (species by hash, `avatar {pet}`, `species`, `body` dropped),
+  `room.schoolMeetPairs[].partner`, an open prompt's `options[].partner` / `context.candidates` (copies of one partner migrate the
+  same way). Called by `RoomStore.load` (every saved room; the file is rewritten on the next commit), engine `applyAction` (after the
+  clone) and engine `startGame`; lobby add / update / CPU sanitize their input the same way.
+- No gender: nothing reads `avatar.body` (a test greps server/game for `bodyOf` / `avatar.body` / 'boy' / 'girl').
+  `balance.military {mandatory: false, volunteer: true}` (`growth.militaryMandatory/militaryVolunteer`; a legacy array counts as on
+  when non-empty): nobody is drafted, everyone with 체력 ≥ `volunteerMinStr` gets the volunteer prompt (else `exempt`), adult mode
+  starts `exempt`; the drafted flow (지금 / 졸업 후, service right after hiring) still works with `mandatory: true` (tested through a
+  data override). Partners: `family.makePartner` = species `rng.pick(npcs.species)`, trait / ★ as before, name from `npcs.names`,
+  `npcLook` (trait prop with `traitPropChance`) → partnerSpec `{id, name, trait, stars, species, avatar {npc, props}}`. Children →
+  pets: `bearChild` = species `rng.pick(pets.species)`, name from `pets.names` → `{id, name, species, trait, talent, stage,
+  bornTurn, avatar {pet}, growth, turns}`. CPU heuristics unchanged (they read option fields only).
+- Wording (contract §4; every server label / log / prompt / line): route love 「단짝·반려」 (board routes + tones love label), 💘 새
+  친구 / 🏫 고교 첫 친구 (meet prompt titles; log 「…친구가 됐다!」), 💑 같이 놀기 (date; dates 동네 산책 · 도서관 공부 모임 · 등산
+  나들이 · 콘서트 관람 · 놀이공원 나들이), 친밀도, 🏡 「같이 살자!」 제안 (options 「🏡 같이 살자!」 / 「💕 조금 더 친하게 지내기」),
+  🎉 집들이 파티 · 집들이 선물 · 단짝 동거 (married), 단짝 생활비 (spouse salary log 「💑 단짝 ○○의 생활비」), 🐣 반려동물 입양,
+  🎂 입양 파티 (dol), 🎒 펫 훈련 학교, 🏆 펫 경연대회 (우승 / 입상 / 탈락), ⭐ 펫 스타 데뷔 + 💌 펫 광고 수입 (allowance), 천재 펫,
+  🐾 반려동물 입양 지원금 (news `birth_bonus`), card `marriage_luck` 단짝운◎, awards 대가족 집사상 🐾 / 천재 펫 집사상 / 단짝·반려
+  루트 메달, titles 영원한 솔로 / 고향 지킴이 / 럭키 스타, love-route tile labels, events (친구 소개 · 우정 팔찌 · 반려동물 훈련비 ·
+  단짝운), 명절 잔소리 「단짝은 있니?」. Line pools (heart meet school_meet date propose* wedding birth dol child_* allowance
+  route_love + era_high / era_senior / holiday_nagging lines) and MC pools (marriage, birth, proposeFail, schoolMeet; mc.json
+  marriage vars + `partner`, birth vars + `child`; the MC dogs' `gender` stays, `relation` text has no 남자/여자) rewritten. Scenes:
+  married / childBorn → house, dol → park, child exam / job → stage, route love / love tone / love-route events → park.
+  `chiikawa-server` greps server/data (keys `_*` and legacy avatars.json skipped) and server/game strings (comments stripped) for 결혼
+  신랑 신부 아내 남편 아들 딸 육아 출산 임신 남자 여자 프러포즈 축의금 돌잔치 배우자 맞벌이 호감도 데이트 자녀 연애 연인 영재 소개팅
+  청혼 손주 첫사랑 부케 애인 커플 효자 효녀 신혼.
+- LEGACY kept as is: avatars.json, `server/assets/partStack|tintMath|postprocess|charArt` + their tests (human avatars), the
+  `/api/char-art` routes (keyed by whatever avatar JSON a character has; still off without a Gemini key).
+- Scripts: `simulate.js` / `cpu-game.js` give random characters a random roster look (one meta draw, like the old body roll);
+  military stats by status only; Korean report lines use the new wording. Measured after CH-1 (`simulate --games 300 --seed 11`):
+  군 복무 exempt 311 / done 144 (volunteers only; was ~50 % drafted), 단짝 동거 53.3 % of adult-mode characters (love route 79–83 %),
+  lifetime 65.3 %, 1.65 pets per household, 천재 펫 30.7 %, route 1st-place shares within ±3.3 pt of fair; `cpu-game` 4 CPU + 4 random
+  × 100 (seed 1): CPU 87 % of wins (blue / red cards: 90 %); `--bias --games 400 --seed 1`: 10.0–15.0 %, spread −0.09.
+
+## Chiikawa conversion (CH-1) — client (3D)
+- Contract: session scratchpad `chiikawa-contract.md` §5 "3D" + `chiikawa-deviations.md` (CH-C notes). Tests:
+  `test/client-pawn3d.test.js` (+ squash & stretch math in `test/scene.test.js`). E2E: session scratchpad `chc/` (`lineup.cjs`
+  standalone pawn lineup via a routed page, `poses.cjs` hop pose strip, `board.cjs` / `board2.cjs` real 8-character game on the 3D
+  board incl. injected heavy props, `preview.cjs` lobby picker 3D preview, `podium.cjs` ranked result → podium + group photo; screenshots
+  `chc-*.png`).
+- `scene/pawnParts.js` (pure): a look `{character, props}` → primitive specs. Roster data / fallbacks / look normalisation come from
+  `shared/roster.js` (`rosterInfo`, `propInfo`, `normalizeLook` — old human avatars map to the same roster pick as the 2D renderer).
+  `rosterEntry(id, meta)` → `{id, ears, size (0.8–1.25), mouth small|w|open, feat, colors {body, line, blush, accent, extra, eye}}`;
+  `FEATURES_3D` per roster id (same meaning as `ui/chara.js` FEATURES) + ear-type fallbacks + a data entry's own `features` win:
+  cap 'hachiware' (blue-grey split cap = per-triangle vertex paint in `accent`, inverted-V white split on the forehead) | 'bun'
+  (Kurimanju glazed top in `accent` + shine, small round ears), muzzle (Rakko: lighter-body muzzle + nose, side ears with an accent
+  inside, flat accent tail), mane (Shisa: scalloped disc behind the head, `bump {n, amp}`), tail / membrane (Momonga: big fluffy accent
+  tail + side flaps), pouchBag (Pochette: droopy light-accent ears, tilted cross-body strap + pouch). Everything is data-driven by
+  `ears` + colours + features (a swapped roster entry needs no code). Figure: mochi body + wide head (frame `charaFrame(entry)`:
+  head / body ellipsoids, eye line, neck ring, raised right paw `hand`, back, crown), dot eyes with a highlight (`expression: 'joy'` =
+  closed ^ ^ eyes, used for the 1st place on the podium), blush ovals, tiny mouth, stubby arms (the right one raised when a hand prop is
+  held, not for the soccer ball) and feet; scaled about the feet by `size`.
+- Props: `PROP_BUILDERS` has a primitive builder for every props.json id (choosable + era / job props; a test checks props.json,
+  `eraProps`, `jobProps`, jobs.json `props` / `partTime.props`); unknown ids → `SLOT_FALLBACK` generic shape per slot. Placed from the
+  frame anchors (hats hug the head via `ringAt` / sphere caps, glasses on the eye normals, neck rings from the neck cross-section, hand
+  items at the raised paw, back items behind the body). Colour (`propColor`): `tintable: true` → the character's `accent`, else
+  props.json `color`, else `PROP_DEFAULT_COLORS`. Growth props are NOT applied in 3D: pawns draw `c.avatar` of game2d's display room
+  (= `effectiveLook`, era / job props per slot).
+- Spec extras (evaluated by pawn.js): `paint {type: cap|glaze|muzzle|belly|inner|tip|bands|swirl|half|liquid|soccer}` → `paintColor`
+  on the LOCAL position (spheres: unit direction) per triangle (crisp low-poly edges), `bump {n, amp}` → `bumpFactor` (lobes around the
+  local y axis, normals recomputed), `outline: t` → inverted hull in the line colour (same mesh + material: the part pushed out along its
+  normals with reversed winding, only its back faces show), `flip` (reversed winding, cape lining). `specTriangles(spec)` = exact
+  three.js triangle counts (hulls included). Orientation helpers `faceRot / axisRot / eulerFromAxes / rotateXYZ` (Euler XYZ).
+- LEGACY: `scene/pawnHuman.js` = the old human paper-doll pawn (`humanSpecs`, `resolveAvatar`, `PAWN_COLORS`, …, re-exported by
+  pawnParts.js); `pawnSpecs(avatar)` still routes a human avatar there (the legacy avatar tests), game paths call `pawnLook()` first.
+- `scene/pawn.js`: `buildPawnGeometry(look, defs, {expression?, outline?})` (one merged non-indexed vertex-coloured geometry = 1 draw
+  call; LRU cache of 48 looks keyed by `lookKey` incl. every resolved colour; `userData.triangles / height`), `buildSpecsGeometry`,
+  `pawnHeight(look, defs)` (tag height: crown incl. ears / tall hats, not hand items), `PAWN_SCALE` 0.78 (the round heads are wider than
+  the old pawns), `createPawn({avatar, defs, name, isMe})` → `{group, holder, baseScale, height, update, …}` (tag at height + 0.36).
+  `defs` = the whole `/api/meta` everywhere (board3d passes `meta`); the old avatars defs still work (fallbacks).
+- Squash & stretch (pure, `scene/math.js`, volume-preserving `sxz = 1/√sy`, pivot at the feet): `hopPose(k, h)` (anticipation squash
+  → stretched take-off → apex → falling stretch → landing squash; `move` = horizontal progress only while airborne, `HOP_SQUASH` 0.16),
+  `landPose(s)` (damped settle wobble), `bobPose(t)` (current pawn: hops with a contact squash), `breathePose(t, phase)`. board3d: each
+  hop tween uses `hopPose`; after a move `P.settleAt` → 0.28 s `landPose`; idle = current pawn `bobPose`, others `breathePose`
+  (desynchronised by order); tv quality / prefers-reduced-motion → no breathing / settle (hops stay).
+- `scene/pawnPreview.js` (lobby picker 3D preview, same API): `createPawnPreview(canvas, {meta | defs, size})` → `set(look)` (squashy
+  pop on change, camera frames the look's height), `play('hop' | 'cheer')`, `dispose()`; breathing + slow turn. `scene/podium3d.js`:
+  `createPodium3D(canvas, {meta | defs, entries, reducedMotion})` — roster pawns (1st place with `expression: 'joy'`), tag heights per
+  look, celebration hops via `hopPose` (others breathe); `snapshot()` unchanged (group photo 🧊 3D style).
+- Budgets (measured): per pawn bare 1,072–1,306 triangles, ≤ 1,926 with the heaviest prop in every slot (Pochette), test cap 2,000
+  for every roster id × heavy + seeded random full combos; 1 draw call per pawn. Board with 8 pawns (1280 high, SwiftShader): 26–39 draw
+  calls, 12–34k rendered triangles; worst case 8 heavy-prop pawns on the young loop = 36.0k scene triangles un-culled (pawns 14.3k) — ≤ 100
+  calls / ≤ 50k tris holds. Podium with 8 pawns: 21–24 calls / ≈ 11k triangles.
+
+## Chiikawa conversion (CH-1) — client (2D)
+- Contract: session scratchpad `chiikawa-contract.md` §3 / §4 / §5 + `chiikawa-deviations.md` (CH-B notes). Tests:
+  `test/client-chara.test.js` (roster / props / looks, renderer distinctness per roster id + species, props at anchors, expressions,
+  crops, raster plug-in, rig timing, sprite / particle / parallax math, picker helpers, a §4 wording grep over public/), updated
+  `client-family` (pets / NPC friends / wording), `client-growth` (growth props), `client-bluered` / `client-cutinPolicy` /
+  `client-result` (wording fixtures). `test/avatarCustomize.test.js` = LEGACY human avatar contracts (modules kept, not called).
+  E2E: session scratchpad `chb/` (`gallery.cjs` routed renderer galleries, `lobby.cjs` picker + props 1280 / 390, `inject.cjs` cut-ins
+  with actions / family cut-ins / side list / banner, `game.cjs` natural CPU-assisted game → result + group photo; `chb-*.png`).
+- LEGACY (no longer called by the game): the human 2D avatar paths of Stage 5.5-A/B/C/D — `ui/avatar2d.js` (renderAvatar,
+  renderAvatarLayers, portraits), `ui/avatarCompose.js` (paper-doll compositor), `ui/customize.js` (human customizer + preview hook),
+  `ui/charArt.js` (AI art slot), `growth.js` `DEFAULT_ERA_OUTFITS` / `eraOutfitTable` / `jobOutfit`. Modules and their tests stay (asset
+  tools, old saves); every 2D drawing now goes through `ui/chara.js`.
+- Pure `public/js/shared/roster.js` (no imports): `/api/meta.roster|props|npcs|pets` first, inline fallbacks mirroring the data
+  (`DEFAULT_ROSTER` (anchors incl.), `DEFAULT_PROPS` (`choice`, `color`, `tintable`), `DEFAULT_NPCS`, `DEFAULT_PETS` (+ `size`),
+  names, `DEFAULT_PET_STAGES`, `DEFAULT_ERA_PROPS`, `DEFAULT_JOB_PROPS`); `CANVAS` (1024×1536, feet y 1303, x 512), `PROP_SLOTS`
+  head face neck hand back. `rosterList/rosterInfo/rosterDefault`, `propSlots`, `propList(meta, slot)` (choosable = `choice: true`),
+  `propInfo` ({slot, name, icon, color, tintable, choice}), `npcList/npcInfo`, `petList/petInfo/petStages`, `lookKind` (character |
+  npc | pet | legacy), `normalizeLook` (sanitize; legacy human avatar → roster pick by FNV hash of its stable JSON + accessory prop
+  via `LEGACY_ACCESSORY_PROPS` — the server's migration is authoritative), `sanitizeProps`, `lookKey`, `randomLook`, `lookName`,
+  growth: `eraPropsTable`, `lookEra`, `jobProps(jobId, {jobs, props})` (jobs.json `props` > props.json `jobProps` > default),
+  `growthProps`, `effectiveLook(character, {room, jobs, props, job?, meta?})` (playing / finished rooms with `growthOutfits !== false`:
+  era props, `job: true` eras → job props; each overrides only the chosen prop of the SAME slot; same object when unchanged).
+  `growth.js` `effectiveAvatar` / `displayCharacters(room, {props, jobs, meta, overrides})` delegate to it (game2d's display room:
+  `avatar` = effective look, `chosenAvatar` = chosen look; the 3D side reads the same `c.avatar`). `militaryLabel(exempt)` = 「미입대」.
+- Renderer `public/js/ui/chara.js` (+ `public/css/chara.css`, linked in index.html): SVG drawn in the shared canvas coordinates.
+  `chibiGeom(anchors)` derives a mochi head (top = anchors.head, chin below anchors.neck), a squat bell body, stubby arm capsules
+  (shoulder pivots), feet; eyes on its own face line (`charaAnchors(look)` = the anchors the SVG rig really uses — glasses sit on the
+  eyes, hand items on the right paw; raster art uses the roster `anchors`). Ears by `ears` type (nub, cat/fox, rabbit, squirrel, bun,
+  otter, lion, pouch, round, lamb, tuft, frog, none) + `FEATURES` per id with ear-type fallbacks + a data entry's own `features`
+  (hachiware split cap, kurimanju bun top, rakko muzzle, shisa mane, momonga tail, pochette pouch bag; NPC: penguin face mask / belly /
+  beak, hamster lower face + cheeks, duckling beak + tuft, panda patches + dark limbs, squirrel / fox tails, lamb wool, frog eye bumps,
+  bear cub muzzle, owl eye rings + beak + belly marks). Pets have their own body plans (fish, bird, turtle, hedgehog, dog, guinea pig,
+  snail; unknown species = a blob with its icon). Faces: `CHARA_EXPRESSIONS` neutral joy cry (squeezed eyes + tear streams) shock angry
+  love sweat shy; eyes open `.ch-eo` / closed `.ch-ec` and mouth `.ch-mc` / open `.ch-mo` (closed / open groups carry
+  `display="none"` so SVG-as-image renders right; CSS classes `blink` / `mouth-open` on the svg toggle them). Groups with pivots
+  (`data-rig` root / shadow / head / earL / earR / armL / armR / tail / propR, `data-px|py`), CSS idle inner groups (`.ch-idle` breathing,
+  `.ch-head-i` sway, `.ch-ear-i` twitch, `.ch-tail-i` wag, `.ch-wings`). Props: a painter for every props.json id (`DRAWN_PROPS`; hand
+  items ×1.35 inside the right arm, counter-rotated `propR` so they stay upright; back items behind the body + `BACK_FRONT` straps);
+  colour = props.json `color`, `tintable` → the character's `colors.accent`; unknown ids → a generic badge with the prop icon. No SVG
+  ids (except raster arm clip paths). Line width scales with the rendered size (`size` px) so 26 px tokens keep a line.
+  API: `charaSvg(look, {size, crop: full|fit|bust|face|head|{x,y,w,h}, expression, pose (baked key pose), title, flip, meta, shadow,
+  cls})` (`FULL_VIEW` is shared → relative sizes show; rakko > chiikawa > momonga), `renderChara(look, opts)` → `.chara` element
+  (`setState({expression, pose})`, `play(action, {times, ms})` → Promise, `talk(ms)`, `stop()`, `ready`; idle anim + blink 2–5 s unless
+  `motion: false` / reduced motion), `renderCutinFigure(character, {pose, emotion, name, flip})` (drop-in for the old
+  renderAvatarLayers: `setState({pose, emotion})`, `playSprite()` = double jump + sparkles), `preloadChara`, portraits
+  `portraitHtml / renderPortrait / hydratePortraits` (drop-in names; SVG is complete on insert, hydrate is a no-op), `charaToken`
+  (2D board / admin), `charaImage(subject, {expression, pose, height})` → `{img, feet}` (group photo), `setCharaMeta(meta)` (app /
+  admin install `/api/meta`), `rasterParts / rasterPrefix`, `chibiGeom`, `scaledAnchors`.
+- Raster contract (§3, nothing accepted yet → SVG everywhere): `assetInfo('<ch-id|npc-species|pet-species>-<part>')` — `base` (full
+  figure, replaces the SVG body / head / arms; root squash / hop still apply), `body` + `arms` (cut-out: the arms image twice, clipped to
+  the left / right half and rotated around `meta.pivots.armL|armR`), `eyes-closed` / `mouth-open` overlays (blink / talk),
+  `expr-<joy|cry|shock|angry|love|sweat>` (`meta.overlay` false = swap the figure, else an overlay), `sheet-<action>` (meta `{grid,
+  frames, fps, loop}` → `rig.sheetDef` → the sprite player replaces the rig for that action); props `prop-<id>` (or `_` → `-`) placed
+  so `meta.anchor` sits on the slot anchor (scale `H/450 × meta.scale`). Images are `<image>` elements in the same 1024×1536 space.
+- Animation `public/js/ui/rig.js`: pure `ACTIONS` (idle talk wave cheer jump cry shock walk; ms, loop), `samplePose(action, t)`
+  (per-part {x, y, sx, sy, r}, eyes / mouth; jump = anticipation squash → stretched take-off → airborne arms up → land squash → jelly
+  settle; cry = sob shake + heave + arms to the face; shock = startled hop + decaying tremble; volume-preserving `squashStretch`),
+  `keyPose`, `restPose`, `mouthOpenAt`, `blinkDelay` (2–5 s), `partTransform` (SVG transform about a pivot), `dampedSine` / `jelly` /
+  `shakeOffset` / `shakeKeyframes`, `spriteFrame` / `spriteBgPos` / `spriteDuration` / `sheetDef`, `spawnParticles` (seeded: tears from
+  both eyes, sweat, hearts, sparkles, stars, puffs, notes) → `particlesSvg` (CSS-animated `.ch-pt` with `--dx/--dy`), `parallaxOffset`
+  / `parallaxLayers(scene, assetUrl, single)` (`bg-<scene>-far|mid|near`). DOM: `createRig(svg)` (one shared rAF ticker; `play`,
+  `loop`, `stop`, `destroy`; drops rigs removed from the page), `createSpritePlayer`, `screenShake` (WAAPI), `attachParallax`,
+  `prefersReducedMotion` (reduced → key poses, no loops / particles motion).
+- Cut-ins (`cutin2d`): cast slots `.ci-slot.chara-slot` (aspect 0.78, 80 % height; pets × `childScale`) with `renderCutinFigure`;
+  poses → rig loops (wave / cheer / cry) or one-shots (jump / shock), emotions → faces + particles (tears / hearts / sweat /
+  sparkles); the speaker's mouth flaps while its bubble shows (`talk`), a shock shakes the window (`screenShake`), big wins double-jump;
+  layered parallax backgrounds when `bg-<scene>-far|mid|near` exist (`.ci-plx`). Family looks: married / childBorn → scene house, dol →
+  park, proposal → park, 🏡 frame for the 집들이 party.
+- Lobby picker `public/js/ui/picker.js` (replaces the customizer in app.js): `openCharaPicker(host, {title, initial, submitLabel, onSave,
+  onCancel, meta})` → `{destroy, getAvatar}`; reuses the `.cz-*` dialog shell; 8 roster cards (live idle figures, radiogroup, arrows),
+  slot tabs 🎀 머리 · 👓 얼굴 · 🎗️ 목 · 🎈 손 · 🎒 등 (`jinsei.cpSlot`), prop grid (「없음」 + thumbnails of the current character
+  with that prop, crop by slot via `propThumbCrop`), 🎲 이 자리만 / 전체 랜덤, live preview (2D rig with 👋 인사 / 🎉 점프 / 🙌 만세 /
+  😭 울기 chips, or the 3D pawn via `scene/pawnPreview.js` with `defs: meta`), the name follows the chosen character until typed
+  (`autoName`). Saves `{name, avatar: {character, props}}`. Pure helpers `propThumbCrop`, `randomizeSlot`, `autoName`,
+  `rosterCardsModel`, `propsSummary`.
+- Everything drawn with chara.js: lobby cards (bust), HUD / side list / now-playing / decision sheet / trade dialog / card sheet
+  (face), cut-in cast + tabs, banners, result ranking / CSS podium / MVP cards, group photo (`charaImage` with baked poses: v → wave,
+  만세 / 점프 → cheer, 하트 → love face; `FIGURE_SCALE` 1.0), 2D board tokens (`charaToken`), admin room detail. NPC friends
+  (`{npc, props}`) and pets (`{pet}`) use the same renderer (`family.npcLook / petLook / npcCharacter`).
+- Family wording (§4) in the client: `family.js` `FAMILY_WORDS`, `CHILD_STAGES` 새끼 / 꼬마 / 청소년 / 어른 (pets.json stage names win),
+  `childScale(stage, {meta, species})` = stage scale × species size × `PET_SLOT_BOOST` 1.45 (0.5..1), `CHILD_GROW` 입양 파티 (park) /
+  펫 훈련 학교 / 펫 경연대회 (stage) / 펫 스타 데뷔 (stage), `PET_CONTEST` 우승 / 입상 / 탈락, `familyIcons` 💞 단짝 / 💕 단짝 후보 + pet
+  species icons (🌟 천재 펫), `familySummary` 「💞 단짝 ○○(★3) · 반려동물 n마리」, `familyTagBadge` 💞🐾n🏠; partner view models carry
+  `species / speciesName / speciesIcon`. familyArt (새 친구 cards 「💘 친구 하기」, 🏠 단짝 생활비, 친밀도 bar, 「같이 살자!」 /
+  「조금 더 친해지기」, side detail 단짝 후보 / 단짝 / 반려동물), cutinMap tags + fallback texts, cutin2d chips (집들이 선물, 🐣 입양, 펫 광고
+  수입, 단짝 생활비), game2d floats / toasts / result family line, cards.js 단짝운◎, cutinPolicy route desc, houseArt 입양 파티 table,
+  admin 「성장 소품」. `client-chara` greps public/ (legacy avatar modules and scene/ excepted) for 결혼 자녀 출산 육아 프러포즈 배우자
+  맞벌이 축의금 돌잔치 돌잡이 신랑 신부 남편 아내 아들 남자 여자 임신.

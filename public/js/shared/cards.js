@@ -70,8 +70,8 @@ export const DEFAULT_CARDS = Object.freeze({
   complaint: { name: '민원', icon: '📮', kind: 'sabotage', color: 'red', desc: '직장인 경험치 −2, 아니면 벌금' },
   gossip: { name: '뒷담화', icon: '🗣️', kind: 'sabotage', color: 'red', desc: '대상 매력 −1' },
   // blue (보유 효과)
-  marriage_luck: { name: '결혼운◎', icon: '💞', kind: 'held', color: 'blue', desc: '가지고 있는 동안 호감도가 더 많이 올라요', hold: { until: 'married' } },
-  popular: { name: '인기 폭발◎', icon: '🌟', kind: 'held', color: 'blue', desc: '만남 후보의 ★이 오르고 데이트 호감도 +2' },
+  marriage_luck: { name: '단짝운◎', icon: '💞', kind: 'held', color: 'blue', desc: '가지고 있는 동안 친밀도가 더 많이 올라요', hold: { until: 'married' } },
+  popular: { name: '인기 폭발◎', icon: '🌟', kind: 'held', color: 'blue', desc: '친구 후보의 ★이 오르고 같이 놀기 친밀도 +2' },
   research: { name: '연구열심', icon: '🔬', kind: 'held', color: 'blue', desc: '의사·연구원이 되려면 필요해요', requirement: true },
   charisma: { name: '카리스마◎', icon: '🎤', kind: 'held', color: 'blue', desc: '국회의원·아이돌·국민 MC가 되려면 필요해요', requirement: true },
   tongue: { name: '절대미각', icon: '👅', kind: 'held', color: 'blue', desc: '셰프가 되려면 필요해요', requirement: true },
@@ -166,7 +166,7 @@ export function cardKindLabel(info) {
   }
 }
 
-const HOLD_UNTIL = { married: '결혼하면 사라져요', healed: '부상이 나으면 사라져요', job: '직업을 얻으면 사라져요' };
+const HOLD_UNTIL = { married: '단짝과 같이 살면 사라져요', healed: '부상이 나으면 사라져요', job: '직업을 얻으면 사라져요' };
 
 /**
  * How a card works, for the card sheet: {title, text} — 보유 효과 (kept while held + its `hold.until`), 사용 효과, 자동, 부상, 공적.
@@ -662,7 +662,7 @@ export function handLayout(count, width, { min = 46, max = 88, gap = 6, minGap =
 
 // ---------- cards leaving a hand (`cardLost {charId, cardId, uid, reason}`) ----------
 const LOST = {
-  married: { glyph: '💍', verb: '소멸', note: '결혼했어요' },
+  married: { glyph: '💞', verb: '소멸', note: '단짝과 같이 살게 됐어요' },
   healed: { glyph: '🩹', verb: '회복', note: '부상이 나았어요' },
   discarded: { glyph: '🗑️', verb: '버림', note: '손패가 가득 찼어요' },
   merit: { glyph: '🏅', verb: '사용', note: '승진에 썼어요' },
@@ -679,7 +679,7 @@ export function cardLostInfo(event, meta, { count = 1 } = {}) {
   const n = Math.max(1, Number(count) || 1);
   let text;
   if (e.reason === 'healed' || info.kind === 'status') text = `🩹 부상 회복 · ${info.icon} 부상 카드 사라짐`;
-  else if (e.reason === 'married') text = `💍 ${info.icon} ${info.name} 소멸`;
+  else if (e.reason === 'married') text = `💞 ${info.icon} ${info.name} 소멸`;
   else if (e.reason === 'merit') text = `🏅 공적 카드 ${n}장 사용`;
   else if (e.reason === 'discarded') text = `🗑️ ${info.icon} ${info.name}${n > 1 ? ` ×${n}` : ''} 버림`;
   else text = `${info.icon} ${info.name} ${r.verb}`;

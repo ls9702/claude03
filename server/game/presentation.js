@@ -115,7 +115,8 @@ const SUBMAP_TAGS = {
 const treasureOf = (data, id) => (id ? (data?.treasures ?? getTreasures()).treasures?.find((t) => t.id === id) ?? null : null);
 const awardName = (data, id) => (id ? (data?.awards ?? getAwards()).awards?.find((a) => a.id === id)?.name ?? '' : '');
 const GROW_TAGS = { dol: 'dol', school: 'child_school', exam: 'child_exam', job: 'child_job' };
-const GROW_SCENES = { dol: 'wedding-hall', school: 'school', exam: 'school', job: 'office' };
+// CH-1: pets — 🎂 입양 파티 (park), 🎒 펫 훈련 학교 (school), 🏆 펫 경연대회 / ⭐ 펫 스타 데뷔 (stage)
+const GROW_SCENES = { dol: 'park', school: 'school', exam: 'stage', job: 'stage' };
 const JOB_TAGS = { hire: 'hire', change: 'job_change', hidden: 'hidden_job', parttime: 'parttime' };
 const JOB_TILE_TAGS = { failed: 'job_fail', blocked: 'injury', overtime: 'overtime', bonus: 'salary', noBonus: 'job_fail', promoted: 'promotion', changed: 'job_change' };
 const EXAM_TAGS = { elite: 'exam_elite', college: 'exam_college', fail: 'exam_fail' };
@@ -138,7 +139,7 @@ const houseName = (data, id) => (id ? (data?.houses ?? getHouses()).houses?.find
 function familyVars(ev, c) {
   const partner = ev.partner?.name ?? ev.spouse?.name ?? c?.love?.partner?.name ?? c?.spouse?.name ?? '';
   const child = ev.child?.name ?? (ev.childId ? c?.children?.find((k) => k.id === ev.childId)?.name : '') ?? '';
-  return { partner, child: child || (ev.childId ? '우리 아이' : '') };
+  return { partner, child: child || (ev.childId ? '우리 펫' : '') };
 }
 const TONE_EMOTION = { good: 'joy', bad: 'cry', love: 'love', result: 'joy', treasure: 'joy', holiday: 'joy', career: 'joy', neutral: 'neutral' };
 const BIG_GAIN = 100; // 만원 — money_gain vs big_gain line pool
@@ -686,11 +687,11 @@ export function presentationFor(ev, ctx) {
       emotion ??= ev.success ? 'love' : 'cry';
       scene = 'park';
       break;
-    case 'married':
+    case 'married': // CH-1: 단짝 동거 → 🎉 집들이 파티 at home
       tag = 'wedding';
       tone ??= 'love';
       emotion ??= 'love';
-      scene = 'wedding-hall';
+      scene = 'house';
       if (ev.total) vars.amount = wonText(ev.total);
       break;
     case 'schoolMeet': {
@@ -700,11 +701,11 @@ export function presentationFor(ev, ctx) {
       scene = 'school';
       break;
     }
-    case 'childBorn':
+    case 'childBorn': // CH-1: 🐣 반려동물 입양 — the new pet comes home
       tag = 'birth';
       tone ??= 'love';
       emotion ??= 'joy';
-      scene = 'hospital';
+      scene = 'house';
       break;
     case 'childGrew':
       cutin = isCutinChildGrew(ev);

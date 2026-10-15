@@ -118,7 +118,7 @@ test('planCutins: anchors with cutin:true (not prompts) collect their money/log 
 
 test('tagLabel / autoAdvanceMs / sfxForEvent', () => {
   const tileTypes = loadData('board').tileTypes;
-  assert.equal(tagLabel({ type: 'landed', tone: 'love', tileType: 'heart' }, { tones: tones.tones, tileTypes }), '💕 연애·육아 · 하트 칸');
+  assert.equal(tagLabel({ type: 'landed', tone: 'love', tileType: 'heart' }, { tones: tones.tones, tileTypes }), '💕 단짝·반려 · 하트 칸');
   assert.equal(tagLabel({ type: 'result', tone: 'result' }, { tones: tones.tones }), '🏆 결과 발표');
   assert.equal(autoAdvanceMs({ prompt: true }), 0);
   assert.ok(autoAdvanceMs({ owner: true }) > autoAdvanceMs({ owner: false }));

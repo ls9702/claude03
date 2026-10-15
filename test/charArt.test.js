@@ -30,6 +30,9 @@ import { makeRoom, tempDir } from './helpers.js';
 const KEY = 'AIzaSyCHARART_TEST_KEY_0123456789abcd';
 const avatars = getAvatars();
 const D = avatars.default;
+// CH-1: lobby looks are roster characters + props (the legacy art service is keyed by any avatar JSON)
+const LOOK = { character: 'chiikawa', props: {} };
+const LOOK_B = { character: 'hachiware', props: { neck: 'scarf' } };
 const ANCHOR = path.join(import.meta.dirname, 'fixtures', 'anchor.jpg');
 
 function service(dir, fetchImpl, extra = {}) {
@@ -250,16 +253,16 @@ test('viewFor passes art to everyone; editing the avatar resets it; name-only ed
       { id: 'p1', sessionId: 'S1', name: 'A' },
       { id: 'p2', sessionId: 'S2', name: 'B' },
     ],
-    characters: [{ id: 'c1', seq: 1, name: '철수', avatar: { ...D }, ownerSessionId: 'S1', art }],
+    characters: [{ id: 'c1', seq: 1, name: '철수', avatar: { ...LOOK }, ownerSessionId: 'S1', art }],
   });
   for (const s of ['S1', 'S2', null]) {
     const c = viewFor(room, s).characters[0];
     assert.deepEqual(c.art, { key: art.key, status: 'ready', progress: 1, files: art.files });
   }
-  const renamed = updateCharacter(room, 'S1', 'c1', { name: '영희', avatar: { ...D } });
+  const renamed = updateCharacter(room, 'S1', 'c1', { name: '영희', avatar: { ...LOOK } });
   assert.ok(renamed.ok);
   assert.equal(renamed.room.characters[0].art.status, 'ready');
-  const edited = updateCharacter(room, 'S1', 'c1', { avatar: { ...D, hair: 'afro' } });
+  const edited = updateCharacter(room, 'S1', 'c1', { avatar: { ...LOOK, character: 'shisa' } });
   assert.ok(edited.ok);
   assert.equal(edited.room.characters[0].art, undefined);
   assert.equal(room.characters[0].art.status, 'ready', 'input untouched');
@@ -271,12 +274,12 @@ test('runner: pending jobs become failed on restart; edits re-attach a cached se
     const store = new RoomStore({ dataDir: tmp.dir, debounceMs: 5 });
     await store.load();
     const room = store.createRoom(makeRoom().config);
-    const key = artKey(D);
+    const key = artKey(LOOK);
     room.players.push({ id: 'p1', sessionId: 'S1', name: 'A' });
-    room.characters.push({ id: 'c1', seq: 1, name: '철수', avatar: { ...D }, ownerSessionId: 'S1', art: { key, status: 'pending', progress: 3 / 11 } });
+    room.characters.push({ id: 'c1', seq: 1, name: '철수', avatar: { ...LOOK }, ownerSessionId: 'S1', art: { key, status: 'pending', progress: 3 / 11 } });
     const stub = {
       keyFor: artKey,
-      cached: (k) => (k === artKey({ ...D, hair: 'bob' }) ? { files: artFiles(k), rev: 0 } : null),
+      cached: (k) => (k === artKey(LOOK_B) ? { files: artFiles(k), rev: 0 } : null),
       hasKey: async () => true,
     };
     const runner = new CharArtRunner(store, stub, { throttleMs: 0 });
@@ -285,11 +288,11 @@ test('runner: pending jobs become failed on restart; edits re-attach a cached se
     assert.equal(c.art.status, 'failed');
     assert.equal(c.art.reason, '서버 재시작');
     // edit to a cached look → ready; edit to an unknown look → cleared
-    const r1 = updateCharacter(store.getRoom(room.id), 'S1', 'c1', { avatar: { ...D, hair: 'bob' } });
+    const r1 = updateCharacter(store.getRoom(room.id), 'S1', 'c1', { avatar: LOOK_B });
     runner.syncCharacter(r1.room, 'c1');
     assert.equal(r1.room.characters[0].art.status, 'ready');
-    assert.equal(r1.room.characters[0].art.files.base, `/api/char-art/${artKey({ ...D, hair: 'bob' })}/base.webp`);
-    const r2 = updateCharacter(r1.room, 'S1', 'c1', { avatar: { ...D, hair: 'afro' } });
+    assert.equal(r1.room.characters[0].art.files.base, `/api/char-art/${artKey(LOOK_B)}/base.webp`);
+    const r2 = updateCharacter(r1.room, 'S1', 'c1', { avatar: { character: 'shisa', props: {} } });
     runner.syncCharacter(r2.room, 'c1');
     assert.equal(r2.room.characters[0].art, undefined);
     runner.stop();

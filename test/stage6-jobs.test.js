@@ -76,7 +76,7 @@ const setJob = (c, id, rank = 1, extra = {}) => {
 
 // ---------- data ----------
 
-test('jobs.json: 17 regular + 6 hidden + 알바, valid requirements, ranks, outfits, scenes, unlocks', () => {
+test('jobs.json: 17 regular + 6 hidden + 알바, valid requirements, ranks, job props (CH-1), scenes, unlocks', () => {
   const regular = data.jobs.jobs.filter((j) => !j.hidden);
   const hidden = data.jobs.jobs.filter((j) => j.hidden);
   assert.deepEqual(regular.map((j) => j.name), ['공무원', '대기업 회사원', '웹툰 작가', '국회의원', '야구선수', '축구선수', 'e스포츠 선수', '격투기 선수', '배우', '아이돌', '유튜버', '셰프', '의사', '연구원', '경찰관', '개그맨', '교사']);
@@ -87,7 +87,11 @@ test('jobs.json: 17 regular + 6 hidden + 알바, valid requirements, ranks, outf
     assert.ok(!ids.has(j.id), `duplicate ${j.id}`);
     ids.add(j.id);
     assert.ok(j.name && j.icon && j.desc, j.id);
-    assert.ok(OUTFITS.has(j.outfit), `${j.id}: outfit ${j.outfit} exists in avatars.json`);
+    // CH-1: job props {slot: propId} replace the human outfit; the same table is props.json `jobProps`
+    assert.equal(j.outfit, undefined, `${j.id}: no human outfit`);
+    assert.ok(Object.keys(j.props ?? {}).length >= 1, `${j.id}: props`);
+    for (const [slot, id] of Object.entries(j.props)) assert.equal(data.props.props.find((p) => p.id === id)?.slot, slot, `${j.id}: ${slot} ${id}`);
+    assert.deepEqual(j.props, data.props.jobProps[j.id], `${j.id}: props.json jobProps`);
     assert.ok(SCENES.includes(j.scene), `${j.id}: scene ${j.scene}`);
     assert.ok(TONE_OK(j.tone), `${j.id}: tone ${j.tone}`);
     assert.ok(j.ranks.length >= 3 && j.ranks.length <= 5, `${j.id}: 3–5 ranks`);
@@ -118,7 +122,7 @@ test('jobs.json: 17 regular + 6 hidden + 알바, valid requirements, ranks, outf
   for (const id of ['civil_servant', 'office_worker', 'teacher']) assert.equal(jobDef(data, id).injuryRisk, 0);
 });
 
-test('avatars.eraOutfits (contract) uses existing outfits; job eras defer to the job outfit', () => {
+test('LEGACY avatars.eraOutfits (human paper-doll contract, asset pipeline only) uses existing outfits', () => {
   assert.deepEqual(avatars.eraOutfits, {
     baby: { any: 'dino' },
     elem: { any: 'tracksuit' },
@@ -561,7 +565,7 @@ test('MC: job / promotion / hiddenJob / injury / military / news only on real ou
 test('full random lifetime games: every event type / line tag is known; no unfilled placeholders', () => {
   const seen = new Set();
   for (const seed of [2, 11]) { // (Stage 9 board pools: seed 3 → 2 keeps a graduation in the sample)
-    let room = started({ seed, eraTurns: SHORT, chars: [['A', 'A1', { body: 'boy' }], ['B', 'B1', { body: 'girl' }], ['A', 'A2', { body: 'girl' }]] });
+    let room = started({ seed, eraTurns: SHORT, chars: [['A', 'A1', { character: 'usagi' }], ['B', 'B1', { character: 'hachiware', props: { head: 'ribbon' } }], ['A', 'A2', { character: 'chiikawa' }]] });
     for (let i = 0; i < 2000 && room.status === 'playing'; i++) {
       const p = room.turn.pending;
       const action = p
@@ -593,7 +597,7 @@ test('config: growthOutfits boolean (default true); viewFor exposes the Stage 6 
   for (const bad of ['yes', 1, null, 'false']) {
     const r = validateRoomConfig({ growthOutfits: bad });
     assert.equal(r.ok, false);
-    assert.match(r.errors[0], /성장 의상/);
+    assert.match(r.errors[0], /성장 소품/);
   }
   const room = started();
   const c = room.characters[0];

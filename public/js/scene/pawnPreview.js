@@ -1,13 +1,20 @@
-// Lobby 3D preview: the same low-poly pawn the board uses, slowly turning (one small WebGL canvas).
+// Lobby 3D preview: the same Chiikawa-style pawn the board uses (CH-1), slowly turning with idle breathing, a squashy
+// pop when the look changes and optional `play('hop' | 'cheer')`. One small WebGL canvas.
 import * as THREE from 'three';
-import { buildPawnGeometry } from './pawn.js';
+import { buildPawnGeometry, pawnHeight } from './pawn.js';
+import { pawnLook } from './pawnParts.js';
+import { hopPose, landPose, breathePose } from './math.js';
+
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{ defs?: object, size?: number }} opts
- * @returns {{ set(avatar): void, dispose(): void }}
+ * @param {{ meta?: object, defs?: object, size?: number }} opts  meta = `/api/meta` (roster / props; wins over `defs`, which
+ *   may also be `/api/meta` or the old avatars defs → inline fallbacks)
+ * @returns {{ set(look): void, play(action?: 'hop'|'cheer'): void, dispose(): void }}
  */
-export function createPawnPreview(canvas, { defs = null, size = 140 } = {}) {
+export function createPawnPreview(canvas, { defs: defsOpt = null, meta = null, size = 140 } = {}) {
+  const defs = meta ?? defsOpt;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setSize(size, size, false);
@@ -17,32 +24,62 @@ export function createPawnPreview(canvas, { defs = null, size = 140 } = {}) {
   sun.position.set(2, 4, 3);
   scene.add(sun);
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
-  camera.position.set(0, 1.3, 4.7);
-  camera.lookAt(0, 0.78, 0);
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.08, 28), new THREE.MeshLambertMaterial({ color: 0xffd9b8 }));
   base.position.y = -0.04;
   scene.add(base);
+  const holder = new THREE.Group(); // squash / hop pivot at the feet
+  scene.add(holder);
+  const still = reducedMotion();
   let mesh = null;
   let raf = 0;
   let t0 = performance.now();
+  let action = null; // {kind, t0}
   const frame = (now) => {
     raf = requestAnimationFrame(frame);
     if (!canvas.isConnected) return;
-    if (mesh) mesh.rotation.y = Math.sin((now - t0) / 1400) * 0.9;
+    const t = (now - t0) / 1000;
+    if (mesh) holder.rotation.y = still ? 0.35 : Math.sin(t / 1.4) * 0.9;
+    let pose = still ? { y: 0, sy: 1, sxz: 1 } : breathePose(now / 1000);
+    if (action && !still) {
+      const k = (now - action.t0) / 1000;
+      if (action.kind === 'pop') pose = k < 0.32 ? landPose(k / 0.32) : pose;
+      else if (action.kind === 'hop') pose = k < 0.45 ? hopPose(k / 0.45, 0.45) : k < 0.75 ? landPose((k - 0.45) / 0.3) : pose;
+      else if (action.kind === 'cheer') {
+        const n = Math.floor(k / 0.36);
+        pose = n < 3 ? hopPose((k % 0.36) / 0.36, 0.3) : k < 1.36 ? landPose((k - 1.08) / 0.28) : pose;
+      }
+      if (k > 1.6) action = null;
+    }
+    holder.position.y = pose.y;
+    holder.scale.set(pose.sxz, pose.sy, pose.sxz);
     renderer.render(scene, camera);
   };
   raf = requestAnimationFrame(frame);
+  /** Frame the whole figure (taller characters / hats / long ears need more room). */
+  const frameCamera = (h) => {
+    const top = Math.max(1.5, h + 0.15);
+    camera.position.set(0, top * 0.62 + 0.35, 3.2 + top * 1.05);
+    camera.lookAt(0, top * 0.48, 0);
+  };
+  frameCamera(1.45);
   return {
     set(avatar) {
-      const geo = buildPawnGeometry(avatar, defs);
+      const look = pawnLook(avatar, defs);
+      const geo = buildPawnGeometry(look, defs);
       if (!mesh) {
         mesh = new THREE.Mesh(geo, material);
-        scene.add(mesh);
+        holder.add(mesh);
       } else {
-        mesh.geometry = geo; // geometries are cached per avatar (shared with the board)
+        mesh.geometry = geo; // geometries are cached per look (shared with the board)
+        action = { kind: 'pop', t0: performance.now() };
       }
+      frameCamera(pawnHeight(look, defs));
       t0 = performance.now();
+    },
+    /** A cosmetic little hop ('hop') or three happy bounces ('cheer'). */
+    play(kind = 'hop') {
+      action = { kind: kind === 'cheer' ? 'cheer' : 'hop', t0: performance.now() };
     },
     dispose() {
       cancelAnimationFrame(raf);

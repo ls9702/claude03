@@ -1,3 +1,5 @@
+// LEGACY (Chiikawa conversion CH-1): the human paper-doll / AI-art avatar path. The game no longer calls this module —
+// players, NPC friends and pets are drawn by ui/chara.js (lobby picker: ui/picker.js). Kept for the asset tools / old tests.
 // Paper-doll compositor (Stage 5.5-C): turns an avatar (avatars.json part ids) into a canvas from the accepted
 // `part-*` layers, exactly like scripts/part-sheets.js does with sharp.
 //

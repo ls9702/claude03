@@ -1,20 +1,25 @@
 // Stage 6 client helpers (pure: no DOM, no Node) — growth outfits, stats, jobs, education, military.
 // Shared by game2d.js, cutin2d.js, cutinMap.js, the 3D board and node tests.
 //
-//   effectiveAvatar(character, {room, avatars, jobs})  → the look shown in game (era / job costume)
-//   displayCharacters(room, {avatars, jobs, overrides}) → room.characters with `avatar` = effective look
+//   effectiveAvatar(character, {room, props, jobs})    → the look shown in game (roster character + era / job props)
+//   displayCharacters(room, {props, jobs, overrides})  → room.characters with `avatar` = effective look
 //   STAT_KEYS / STAT_INFO / statCap / statPct / statChip  → 지력·체력·매력·운 bars and cut-in chips
 //   jobInfo / jobBadge / rankStars / salaryChip           → job badge (icon · name · ★ rank / max · 부상 · 알바)
 //   educationLabel / militaryLabel / optionExtras         → 학력, 군 복무, prompt option badges (jobOffer)
 //
 // Everything is feature-detected: characters / rooms / meta without the Stage 6 fields render as before.
 
-/** Contract default of `avatars.json.eraOutfits` (used when the server's defs don't have it yet). */
+import { effectiveLook } from './roster.js';
+
+/**
+ * LEGACY (human paper-doll avatars, before the Chiikawa conversion): contract default of `avatars.json.eraOutfits`.
+ * Kept for old tests / tools; the game draws roster characters with growth PROPS now (roster.js `eraPropsTable`).
+ */
 export const DEFAULT_ERA_OUTFITS = Object.freeze({
   baby: { any: 'dino' },
   elem: { any: 'tracksuit' },
-  middle: { boy: 'uniform', girl: 'sailor' },
-  high: { boy: 'uniform', girl: 'sailor' },
+  middle: { any: 'uniform' },
+  high: { any: 'uniform' },
   young: { job: true },
   middle_age: { job: true },
   senior: { any: 'hanbokTrad' },
@@ -24,7 +29,7 @@ export const PART_TIME_ID = 'parttime';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
-/** `avatars.eraOutfits` when it has entries, else the contract default. */
+/** LEGACY: `avatars.eraOutfits` when it has entries, else the old contract default. */
 export function eraOutfitTable(avatars) {
   const t = avatars?.eraOutfits;
   return isObj(t) && Object.keys(t).length ? t : DEFAULT_ERA_OUTFITS;
@@ -59,56 +64,35 @@ export function jobInfo(jobId, jobs) {
   return { ...def, id: def.id ?? jobId, name: def.name ?? jobId, icon: def.icon ?? '💼', ranks, maxRank: Math.max(1, ranks.length), hidden: !!def.hidden, partTime: pt };
 }
 
-/** Costume of a job (jobs.json `outfit`), null when unknown. */
+/** LEGACY: costume of a job (jobs.json `outfit`), null when unknown. */
 export function jobOutfit(job, jobs) {
   const id = typeof job === 'string' ? job : job?.id;
   const info = jobInfo(id, jobs);
   return typeof info?.outfit === 'string' && info.outfit ? info.outfit : null;
 }
 
-function outfitExists(id, avatars) {
-  const list = avatars?.parts?.outfit;
-  if (!Array.isArray(list) || !list.length) return true; // no defs → trust the data
-  return list.some((o) => o?.id === id);
-}
-
 /**
- * The avatar a character is drawn with in game. Growth outfits (room config `growthOutfits`, default on) swap the
- * chosen outfit for the era costume (`eraOutfits[era][body] ?? .any`) or, in `job: true` eras, the character's job
- * costume (jobs.json / part-time; no job → the chosen outfit). Only in playing / finished rooms — the lobby and the
- * customizer always show the chosen look. The player's `outfitColor` is kept: tintable costumes wear it, fixed-colour
- * ones (doctor/police/chef/taekwondo) ignore it in every renderer.
+ * The look a character is drawn with in game (Chiikawa conversion): its roster character + chosen props, with the
+ * growth props of its era / job (props.json `eraProps` / jobs.json `props`) replacing the chosen prop of the SAME slot.
+ * Only in playing / finished rooms with `config.growthOutfits !== false` (the lobby and the picker show the chosen look).
+ * Old human avatars map to a roster character (roster.js `normalizeLook`).
  * @param {object} character  {avatar, era?, position?, job?}
- * @param {{room?: object, avatars?: object, jobs?: object, job?: object|null}} ctx  `job` overrides character.job
- *   (e.g. a jobChanged cut-in shows the post-event job)
- * @returns {object} avatar (the same object when nothing changes)
+ * @param {{room?, props?: object (props.json), jobs?, job?: object|null, meta?}} ctx  `job` overrides character.job
+ *   (a jobChanged cut-in shows the post-event job)
+ * @returns {object} look `{character, props}` (the same object when nothing changes)
  */
-export function effectiveAvatar(character, { room = null, avatars = null, jobs = null, job } = {}) {
-  const avatar = isObj(character?.avatar) ? character.avatar : {};
-  if (!room || (room.status !== 'playing' && room.status !== 'finished')) return avatar;
-  if (room.config?.growthOutfits === false) return avatar;
-  const era = characterEra(character, room);
-  const entry = era ? eraOutfitTable(avatars)[era] : null;
-  if (!isObj(entry)) return avatar;
-  let outfit = null;
-  if (entry.job) {
-    outfit = jobOutfit(job !== undefined ? job : character?.job, jobs);
-  } else {
-    const body = avatar.body ?? avatars?.default?.body ?? 'boy';
-    outfit = entry[body] ?? entry.any ?? null;
-  }
-  if (typeof outfit !== 'string' || !outfit || outfit === avatar.outfit || !outfitExists(outfit, avatars)) return avatar;
-  return { ...avatar, outfit };
+export function effectiveAvatar(character, { room = null, props = null, jobs = null, job, meta = null } = {}) {
+  return effectiveLook(character, { room, props: props ?? meta?.props ?? null, jobs: jobs ?? meta?.jobs ?? null, meta, ...(job !== undefined ? { job } : {}) });
 }
 
 /**
  * Characters of a room with `avatar` replaced by the effective look (`chosenAvatar` keeps the original).
  * `overrides` = {[charId]: {job}} (post-event job for a cut-in). Unchanged characters are returned as-is.
  */
-export function displayCharacters(room, { avatars = null, jobs = null, overrides = null } = {}) {
+export function displayCharacters(room, { props = null, jobs = null, overrides = null, meta = null } = {}) {
   return (room?.characters ?? []).map((c) => {
     const o = overrides?.[c.id];
-    const a = effectiveAvatar(c, { room, avatars, jobs, ...(o && 'job' in o ? { job: o.job } : {}) });
+    const a = effectiveAvatar(c, { room, props, jobs, meta, ...(o && 'job' in o ? { job: o.job } : {}) });
     return a === c.avatar ? c : { ...c, avatar: a, chosenAvatar: c.avatar };
   });
 }
@@ -220,7 +204,7 @@ export function militaryLabel(military) {
     case 'done':
       return '군필';
     case 'exempt':
-      return '면제';
+      return '미입대'; // military service is optional for everyone (CH-1): exempt = never served
     default:
       return '';
   }

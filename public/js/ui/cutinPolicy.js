@@ -10,7 +10,7 @@
 // Stage 7: 명절 / 로또 / 뒤통수 on me are big (full even in compact), shop / card tiles and other players' purchases
 // or sabotage are minor; lone card / gift / trade events are banners; a lotto draw that arrives while my prompt waits
 // is deferred ('defer') until I have answered.
-// Stage 8: 결혼식 / 출산 / 고교 첫 만남 / 부동산 시세 are big, a date is minor, 용돈 / 보상판매 / 입학 are chips.
+// Stage 8: 집들이 파티 (married) / 반려동물 입양 / 고교 첫 친구 / 부동산 시세 are big, 같이 놀기 is minor, 펫 광고 수입 / 보상판매 / 펫 훈련 학교 are chips.
 // Loop maps: the shared era transition is ONE big show everyone takes part in; a payday landing (💵 월급날) is a banner
 // unless it's big; 찬스 광장 「그냥 지나가기」 results and 찬스 버프 changes are banners.
 // Stage 9: a submap result is big for jackpots / big 인생역전 wins / a wish that opens 산신령 (else minor → a banner for
@@ -45,7 +45,7 @@ export const DEADLINE_RESERVE_MS = 12000;
 /** Tiles that will become marriage / job events (Stage 6) — always full cut-ins. */
 export const BIG_TILE_TYPES = ['heart', 'job'];
 const BIG_TYPES = new Set(['finished', 'eraChanged', 'eraTransition', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash', 'holidayStarted', 'holidayResult', 'lottoDraw',
-  // Stage 8: 결혼식, 출산, 고교 첫 만남, 부동산 시세 (full even in 「간단히」)
+  // Stage 8: 집들이 파티, 반려동물 입양, 고교 첫 친구, 부동산 시세 (full even in 「간단히」)
   'married', 'childBorn', 'schoolMeet', 'houseValueChanged']);
 /** Stage 8 minor anchors: never full for other players in 「간단히」 (whatever their line tag says). */
 export const MINOR_TYPES = ['dated', 'treasureFound'];
@@ -275,7 +275,7 @@ export function myPendingChars(pending, characters = []) {
 
 /** One-line route summaries for the 인생 갈림길 prompt (server `option.desc` wins when present). */
 export const ROUTE_INFO = {
-  love: { icon: '💕', desc: '만남·결혼·육아 이벤트' },
+  love: { icon: '💕', desc: '새 친구·단짝 동거·반려동물 이벤트' },
   career: { icon: '💼', desc: '급여·승진·직업' },
   money: { icon: '💰', desc: '보물·집·투자, 리스크 있음' },
 };

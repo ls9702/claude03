@@ -84,23 +84,23 @@ test('non-player cannot add; name required; avatar sanitized', () => {
   const room = joined('A');
   assert.equal(addCharacter(room, 'X', { name: '누구' }).status, 403);
   assert.equal(addCharacter(room, 'A', { name: '' }).status, 400);
-  const r = addCharacter(room, 'A', { name: '민지', avatar: { hair: 'long', skin: 'bogus', evil: '<script>' } });
+  // CH-1: {character, props}; unknown character → roster default, props validated per slot (choosable only)
+  const r = addCharacter(room, 'A', { name: '민지', avatar: { character: 'usagi', props: { head: 'ribbon', face: 'crown', hand: 'mic', back: 'bogus' }, evil: '<script>' } });
   const av = r.character.avatar;
-  assert.equal(av.hair, 'long');
-  assert.equal(av.skin, 'light'); // default
-  assert.equal(av.evil, undefined);
-  assert.deepEqual(Object.keys(av).sort(), ['accessory', 'body', 'build', 'cheek', 'eyes', 'face', 'hair', 'hairColor', 'mouth', 'outfit', 'outfitColor', 'skin']);
+  assert.deepEqual(av, { character: 'usagi', props: { head: 'ribbon' } }); // crown is a head prop, mic a job prop
+  assert.deepEqual(addCharacter(room, 'A', { name: '민지', avatar: { character: 'pikachu' } }).character.avatar, { character: 'chiikawa', props: {} });
+  assert.deepEqual(addCharacter(room, 'A', { name: '민지' }).character.avatar, { character: 'chiikawa', props: {} });
 });
 
-test('old saved avatars (8 keys) migrate: new categories get defaults', () => {
+test('old human avatars (old clients / saves) migrate to a roster character + the mapped accessory prop', () => {
   const room = joined('A');
   const old = { body: 'girl', skin: 'tan', hair: 'bun', hairColor: 'pink', eyes: 'sleepy', accessory: 'cap', outfit: 'hanbok', outfitColor: 'green' };
   const av = addCharacter(room, 'A', { name: '예전', avatar: old }).character.avatar;
-  for (const [k, v] of Object.entries(old)) assert.equal(av[k], v);
-  assert.equal(av.build, 'normal');
-  assert.equal(av.face, 'slim');
-  assert.equal(av.mouth, 'smile');
-  assert.equal(av.cheek, 'none');
+  assert.deepEqual(Object.keys(av), ['character', 'props']);
+  assert.ok(['chiikawa', 'hachiware', 'usagi', 'momonga', 'kurimanju', 'rakko', 'shisa', 'pochette'].includes(av.character));
+  assert.deepEqual(av.props, { head: 'beanie' }); // cap → beanie
+  // deterministic: the same old avatar always becomes the same character
+  assert.deepEqual(addCharacter(room, 'A', { name: '예전2', avatar: { ...old } }).character.avatar, av);
 });
 
 test('ownership: only owner can update/delete', () => {
@@ -111,10 +111,10 @@ test('ownership: only owner can update/delete', () => {
   assert.equal(removeCharacter(room, 'B', id).status, 403);
   assert.equal(updateCharacter(room, 'B', id, { name: '해킹' }).status, 403);
   assert.equal(removeCharacter(room, 'A', 'c999').status, 404);
-  const up = updateCharacter(room, 'A', id, { name: '에이2', avatar: { hair: 'bun' } });
+  const up = updateCharacter(room, 'A', id, { name: '에이2', avatar: { character: 'hachiware', props: { neck: 'scarf' } } });
   assert.equal(up.ok, true);
   assert.equal(up.character.name, '에이2');
-  assert.equal(up.character.avatar.hair, 'bun');
+  assert.deepEqual(up.character.avatar, { character: 'hachiware', props: { neck: 'scarf' } });
   const del = removeCharacter(up.room, 'A', id);
   assert.equal(del.ok, true);
   assert.equal(del.room.characters.length, 0);

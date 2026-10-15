@@ -1,4 +1,4 @@
-/* Stage 8 — romance, family, real estate: cut-in family cast, wedding / heart fx, house / market / 돌잡이 panels,
+/* Stage 8 — friends & pets (Chiikawa theme), real estate: cut-in family cast, 집들이 / heart fx, house / market / 입양 파티 panels,
    meet / date / propose / house prompt cards, side-list family rows, result rows, CPU badge. */
 
 /* ---------- cut-in cast: partner / spouse / children ---------- */
@@ -21,7 +21,7 @@
 .ci-badge.baby { border-color: #f9a8d4; }
 .ci-badge.baby.genius { border-color: #f5b400; background: linear-gradient(135deg, #fff8d6, #ffe38a); }
 
-/* ---------- fx: wedding (confetti + 💒 frame), hearts, heartbreak ---------- */
+/* ---------- fx: wedding = 집들이 파티 (confetti + 🏡 frame), hearts, heartbreak ---------- */
 .cutin.wedding .ci-win { box-shadow: 0 0 0 4px #fff, 0 0 0 8px #f9a8d4, 0 0 0 11px #fff, 0 0 36px 10px rgba(249, 168, 212, 0.55), 0 18px 40px rgba(0, 0, 0, 0.35); }
 .ci-famfx { position: absolute; inset: 0; z-index: 3; overflow: hidden; }
 .ci-famfx i {
@@ -39,7 +39,7 @@
 @keyframes fam-break { 0% { transform: scale(0); opacity: 0; } 30% { transform: scale(1.25); opacity: 1; } 100% { transform: translateY(22cqw) rotate(25deg); opacity: 0; } }
 @keyframes fam-pop { from { transform: translateX(-50%) scale(0) rotate(-20deg); opacity: 0; } }
 
-/* ---------- panels in the window: 🏠 house, 📈 market, 🎂 돌잡이 ---------- */
+/* ---------- panels in the window: 🏠 house, 📈 market, 🎂 입양 파티 ---------- */
 .ci-house {
   position: absolute; right: 3%; top: 10%; width: 32%; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 0.6cqw;
   background: rgba(255, 255, 255, 0.94); border: 3px solid var(--ci-tag); border-radius: 2cqw; padding: 1cqw 1.2cqw;
@@ -96,7 +96,7 @@
 .fam-noav { display: inline-grid; place-items: center; width: var(--s, 40px); height: var(--s, 40px); border-radius: 50%; background: #ffe4f1; font-size: 1.2rem; }
 .ci-opt-badge.heart { background: #ffe1f0; color: #9d174d; }
 
-/* 프러포즈: chance meter */
+/* 「같이 살자!」 제안: chance meter */
 .chance-meter {
   position: relative; display: block; width: 100%; min-width: 150px; height: 20px; margin-top: 5px; border-radius: 999px; overflow: hidden;
   background: #fce7f3; border: 2px solid #f9a8d4;

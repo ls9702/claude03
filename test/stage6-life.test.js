@@ -1,5 +1,6 @@
-// Stage 6 — growth: stats, habits, 수능 probabilities, 진로 (college / job / 재수 once), 군 복무 (mandatory /
-// volunteer / halved spins), era news, pre-Stage-6 save migration and snapshot restore mid-career.
+// Stage 6 — growth: stats, habits, 수능 probabilities, 진로 (college / job / 재수 once), 군 복무 (CH-1: no gender —
+// volunteers only by default, the mandatory flow behind `balance.military.mandatory`; halved spins), era news,
+// pre-Stage-6 save migration and snapshot restore mid-career.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { gameData } from '../server/data/index.js';
@@ -12,11 +13,15 @@ import { viewFor } from '../server/game/view.js';
 import { makeRoom, plainEra, toEra } from './helpers.js';
 
 const data = gameData();
-const BOY = { body: 'boy' };
-const GIRL = { body: 'girl' };
+// CH-1: roster looks (no gender anywhere)
+const LOOK_A = { character: 'usagi' };
+const LOOK_B = { character: 'hachiware', props: { head: 'ribbon' } };
+/** Data with the optional mandatory service switched on (everyone is drafted). */
+const MANDATORY = { ...data, balance: { ...data.balance, military: { ...data.balance.military, mandatory: true } } };
+let actData = null; // a data override for act() (the mandatory-service test)
 
 /** Started game. chars: [[owner, name, avatar?], ...]. */
-function started({ mode = 'lifetime', eraTurns = {}, chars = [['A', 'A1', BOY], ['B', 'B1', GIRL]], seed = 7, ctx = {} } = {}) {
+function started({ mode = 'lifetime', eraTurns = {}, chars = [['A', 'A1', LOOK_A], ['B', 'B1', LOOK_B]], seed = 7, ctx = {} } = {}) {
   let room = makeRoom({ seed });
   room.config = { ...room.config, mode, eraTurns: { ...room.config.eraTurns, ...eraTurns } };
   room = joinRoom(room, 'A', '에이', 0).room;
@@ -41,7 +46,7 @@ function fixedRng({ ints = [], nexts = [] } = {}) {
     },
   };
 }
-const act = (room, action, rng = {}, now = 1000) => applyAction(room, action, { rng: fixedRng(rng), now });
+const act = (room, action, rng = {}, now = 1000) => applyAction(room, action, { rng: fixedRng(rng), now, ...(actData ? { data: actData } : {}) });
 const cur = (room) => room.turn.order[room.turn.currentIndex];
 const ch = (room, id) => room.characters.find((c) => c.id === id);
 const types = (events) => events.map((e) => e.type);
@@ -105,15 +110,13 @@ test('startGame: stats 2 each + 1 seeded point, fresh life record; adult mode st
   assert.deepEqual(started({ ctx: { secret: 99 } }).room.characters.map((c) => c.stats), r.room.characters.map((c) => c.stats));
 
   const adult = started({ mode: 'adult', eraTurns: { young: 5, middle_age: 5, senior: 3 } });
-  const [boy, girl] = adult.room.characters;
   const s = data.balance.stats;
-  for (const c of [boy, girl]) {
+  for (const c of adult.room.characters) {
     assert.equal(Object.values(c.stats).reduce((a, b) => a + b, 0), 4 * s.start + s.randomPoints + s.adultPoints);
     assert.ok(EDUCATIONS.includes(c.education));
     assert.equal(c.careerDone, true);
+    assert.equal(c.military.status, 'exempt', 'CH-1: nobody was drafted');
   }
-  assert.equal(boy.military.status, 'done');
-  assert.equal(girl.military.status, 'exempt');
   // adult mode: the first era's news is drawn at game start
   const flash = adult.events.find((e) => e.type === 'newsFlash');
   assert.ok(flash);
@@ -246,7 +249,7 @@ test('수능: the last high-school turn starts with the exam prompt (before the 
 // ---------- 진로 ----------
 
 test('진로: college → tuition debt, collegeTurns of school, graduation (+int, educationChanged) → job offer', () => {
-  let room = started({ chars: [['A', 'A1', GIRL], ['B', 'B1', GIRL]] }).room;
+  let room = started({ chars: [['A', 'A1', LOOK_B], ['B', 'B1', LOOK_B]] }).room;
   const id = atYoungStart(room, { stats: { int: 5, str: 2, charm: 2, luck: 2 } });
   let r = nextTurn(room);
   let p = r.room.turn.pending;
@@ -258,7 +261,7 @@ test('진로: college → tuition debt, collegeTurns of school, graduation (+int
   const c = ch(r.room, id);
   assert.equal(c.debt - debt0, data.balance.career.tuition.college);
   assert.deepEqual(c.school, { tier: 'college', turnsLeft: data.balance.career.collegeTurns });
-  assert.equal(c.military.status, 'exempt', 'girl with low 체력: no volunteer prompt');
+  assert.equal(c.military.status, 'exempt', 'low 체력: no volunteer prompt (nobody is drafted)');
   assert.equal(c.careerChoice, 'college');
   assert.equal(r.room.turn.pending, null, 'students get their job offer after graduating');
   assert.equal(r.room.turn.phase, 'awaitSpin');
@@ -282,7 +285,7 @@ test('진로: college → tuition debt, collegeTurns of school, graduation (+int
 });
 
 test('진로: 바로 취업 → job offer → the spin; 재수 once (skip a turn, retake, pass → enroll); elite has no 재수', () => {
-  const room = started({ chars: [['A', 'A1', GIRL], ['B', 'B1', GIRL]] }).room;
+  const room = started({ chars: [['A', 'A1', LOOK_B], ['B', 'B1', LOOK_B]] }).room;
   const id = atYoungStart(room);
   const r0 = nextTurn(room);
   const job = choose(r0.room, 'job');
@@ -339,8 +342,12 @@ test('진로: 바로 취업 → job offer → the spin; 재수 once (skip a turn
 
 // ---------- 군 복무 ----------
 
-test('군 복무: college boy chooses now → halved spins (+ pay) → 전역 (체력 +strGain); later → after graduation, job kept', () => {
-  const room = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
+test('군 복무 (optional mandatory data): a drafted student chooses now → halved spins (+ pay) → 전역 (체력 +strGain); later → after graduation, job kept', (t) => {
+  actData = MANDATORY;
+  t.after(() => {
+    actData = null;
+  });
+  const room = started({ chars: [['A', 'A1', LOOK_A], ['B', 'B1', LOOK_B]] }).room;
   const id = atYoungStart(room);
   let r = nextTurn(room);
   r = choose(r.room, 'college');
@@ -395,22 +402,31 @@ test('군 복무: college boy chooses now → halved spins (+ pay) → 전역 (�
   assert.ok(ch(h.room, id).job, 'job kept while serving');
 });
 
-test('군 복무: non-college boys serve after hiring (no prompt); girls volunteer only with 체력 ≥ min', () => {
-  const room = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
-  atYoungStart(room);
+test('군 복무 (CH-1, no gender): nobody is drafted; anyone with 체력 ≥ min may volunteer, below min → exempt', () => {
+  assert.deepEqual([data.balance.military.mandatory, data.balance.military.volunteer], [false, true]);
+  const room = started({ chars: [['A', 'A1', LOOK_A], ['B', 'B1', LOOK_B]] }).room;
+  atYoungStart(room, { stats: { int: 3, str: data.balance.military.volunteerMinStr - 1, charm: 2, luck: 2 } });
   let r = nextTurn(room);
   r = choose(r.room, 'job');
   assert.equal(r.room.turn.pending.kind, 'jobOffer');
   r = choose(r.room, r.room.turn.pending.options[0].id);
-  assert.ok(r.events.some((e) => e.type === 'militaryStart'));
+  assert.ok(!r.events.some((e) => e.type === 'militaryStart'), 'no automatic service after hiring');
   assert.equal(r.room.turn.pending, null);
   assert.ok(!r.events.some((e) => e.type === 'prompt' && e.kind === 'military'));
+  assert.equal(ch(r.room, room.turn.order[0]).military.status, 'exempt');
 
-  const girlRoom = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
-  const girl = girlRoom.characters.find((c) => c.avatar.body === 'girl').id;
-  const gid = atYoungStart(girlRoom, { stats: { int: 3, str: data.balance.military.volunteerMinStr, charm: 2, luck: 2 } }, girl);
-  assert.equal(ch(girlRoom, gid).avatar.body, 'girl');
-  let g = nextTurn(girlRoom);
+  // either character (any roster look) gets the volunteer prompt with enough 체력
+  for (const pick of [0, 1]) {
+    const vRoom = started({ chars: [['A', 'A1', LOOK_A], ['B', 'B1', LOOK_B]] }).room;
+    const vid = atYoungStart(vRoom, { stats: { int: 3, str: data.balance.military.volunteerMinStr, charm: 2, luck: 2 } }, vRoom.turn.order[pick]);
+    let v = nextTurn(vRoom);
+    v = choose(v.room, 'job');
+    assert.equal(v.room.turn.pending.kind, 'military', `character ${vid}`);
+    assert.deepEqual(v.room.turn.pending.options.map((o) => o.id), ['volunteer', 'skip']);
+  }
+  const volRoom = started({ chars: [['A', 'A1', LOOK_A], ['B', 'B1', LOOK_B]] }).room;
+  const gid = atYoungStart(volRoom, { stats: { int: 3, str: data.balance.military.volunteerMinStr, charm: 2, luck: 2 } }, volRoom.turn.order[1]);
+  let g = nextTurn(volRoom);
   g = choose(g.room, 'job');
   const p = g.room.turn.pending;
   assert.equal(p.kind, 'military');
@@ -427,7 +443,7 @@ test('군 복무: non-college boys serve after hiring (no prompt); girls volunte
 // ---------- news ----------
 
 test('news: drawn once per era at the transition (never baby), statBonus for every character, effects apply', () => {
-  const room = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL]] }).room;
+  const room = started({ chars: [['A', 'A1', LOOK_A], ['B', 'B1', LOOK_B]] }).room;
   plainEra(room, 0);
   room.turn.eraRound = room.turn.eraTurns;
   room.turn.currentIndex = room.turn.order.length - 1;
@@ -494,7 +510,7 @@ test('restore from a JSON snapshot mid-career continues identically (jobs, schoo
     }
     return room;
   };
-  const start = started({ chars: [['A', 'A1', BOY], ['B', 'B1', GIRL], ['A', 'A2', GIRL], ['B', 'B2', BOY]], seed: 99 }).room;
+  const start = started({ chars: [['A', 'A1', LOOK_A], ['B', 'B1', LOOK_B], ['A', 'A2', LOOK_B], ['B', 'B2', LOOK_A]], seed: 99 }).room;
   let mid = start;
   let steps = 0;
   while (steps < 600 && !mid.characters.some((c) => c.job) && mid.status === 'playing') {

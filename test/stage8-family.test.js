@@ -1,5 +1,6 @@
-// Stage 8 — romance & family: data, 고교 전원 만남, 만남 / 데이트 / 프러포즈, 결혼식 축의금, 맞벌이, 출산 (max 4),
-// 자녀 성장 + 용돈, presentation / MC, a random lifetime game, restore mid-marriage and pre-Stage-8 saves.
+// Stage 8 — friends & family (CH-1 theme 「친구·동거」): data, 고교 첫 친구, 새 친구 / 같이 놀기 / 「같이 살자!」 제안,
+// 집들이 선물, 단짝 생활비, 반려동물 입양 (max 4), 펫 성장 + 펫 광고 수입, presentation / MC, a random lifetime game,
+// restore mid-proposal and pre-Stage-8 saves. Event types / fields keep the Stage 8 names (married, spouse, children…).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { gameData } from '../server/data/index.js';
@@ -32,7 +33,8 @@ import { atEraEnd, plainEra, toEra } from './helpers.js';
 
 const data = gameData();
 const P = data.partners;
-const avatars = data.avatars;
+const NPC_IDS = data.npcs.species.map((x) => x.id);
+const PET_IDS = data.pets.species.map((x) => x.id);
 
 function started({ chars = [['A', 'A1'], ['B', 'B1'], ['A', 'A2']], seed = 7, config = {} } = {}) {
   let room = makeRoom({ seed });
@@ -51,7 +53,8 @@ function fixedRng({ ints = [], nexts = [] } = {}) {
 }
 const ch = (room, id) => room.characters.find((c) => c.id === id);
 const cur = (room) => room.turn.order[room.turn.currentIndex];
-const partnerOf = (over = {}) => ({ id: 'pt90', name: '서연', trait: 'int', stars: 2, body: 'girl', avatar: { ...avatars.default, body: 'girl' }, ...over });
+const partnerOf = (over = {}) => ({ id: 'pt90', name: '콩이', trait: 'int', stars: 2, species: 'penguin', avatar: { npc: 'penguin', props: {} }, ...over });
+const petOf = (over = {}) => ({ id: 'ch1', name: '방울', species: 'goldfish', trait: 'int', talent: 'normal', stage: 'baby', bornTurn: 1, avatar: { pet: 'goldfish' }, growth: 0, turns: 0, ...over });
 /** Every character grown up in `era` with a job and cash; a tx over a clone. */
 function sandbox({ era = 'young', rng = {}, news = {}, money = 1000 } = {}) {
   const room = structuredClone(started());
@@ -74,7 +77,7 @@ const isKorean = (s) => /^[가-힣]+$/.test(s);
 
 // ---------- data ----------
 
-test('partners.json: 4 traits, ★1–4, ≥ 20 Korean names per body, dates / outings / costs; board hearts are live', () => {
+test('partners.json: 4 traits, ★1–4, no gendered name pools / looks (CH-1), dates / outings / costs; board hearts are live', () => {
   assert.deepEqual(Object.keys(P.traits), TRAITS);
   for (const t of TRAITS) assert.ok(P.traits[t].name.endsWith('형') && P.traits[t].icon, t);
   assert.deepEqual(Object.keys(P.stars), ['1', '2', '3', '4']);
@@ -83,10 +86,13 @@ test('partners.json: 4 traits, ★1–4, ≥ 20 Korean names per body, dates / o
     assert.ok(s.salary > prev && s.allowanceMult >= 1 && s.weight > 0);
     prev = s.salary;
   }
-  for (const body of ['boy', 'girl']) {
-    assert.ok(P.names[body].length >= 20, body);
-    assert.equal(new Set(P.names[body]).size, P.names[body].length, `${body}: unique`);
-    for (const n of P.names[body]) assert.ok(isKorean(n) && n.length <= 3, n);
+  // CH-1: names / looks come from npcs.json (단짝 후보) and pets.json (반려동물), never keyed by a body
+  assert.equal(P.names, undefined);
+  assert.equal(P.avatar, undefined);
+  for (const pool of [data.npcs.names, data.pets.names]) {
+    assert.ok(pool.length >= 24);
+    assert.equal(new Set(pool).size, pool.length, 'unique');
+    for (const n of pool) assert.ok(isKorean(n) && n.length <= 3, n);
   }
   for (const k of ['meet', 'dateGain', 'matchBonus', 'proposeAt', 'max']) assert.ok(Number.isFinite(P.affection[k]), k);
   assert.ok(P.affection.meet < P.affection.proposeAt && P.affection.proposeAt <= P.affection.max);
@@ -94,7 +100,6 @@ test('partners.json: 4 traits, ★1–4, ≥ 20 Korean names per body, dates / o
   for (const t of TRAITS) assert.ok(P.dates.some((d) => d.trait === t), `a date for ${t}`);
   for (const o of P.outings) assert.ok(o.id && o.text.includes('{name}') && o.money.length === 2, o.id);
   assert.equal(P.children.max, 4);
-  for (const key of ['hair', 'outfit']) for (const list of Object.values(P.avatar[key])) for (const id of list) assert.ok(avatars.parts[key].some((o) => o.id === id), `${key} ${id}`);
   // board: heart / house tiles are live; the love route is the heart route
   assert.ok(!('heart' in data.board.placeholders) && !('house' in data.board.placeholders));
   const w = (pool, type) => pool.find((t) => t.type === type)?.weight ?? 0;
@@ -118,9 +123,9 @@ test('startGame: every character gets an empty family record; viewFor exposes it
   assert.equal(v.housingMarket, null);
 });
 
-// ---------- 고교 전원 만남 ----------
+// ---------- 고교 첫 친구 ----------
 
-test('고교 첫 만남: each character first high-school turn opens a meet prompt with two ★1 classmates; one recap schoolMeet', () => {
+test('고교 첫 친구: each character first high-school turn opens a meet prompt with two ★1 classmates; one recap schoolMeet', () => {
   let room = structuredClone(started());
   const hi = room.board.eras.findIndex((e) => e.id === 'high');
   toEra(room, hi);
@@ -132,7 +137,7 @@ test('고교 첫 만남: each character first high-school turn opens a meet prom
   const p = r.room.turn.pending;
   assert.equal(p.kind, 'meet');
   assert.equal(p.charId, c1.id);
-  assert.equal(p.title, '🏫 고교 첫 만남');
+  assert.equal(p.title, '🏫 고교 첫 친구');
   assert.equal(p.context.school, true);
   const cands = p.options.filter((o) => o.partnerId);
   assert.equal(cands.length, 2);
@@ -142,7 +147,9 @@ test('고교 첫 만남: each character first high-school turn opens a meet prom
   r = applyAction(r.room, { type: 'choose', characterId: c1.id, promptId: p.promptId, optionId: pick.id }, { rng: fixedRng(), now: 6 });
   const met = r.events.find((e) => e.type === 'met');
   assert.deepEqual([met.charId, met.school, met.partner.id], [c1.id, true, pick.partnerId]);
-  assert.deepEqual(Object.keys(met.partner.avatar), avatars.order, 'a full sanitized avatar');
+  assert.deepEqual(Object.keys(met.partner.avatar), ['npc', 'props'], 'an NPC friend look');
+  assert.ok(NPC_IDS.includes(met.partner.species) && met.partner.avatar.npc === met.partner.species);
+  assert.equal(met.partner.body, undefined);
   assert.equal(ch(r.room, c1.id).love.partner.id, pick.partnerId);
   assert.equal(ch(r.room, c1.id).love.affection, P.affection.meet + (pick.match ? P.affection.matchBonus : 0));
   assert.ok(!r.events.some((e) => e.type === 'schoolMeet'), 'no recap until everyone had their turn');
@@ -173,7 +180,7 @@ test('고교 첫 만남: each character first high-school turn opens a meet prom
   assert.equal(schoolMeet(tx, 'high'), null);
 });
 
-// ---------- 만남 / 데이트 / 프러포즈 ----------
+// ---------- 새 친구 / 같이 놀기 / 「같이 살자!」 ----------
 
 test('meet: a single character on a heart tile gets 2 candidates + pass; picking one → met, affection = meet (+match)', () => {
   const { tx, c } = sandbox();
@@ -185,7 +192,9 @@ test('meet: a single character on a heart tile gets 2 candidates + pass; picking
   for (const o of [o1, o2]) {
     assert.ok(o.partnerId && TRAITS.includes(o.trait) && o.stars >= 1 && o.stars <= 4 && o.salary === P.stars[o.stars].salary);
     assert.equal(o.partner.id, o.partnerId);
-    assert.deepEqual(Object.keys(o.partner.avatar), avatars.order);
+    assert.deepEqual(Object.keys(o.partner.avatar), ['npc', 'props']);
+    assert.ok(NPC_IDS.includes(o.partner.species), o.partner.species);
+    assert.match(o.desc, /단짝 생활비/);
   }
   assert.notEqual(o1.partner.name, o2.partner.name);
   assert.deepEqual(c.love.candidates.map((x) => x.id), [o1.partnerId, o2.partnerId], 'candidates visible while the prompt is open');
@@ -209,7 +218,7 @@ test('meet: a single character on a heart tile gets 2 candidates + pass; picking
   assert.equal(heart(s3.tx, s3.c), null);
 });
 
-test('date: 5 options (costs × era scale, disabled when broke), trait match bonus; reaching proposeAt opens 프러포즈', () => {
+test('date (같이 놀기): 5 options (costs × era scale, disabled when broke), trait match bonus; reaching proposeAt opens 「같이 살자!」', () => {
   const { tx, c } = sandbox({ money: 25 });
   c.love.partner = partnerOf({ trait: 'int' });
   const lib = P.dates.find((d) => d.id === 'library').gain + P.affection.matchBonus;
@@ -251,7 +260,7 @@ test('date: 5 options (costs × era scale, disabled when broke), trait match bon
   assert.equal(s.tx.room.turn.pending.kind, 'propose');
 });
 
-test('propose: chance formula; seeded success → wedding (축의금 conserved, capped at cash, cost); fail → affection drop', () => {
+test('propose (「같이 살자!」): chance formula; seeded success → 집들이 파티 (선물 conserved, capped at cash, cost); fail → 친밀도 drop', () => {
   const { tx, c, others } = sandbox();
   c.love.partner = partnerOf({ stars: 3, trait: 'int' });
   c.love.affection = P.affection.proposeAt + 20;
@@ -274,7 +283,8 @@ test('propose: chance formula; seeded success → wedding (축의금 conserved, 
   const per = Math.round((P.costs.weddingGift * P.costs.scale.young) / 5) * 5;
   assert.deepEqual(married.gifts, [{ fromId: others[0].id, amount: 7 }, { fromId: others[1].id, amount: per }]);
   assert.equal(married.total, 7 + per);
-  assert.equal(married.spouse.name, '서연');
+  assert.equal(married.spouse.name, '콩이');
+  assert.equal(married.spouse.species, 'penguin');
   assert.deepEqual([c.spouse.id, c.spouse.salary, c.spouse.stars], ['pt90', P.stars[3].salary, 3]);
   assert.equal(c.love.partner, null);
   const cost = Math.round((P.costs.wedding * P.costs.scale.young) / 5) * 5;
@@ -282,7 +292,7 @@ test('propose: chance formula; seeded success → wedding (축의금 conserved, 
   assert.equal(others[0].money, 0);
   assert.equal(others[1].money, before.get(others[1].id) - per);
   const sum = (m) => [...m.values()].reduce((a, b) => a + b, 0);
-  assert.equal(sum(new Map(tx.room.characters.map((x) => [x.id, x.money]))), sum(before) - cost, '축의금 only moves money');
+  assert.equal(sum(new Map(tx.room.characters.map((x) => [x.id, x.money]))), sum(before) - cost, '집들이 선물 only moves money');
   assert.ok(types(tx).indexOf('proposed') < types(tx).indexOf('married'));
   // fail
   const f = sandbox();
@@ -323,9 +333,9 @@ test('spouse salary: paid on salary tiles with the job salary (salary.spouseAmou
   assert.equal(s.tx.events.find((e) => e.type === 'salary').spouseAmount, undefined);
 });
 
-// ---------- children ----------
+// ---------- pets (children) ----------
 
-test('birth: married heart tile → childBorn (talent / trait / avatar), 출산장려금 news; max 4 children → family outing', () => {
+test('birth (반려동물 입양): heart tile of a 단짝 household → childBorn (pet species / talent / trait), 입양 지원금 news; max 4 → family outing', () => {
   const { tx, c } = sandbox({ news: { young: 'birth_bonus' } });
   c.spouse = { ...partnerOf({ trait: 'int' }), salary: 70, marriedTurn: 1 };
   c.love.affection = 60;
@@ -337,15 +347,15 @@ test('birth: married heart tile → childBorn (talent / trait / avatar), 출산�
   assert.equal(heart(tx, c), null);
   const born = tx.events.find((e) => e.type === 'childBorn');
   const kid = born.child;
-  assert.deepEqual([kid.id, kid.talent, kid.stage, kid.body], ['ch1', 'genius', 'baby', 'girl']);
+  assert.deepEqual([kid.id, kid.talent, kid.stage, kid.species], ['ch1', 'genius', 'baby', PET_IDS[0]]); // fixed rng: pick → the first species
   assert.ok(TRAITS.includes(kid.trait));
-  assert.deepEqual(Object.keys(kid.avatar), avatars.order);
-  assert.ok(P.avatar.outfit.child.includes(kid.avatar.outfit), 'child outfit');
-  assert.ok([c.avatar.hairColor, 'black'].includes(kid.avatar.hairColor), 'inherits a parent hair colour');
+  assert.deepEqual(kid.avatar, { pet: kid.species });
+  assert.equal(kid.body, undefined, 'no gender');
+  assert.ok(data.pets.names.includes(kid.name));
   assert.equal(born.spouse.id, 'pt90');
   assert.equal(c.children.length, 1);
   const cost = Math.round((P.costs.birth * P.costs.scale.young) / 5) * 5;
-  assert.equal(c.money, money0 - cost + 300, '출산 비용 − + 장려금 300');
+  assert.equal(c.money, money0 - cost + 300, '입양 비용 − + 지원금 300');
   // without 찰떡궁합 the same roll is a normal child
   const n = sandbox();
   n.c.spouse = { ...partnerOf({ trait: 'luck' }), salary: 70, marriedTurn: 1 };
@@ -354,7 +364,7 @@ test('birth: married heart tile → childBorn (talent / trait / avatar), 출산�
   // max 4 → no birth, outing (money / stat, affection +)
   const m = sandbox();
   m.c.spouse = { ...partnerOf(), salary: 70, marriedTurn: 1 };
-  m.c.children = [1, 2, 3, 4].map((i) => ({ id: `ch${i}`, name: `아이${i}`, trait: 'int', talent: 'normal', stage: 'baby', bornTurn: 1, avatar: avatars.default, body: 'boy', growth: 0, turns: 0 }));
+  m.c.children = [1, 2, 3, 4].map((i) => petOf({ id: `ch${i}`, name: `펫${i}` }));
   m.c.love.affection = 40;
   assert.equal(birthChance(m.c, data), 0);
   m.tx.rng = fixedRng({ nexts: [0, 0] });
@@ -369,7 +379,7 @@ test('birth: married heart tile → childBorn (talent / trait / avatar), 출산�
   assert.equal(birthChance(sen.c, data), 0);
 });
 
-test('children grow 돌잔치 → 입학 → 수능 → 취업 (era entries + every growTurns spins); 용돈 on salary tiles', () => {
+test('pets grow 입양 파티 → 펫 훈련 학교 → 펫 경연대회 → 펫 스타 데뷔 (era entries + every growTurns spins); 펫 광고 수입 on paydays', () => {
   const { tx, c, others } = sandbox({ era: 'middle_age' });
   c.spouse = { ...partnerOf({ stars: 4 }), salary: 140, marriedTurn: 1 };
   tx.rng = fixedRng({ nexts: [0.99] }); // normal talent
@@ -435,7 +445,7 @@ test('engine: at an era transition the children of a married parent grow and a b
   atEraEnd(room);
   const c = ch(room, cur(room));
   c.spouse = { ...partnerOf(), salary: 70, marriedTurn: 1 };
-  c.children = [{ id: 'ch1', name: '하윤', trait: 'int', talent: 'normal', stage: 'baby', bornTurn: 1, avatar: avatars.default, body: 'girl', growth: 0, turns: 0 }];
+  c.children = [petOf()];
   room.nextChildSeq = 1;
   // the last spin of young → the transition into middle_age (era entry for everyone): the child grows, a birth is rolled
   const r = applyAction(room, { type: 'spin', characterId: c.id }, { rng: fixedRng({ ints: [1], nexts: [0.99, 0, 0.99] }), now: 5 });
@@ -449,7 +459,7 @@ test('engine: at an era transition the children of a married parent grow and a b
   assert.equal(r.events.find((e) => e.type === 'childBorn').mcKey, 'birth');
 });
 
-test('automatic romance: love route → 소개팅 or affection +loveRoute; one epilogue 프러포즈 per era; era affection gain', () => {
+test('automatic friendship: love route → 친구 소개 or 친밀도 +loveRoute; one epilogue 「같이 살자!」 per era; era 친밀도 gain', () => {
   const aff = P.affection;
   // single → 소개팅 (met, no prompt)
   const a = sandbox();
@@ -487,10 +497,10 @@ test('automatic romance: love route → 소개팅 or affection +loveRoute; one e
   assert.equal(e.c.love.affection, 10 + aff.eraGain);
 });
 
-test('family income: employed children also send 용돈 at era entries; married parents may have a baby on a spin', () => {
+test('family income: star pets also earn 펫 광고 수입 at era entries; a 단짝 household may adopt on a spin', () => {
   const { tx, c } = sandbox({ era: 'middle_age' });
   c.spouse = { ...partnerOf({ stars: 2 }), salary: P.stars[2].salary, marriedTurn: 1 };
-  c.children = [{ id: 'ch1', name: '하윤', trait: 'int', talent: 'normal', stage: 'adult', bornTurn: 1, avatar: avatars.default, body: 'girl', growth: GROWTH_STEPS.length, turns: 0 }];
+  c.children = [petOf({ stage: 'adult', growth: GROWTH_STEPS.length })];
   growChildrenOnEra(tx, c);
   const al = tx.events.find((e) => e.type === 'allowance');
   assert.equal(al.amount, allowanceAmount(tx, c, c.children[0]));
@@ -523,7 +533,7 @@ test('presentation + MC: Stage 8 types registered; anchors vs chips; lines fille
   const room = structuredClone(started());
   const c = room.characters[0];
   c.love.partner = partnerOf();
-  const kid = { id: 'ch1', name: '하윤', talent: 'normal', stage: 'kid' };
+  const kid = petOf({ stage: 'kid' });
   c.children = [kid];
   const evs = [
     { type: 'landed', charId: c.id, tileType: 'heart', tileId: 'x', route: 'love' },
@@ -543,10 +553,10 @@ test('presentation + MC: Stage 8 types registered; anchors vs chips; lines fille
   const by = (t) => evs.find((e) => e.type === t);
   assert.equal(by('landed').cutin, false, 'the wedding takes over the heart landing');
   assert.equal(by('married').lineTag, 'wedding');
-  assert.equal(by('married').scene, 'wedding-hall');
+  assert.equal(by('married').scene, 'house', 'CH-1: 집들이 파티 at home');
   assert.equal(by('childGrew').cutin, false);
   assert.equal(by('proposed').lineTag, 'propose_fail');
-  assert.equal(by('childBorn').scene, 'hospital');
+  assert.equal(by('childBorn').scene, 'house', 'CH-1: the adopted pet comes home');
   assert.equal(by('houseBought').scene, 'house');
   assert.equal(by('houseValueChanged').lineTag, 'market_down');
   assert.ok(by('houseValueChanged').changes[0].line);
@@ -570,7 +580,7 @@ test('presentation + MC: Stage 8 types registered; anchors vs chips; lines fille
 
 // ---------- full games / restore / migration ----------
 
-test('full random lifetime games: family + house events, known types, filled lines; love-route marriages happen', () => {
+test('full random lifetime games: family + house events, known types, filled lines; love-route 단짝 동거 happens', () => {
   const seen = new Set();
   let married = 0;
   for (const seed of [6, 8]) { // c2 / c4 take the career route: love-route couples jump straight to 프러포즈, a career-route heart tile opens a date
@@ -610,7 +620,7 @@ test('full random lifetime games: family + house events, known types, filled lin
   assert.ok(married >= 2, `married ${married}`);
 });
 
-test('restore: a JSON snapshot mid-marriage (open 프러포즈) continues identically; pre-Stage-8 saves migrate', () => {
+test('restore: a JSON snapshot mid-proposal (open 「같이 살자!」) continues identically; pre-Stage-8 saves migrate', () => {
   const room = structuredClone(started());
   room.erasOpened = room.board.eras.map((e) => e.id);
   const c = ch(room, cur(room));

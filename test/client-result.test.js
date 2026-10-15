@@ -102,7 +102,7 @@ test('podiumSlots (3D): tied pawns spread on their step, others in the two flank
 test('appraisal rows: cheapest first (biggest reveal last), fakes 💥, totals per owner; awards + titles from meta', () => {
   const meta = {
     treasures: { treasures: [{ id: 'celadon', name: '고려청자', icon: '🏺' }, { id: 'coin', name: '옛날 동전', icon: '🪙' }] },
-    awards: { awards: [{ id: 'dabok', name: '다복상', icon: '👨‍👩‍👧‍👦', desc: '자녀가 가장 많은 캐릭터' }] },
+    awards: { awards: [{ id: 'dabok', name: '대가족 집사상', icon: '🐾', desc: '반려동물이 가장 많은 캐릭터' }] },
     titles: { titles: [{ id: 'landlord', name: '건물주', icon: '🏢', desc: '집 부자' }] },
   };
   const result = {
@@ -112,7 +112,7 @@ test('appraisal rows: cheapest first (biggest reveal last), fakes 💥, totals p
       { charId: 'c2', uid: 'tr2', treasureId: 'coin', value: 2, fake: true },
       { charId: 'c2', uid: 'tr3', treasureId: 'celadon', value: 350, fake: false },
     ],
-    awards: [{ id: 'dabok', name: '다복상', charIds: ['c1', 'c2'], bonus: 200 }, { id: 'x', charIds: [], bonus: 0 }],
+    awards: [{ id: 'dabok', name: '대가족 집사상', charIds: ['c1', 'c2'], bonus: 200 }, { id: 'x', charIds: [], bonus: 0 }],
     titles: { c1: ['landlord'], c2: ['unknown_title'] },
   };
   const rows = appraisalRows(result, chars(2), { meta, won });
@@ -123,8 +123,8 @@ test('appraisal rows: cheapest first (biggest reveal last), fakes 💥, totals p
   assert.equal(rows[1].name, '캐릭2');
   assert.deepEqual(appraisalTotals(rows), { c2: 350, c1: 800 });
   const cards = awardCards(result, chars(2), { meta, won });
-  assert.equal(cards[0].icon, '👨‍👩‍👧‍👦');
-  assert.equal(cards[0].desc, '자녀가 가장 많은 캐릭터');
+  assert.equal(cards[0].icon, '🐾');
+  assert.equal(cards[0].desc, '반려동물이 가장 많은 캐릭터');
   assert.deepEqual(cards[0].winners.map((w) => w.name), ['캐릭1', '캐릭2']);
   assert.equal(cards[0].bonusText, '+200만원');
   assert.equal(cards[1].bonusText, '');

@@ -1,8 +1,7 @@
 // Lobby rules (pure): each function takes a room and returns a NEW room.
 // Result shape: { ok: true, room, logs: [entry], ...extra } | { ok: false, status, error }
 import { buildTurnOrder } from './order.js';
-import { sanitizeAvatar } from './avatar.js';
-import { getAvatars } from '../data/index.js';
+import { randomLook, sanitizeAvatar } from './avatar.js';
 import { josa, particle } from './korean.js';
 
 export const MAX_PLAYERS = 4;
@@ -261,15 +260,9 @@ function hash32(...parts) {
   return h >>> 0;
 }
 
-/** A seeded random look (every avatars.json part), deterministic per room + character seq. */
+/** A seeded random look (CH-1: a roster character + 0–2 props), deterministic per room + character seq. */
 export function randomAvatar(seed) {
-  const defs = getAvatars();
-  const out = {};
-  defs.order.forEach((key, i) => {
-    const options = defs.parts[key] ?? [];
-    out[key] = options.length ? options[hash32(seed, key, i) % options.length].id : defs.default[key];
-  });
-  return sanitizeAvatar(out);
+  return randomLook(seed);
 }
 
 /** The room's host = the first joined non-spectator player (may add / remove CPU characters when `allowCpu`). */

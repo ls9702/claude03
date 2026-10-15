@@ -1,5 +1,7 @@
-// Stage 5.5-A: SVG portrait covers every avatars.json option, expressions, old-avatar fill, 3D pawn mapping,
-// customizer tab definitions. Pure modules only (no DOM / WebGL).
+// LEGACY (human paper-doll avatars, before the Chiikawa conversion CH-1): the old SVG portrait (ui/avatar2d.js), the human
+// 3D pawn mapping and the old customizer helpers (ui/customize.js). The game no longer draws these — players are roster
+// characters drawn by ui/chara.js (tests: test/client-chara.test.js) — but the modules stay for the asset tools and old
+// saves, so their contracts stay tested here. Pure modules only (no DOM / WebGL).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadData } from '../server/data/index.js';

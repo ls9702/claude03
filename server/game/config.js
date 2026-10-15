@@ -58,7 +58,7 @@ export function defaultRoomConfig() {
     turnOrder: 'family',
     mcFrequency: 'normal',
     turnTimeoutSec: 0,
-    growthOutfits: true, // Stage 6: era / job costumes in game (client `effectiveAvatar`)
+    growthOutfits: true, // Stage 6 / CH-1: era / job growth PROPS in game (props.json eraProps / jobProps; client `effectiveLook`)
     holidays: true, // Stage 7: 명절 대잔치 when the holiday eras (holidays.json) begin
     rouletteMode: 'random', // 룰렛 실력 모드: 'skill' = the player aims (shake / gauge), the server lands near the target
     finalLength: finalLengthLimits().default, // loop maps: tiles of the final era's goal race (노년 길이)
@@ -152,7 +152,7 @@ export function validateRoomConfig(input = {}) {
   }
 
   if (input.growthOutfits !== undefined) {
-    if (typeof input.growthOutfits !== 'boolean') errors.push('성장 의상 값은 true/false여야 합니다.');
+    if (typeof input.growthOutfits !== 'boolean') errors.push('성장 소품 값은 true/false여야 합니다.');
     else cfg.growthOutfits = input.growthOutfits;
   }
 

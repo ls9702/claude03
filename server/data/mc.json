@@ -1,5 +1,5 @@
 {
-  "_comment": "MC NPC (Stage 5.6, Stage 6 adds job/promotion/hiddenJob/injury/military/news — only on real outcomes, never on a job tile landing; Stage 7 adds sabotage/blocked/shopping/holiday (studio)/lotto (studio)/gift; Stage 8: marriage (married), proposeFail, birth (childBorn), house (houseBought), market (studio, 노년 시세), schoolMeet — heart/house TILE landings never map here): 사용자의 반려견 시츄 두 마리가 진행 MC. 프로필·색·표정/포즈 목록, 상황(situation) 메타(big/medium/minor 가중치, 대표 화자, 기본 표정·포즈, 쓸 수 있는 자리표시자), 등장 빈도 설정. 대사 풀은 lines.json의 mc.<상황>.<hoya|bomi|duo>.",
+  "_comment": "MC NPC (Stage 5.6, Stage 6 adds job/promotion/hiddenJob/injury/military/news — only on real outcomes, never on a job tile landing; Stage 7 adds sabotage/blocked/shopping/holiday (studio)/lotto (studio)/gift; Stage 8: marriage (married = 단짝 동거 · 집들이 파티), proposeFail (「같이 살자!」 실패), birth (childBorn = 반려동물 입양), house (houseBought), market (studio, 노년 시세), schoolMeet (고교 첫 친구) — heart/house TILE landings never map here; CH-1 keeps the situation keys): 사용자의 반려견 시츄 두 마리가 진행 MC. 프로필·색·표정/포즈 목록, 상황(situation) 메타(big/medium/minor 가중치, 대표 화자, 기본 표정·포즈, 쓸 수 있는 자리표시자), 등장 빈도 설정. 대사 풀은 lines.json의 mc.<상황>.<hoya|bomi|duo>.",
   "order": ["hoya", "bomi"],
   "expressions": ["neutral", "joy", "surprise", "sad", "angry", "proud", "sleepy"],
   "poses": ["idle", "wave", "clap", "mic"],
@@ -9,7 +9,7 @@
       "name": "호야",
       "breed": "시츄",
       "gender": "boy",
-      "relation": "남자아이, 봄이의 오빠",
+      "relation": "봄이의 오빠 (수컷 시츄)",
       "role": "리액션·분위기 담당",
       "personality": "해맑은 장난꾸러기 오빠, 먹을 것에 약하고 동생 봄이를 「봄이야」라고 부르며 늘 놀림당함",
       "speech": "반말, 문장 끝에 \"~멍!\", 감탄사 많음",
@@ -32,7 +32,7 @@
       "name": "봄이",
       "breed": "시츄",
       "gender": "girl",
-      "relation": "여자아이, 호야의 여동생",
+      "relation": "호야의 여동생 (암컷 시츄)",
       "role": "진행·해설 담당",
       "personality": "시크한 츤데레 여동생, 표정 변화가 적고 오빠(「오빠」·「호야 오빠」)에게 던지는 한마디가 웃김",
       "speech": "짧은 존댓말 \"…그렇습니다\", 가끔 \"흥\"",
@@ -150,7 +150,7 @@
       "weight": "big",
       "lead": "hoya",
       "duo": true,
-      "vars": ["name"],
+      "vars": ["name", "partner"],
       "hoya": {"expression": "joy", "pose": "clap"},
       "bomi": {"expression": "proud", "pose": "idle"}
     },
@@ -158,7 +158,7 @@
       "weight": "big",
       "lead": "hoya",
       "duo": true,
-      "vars": ["name"],
+      "vars": ["name", "child"],
       "hoya": {"expression": "joy", "pose": "clap"},
       "bomi": {"expression": "proud", "pose": "idle"}
     },

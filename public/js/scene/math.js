@@ -124,6 +124,43 @@ export function rouletteTargetAngle(current, value, turns = 4, jitter = 0) {
 /** Parabolic hop: height at t∈[0,1] for a jump of peak height h. */
 export const hopHeight = (t, h) => 4 * h * t * (1 - t);
 
+// ---------- CH-1 pawn squash & stretch (procedural; volume-preserving: sxz = 1 / √sy, pivot at the feet) ----------
+const vol = (sy) => ({ sy, sxz: 1 / Math.sqrt(sy) });
+/** Share of a hop spent squashing before take-off / after touching down (the pawn only travels in between). */
+export const HOP_SQUASH = 0.16;
+
+/**
+ * One hop between tiles at k ∈ [0, 1]: anticipation squash → stretched take-off → neutral apex → slight stretch while
+ * falling → landing squash. `y` = jump height (0 at both ends), `move` = horizontal progress (0 → 1 while airborne).
+ */
+export function hopPose(k, h = 0.75) {
+  const q = clamp(k, 0, 1);
+  if (q < HOP_SQUASH) return { y: 0, move: 0, ...vol(1 - 0.17 * Math.sin(((q / HOP_SQUASH) * Math.PI) / 2)) };
+  if (q > 1 - HOP_SQUASH) return { y: 0, move: 1, ...vol(1 - 0.2 * Math.sin(((q - (1 - HOP_SQUASH)) / HOP_SQUASH) * Math.PI)) };
+  const j = (q - HOP_SQUASH) / (1 - 2 * HOP_SQUASH);
+  const stretch = j < 0.5 ? 0.16 * Math.cos(j * Math.PI) : 0.08 * Math.sin((j - 0.5) * 2 * Math.PI);
+  const sy = lerp(0.83, 1 + stretch, Math.min(1, j / 0.12)); // snap out of the anticipation squash
+  return { y: hopHeight(j, h), move: j, ...vol(sy) };
+}
+
+/** Settle wobble after the last hop, s ∈ [0, 1] (damped squash ↔ stretch, ends at rest). */
+export function landPose(s) {
+  const q = clamp(s, 0, 1);
+  return { y: 0, ...vol(1 - 0.15 * Math.sin(q * Math.PI * 3) * (1 - q)) };
+}
+
+/** Current-turn bounce at time t (s): little hops with a squash at each contact. */
+export function bobPose(t, { height = 0.14, speed = 3.2 } = {}) {
+  const y = Math.abs(Math.sin(t * speed)) * height;
+  const contact = Math.max(0, 1 - y / (height * 0.3));
+  return { y, ...vol(1 - 0.1 * contact + 0.05 * (y / height)) };
+}
+
+/** Idle breathing at time t (s), desynchronised per pawn by `phase`. */
+export function breathePose(t, phase = 0, amp = 0.025) {
+  return { y: 0, ...vol(1 + amp * Math.sin(t * 2.2 + phase)) };
+}
+
 /**
  * Screen region of the roulette overlay inside a w×h canvas (CSS px, y from the top).
  * idle = small corner dial; active = big wheel (right side on wide screens, top-center on narrow ones).

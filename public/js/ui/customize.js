@@ -1,3 +1,5 @@
+// LEGACY (Chiikawa conversion CH-1): the human paper-doll / AI-art avatar path. The game no longer calls this module —
+// players, NPC friends and pets are drawn by ui/chara.js (lobby picker: ui/picker.js). Kept for the asset tools / old tests.
 // Character customizer (Stage 5.5): tabs from avatars.json (`tabs`), option grids (color swatches / zoomed
 // portrait thumbnails), a big live preview (2D portrait with expression chips | 3D pawn), random buttons.
 //

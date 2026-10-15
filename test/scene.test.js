@@ -8,6 +8,7 @@ import { slotOffset } from '../public/js/scene/layout.js';
 import { pickQuality, renderSize, shouldFallback, particleCount, QUALITY_PRESETS } from '../public/js/scene/quality.js';
 import {
   catmullRom, resample, arcLengths, rouletteRestAngle, rouletteTargetAngle, rouletteValueAt, rouletteRegion, hopHeight,
+  hopPose, landPose, bobPose, breathePose, HOP_SQUASH,
 } from '../public/js/scene/math.js';
 import { createAnimator, planSteps } from '../public/js/scene/animator.js';
 import { pawnSpecs, resolveAvatar, PAWN_DEFAULT } from '../public/js/scene/pawnParts.js';
@@ -72,6 +73,40 @@ test('math: roulette stops on the server value after ≥ N turns; curve helpers'
   assert.ok(act.size > idle.size && act.x + act.size <= 1280 && idle.y >= 0);
   const mob = rouletteRegion('active', 390, 440);
   assert.ok(mob.x >= 0 && mob.x + mob.size <= 390 && mob.y + mob.size <= 440);
+});
+
+test('math: CH-1 pawn squash & stretch keeps volume, squashes at take-off / landing, stretches in the air', () => {
+  const ks = Array.from({ length: 401 }, (_, i) => i / 400);
+  const poses = ks.map((k) => hopPose(k, 0.75));
+  for (const p of poses) assert.ok(Math.abs(p.sxz * p.sxz * p.sy - 1) < 1e-9, 'volume preserved');
+  assert.equal(poses[0].y, 0);
+  assert.ok(Math.abs(poses[0].sy - 1) < 1e-9 && Math.abs(poses.at(-1).sy - 1) < 1e-9 && poses.at(-1).y === 0);
+  // anticipation: the squash builds, no travel yet
+  const pre = poses.filter((_, i) => ks[i] < HOP_SQUASH);
+  assert.ok(pre.every((p) => p.y === 0 && p.move === 0 && p.sy <= 1));
+  assert.ok(Math.min(...pre.map((p) => p.sy)) < 0.86);
+  // airborne: stretched take-off, apex at the middle with the full height
+  assert.ok(hopPose(HOP_SQUASH + 0.1).sy > 1.1);
+  const apex = poses.reduce((a, b) => (b.y > a.y ? b : a));
+  assert.ok(Math.abs(apex.y - 0.75) < 0.01 && Math.abs(apex.sy - 1) < 0.06 && Math.abs(apex.move - 0.5) < 0.02);
+  // landing: squash, travel done
+  const post = poses.filter((_, i) => ks[i] > 1 - HOP_SQUASH);
+  assert.ok(post.every((p) => p.y === 0 && p.move === 1) && Math.min(...post.map((p) => p.sy)) < 0.85);
+  // smooth enough at 60 fps for a 0.3 s hop (≈ 18 frames): no jumps between samples, travel is monotonic
+  for (let i = 1; i < poses.length; i++) {
+    assert.ok(Math.abs(poses[i].sy - poses[i - 1].sy) < 0.06, `sy jump at ${ks[i]}`);
+    assert.ok(Math.abs(poses[i].y - poses[i - 1].y) < 0.03 && poses[i].move >= poses[i - 1].move);
+  }
+  // settle wobble ends at rest, goes both ways
+  assert.ok(Math.abs(landPose(0).sy - 1) < 1e-9 && Math.abs(landPose(1).sy - 1) < 1e-9);
+  const settle = ks.map((k) => landPose(k).sy);
+  assert.ok(Math.min(...settle) < 0.9 && Math.max(...settle) > 1.03);
+  // current-turn bounce: squashed at contact, stretched in the air, never below the ground
+  const bob = ks.map((k) => bobPose(k * 2));
+  assert.ok(bob.every((p) => p.y >= 0 && p.y <= 0.14 + 1e-9));
+  assert.ok(bobPose(0).sy < 0.95 && bobPose(Math.PI / 2 / 3.2).sy > 1.02);
+  // breathing is subtle
+  assert.ok(ks.every((k) => Math.abs(breathePose(k * 5, 1).sy - 1) <= 0.025 + 1e-9 && breathePose(k).y === 0));
 });
 
 // ---------- animator (fake clock) ----------

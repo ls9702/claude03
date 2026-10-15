@@ -1,10 +1,10 @@
-// Stage 6-B client pure modules: growth outfits (effectiveAvatar), stat / job formatting helpers, Stage 6 cut-in
-// planning (stat / salary chips, news attached to the studio) and the cut-in policy for job / news events.
+// Stage 6-B client pure modules: growth props (effectiveAvatar — era / job props over the chosen props since the
+// Chiikawa conversion), stat / job formatting helpers, Stage 6 cut-in planning (stat / salary chips, news attached to the
+// studio) and the cut-in policy for job / news events.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  DEFAULT_ERA_OUTFITS,
   characterEra,
   displayCharacters,
   educationLabel,
@@ -25,99 +25,94 @@ import {
 import { planCutins, tagLabel } from '../public/js/ui/cutinMap.js';
 import { classifyGroup, isBigGroup, mergeGroups } from '../public/js/ui/cutinPolicy.js';
 
-const avatars = JSON.parse(readFileSync(new URL('../server/data/avatars.json', import.meta.url), 'utf8'));
 const ERAS = ['baby', 'elem', 'middle', 'high', 'young', 'middle_age', 'senior'];
 const board = { eras: ERAS.map((id) => ({ id, name: id, tiles: [] })) };
+// Chiikawa conversion (CH-1): jobs carry growth PROPS (jobs.json `props`), eras props.json `eraProps`
 const jobs = {
   jobs: [
-    { id: 'doctor', name: '의사', icon: '🩺', hidden: false, outfit: 'doctor', requires: { int: 7, education: 'college' }, ranks: [{ name: '인턴', salary: 300 }, { name: '전문의', salary: 500 }, { name: '과장', salary: 700 }] },
-    { id: 'idol', name: '아이돌', icon: '🎤', hidden: false, outfit: 'idol', requires: { stats: { charm: 6 } }, ranks: [{ name: '연습생', salary: 100 }, { name: '데뷔', salary: 300 }] },
-    { id: 'astronaut', name: '우주비행사', icon: '🚀', hidden: true, outfit: 'suit', ranks: [{ name: '후보', salary: 600 }] },
+    { id: 'doctor', name: '의사', icon: '🩺', hidden: false, props: { head: 'head_mirror', neck: 'stethoscope' }, requires: { int: 7, education: 'college' }, ranks: [{ name: '인턴', salary: 300 }, { name: '전문의', salary: 500 }, { name: '과장', salary: 700 }] },
+    { id: 'idol', name: '아이돌', icon: '🎤', hidden: false, props: { hand: 'mic' }, requires: { stats: { charm: 6 } }, ranks: [{ name: '연습생', salary: 100 }, { name: '데뷔', salary: 300 }] },
+    { id: 'astronaut', name: '우주비행사', icon: '🚀', hidden: true, props: { head: 'space_helmet' }, ranks: [{ name: '후보', salary: 600 }] },
   ],
-  partTime: { id: 'parttime', name: '알바', icon: '🧾', ranks: [{ name: '알바', salary: 80 }], outfit: 'apron' },
+  partTime: { id: 'parttime', name: '알바', icon: '🧾', ranks: [{ name: '알바', salary: 80 }], props: { neck: 'apron' } },
 };
+const props = JSON.parse(readFileSync(new URL('../server/data/props.json', import.meta.url), 'utf8'));
 const room = (extra = {}) => ({ status: 'playing', config: {}, board, ...extra });
-const girl = { ...avatars.default, body: 'girl', outfit: 'dress', outfitColor: 'pink' };
-const boy = { ...avatars.default, body: 'boy', outfit: 'hoodie', outfitColor: 'green' };
+const usagi = { character: 'usagi', props: { head: 'ribbon', hand: 'balloon' } };
+const hachi = { character: 'hachiware', props: { face: 'sunglasses' } };
 const at = (avatar, eraIndex, extra = {}) => ({ id: 'c1', avatar, position: { eraIndex, route: 'main', index: 0 }, ...extra });
-const ctx = (r = room()) => ({ room: r, avatars, jobs });
+const ctx = (r = room()) => ({ room: r, props, jobs });
 
-test('eraOutfits contract: every costume exists in avatars.json', () => {
-  const ids = new Set(avatars.parts.outfit.map((o) => o.id));
-  for (const entry of Object.values(DEFAULT_ERA_OUTFITS)) for (const [k, v] of Object.entries(entry)) if (k !== 'job') assert.ok(ids.has(v), v);
-  for (const j of [...jobs.jobs, jobs.partTime]) assert.ok(ids.has(j.outfit), j.outfit);
+test('growth props contract: every era / job prop exists in props.json in its own slot', () => {
+  const byId = new Map(props.props.map((p) => [p.id, p]));
+  for (const [era, entry] of Object.entries(props.eraProps)) {
+    for (const [slot, id] of Object.entries(entry)) if (slot !== 'job') assert.equal(byId.get(id)?.slot, slot, `${era}.${slot}=${id}`);
+  }
+  for (const [job, entry] of Object.entries(props.jobProps ?? {})) for (const [slot, id] of Object.entries(entry)) assert.equal(byId.get(id)?.slot, slot, `${job}.${slot}=${id}`);
+  for (const j of [...jobs.jobs, jobs.partTime]) for (const [slot, id] of Object.entries(j.props)) assert.equal(byId.get(id)?.slot, slot, id);
 });
 
-test('effectiveAvatar: era costumes (any / body-specific), senior hanbok', () => {
-  assert.equal(effectiveAvatar(at(boy, 0), ctx()).outfit, 'dino');
-  assert.equal(effectiveAvatar(at(girl, 1), ctx()).outfit, 'tracksuit');
-  assert.equal(effectiveAvatar(at(boy, 2), ctx()).outfit, 'uniform');
-  assert.equal(effectiveAvatar(at(girl, 2), ctx()).outfit, 'sailor');
-  assert.equal(effectiveAvatar(at(girl, 3), ctx()).outfit, 'sailor');
-  assert.equal(effectiveAvatar(at(boy, 3), ctx()).outfit, 'uniform');
-  assert.equal(effectiveAvatar(at(girl, 6), ctx()).outfit, 'hanbokTrad');
+test('effectiveAvatar: era props override the chosen prop of the SAME slot only', () => {
+  // baby: bonnet (head) + pacifier (face) — usagi keeps her balloon (hand)
+  assert.deepEqual(effectiveAvatar(at(usagi, 0), ctx()).props, { head: 'bonnet', hand: 'balloon', face: 'pacifier' });
+  assert.deepEqual(effectiveAvatar(at(usagi, 1), ctx()).props, { head: 'yellow_hat', hand: 'balloon', back: 'school_backpack' });
+  assert.deepEqual(effectiveAvatar(at(hachi, 2), ctx()).props, { face: 'sunglasses', head: 'school_cap', neck: 'necktie' });
+  assert.deepEqual(effectiveAvatar(at(hachi, 6), ctx()).props, { face: 'sunglasses', head: 'knit_cap', hand: 'cane' });
+  // the body never changes
+  assert.equal(effectiveAvatar(at(usagi, 6), ctx()).character, 'usagi');
   // `character.era` wins over the position
-  assert.equal(effectiveAvatar({ ...at(boy, 0), era: 'senior' }, ctx()).outfit, 'hanbokTrad');
-  // other parts and the player's colour stay
-  const a = effectiveAvatar(at(girl, 1), ctx());
-  assert.equal(a.outfitColor, 'pink');
-  assert.equal(a.hair, girl.hair);
-  assert.equal(a.body, 'girl');
+  assert.equal(effectiveAvatar({ ...at(usagi, 0), era: 'senior' }, ctx()).props.head, 'knit_cap');
 });
 
-test('effectiveAvatar: job:true eras → job outfit / part-time / chosen outfit without a job', () => {
-  assert.equal(effectiveAvatar(at(boy, 4, { job: { id: 'doctor', rank: 1 } }), ctx()).outfit, 'doctor');
-  assert.equal(effectiveAvatar(at(girl, 5, { job: { id: 'idol', rank: 2 } }), ctx()).outfit, 'idol');
-  assert.equal(effectiveAvatar(at(boy, 4, { job: { id: 'parttime', rank: 1 } }), ctx()).outfit, 'apron');
-  assert.equal(effectiveAvatar(at(boy, 4, { job: null }), ctx()).outfit, 'hoodie');
-  assert.equal(effectiveAvatar(at(boy, 4), ctx()).outfit, 'hoodie');
-  // unknown job / no jobs meta → chosen outfit
-  assert.equal(effectiveAvatar(at(boy, 4, { job: { id: 'mystery' } }), ctx()).outfit, 'hoodie');
-  assert.equal(effectiveAvatar(at(boy, 4, { job: { id: 'doctor' } }), { room: room(), avatars, jobs: null }).outfit, 'hoodie');
+test('effectiveAvatar: job eras → the job props (part-time apron); no job → the chosen props', () => {
+  assert.deepEqual(effectiveAvatar(at(usagi, 4, { job: { id: 'doctor', rank: 1 } }), ctx()).props, { head: 'head_mirror', hand: 'balloon', neck: 'stethoscope' });
+  assert.deepEqual(effectiveAvatar(at(hachi, 5, { job: { id: 'idol', rank: 2 } }), ctx()).props, { face: 'sunglasses', hand: 'mic' });
+  assert.equal(effectiveAvatar(at(hachi, 4, { job: { id: 'parttime', rank: 1 } }), ctx()).props.neck, 'apron');
+  assert.equal(effectiveAvatar(at(usagi, 4, { job: null }), ctx()), usagi);
+  assert.equal(effectiveAvatar(at(usagi, 4), ctx()), usagi);
+  // unknown job → chosen props; props.json jobProps / the contract default when jobs.json has no `props`
+  assert.equal(effectiveAvatar(at(usagi, 4, { job: { id: 'mystery' } }), ctx()), usagi);
+  assert.equal(effectiveAvatar(at(usagi, 4, { job: { id: 'chef' } }), { room: room(), props, jobs: null }).props.head, 'chef_hat');
+  assert.equal(effectiveAvatar(at(usagi, 4, { job: { id: 'chef' } }), { room: room() }).props.head, 'chef_hat');
   // `job` override (a jobChanged cut-in shows the post-event job)
-  assert.equal(effectiveAvatar(at(boy, 4, { job: null }), { ...ctx(), job: { id: 'idol' } }).outfit, 'idol');
+  assert.equal(effectiveAvatar(at(usagi, 4, { job: null }), { ...ctx(), job: { id: 'idol' } }).props.hand, 'mic');
 });
 
-test('effectiveAvatar: growthOutfits off, lobby → the chosen look (same object)', () => {
-  const c = at(girl, 0);
-  assert.equal(effectiveAvatar(c, ctx(room({ config: { growthOutfits: false } }))), girl);
-  assert.equal(effectiveAvatar(c, ctx(room({ status: 'lobby' }))), girl);
-  assert.equal(effectiveAvatar(c, { avatars, jobs }), girl);
-  assert.equal(effectiveAvatar(c, ctx(room({ status: 'finished' }))).outfit, 'dino');
-  // already wearing the era costume → unchanged object
-  const dino = { ...girl, outfit: 'dino' };
-  assert.equal(effectiveAvatar(at(dino, 0), ctx()), dino);
+test('effectiveAvatar: growthOutfits off, lobby → the chosen look (same object); old human avatars → a roster look', () => {
+  const c = at(usagi, 0);
+  assert.equal(effectiveAvatar(c, ctx(room({ config: { growthOutfits: false } }))), usagi);
+  assert.equal(effectiveAvatar(c, ctx(room({ status: 'lobby' }))), usagi);
+  assert.equal(effectiveAvatar(c, { props, jobs }), usagi);
+  assert.equal(effectiveAvatar(c, ctx(room({ status: 'finished' }))).props.head, 'bonnet');
+  // already wearing the era props → unchanged object
+  const baby = { character: 'chiikawa', props: { head: 'bonnet', face: 'pacifier' } };
+  assert.equal(effectiveAvatar(at(baby, 0), ctx()), baby);
+  // a pre-conversion human avatar is drawn as a roster character (deterministic)
+  const human = { body: 'girl', hair: 'bob', outfit: 'dress', accessory: 'glasses' };
+  const look = effectiveAvatar(at(human, 3), ctx(room({ status: 'lobby' })));
+  assert.ok(look.character, JSON.stringify(look));
+  assert.equal(look.props.face, 'round_glasses');
+  assert.deepEqual(effectiveAvatar(at(human, 3), ctx(room({ status: 'lobby' }))), look);
 });
 
-test('effectiveAvatar: fixed-colour job outfit keeps its colour contract, tintable keeps outfitColor', () => {
-  const doc = effectiveAvatar(at(boy, 4, { job: { id: 'doctor' } }), ctx());
-  assert.equal(doc.outfit, 'doctor');
-  assert.equal(doc.outfitColor, 'green'); // renderers ignore it for tintable:false outfits
-  const def = avatars.parts.outfit.find((o) => o.id === 'doctor');
-  assert.equal(def.tintable, false);
-  const idol = effectiveAvatar(at(girl, 4, { job: { id: 'idol' } }), ctx());
-  assert.equal(idol.outfitColor, 'pink');
-  assert.notEqual(avatars.parts.outfit.find((o) => o.id === 'idol').tintable, false);
+test('effectiveAvatar: the server eraProps table wins; unknown prop ids are ignored', () => {
+  const p2 = { ...props, eraProps: { baby: { head: 'crown' } } };
+  assert.deepEqual(effectiveAvatar(at(usagi, 0), { room: room(), props: p2, jobs }).props, { head: 'crown', hand: 'balloon' });
+  assert.equal(effectiveAvatar(at(usagi, 1), { room: room(), props: p2, jobs }), usagi);
+  const bad = { ...props, eraProps: { baby: { head: 'spacesuit' } } };
+  assert.equal(effectiveAvatar(at(usagi, 0), { room: room(), props: bad, jobs }), usagi);
 });
 
-test('effectiveAvatar: server eraOutfits table wins over the default', () => {
-  const defs = { ...avatars, eraOutfits: { baby: { any: 'pajamas' } } };
-  assert.equal(effectiveAvatar(at(boy, 0), { room: room(), avatars: defs, jobs }).outfit, 'pajamas');
-  assert.equal(effectiveAvatar(at(boy, 1), { room: room(), avatars: defs, jobs }).outfit, 'hoodie');
-  // unknown costume ids are ignored
-  const bad = { ...avatars, eraOutfits: { baby: { any: 'spacesuit' } } };
-  assert.equal(effectiveAvatar(at(boy, 0), { room: room(), avatars: bad, jobs }).outfit, 'hoodie');
-});
-
-test('displayCharacters: effective avatar + chosenAvatar; overrides; untouched characters kept', () => {
-  const r = room({ characters: [at(boy, 0), { ...at({ ...girl, outfit: 'dino' }, 0), id: 'c2' }, { ...at(boy, 4, { job: null }), id: 'c3' }] });
-  const list = displayCharacters(r, { avatars, jobs });
-  assert.equal(list[0].avatar.outfit, 'dino');
+test('displayCharacters: effective look + chosenAvatar; overrides; untouched characters kept', () => {
+  const baby = { character: 'chiikawa', props: { head: 'bonnet', face: 'pacifier' } };
+  const r = room({ characters: [at(usagi, 0), { ...at(baby, 0), id: 'c2' }, { ...at(hachi, 4, { job: null }), id: 'c3' }] });
+  const list = displayCharacters(r, { props, jobs });
+  assert.equal(list[0].avatar.props.head, 'bonnet');
   assert.equal(list[0].chosenAvatar, r.characters[0].avatar);
   assert.equal(list[1], r.characters[1]);
   assert.equal(list[2], r.characters[2]);
-  const o = displayCharacters(r, { avatars, jobs, overrides: { c3: { job: { id: 'doctor' } } } });
-  assert.equal(o[2].avatar.outfit, 'doctor');
+  const o = displayCharacters(r, { props, jobs, overrides: { c3: { job: { id: 'doctor' } } } });
+  assert.equal(o[2].avatar.props.head, 'head_mirror');
   assert.equal(characterEra(r.characters[2], r), 'young');
 });
 
@@ -170,7 +165,7 @@ test('education / military labels', () => {
   assert.equal(educationLabel(undefined), '');
   assert.equal(militaryLabel({ status: 'serving', turnsLeft: 2 }), '복무 중 (2턴)');
   assert.equal(militaryLabel({ status: 'done' }), '군필');
-  assert.equal(militaryLabel({ status: 'exempt' }), '면제');
+  assert.equal(militaryLabel({ status: 'exempt' }), '미입대'); // optional service for everyone (CH-1)
   assert.equal(militaryLabel({ status: 'none' }), '');
   assert.equal(militaryLabel(null), '');
 });

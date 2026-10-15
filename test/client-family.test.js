@@ -1,5 +1,6 @@
-// Stage 8-B pure client helpers: partner / child view models, cut-in cast building, house art per id, prompt option
-// formatting (meet / date / propose / house), planCutins + classifyGroup for the Stage 8 events, panel helpers.
+// Stage 8-B pure client helpers (Chiikawa theme since CH-1: 단짝 후보 / 단짝 = NPC friends, children = 반려동물): partner /
+// pet view models, cut-in cast building, house art per id, prompt option formatting (meet / date / propose / house),
+// planCutins + classifyGroup for the Stage 8 events, panel helpers, the §4 wording.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -10,6 +11,7 @@ import {
   chancePct,
   childInfo,
   childLook,
+  childScale,
   dateOptions,
   familyCast,
   familyIcons,
@@ -22,6 +24,8 @@ import {
   houseOwners,
   marketInfo,
   meetOptions,
+  npcCharacter,
+  npcLook,
   partnerInfo,
   proposeOptions,
   schoolMeetPairs,
@@ -37,9 +41,10 @@ import { slotPositions } from '../public/js/ui/cutin2d.js';
 import { cpuBadgeHtml, isCpu, ownerHtml } from '../public/js/format.js';
 import { loadData } from '../server/data/index.js';
 
-const AV = (body = 'girl', extra = {}) => ({ body, build: 'normal', skin: 'light', face: 'round', eyes: 'round', mouth: 'smile', cheek: 'none', hair: 'bob', hairColor: 'black', outfit: 'tshirt', outfitColor: 'blue', accessory: 'none', ...extra });
-const partner = (id, extra = {}) => ({ id, name: `연인${id}`, trait: 'charm', stars: 3, body: 'girl', avatar: AV('girl'), ...extra });
-const kid = (id, stage = 'baby', extra = {}) => ({ id, name: `아이${id}`, trait: 'int', talent: 'normal', stage, bornTurn: 3, body: 'boy', avatar: AV('boy', { outfit: 'hoodie' }), ...extra });
+const AV = (character = 'chiikawa', props = {}) => ({ character, props });
+const LEGACY = { body: 'girl', build: 'normal', skin: 'light', face: 'round', eyes: 'round', mouth: 'smile', cheek: 'none', hair: 'bob', hairColor: 'black', outfit: 'tshirt', outfitColor: 'blue', accessory: 'none' };
+const partner = (id, extra = {}) => ({ id, name: `친구${id}`, trait: 'charm', stars: 3, species: 'panda', avatar: { npc: 'panda', props: {} }, ...extra });
+const kid = (id, stage = 'baby', extra = {}) => ({ id, name: `펫${id}`, trait: 'int', talent: 'normal', stage, bornTurn: 3, species: 'turtle', avatar: { pet: 'turtle' }, ...extra });
 const META = {
   partners: { traits: { int: { name: '지력형', icon: '🧠' }, str: { name: '체력형', icon: '💪' }, charm: { name: '매력형', icon: '✨' }, luck: { name: '운형', icon: '🍀' } }, affection: { proposeAt: 50, max: 100 } },
   houses: {
@@ -51,9 +56,9 @@ const META = {
   },
 };
 const chars = [
-  { id: 'c1', name: '민수', isMe: true, avatar: AV('boy'), love: { partner: partner('pt1'), affection: 30, dates: 1, candidates: [] }, spouse: null, children: [], house: null },
-  { id: 'c2', name: '지영', avatar: AV('girl'), spouse: { ...partner('pt2', { body: 'boy', avatar: AV('boy') }), salary: 100, marriedTurn: 4 }, children: [kid('ch1', 'kid', { talent: 'genius' }), kid('ch2')], house: { id: 'apartment', price: 1200, value: 1500, boughtTurn: 9 }, houseSwaps: 1 },
-  { id: 'c3', name: '뚱이', avatar: AV('boy') },
+  { id: 'c1', name: '민수', isMe: true, avatar: AV('usagi'), love: { partner: partner('pt1'), affection: 30, dates: 1, candidates: [] }, spouse: null, children: [], house: null },
+  { id: 'c2', name: '지영', avatar: AV('hachiware'), spouse: { ...partner('pt2', { species: 'fox', avatar: { npc: 'fox', props: {} } }), salary: 100, marriedTurn: 4 }, children: [kid('ch1', 'kid', { talent: 'genius' }), kid('ch2', 'baby', { species: 'goldfish', avatar: { pet: 'goldfish' } })], house: { id: 'apartment', price: 1200, value: 1500, boughtTurn: 9 }, houseSwaps: 1 },
+  { id: 'c3', name: '뚱이', avatar: AV('rakko') },
 ];
 
 test('partner / child view models: trait + ★ from meta (contract fallback), affection bar, stage scale', () => {
@@ -70,22 +75,37 @@ test('partner / child view models: trait + ★ from meta (contract fallback), af
   assert.deepEqual([aff.value, aff.proposeAt, aff.pct, aff.ready], [30, 50, 60, false]);
   assert.equal(affectionInfo({ affection: 70 }, META).ready, true);
   assert.equal(affectionInfo({ affection: 70 }, META).pct, 100);
+  assert.deepEqual([p.species, p.speciesName, p.speciesIcon], ['panda', '판다', '🐼']);
   const k = childInfo(kid('x', 'teen', { talent: 'genius' }), META);
   assert.equal(k.genius, true);
   assert.equal(k.stageLabel, '청소년');
+  assert.deepEqual([k.species, k.speciesName, k.speciesIcon], ['turtle', '거북이', '🐢']);
   assert.ok(CHILD_STAGES.baby.scale < CHILD_STAGES.kid.scale && CHILD_STAGES.kid.scale < CHILD_STAGES.adult.scale);
   assert.equal(CHILD_STAGES.baby.scale, 0.5);
+  // pets.json stage names win; 새끼 / 꼬마 / 청소년 / 어른 by default
+  assert.deepEqual(Object.values(CHILD_STAGES).map((x) => x.label), ['새끼', '꼬마', '청소년', '어른']);
+  assert.equal(childInfo(kid('y', 'kid'), { pets: { stages: { kid: { name: '아기펫', scale: 0.6 } } } }).stageLabel, '아기펫');
+  // slot scale = stage × species size × boost, clamped (a grown-up pet never outgrows its owner's slot)
+  assert.ok(childScale('baby', { species: 'turtle' }) < childScale('adult', { species: 'turtle' }));
+  assert.ok(childScale('adult', { species: 'puppy' }) <= 1);
+  assert.ok(childScale('baby', { species: 'snail' }) >= 0.5);
 });
 
-test('child look: stage costume from the era table (baby dino, kid tracksuit, teen uniform by body), adults keep theirs', () => {
-  const avatars = loadData('avatars');
-  const c = kid('k');
-  assert.equal(childLook(c, { stage: 'baby', avatars }).outfit, 'dino');
-  assert.equal(childLook(c, { stage: 'kid', avatars }).outfit, 'tracksuit');
-  assert.equal(childLook(c, { stage: 'teen', avatars }).outfit, 'uniform');
-  assert.equal(childLook({ ...c, avatar: AV('girl') }, { stage: 'teen', avatars }).outfit, 'sailor');
-  assert.equal(childLook(c, { stage: 'adult', avatars }).outfit, 'hoodie');
-  assert.equal(childLook({ id: 'x' }), null);
+test('pet / NPC looks: the {pet} / {npc} avatar, else the species, else a hashed species for old human avatars', () => {
+  assert.deepEqual(childLook(kid('k')), { pet: 'turtle' });
+  assert.deepEqual(childLook({ id: 'k', species: 'chick' }), { pet: 'chick' });
+  const old = childLook({ id: 'k', name: '아이', avatar: LEGACY });
+  assert.ok(old.pet && !old.character, JSON.stringify(old));
+  assert.deepEqual(childLook({ id: 'k', name: '아이', avatar: LEGACY }), old); // deterministic
+  assert.equal(childLook(null), null);
+  assert.deepEqual(npcLook(partner('p')), { npc: 'panda', props: {} });
+  assert.deepEqual(npcLook({ id: 'p', species: 'owl' }), { npc: 'owl', props: {} });
+  const oldP = npcLook({ id: 'p', name: '연인', body: 'girl', avatar: LEGACY });
+  assert.ok(oldP.npc && !oldP.character);
+  // a legacy partner never shows a gendered human: the NPC look is used everywhere (partnerInfo, npcCharacter)
+  assert.equal(partnerInfo({ id: 'p', name: '연인', avatar: LEGACY }, META).avatar.npc, oldP.npc);
+  assert.equal(npcCharacter({ id: 'p', name: '연인', avatar: LEGACY }, { prefix: 'partner' }).avatar.npc, oldP.npc);
+  assert.equal(npcCharacter(kid('k'), { prefix: 'child' }).avatar.pet, 'turtle');
 });
 
 test('cut-in cast: partner / spouse / child entries from specs (children smaller, 👶 for babies)', () => {
@@ -93,24 +113,25 @@ test('cut-in cast: partner / spouse / child entries from specs (children smaller
   const met = familyCast(g({ type: 'met', charId: 'c1', partner: partner('pt5') }), chars);
   assert.equal(met.length, 1);
   assert.equal(met[0].role, 'partner');
-  assert.equal(met[0].char.name, '연인pt5');
-  assert.deepEqual(met[0].char.avatar, AV('girl'));
+  assert.equal(met[0].char.name, '친구pt5');
+  assert.deepEqual(met[0].char.avatar, { npc: 'panda', props: {} });
   assert.equal(met[0].char.npc, true);
-  // married: the event's spouse spec
+  // married (단짝 동거): the event's spouse spec, 🎉 집들이 파티
   const wed = familyCast(g({ type: 'married', charId: 'c1', spouse: partner('pt1') }), chars);
-  assert.deepEqual(wed.map((m) => [m.role, m.scale, m.glyph]), [['spouse', 1, '💍']]);
-  // birth: spouse (from the character) + the baby at half size with 👶
+  assert.deepEqual(wed.map((m) => [m.role, m.scale, m.glyph]), [['spouse', 1, '🎉']]);
+  // 반려동물 입양: the 단짝 (from the character) + the new pet (smaller) with 🐣
   const born = familyCast(g({ type: 'childBorn', charId: 'c2', child: kid('ch3') }), chars);
   assert.deepEqual(born.map((m) => m.role), ['spouse', 'child']);
-  assert.equal(born[1].scale, 0.5);
-  assert.equal(born[1].glyph, '👶');
-  assert.equal(born[1].char.avatar.outfit, 'dino'); // baby costume (contract default table)
+  assert.equal(born[1].scale, childScale('baby', { species: 'turtle' }));
+  assert.ok(born[1].scale < 1);
+  assert.equal(born[1].glyph, '🐣');
+  assert.deepEqual(born[1].char.avatar, { pet: 'turtle' }); // the body never changes, only the slot scale
   // childGrew: the event's child copy at the new stage (+ genius flag)
   const grew = familyCast(g({ type: 'childGrew', charId: 'c2', childId: 'ch1', kind: 'exam', stage: 'teen', child: kid('ch1', 'teen', { talent: 'genius' }) }), chars);
   assert.equal(grew.length, 1);
   assert.equal(grew[0].stage, 'teen');
   assert.equal(grew[0].genius, true);
-  assert.equal(grew[0].glyph, '📝');
+  assert.equal(grew[0].glyph, '🏆');
   assert.ok(grew[0].scale > 0.5 && grew[0].scale < 1);
   // failed proposal: partner in a sweat, 🙅
   const fail = familyCast(g({ type: 'proposed', charId: 'c1', success: false, partner: partner('pt1') }), chars);
@@ -122,7 +143,7 @@ test('cut-in cast: partner / spouse / child entries from specs (children smaller
   const pairs = schoolMeetPairs({ pairs: [{ charId: 'c1', partner: partner('a') }, { charId: 'zz', partner: partner('b') }] }, chars, META);
   assert.equal(pairs.length, 1);
   assert.equal(pairs[0].partner.traitName, '매력형');
-  assert.equal(pairs[0].npc.avatar.body, 'girl');
+  assert.equal(pairs[0].npc.avatar.npc, 'panda');
   // wedding gifts: names, total
   const gifts = weddingGifts({ gifts: [{ fromId: 'c2', amount: 40 }, { fromId: 'c3', amount: 0 }], total: 40 }, chars);
   assert.deepEqual(gifts, { rows: [{ fromId: 'c2', name: '지영', amount: 40 }], total: 40 });
@@ -141,7 +162,7 @@ test('cast slots: classic 1–3 slots for full-size figures, children spread nar
   assert.ok(five.every((x) => x >= 13 && x <= 87));
 });
 
-test('house art: 6 distinct SVG houses (+ generic fallback), asset img when accepted, market chart ↑ / ↓, 돌잡이', () => {
+test('house art: 6 distinct SVG houses (+ generic fallback), asset img when accepted, market chart ↑ / ↓, 입양 파티', () => {
   assert.deepEqual(HOUSE_IDS, ['oneroom', 'villa', 'apartment', 'hanok', 'penthouse', 'jeju_villa']);
   const svgs = HOUSE_IDS.map((id) => houseSvg(id));
   for (const s of svgs) {
@@ -159,7 +180,7 @@ test('house art: 6 distinct SVG houses (+ generic fallback), asset img when acce
   assert.match(marketChartSvg(1.3), /\+30%/);
   assert.match(marketChartSvg(0.8), /class="market-svg down"/);
   assert.match(marketChartSvg(0.8), /-20%/);
-  assert.match(dolTableSvg(), /돌잡이/);
+  assert.match(dolTableSvg(), /입양 파티/);
   // server-side data (8-A) uses the same six ids when present
   let houses = null;
   try {
@@ -203,7 +224,7 @@ test('prompt options: meet candidates, date cost / ❤️, propose chance, house
   const m = meetOptions(meetP, { character: who, meta: META });
   assert.equal(m.candidates.length, 2);
   assert.deepEqual(m.candidates.map((x) => [x.partner.name, x.partner.traitName, x.partner.starsText]), [
-    ['연인pt7', '지력형', '★★☆☆'],
+    ['친구pt7', '지력형', '★★☆☆'],
     ['하윤', '운형', '★☆☆☆'],
   ]);
   assert.equal(m.pass.id, 'pass');
@@ -211,8 +232,10 @@ test('prompt options: meet candidates, date cost / ❤️, propose chance, house
   assert.equal((meetHtml.match(/data-choose=/g) ?? []).length, 3);
   assert.match(meetHtml, /data-choose="meet:pt7" data-prompt="q1" data-char="c1"/);
   assert.match(meetHtml, /💞 찰떡궁합/);
-  assert.match(meetHtml, /맞벌이 70만원/);
-  assert.match(meetHtml, /class="av-pt" data-pt=/); // portraits hydrate later
+  assert.match(meetHtml, /단짝 생활비 70만원/);
+  assert.match(meetHtml, /🐼 판다 · 🧠 지력형/);
+  assert.match(meetHtml, /💘 친구 하기/);
+  assert.match(meetHtml, /class="av-pt ch-pt ch-bust"[^>]*><svg [^>]*data-chara="n:panda"/); // NPC friends drawn by chara.js
   assert.match(meetHtml, />다음 기회에</); // icon not repeated in the label
   // date
   const dateP = {
@@ -220,9 +243,9 @@ test('prompt options: meet candidates, date cost / ❤️, propose chance, house
     kind: 'date',
     charId: 'c1',
     options: [
-      { id: 'date:walk', label: '🚶 동네 산책', icon: '🚶', cost: 0, gain: 5, desc: '호감도 +5 · 무료' },
-      { id: 'date:concert', label: '🎤 콘서트 데이트', icon: '🎤', cost: 40, gain: 35, match: true, desc: '호감도 +35 (취향 저격!) · 40만원' },
-      { id: 'date:x', label: '🎢 놀이공원', icon: '🎢', cost: 999, gain: 25, disabled: true, desc: '호감도 +25 · 999만원 · 돈이 부족해요' },
+      { id: 'date:walk', label: '🚶 동네 산책', icon: '🚶', cost: 0, gain: 5, desc: '친밀도 +5 · 무료' },
+      { id: 'date:concert', label: '🎤 콘서트 관람', icon: '🎤', cost: 40, gain: 35, match: true, desc: '친밀도 +35 (취향 저격!) · 40만원' },
+      { id: 'date:x', label: '🎢 놀이공원 나들이', icon: '🎢', cost: 999, gain: 25, disabled: true, desc: '친밀도 +25 · 999만원 · 돈이 부족해요' },
     ],
   };
   const d = dateOptions(dateP);
@@ -236,7 +259,7 @@ test('prompt options: meet candidates, date cost / ❤️, propose chance, house
   assert.match(dateHtml, /data-choose="date:x"[^>]*disabled/);
   assert.doesNotMatch(dateHtml, />🚶 동네 산책</);
   // propose: chance on the propose option only (steady carries chance 0)
-  const propP = { promptId: 'q3', kind: 'propose', charId: 'c1', options: [{ id: 'propose', label: '💍 프러포즈!', icon: '💍', chance: 0.62, desc: '성공 확률 약 62% · 성공하면 결혼식' }, { id: 'steady', label: '💕 조금 더 사귀기', icon: '💕', chance: 0 }] };
+  const propP = { promptId: 'q3', kind: 'propose', charId: 'c1', options: [{ id: 'propose', label: '🏡 같이 살자!', icon: '🏡', chance: 0.62, desc: '성공 확률 약 62% · 성공하면 🎉 집들이 파티' }, { id: 'steady', label: '💕 조금 더 친하게 지내기', icon: '💕', chance: 0 }] };
   assert.deepEqual(proposeOptions(propP).map((x) => [x.propose, x.chance]), [[true, 62], [false, null]]);
   assert.equal(chancePct(0.5), 50);
   assert.equal(chancePct(75), 75);
@@ -245,7 +268,12 @@ test('prompt options: meet candidates, date cost / ❤️, propose chance, house
   assert.match(propHtml, /aria-valuenow="62"/);
   assert.match(propHtml, /성공 확률 62%/);
   assert.equal((propHtml.match(/chance-meter/g) ?? []).length, 1);
-  assert.match(propHtml, />성공하면 결혼식</);
+  assert.match(propHtml, />성공하면 🎉 집들이 파티</);
+  // no server label → the theme defaults
+  const bare = proposeOptionsHtml({ promptId: 'q', kind: 'propose', options: [{ id: 'propose', chance: 0.5 }, { id: 'steady', chance: 0 }] }, chars[0]);
+  assert.match(bare, /「같이 살자!」/);
+  assert.match(bare, /조금 더 친해지기/);
+  assert.doesNotMatch(bare, /프러포즈|결혼/);
   // dispatcher
   assert.equal(familyOptionsHtml({ kind: 'shop', options: [] }, chars[0]), null);
   assert.ok(familyOptionsHtml(dateP, chars[0]).includes('date-list'));
@@ -311,14 +339,23 @@ test('planCutins: Stage 8 anchors, 입학 / 용돈 / 보상판매 chips, schoolM
   assert.equal(gs[3].charId, null);
   // tags / fallback text
   const t = (a) => tagLabel(a, {});
-  assert.equal(t({ type: 'married' }), '💒 결혼식');
-  assert.equal(t({ type: 'proposed', success: false }), '💔 프러포즈 실패');
-  assert.equal(t({ type: 'childGrew', kind: 'dol' }), '🎂 돌잔치');
+  assert.equal(t({ type: 'married' }), '🎉 집들이 파티');
+  assert.equal(t({ type: 'proposed', success: true }), '🏡 「같이 살자!」 성공');
+  assert.equal(t({ type: 'proposed', success: false }), '💔 「같이 살자!」 실패');
+  assert.equal(t({ type: 'met' }), '💘 새 친구');
+  assert.equal(t({ type: 'dated' }), '💑 같이 놀기');
+  assert.equal(t({ type: 'schoolMeet' }), '🏫 고교 첫 친구');
+  assert.equal(t({ type: 'childBorn' }), '🐣 반려동물 입양');
+  assert.equal(t({ type: 'childGrew', kind: 'dol' }), '🎂 입양 파티');
+  assert.equal(t({ type: 'childGrew', kind: 'school' }), '🎒 펫 훈련 학교');
+  assert.equal(t({ type: 'childGrew', kind: 'exam' }), '🏆 펫 경연대회');
+  assert.equal(t({ type: 'childGrew', kind: 'job' }), '⭐ 펫 스타 데뷔');
   assert.equal(t({ type: 'houseBought', tradeIn: 100 }), '🏠 집 갈아타기');
   assert.equal(t({ type: 'houseValueChanged', mult: 0.9 }), '📉 부동산 시세 폭락');
   assert.match(t({ type: 'promptResolved', kind: 'house' }), /부동산$/);
   assert.match(fallbackText({ type: 'houseValueChanged', mult: 1.25 }), /25% 올랐어요/);
-  assert.match(fallbackText({ type: 'childBorn' }, '지영'), /지영네 집에 아기가/);
+  assert.match(fallbackText({ type: 'childBorn' }, '지영'), /지영네 집에 반려동물이 왔어요/);
+  assert.match(fallbackText({ type: 'married' }, '지영'), /집들이 파티/);
 });
 
 test('classifyGroup: 결혼 / 출산 / 고교 만남 / 시세 are big, a date is minor, my family events are full', () => {
@@ -346,23 +383,27 @@ test('classifyGroup: 결혼 / 출산 / 고교 만남 / 시세 are big, a date is
 
 test('panel helpers: family icons / summary / 3D tag badge, detail rows (❤️ bar, spouse, kids, house), CPU badge', () => {
   assert.equal(familyIcons(chars[0]), '💕');
-  assert.equal(familyIcons(chars[1]), '💍 🧒🌟👶');
+  assert.equal(familyIcons(chars[1]), '💞 🐢🌟🐠');
   assert.equal(familyIcons(chars[2]), '');
-  assert.equal(familySummary(chars[1], META), '💍 연인pt2(★3) · 자녀 2명 (🌟 1)');
-  assert.equal(familyTagBadge(chars[1]), '💍👶2🏠');
+  assert.equal(familySummary(chars[1], META), '💞 단짝 친구pt2(★3) · 반려동물 2마리 (🌟 1)');
+  assert.equal(familyTagBadge(chars[1]), '💞🐾2🏠');
   assert.equal(familyTagBadge(chars[2]), '');
   const f = familyOf(chars[0], META);
-  assert.equal(f.partner.name, '연인pt1');
+  assert.equal(f.partner.name, '친구pt1');
   assert.equal(f.affection.pct, 60);
   const d0 = familyDetailHtml(chars[0], { meta: META });
-  assert.match(d0, /연애/);
+  assert.match(d0, /단짝 후보/);
+  assert.match(d0, /aria-label="친밀도"/);
   assert.match(d0, /aria-valuenow="30"/);
-  assert.match(d0, /❤️ 30\/50/);
-  const d1 = familyDetailHtml(chars[1], { meta: META, room: { housingMarket: { eraId: 'senior', mult: 1.25 } }, avatars: loadData('avatars') });
-  assert.match(d1, /배우자/);
-  assert.match(d1, /💼 맞벌이 100만원/);
-  assert.match(d1, /🌟 천재/);
-  assert.match(d1, /어린이/);
+  assert.match(d0, /❤️ 친밀도 30\/50/);
+  const d1 = familyDetailHtml(chars[1], { meta: META, room: { housingMarket: { eraId: 'senior', mult: 1.25 } } });
+  assert.match(d1, />단짝</);
+  assert.match(d1, /🏠 단짝 생활비 100만원/);
+  assert.match(d1, /🦊 여우/);
+  assert.match(d1, />반려동물</);
+  assert.match(d1, /🌟 천재 펫/);
+  assert.match(d1, /🐢 꼬마/);
+  assert.match(d1, /🐠 새끼/);
   assert.match(d1, /가치 1,500만원 \(\+300만원\)/);
   assert.match(d1, /갈아타기 1회/);
   assert.match(d1, /📈 시세 ×1\.25/);

@@ -16,9 +16,11 @@ import {
 import { NAME_MAX, cleanName, josa, nameFits, ownerHtml } from './format.js';
 import { bindNameInput } from './ui/nameInput.js';
 import { createGameUI } from './game2d.js';
-import { hydratePortraits, portraitHtml, setAvatarDefs } from './ui/avatar2d.js';
-import { openCustomizer, setPreviewRenderer } from './ui/customize.js';
-import { layeredPreviewRenderer } from './ui/avatarCompose.js';
+// Chiikawa conversion (CH-1): roster characters + props (ui/chara.js renderer, ui/picker.js); the human paper-doll /
+// AI-art modules (ui/avatar2d.js, avatarCompose.js, customize.js, charArt.js) are legacy and no longer called here.
+import { hydratePortraits, portraitHtml, setCharaMeta } from './ui/chara.js';
+import { openCharaPicker } from './ui/picker.js';
+import { loadAssetIndex } from './assets.js';
 import { MC_NAMES, mcLinesFrom, renderMc } from './ui/mc.js';
 import { closePhotoDialogs } from './ui/groupPhoto.js';
 import { repairScrollLock } from './ui/scrollLock.js';
@@ -479,11 +481,11 @@ function startCustomizer(charId = null) {
   closeCustomizer();
   $('#my-list-wrap').hidden = true;
   setSheet(true);
-  const ui = openCustomizer($('#customizer-host'), {
-    title: existing ? `「${existing.name}」 편집` : '새 캐릭터',
+  const ui = openCharaPicker($('#customizer-host'), {
+    title: existing ? `「${existing.name}」 꾸미기` : '새 캐릭터 고르기',
     submitLabel: existing ? '저장' : '만들기',
     initial: existing ? { name: existing.name, avatar: existing.avatar } : {},
-    art: existing ? { roomId: room.id, charId: existing.id } : undefined,
+    meta: state.meta,
     onSave: async ({ name, avatar }) => {
       const res = existing
         ? await api('PATCH', `/api/rooms/${room.id}/characters/${existing.id}`, { name, avatar })
@@ -636,8 +638,8 @@ async function boot() {
 
   try {
     state.meta = await getMeta();
-    setAvatarDefs(state.meta.avatars);
-    setPreviewRenderer(layeredPreviewRenderer); // paper-doll layers in the customizer (SVG until they load)
+    setCharaMeta(state.meta); // roster / props / NPC friends / pets for every character drawing
+    loadAssetIndex(); // raster character art (ch-<id>-…) replaces the SVG rigs once accepted
     buildReactionBar();
     state.game = createGameUI($('#game-root'), { getMeta: () => state.meta, act, toast, resync });
     await ensureSession();

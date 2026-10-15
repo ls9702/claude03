@@ -1,3 +1,5 @@
+// LEGACY (Chiikawa conversion CH-1): the human paper-doll / AI-art avatar path. The game no longer calls this module —
+// players, NPC friends and pets are drawn by ui/chara.js (lobby picker: ui/picker.js). Kept for the asset tools / old tests.
 // 2D avatar portrait composed as an SVG string from avatars.json part ids (HUD lists, lobby, fallback),
 // plus `renderAvatarLayers` (full-body cut-in figure: AI art > paper-doll layers composed by avatarCompose.js >
 // SVG) and `renderPortrait` / `portraitHtml` + `hydratePortraits` (round portraits that upgrade from SVG to the

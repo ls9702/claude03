@@ -30,6 +30,7 @@ export function clearDataCache() {
 }
 
 export const getEras = () => loadData('eras');
+/** LEGACY (human paper-doll options): asset pipeline / AI art only since CH-1 — player looks use the roster. */
 export const getAvatars = () => loadData('avatars');
 
 /** { baby: 3, elem: 5, ... } from eras.json */
@@ -69,6 +70,11 @@ export const getHouses = () => loadData('houses');
 export const getTreasures = () => loadData('treasures');
 export const getAwards = () => loadData('awards');
 export const getTitles = () => loadData('titles');
+/** CH-1 (Chiikawa conversion): roster characters, props (choosable / era / job), NPC friends (단짝 후보), pets (반려동물). */
+export const getRoster = () => loadData('roster');
+export const getProps = () => loadData('props');
+export const getNpcs = () => loadData('npcs');
+export const getPets = () => loadData('pets');
 
 /** Everything the engine reads, as one object (tests may pass overrides). */
 export function gameData() {
@@ -91,5 +97,9 @@ export function gameData() {
     treasures: getTreasures(),
     awards: getAwards(),
     titles: getTitles(),
+    roster: getRoster(),
+    props: getProps(),
+    npcs: getNpcs(),
+    pets: getPets(),
   };
 }

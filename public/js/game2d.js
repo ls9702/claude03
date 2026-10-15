@@ -4,7 +4,7 @@
 // the 3D animator (which calls back into `feedback` at the right moment) or straight to 2D feedback.
 // Stage 5: cut-in-worthy events (`cutin: true`) open the 2D cut-in (ui/cutin2d.js) after the board's own
 // animation (3D: animator paused meanwhile), prompts use the cut-in dialogue box, sounds via audio.js.
-import { renderAvatar, preloadAvatarLayers, portraitHtml, hydratePortraits } from './ui/avatar2d.js';
+import { charaToken, preloadChara, portraitHtml, hydratePortraits } from './ui/chara.js';
 import { createCutin, PROMPT_GUARD_MS } from './ui/cutin2d.js';
 import { createBanner } from './ui/banner.js';
 import { planCutins } from './ui/cutinMap.js';
@@ -58,7 +58,7 @@ import {
   spinNote,
 } from './shared/cards.js';
 import { HOLIDAY_OPTION_ICON, cardChipHtml, cardHtml, itemIconHtml, shopOptionsHtml } from './ui/cardArt.js';
-import { familyIcons, familySummary, familyTagBadge, houseInfo, houseOf, marketInfo } from './shared/family.js';
+import { CHILD_GROW, familyIcons, familySummary, familyTagBadge, houseInfo, houseOf, marketInfo } from './shared/family.js';
 import { houseArtHtml, houseOptionsHtml } from './ui/houseArt.js';
 import { familyDetailHtml, familyOptionsHtml } from './ui/familyArt.js';
 import { createMcCorner } from './ui/mc.js';
@@ -367,18 +367,18 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const a = g?.anchor;
     if (a?.type === 'jobChanged' && a.charId && a.jobId && ui.rawRoom) {
       const overrides = { [a.charId]: { job: { id: a.jobId, rank: a.rank ?? 1 } } };
-      const list = displayCharacters(ui.rawRoom, { avatars: getMeta()?.avatars, jobs: getMeta()?.jobs, overrides });
+      const list = displayCharacters(ui.rawRoom, { props: getMeta()?.props, jobs: getMeta()?.jobs, meta: getMeta(), overrides });
       const m = new Map(list.map((c) => [c.id, c]));
       return { characters: (ui.room?.turn?.order ?? []).map((id) => m.get(id)).filter(Boolean), room: ui.room };
     }
     return { characters: orderedChars(), room: ui.room };
   };
-  /** Stage 6 growth outfits: the room as drawn (characters' `avatar` = era / job costume, `chosenAvatar` = own look). */
+  /** Growth props (CH-1; was Stage 6 outfits): the room as drawn (`avatar` = roster character + era / job props, `chosenAvatar` = own look). */
   function displayRoom(room) {
     if (!Array.isArray(room?.characters)) return room;
     const meta = getMeta();
     const raw = rawOf.get(room) ?? room;
-    const characters = displayCharacters(raw, { avatars: meta?.avatars, jobs: meta?.jobs });
+    const characters = displayCharacters(raw, { props: meta?.props, jobs: meta?.jobs, meta });
     if (characters.every((c, i) => c === raw.characters[i])) return raw;
     const out = { ...raw, characters };
     rawOf.set(out, raw);
@@ -402,23 +402,18 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   }
   queueMicrotask(applySoundUi);
 
-  /** Warm the compositor caches in the background: neutral + blink for everyone, common expressions after. */
+  /** Warm raster character art in the background (SVG rigs need nothing; accepted `ch-<id>-…` art loads early). */
   function preloadLayers() {
     if (!ui.assetsReady || !cutinsOn()) return;
-    // the key includes the effective outfit (Stage 6 growth outfits): an era / job change warms the new look
-    const pk = (c) => `${c.id}|${c.art?.status ?? ''}|${c.avatar?.outfit ?? ''}`;
+    const pk = (c) => `${c.id}|${c.avatar?.character ?? ''}`;
     const todo = chars().filter((c) => !ui.preloaded.has(pk(c)));
     if (!todo.length) return;
     for (const c of todo) ui.preloaded.add(pk(c));
-    const jobs = [
-      ...todo.map((c) => [c, []]),
-      ...todo.slice(0, 4).map((c) => [c, ['joy', 'cry']]), // the rest compose on demand (LRU-capped cache)
-    ];
     let i = 0;
     const next = () => {
-      const job = jobs[i++];
-      if (!job) return;
-      preloadAvatarLayers(job[0], { expressions: job[1] }).finally(() => setTimeout(next, 60));
+      const c = todo[i++];
+      if (!c) return;
+      preloadChara(c).finally(() => setTimeout(next, 60));
     };
     setTimeout(next, 200);
   }
@@ -674,7 +669,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     return `<div class="pawns${many ? ' many' : ''}">${shown
       .map(
         (c) =>
-          `<span class="pawn${c.id === curId ? ' cur' : ''}${c.isMe ? ' me' : ''}" title="${esc(c.name)}" data-char="${esc(c.id)}">${renderAvatar(c.avatar, { size: 26, title: c.name })}</span>`,
+          `<span class="pawn${c.id === curId ? ' cur' : ''}${c.isMe ? ' me' : ''}" title="${esc(c.name)}" data-char="${esc(c.id)}">${charaToken(c, { size: 26, title: c.name })}</span>`,
       )
       .join('')}${rest > 0 ? `<span class="pawn-more" title="${esc(sorted.slice(MAX_TILE_PAWNS - 1).map((c) => c.name).join(', '))}">+${rest}</span>` : ''}</div>`;
   }
@@ -1327,9 +1322,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const mil = militaryLabel(c.military);
     if (mil && c.military?.status === 'serving') out.push(`<span class="gc-tag mil">🪖 ${esc(mil)}</span>`);
     if (c.club && !c.job) out.push(`<span class="gc-tag club" title="동아리">${esc(clubLabel(c.club, getMeta()))}</span>`);
-    // Stage 8: 💕 partner / 💍 spouse + children, 🏠 house
-    const fam = familyIcons(c);
-    if (fam) out.push(`<span class="gc-tag fam" title="${esc(familySummary(c, getMeta()) || '연애 중')}">${esc(fam)}</span>`);
+    // Stage 8 (친구·동거 theme): 💕 단짝 후보 / 💞 단짝 + pets, 🏠 house
+    const fam = familyIcons(c, getMeta());
+    if (fam) out.push(`<span class="gc-tag fam" title="${esc(familySummary(c, getMeta()) || '단짝 후보와 친해지는 중')}">${esc(fam)}</span>`);
     const house = houseOf(c, getMeta());
     if (house) out.push(`<span class="gc-tag house" title="${esc(`${house.name} · ${won(house.value ?? 0)}`)}">${esc(house.icon)} ${esc(won(house.value ?? 0))}</span>`);
     // Stage 9: 💎 treasures (values stay hidden until the appraisal)
@@ -1440,7 +1435,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       facts.push(`<div class="gd-fact"><span class="gd-k">보물</span><span class="gd-v">${treasureListHtml(trs, { values, won, artFor })}</span></div>`);
     }
     // Stage 8: love (❤️ bar), spouse, children, house
-    const famHtml = familyDetailHtml(c, { meta, room: ui.room, avatars: meta?.avatars, artFor, won });
+    const famHtml = familyDetailHtml(c, { meta, room: ui.room, artFor, won });
     if (famHtml) facts.push(famHtml);
     const mods = spinModBadges(c.spinMods);
     if (mods.length) facts.push(`<div class="gd-fact"><span class="gd-k">다음 룰렛</span><span class="gd-v">${mods.map((b) => `<span class="gc-tag mod ${b.kind}">${esc(b.text)} ${esc(b.title)}</span>`).join(' ')}</span></div>`);
@@ -2586,17 +2581,17 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   function stage8Float(e) {
     switch (e.type) {
       case 'met':
-        return { text: `💘 ${e.partner?.name ?? '새 인연'}`, kind: 'plus' };
+        return { text: `💘 ${e.partner?.name ?? '새 친구'}`, kind: 'plus' };
       case 'dated':
-        return { text: '💑 데이트', kind: 'plus' };
+        return { text: '💑 같이 놀기', kind: 'plus' };
       case 'proposed':
-        return e.success ? { text: '💍 프러포즈 성공!', kind: 'plus' } : { text: '💔 거절…', kind: 'minus' };
+        return e.success ? { text: '🏡 「같이 살자!」 성공!', kind: 'plus' } : { text: '💔 아직은 이르대요…', kind: 'minus' };
       case 'married':
-        return { text: '💒 결혼!', kind: 'plus' };
+        return { text: '🎉 단짝 동거!', kind: 'plus' };
       case 'childBorn':
-        return { text: `👶 ${e.child?.name ?? '아기'} 탄생`, kind: 'plus' };
+        return { text: `🐣 ${e.child?.name ?? '반려동물'} 입양`, kind: 'plus' };
       case 'childGrew':
-        return { text: `${{ dol: '🎂 돌잔치', school: '🎒 입학', exam: '📝 자녀 수능', job: '💼 자녀 취업' }[e.kind] ?? '🧒 성장'}`, kind: Number(e.amount) < 0 ? 'minus' : 'plus' };
+        return { text: `${CHILD_GROW[e.kind] ? `${CHILD_GROW[e.kind].icon} ${CHILD_GROW[e.kind].label}` : '🐾 성장'}`, kind: Number(e.amount) < 0 ? 'minus' : 'plus' };
       case 'houseBought':
         return { text: `🏠 ${houseInfo(e.houseId, getMeta())?.name ?? '집'}`, kind: 'plus' };
       default:
@@ -2608,17 +2603,17 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const name = c?.name ?? '';
     switch (e.type) {
       case 'met':
-        return `💘 ${name}: ${josa(e.partner?.name ?? '새로운 인연', '을/를')} 만났어요!`;
+        return `💘 ${name}: ${josa(e.partner?.name ?? '새 친구', '과/와')} 친구가 됐어요!`;
       case 'dated':
-        return `💑 ${name}의 데이트!`;
+        return `💑 ${name}, 단짝 후보와 같이 놀아요!`;
       case 'proposed':
-        return e.success ? `💍 ${name} 프러포즈 성공!` : `💔 ${name} 프러포즈 실패…`;
+        return e.success ? `🏡 ${name}의 「같이 살자!」 제안 성공!` : `💔 ${name}의 「같이 살자!」 제안 실패…`;
       case 'married':
-        return `💒 ${name} 결혼! 축의금 ${won(Number(e.total) || 0)}`;
+        return `🎉 ${name} 단짝 동거! 집들이 선물 ${won(Number(e.total) || 0)}`;
       case 'childBorn':
-        return `👶 ${name}네 아기 ${e.child?.name ?? ''} 탄생!`;
+        return `🐣 ${name}네 반려동물 ${e.child?.name ?? ''} 입양!`;
       case 'childGrew':
-        return `${stage8Float(e)?.text ?? '🧒'} — ${name}네 아이`;
+        return `${stage8Float(e)?.text ?? '🐾'} — ${name}네 반려동물`;
       case 'houseBought':
         return `🏠 ${name}: ${houseInfo(e.houseId, getMeta())?.name ?? '집'} 구매!`;
       default:
@@ -2701,13 +2696,13 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       .join('')}</span>`;
   }
 
-  /** Stage 8 result row: 🏠 house (art · name · value) + family (💍 spouse, children, 🌟 genius). */
+  /** Stage 8 result row: 🏠 house (art · name · value) + family (💞 단짝, 반려동물, 🌟 천재 펫). */
   function familyLine(r, c) {
     const meta = getMeta();
     const h = c ? houseOf(c, meta) : null;
     const value = Number(r.house) > 0 ? Number(r.house) : h?.value ?? 0;
-    const icons = c ? familyIcons(c) : '';
-    const fam = c ? familySummary(c, meta).replace(/^💍 /, '') : ''; // the icons already show the 💍
+    const icons = c ? familyIcons(c, meta) : '';
+    const fam = c ? familySummary(c, meta).replace(/^💞 /, '') : ''; // the icons already show the 💞
     if (!h && !icons) return '';
     return `<span class="rk-family">${
       h ? `<span class="rk-house" title="${esc(`${h.name} · 자산가치 ${won(value)}`)}">${houseArtHtml(h.id, { art: artFor('house', h.id), label: h.name, cls: 'rk-house-art' })}<small>${esc(h.name)} ${esc(won(value))}</small></span>` : ''

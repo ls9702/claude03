@@ -1,18 +1,21 @@
-// Stage 8 — romance & family (partners.json): 고교 전원 만남, heart tiles (만남 / 데이트 / 프러포즈 / 가족),
-// 결혼식 축의금, 맞벌이 급여, 출산, 자녀 성장 (돌잔치 → 입학 → 수능 → 취업) and 용돈 송금. Pure helpers over a tx;
-// every random draw comes from tx.rng (seeded).
+// Stage 8 — friends & family (partners.json), CH-1 theme 「친구·동거」: 고교 첫 친구, heart tiles (새 친구 / 같이 놀기 /
+// 「같이 살자!」 제안 / 가족 나들이), 🎉 집들이 파티 (집들이 선물), 단짝 생활비, 🐣 반려동물 입양, 펫 성장 (🎂 입양 파티 →
+// 🎒 펫 훈련 학교 → 🏆 펫 경연대회 → ⭐ 펫 스타 데뷔) and 펫 광고 수입. Event types / field names keep the Stage 8 names
+// (met, dated, proposed, married, spouse, children, childBorn, childGrew, allowance) for code stability. Pure helpers over
+// a tx; every random draw comes from tx.rng (seeded). Nobody has a gender: partners are NPC friends (npcs.json), children
+// are pets (pets.json).
 //
-// character.love = {candidates: [partnerSpec], partner: partnerSpec|null, affection, dates}
-//   partnerSpec = {id, name, trait, stars, body, avatar}  (candidates = the open 만남 prompt's people, else [])
-// character.spouse = partnerSpec + {salary, marriedTurn} | null
-// character.children = [{id, name, trait, talent: genius|normal, stage: baby|kid|teen|adult, bornTurn, avatar, body,
-//   growth (0..4 steps done), turns (parent spins since the last step)}] (max partners.children.max)
+// character.love = {candidates: [partnerSpec], partner: partnerSpec|null, affection (친밀도), dates}
+//   partnerSpec = {id, name, trait, stars, species, avatar: {npc: species, props}}  (candidates = the open prompt's, else [])
+// character.spouse (단짝) = partnerSpec + {salary, marriedTurn} | null
+// character.children (반려동물) = [{id, name, species, trait, talent: genius|normal, stage: baby|kid|teen|adult, bornTurn,
+//   avatar: {pet: species}, growth (0..4 steps done), turns (parent spins since the last step)}] (max partners.children.max)
 // room.nextPartnerSeq / room.nextChildSeq (ids `pt<n>` / `ch<n>`), room.schoolMeetDone
-import { getAvatars } from '../data/index.js';
+import { getNpcs, getPets } from '../data/index.js';
 import { STAT_KEYS, addLog, addStats, changeMoney, charById, emit, josa, round5, won } from './effects.js';
 import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
-import { sanitizeAvatar } from './avatar.js';
+import { sanitizeNpcLook, sanitizePetLook } from './avatar.js';
 import { affectionBonus, dropHeldCards, popularEffect } from './cards.js';
 
 export const TRAITS = ['int', 'str', 'charm', 'luck'];
@@ -29,7 +32,6 @@ export const CUTIN_GROWTH = ['dol', 'exam', 'job'];
 
 const cfgOf = (data) => data.partners ?? {};
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
-const bodyOf = (c) => (c?.avatar?.body === 'girl' ? 'girl' : 'boy');
 const scaleOf = (data, era) => cfgOf(data).costs?.scale?.[era] ?? 1;
 
 /** A fresh family record (Stage 8 character fields). */
@@ -51,7 +53,7 @@ export function ensureFamily(c) {
   return c;
 }
 
-/** Fill Stage 8 room fields (an older save that already reached 고등학생 never gets a late 전원 만남). */
+/** Fill Stage 8 room fields (an older save that already reached 고등학생 never gets a late 고교 첫 친구). */
 export function ensureRoomFamily(room) {
   room.nextPartnerSeq ??= 0;
   room.nextChildSeq ??= 0;
@@ -75,7 +77,7 @@ export const traitIcon = (data, t) => cfgOf(data).traits?.[t]?.icon ?? '💗';
 export const starsText = (n) => '★'.repeat(Math.max(1, n ?? 1));
 
 /**
- * An affection gain: + 결혼운◎'s `affectionBonus` while the card is held, capped at `affection.max`. `set` = a new
+ * An affection (친밀도) gain: + 단짝운◎'s `affectionBonus` while the card is held, capped at `affection.max`. `set` = a new
  * relationship's starting affection (meet + match) — the bonus applies to it too. @returns the new affection
  */
 export function gainAffection(tx, c, gain, { set = false } = {}) {
@@ -94,18 +96,23 @@ function popularize(tx, c, people, { school = false } = {}) {
   if (!eff || !people.length) return people;
   const top = Math.max(...Object.keys(cfgOf(tx.data).stars ?? { 4: 1 }).map(Number));
   if (!school && eff.starChance) for (const p of people) if (p.stars < top && tx.rng.next() < eff.starChance) p.stars += 1;
-  if (eff.match && !people.some((p) => traitMatch(c, p.trait))) people[0].trait = topStats(c)[0];
+  if (eff.match && !people.some((p) => traitMatch(c, p.trait))) {
+    const p = people[0];
+    p.trait = topStats(c)[0];
+    // keep the look in step with the new trait (a trait prop is swapped, never added — no RNG draw)
+    if (Object.keys(p.avatar?.props ?? {}).length) p.avatar = sanitizeNpcLook({ npc: p.species, props: npcsOf(tx.data).traitProps?.[p.trait] ?? {} }, tx.data);
+  }
   return people;
 }
 
-/** Spouse salary per salary tile (★ salary × the job era multiplier). */
+/** 단짝 생활비 per payday (the spouse's ★ salary × the job era multiplier). */
 export function spouseSalary(tx, c) {
   if (!c?.spouse) return 0;
   const base = cfgOf(tx.data).stars?.[c.spouse.stars]?.salary ?? c.spouse.salary ?? 0;
   return round5(base * (tx.data.balance.jobs?.salaryEraMult?.[c.era] ?? 1) * effectsFor(tx, c).salaryMult);
 }
 
-// ---------- people (partners / children) ----------
+// ---------- people (단짝 후보 = NPC friends / 반려동물 = pets) ----------
 
 function usedNames(room) {
   const out = new Set();
@@ -119,43 +126,27 @@ function usedNames(room) {
   return out;
 }
 
-function pickName(tx, body, taken) {
-  const pool = cfgOf(tx.data).names?.[body] ?? ['하늘'];
-  const free = pool.filter((n) => !taken.has(n));
-  const name = tx.rng.pick(free.length ? free : pool);
+const npcsOf = (data) => data.npcs ?? getNpcs();
+const petsOf = (data) => data.pets ?? getPets();
+
+/** A free name from a pool (`npcs.json` / `pets.json` `names`), else any of them. */
+function pickName(tx, pool, taken) {
+  const list = pool?.length ? pool : ['콩이'];
+  const free = list.filter((n) => !taken.has(n));
+  const name = tx.rng.pick(free.length ? free : list);
   taken.add(name);
   return name;
 }
 
-/** A seeded random look for a partner (adult) or a child, sanitized against avatars.json. */
-export function randomLook(tx, body, { child = false, trait = null, parents = [] } = {}) {
-  const rng = tx.rng;
-  const defs = tx.data.avatars ?? getAvatars();
-  const look = cfgOf(tx.data).avatar ?? {};
-  const any = (key) => {
-    const opts = defs.parts?.[key] ?? [];
-    return opts.length ? rng.pick(opts).id : undefined;
-  };
-  const from = (list, key) => (list?.length ? rng.pick(list) : any(key));
-  const inherit = (key) => {
-    const p = parents.filter((x) => x?.[key]);
-    return p.length ? rng.pick(p)[key] : undefined;
-  };
-  const avatar = {
-    body,
-    build: child ? 'normal' : any('build'),
-    skin: inherit('skin') ?? any('skin'),
-    face: any('face'),
-    eyes: any('eyes'),
-    mouth: any('mouth'),
-    cheek: child ? rng.pick(['blush', 'none']) : any('cheek'),
-    hair: from(look.hair?.[body], 'hair'),
-    hairColor: inherit('hairColor') ?? from(look.hairColor, 'hairColor'),
-    outfit: from(child ? look.outfit?.child : look.outfit?.[body], 'outfit'),
-    outfitColor: from(look.outfitColor, 'outfitColor'),
-    accessory: !child && trait && rng.next() < 0.5 ? look.traitAccessory?.[trait] ?? 'none' : 'none',
-  };
-  return sanitizeAvatar(avatar);
+/** Species name (npcs.json / pets.json) for texts. */
+export const npcSpeciesName = (data, id) => npcsOf(data).species?.find((s) => s.id === id)?.name ?? '';
+export const petSpeciesName = (data, id) => petsOf(data).species?.find((s) => s.id === id)?.name ?? '';
+
+/** A seeded NPC friend look `{npc, props}`: the trait's prop (npcs.json `traitProps`) with `traitPropChance`. */
+export function npcLook(tx, species, trait) {
+  const cfg = npcsOf(tx.data);
+  const props = trait && tx.rng.next() < (cfg.traitPropChance ?? 0.5) ? cfg.traitProps?.[trait] ?? {} : {};
+  return sanitizeNpcLook({ npc: species, props }, tx.data);
 }
 
 function weightedStars(tx) {
@@ -163,28 +154,28 @@ function weightedStars(tx) {
   return Number(tx.rng.weighted(Object.entries(stars).map(([id, s]) => ({ id, weight: s.weight ?? 1 }))).id);
 }
 
-/** A new partner spec for `c` (opposite body, weighted trait / stars; `stars` fixes the grade). */
+/** A new 단짝 후보 for `c`: an NPC friend (seeded species, gender-free name, weighted trait / stars; `stars` fixes the grade). */
 export function makePartner(tx, c, { stars = null, taken = usedNames(tx.room) } = {}) {
   const room = tx.room;
   const cfg = cfgOf(tx.data);
-  const body = bodyOf(c) === 'girl' ? 'boy' : 'girl';
+  const species = tx.rng.pick(npcsOf(tx.data).species).id;
   const trait = tx.rng.weighted(TRAITS.map((id) => ({ id, weight: cfg.traits?.[id]?.weight ?? 1 }))).id;
   const grade = stars ?? weightedStars(tx);
   room.nextPartnerSeq = (room.nextPartnerSeq ?? 0) + 1;
   return {
     id: `pt${room.nextPartnerSeq}`,
-    name: pickName(tx, body, taken),
+    name: pickName(tx, npcsOf(tx.data).names, taken),
     trait,
     stars: grade,
-    body,
-    avatar: randomLook(tx, body, { trait }),
+    species,
+    avatar: npcLook(tx, species, trait),
   };
 }
 
 /** Public copy of a partner / spouse / child (no internal counters). */
 export const personSpec = (p) => (p ? structuredClone(p) : null);
 
-// ---------- 고교 전원 만남 ----------
+// ---------- 고교 첫 친구 (legacy 전원 만남 + the loop-map recap) ----------
 
 /**
  * The first character entering `high`: every unfinished character without a partner / spouse gets one ★1 partner
@@ -210,7 +201,7 @@ export function schoolMeet(tx, eraId) {
   if (!pairs.length) return null;
   const ev = emit(tx, 'schoolMeet', { eraId, pairs, tone: 'love', emotion: 'love' });
   const names = pairs.map((p) => `${charById(room, p.charId).name}♥${p.partner.name}`).join(' · ');
-  addLog(tx, `🏫 고교 전원 만남! 모두에게 설레는 인연이 생겼다 (${names})`, { tone: 'love' });
+  addLog(tx, `🏫 고교 첫 친구! 모두에게 단짝 후보가 생겼다 (${names})`, { tone: 'love' });
   return ev;
 }
 
@@ -232,7 +223,7 @@ export function openSchoolMeet(tx, c) {
   return true;
 }
 
-/** The 고교 첫 만남 recap (once): when every character had its meeting, or `force` (high school is over). */
+/** The 고교 첫 친구 recap (once): when every character had its meeting, or `force` (high school is over). */
 export function schoolMeetSummary(tx, { force = false } = {}) {
   const room = tx.room;
   if (room.schoolMeetDone) return null;
@@ -242,7 +233,7 @@ export function schoolMeetSummary(tx, { force = false } = {}) {
   if (!pairs.length) return null;
   const ev = emit(tx, 'schoolMeet', { eraId: 'high', pairs, summary: true, tone: 'love', emotion: 'love' });
   const names = pairs.map((p) => `${charById(room, p.charId)?.name}♥${p.partner.name}`).join(' · ');
-  addLog(tx, `🏫 고교 첫 만남 결산! 설레는 커플 탄생 (${names})`, { tone: 'love' });
+  addLog(tx, `🏫 고교 첫 친구 결산! 새 단짝 후보 탄생 (${names})`, { tone: 'love' });
   return ev;
 }
 
@@ -251,8 +242,8 @@ export function schoolMeetSummary(tx, { force = false } = {}) {
 const inEra = (list, era) => !list || list.includes(era);
 
 /**
- * Heart tile: no partner → 만남 prompt; partner → 데이트 prompt, or 프러포즈 at `proposeAt` (job eras);
- * married → 출산 roll (birth eras, < max children) else a family outing (money / stats, affection +).
+ * Heart tile: no partner → 새 친구 prompt; partner → 같이 놀기 prompt, or the 「같이 살자!」 proposal at `proposeAt`
+ * (job eras); living together → 반려동물 입양 roll (birth eras, < max pets) else a family outing (money / stats, 친밀도 +).
  * @returns true when a prompt opened
  */
 export function resolveHeartTile(tx, c) {
@@ -281,8 +272,8 @@ export function resolveHeartTile(tx, c) {
 }
 
 /**
- * 소개팅: a single character choosing the love route meets someone at once (no prompt — prompts stay on heart / house
- * tiles). Weighted trait / ★ like a heart-tile meeting. Emits `met {charId, partner, affection, match, blindDate: true}`.
+ * 친구 소개: a single character choosing the 단짝·반려 route meets a new friend at once (no prompt — prompts stay on
+ * heart / house tiles). Weighted trait / ★ like a heart-tile meeting. Emits `met {charId, partner, affection, match, blindDate: true}`.
  * @returns the partner or null
  */
 export function blindDate(tx, c) {
@@ -295,13 +286,13 @@ export function blindDate(tx, c) {
   gainAffection(tx, c, (aff.meet ?? 25) + (match ? aff.matchBonus ?? 0 : 0), { set: true });
   c.love.dates = 0;
   emit(tx, 'met', { charId: c.id, partner: personSpec(partner), affection: c.love.affection, match, blindDate: true, tone: 'love', emotion: 'love' });
-  addLog(tx, `💘 연애 루트에 들어선 ${c.name}, 소개팅에서 ${josa(partner.name, '과/와')} 사귀기 시작! (${traitName(tx.data, partner.trait)} ${starsText(partner.stars)})${match ? ' 찰떡궁합!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
+  addLog(tx, `💘 단짝·반려 루트에 들어선 ${c.name}, 친구 소개로 ${josa(partner.name, '과/와')} 친구가 됐다! (${traitName(tx.data, partner.trait)} ${npcSpeciesName(tx.data, partner.species)} ${starsText(partner.stars)})${match ? ' 찰떡궁합!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
   return partner;
 }
 
 /**
- * 연애 루트 선택: a single character meets someone at once (소개팅), a dating one gets `affection.loveRoute` (the couple
- * commits to the love route). @returns the partner or null
+ * 단짝·반려 루트 선택: a single character meets a new friend at once (친구 소개), one with a 단짝 후보 gets
+ * `affection.loveRoute` (the pair commits to the love route). @returns the partner or null
  */
 export function loveRouteChosen(tx, c) {
   ensureFamily(c);
@@ -310,14 +301,14 @@ export function loveRouteChosen(tx, c) {
   const aff = cfgOf(tx.data).affection ?? {};
   if (aff.loveRoute) {
     gainAffection(tx, c, aff.loveRoute);
-    addLog(tx, `💕 ${josa(c.name, '과/와')} ${c.love.partner.name}, 연애 루트에서 사랑이 깊어진다 (호감도 ${c.love.affection})`, { tone: 'love', charId: c.id, emotion: 'love' });
+    addLog(tx, `💕 ${josa(c.name, '과/와')} ${c.love.partner.name}, 단짝·반려 루트에서 우정이 깊어진다 (친밀도 ${c.love.affection})`, { tone: 'love', charId: c.id, emotion: 'love' });
   }
   return c.love.partner;
 }
 
 /**
- * Turn epilogue (growth.lifeStep): a dating couple whose affection reached `proposeAt` in a propose era gets ONE
- * 프러포즈 prompt per era (`love.askedEra`), even without a heart tile. @returns true when a prompt opened
+ * Turn epilogue (growth.lifeStep): a pair whose 친밀도 reached `proposeAt` in a propose era gets ONE 「같이 살자!」
+ * prompt per era (`love.askedEra`), even without a heart tile. @returns true when a prompt opened
  */
 export function proposeStep(tx, c) {
   if (!c || c.finished) return false;
@@ -329,7 +320,7 @@ export function proposeStep(tx, c) {
   return true;
 }
 
-/** 프러포즈 성공 확률. */
+/** 「같이 살자!」 제안 성공 확률. */
 export function proposeChance(c, data) {
   const cfg = cfgOf(data);
   const p = cfg.propose ?? {};
@@ -341,7 +332,7 @@ export function proposeChance(c, data) {
   return clamp(x, p.min ?? 0.05, p.max ?? 0.95);
 }
 
-/** 출산 확률 of a married character (0 outside birth eras / at max children). */
+/** 반려동물 입양 확률 of a character living with a 단짝 (0 outside birth eras / at max pets). */
 export function birthChance(c, data) {
   const cfg = cfgOf(data);
   const b = cfg.birth ?? {};
@@ -350,7 +341,7 @@ export function birthChance(c, data) {
   return clamp(x, 0, b.max ?? 0.85);
 }
 
-/** Wedding: spouse + 축의금 from every other character (era-scaled, capped at their cash) − wedding cost. */
+/** 단짝 동거 (🎉 집들이 파티): spouse + 집들이 선물 from every other character (era-scaled, capped at their cash) − party cost. */
 function marry(tx, c) {
   const room = tx.room;
   const cfg = cfgOf(tx.data);
@@ -360,7 +351,7 @@ function marry(tx, c) {
   c.spouse = { ...partner, salary, marriedTurn: room.turn?.turnNo ?? 0 };
   c.love.partner = null;
   c.love.candidates = [];
-  dropHeldCards(tx, c, 'married'); // 결혼운◎ / 인기 폭발◎ did their job
+  dropHeldCards(tx, c, 'married'); // 단짝운◎ / 인기 폭발◎ did their job
   const per = round5((cfg.costs?.weddingGift ?? 20) * scale);
   const gifts = [];
   for (const o of room.characters) {
@@ -371,7 +362,7 @@ function marry(tx, c) {
   const total = gifts.reduce((s, g) => s + g.amount, 0);
   const cost = round5((cfg.costs?.wedding ?? 0) * scale);
   emit(tx, 'married', { charId: c.id, spouse: personSpec(c.spouse), gifts, total, cost, tone: 'love', emotion: 'love' });
-  addLog(tx, `💒 ${josa(c.name, '과/와')} ${c.spouse.name}의 결혼식! 축의금 ${won(total)}${cost ? ` · 식비 ${won(cost)}` : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
+  addLog(tx, `🎉 ${josa(c.name, '과/와')} ${c.spouse.name}의 집들이 파티! 오늘부터 단짝 동거 시작 · 집들이 선물 ${won(total)}${cost ? ` · 파티 비용 ${won(cost)}` : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
   for (const g of gifts) {
     const giver = charById(room, g.fromId);
     changeMoney(tx, giver, -g.amount, 'weddingGift', { to: c.id, tone: 'love', emotion: 'love' });
@@ -380,14 +371,14 @@ function marry(tx, c) {
   if (cost) changeMoney(tx, c, -Math.min(cost, Math.max(0, c.money)), 'wedding', { tone: 'love', emotion: 'sweat' });
 }
 
-/** Birth roll on a married character's heart tile. @returns the child or null */
+/** 입양 roll on a heart tile of a character living with a 단짝. @returns the pet or null */
 function tryBirth(tx, c) {
   const p = birthChance(c, tx.data);
   if (!(p > 0) || !(tx.rng.next() < p)) return null;
   return bearChild(tx, c);
 }
 
-/** A child is born (talent / trait seeded). Emits `childBorn {charId, child}` + birth cost / 출산장려금. */
+/** 🐣 반려동물 입양 (species / talent / trait seeded). Emits `childBorn {charId, child, spouse}` + 입양 비용 / 입양 지원금. */
 export function bearChild(tx, c) {
   const room = tx.room;
   const cfg = cfgOf(tx.data);
@@ -399,29 +390,29 @@ export function bearChild(tx, c) {
   const geniusP = clamp((g.base ?? 0.15) + (match ? g.match ?? 0 : 0) + (g.luck ?? 0) * (c.stats?.luck ?? 0), 0, 0.95);
   const talent = tx.rng.next() < geniusP ? 'genius' : 'normal';
   const trait = spouse && tx.rng.next() < 0.5 ? spouse.trait : tx.rng.pick(topStats(c));
-  const body = tx.rng.next() < 0.5 ? 'boy' : 'girl';
+  const species = tx.rng.pick(petsOf(tx.data).species).id;
   room.nextChildSeq = (room.nextChildSeq ?? 0) + 1;
   const child = {
     id: `ch${room.nextChildSeq}`,
-    name: pickName(tx, body, usedNames(room)),
+    name: pickName(tx, petsOf(tx.data).names, usedNames(room)),
+    species,
     trait,
     talent,
     stage: 'baby',
     bornTurn: room.turn?.turnNo ?? 0,
-    avatar: randomLook(tx, body, { child: true, parents: [c.avatar, spouse?.avatar] }),
-    body,
+    avatar: sanitizePetLook({ pet: species }, tx.data),
     growth: 0,
     turns: 0,
   };
   c.children.push(child);
   emit(tx, 'childBorn', { charId: c.id, child: personSpec(child), spouse: personSpec(spouse), tone: 'love', emotion: 'joy' });
-  addLog(tx, `👶 ${c.name}네 집에 ${child.name} 탄생!${talent === 'genius' ? ' 눈빛이 예사롭지 않다… 천재?!' : ''}`, { tone: 'love', charId: c.id, emotion: 'joy' });
+  addLog(tx, `🐣 ${c.name}네 집에 ${petSpeciesName(tx.data, species)} ${josa(child.name, '이/가')} 입양됐다!${talent === 'genius' ? ' 눈빛이 예사롭지 않다… 천재 펫?!' : ''}`, { tone: 'love', charId: c.id, emotion: 'joy' });
   const cost = round5((cfg.costs?.birth ?? 0) * scaleOf(tx.data, c.era));
   if (cost) changeMoney(tx, c, -Math.min(cost, Math.max(0, c.money)), 'birth', { tone: 'love', emotion: 'sweat' });
   const bonus = effectsFor(tx, c).birthBonus ?? 0;
   if (bonus > 0) {
     changeMoney(tx, c, bonus, 'birthBonus', { tone: 'good', emotion: 'joy' });
-    addLog(tx, `🍼 출산장려금 ${won(bonus)} 지급!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+    addLog(tx, `🐾 반려동물 입양 지원금 ${won(bonus)} 지급!`, { tone: 'good', charId: c.id, emotion: 'joy' });
   }
   return child;
 }
@@ -442,9 +433,9 @@ function familyOuting(tx, c) {
   if (o.stats) addStats(tx, c, o.stats, 'family');
 }
 
-// ---------- children: growth + allowance ----------
+// ---------- pets (children): growth + 펫 광고 수입 (allowance) ----------
 
-/** One growth step of a child (돌잔치 → 입학 → 수능 → 취업). Emits `childGrew`. */
+/** One growth step of a pet (🎂 입양 파티 → 🎒 펫 훈련 학교 → 🏆 펫 경연대회 → ⭐ 펫 스타 데뷔). Emits `childGrew`. */
 function growChild(tx, c, child) {
   const room = tx.room;
   const kc = cfgOf(tx.data).children ?? {};
@@ -465,7 +456,7 @@ function growChild(tx, c, child) {
     }
     const total = gifts.reduce((s, g) => s + g.amount, 0);
     emit(tx, 'childGrew', { ...base, amount: total, gifts, child: personSpec(child), tone: 'love', emotion: 'joy' });
-    addLog(tx, `🎂 ${child.name}의 돌잔치! 돌잡이는… ${tx.rng.pick(['연필', '마이크', '돈', '청진기', '공'])}! (축하금 ${won(total)})`, { tone: 'love', charId: c.id, emotion: 'joy' });
+    addLog(tx, `🎂 ${child.name}의 입양 파티! 장기자랑은… ${tx.rng.pick(['공 굴리기', '빙글빙글 돌기', '하이파이브', '두 발로 서기', '노래 부르기'])}! (파티 선물 ${won(total)})`, { tone: 'love', charId: c.id, emotion: 'joy' });
     for (const g of gifts) {
       const giver = charById(room, g.fromId);
       changeMoney(tx, giver, -g.amount, 'dolGift', { to: c.id, tone: 'love', emotion: 'love' });
@@ -474,27 +465,27 @@ function growChild(tx, c, child) {
   } else if (step.kind === 'school') {
     const cost = round5((kc.schoolCost ?? 40) * scale);
     emit(tx, 'childGrew', { ...base, amount: -cost, child: personSpec(child), tone: 'neutral', emotion: 'sweat' });
-    addLog(tx, `🎒 ${child.name} 입학! 학원비가 만만치 않다 (−${won(cost)})`, { tone: 'info', charId: c.id, emotion: 'sweat' });
+    addLog(tx, `🎒 ${child.name}, 펫 훈련 학교 입학! 수업료가 만만치 않다 (−${won(cost)})`, { tone: 'info', charId: c.id, emotion: 'sweat' });
     changeMoney(tx, c, -cost, 'school', { tone: 'bad', emotion: 'sweat' });
   } else if (step.kind === 'exam') {
     const eg = kc.examGift ?? {};
     const result = child.talent === 'genius' ? 'elite' : tx.rng.next() < (eg.collegeChance ?? 0.5) ? 'college' : 'fail';
     const amount = result === 'elite' ? round5((eg.genius ?? 100) * scale) : result === 'college' ? round5((eg.college ?? 30) * scale) : 0;
     emit(tx, 'childGrew', { ...base, amount, result, child: personSpec(child), tone: result === 'fail' ? 'neutral' : 'good', emotion: result === 'fail' ? 'sweat' : 'joy' });
-    const text = { elite: `🎓 ${child.name} 수능 만점! 명문대 합격 축하금 ${won(amount)}`, college: `🎓 ${child.name} 대학 합격! 축하금 ${won(amount)}`, fail: `📖 ${child.name}, 수능은 아쉽지만 인생은 기니까!` }[result];
+    const text = { elite: `🏆 ${child.name}, 펫 경연대회 우승! 상금 ${won(amount)}`, college: `🥈 ${child.name}, 펫 경연대회 입상! 상금 ${won(amount)}`, fail: `🐾 ${child.name}, 펫 경연대회는 탈락… 그래도 세상에서 제일 귀여워!` }[result];
     addLog(tx, text, { tone: result === 'fail' ? 'info' : 'good', charId: c.id, emotion: result === 'fail' ? 'sweat' : 'joy' });
     if (amount) changeMoney(tx, c, amount, 'childExam', { tone: 'good', emotion: 'joy' });
   } else {
     const amount = allowanceAmount(tx, c, child);
     emit(tx, 'childGrew', { ...base, amount, child: personSpec(child), tone: 'good', emotion: 'joy' });
-    addLog(tx, `💼 ${child.name} 취업 성공! 이제 급여 칸마다 용돈 ${won(amount)}을 보내 준대`, { tone: 'good', charId: c.id, emotion: 'joy' });
+    addLog(tx, `⭐ ${child.name} 펫 스타 데뷔! 이제 월급날마다 펫 광고 수입 ${won(amount)}이 들어온대`, { tone: 'good', charId: c.id, emotion: 'joy' });
   }
   return child;
 }
 
 /**
- * A character entered a new era: employed children send 용돈 (`allowance.eras`), every child grows one step, a dating
- * couple's affection deepens (`affection.eraGain`), and a married parent rolls for a birth (birth eras).
+ * A character entered a new era: star pets pay 펫 광고 수입 (`allowance`), every pet grows one step, a pair's 친밀도
+ * deepens (`affection.eraGain`), and a character living with a 단짝 rolls for an adoption (birth eras).
  */
 export function growChildrenOnEra(tx, c) {
   ensureFamily(c);
@@ -507,8 +498,8 @@ export function growChildrenOnEra(tx, c) {
 }
 
 /**
- * Per parent spin: count up; a child grows after `growTurns` spins without a step. A married parent also rolls
- * `birthChance × birth.perSpin` for a birth.
+ * Per owner spin: count up; a pet grows after `growTurns` spins without a step. A character living with a 단짝 also
+ * rolls `birthChance × birth.perSpin` for an adoption.
  */
 export function growChildrenOnSpin(tx, c) {
   ensureFamily(c);
@@ -526,7 +517,7 @@ export function growChildrenOnSpin(tx, c) {
   }
 }
 
-/** 용돈 of an employed child per salary tile: allowance × talent × spouse ★ allowanceMult × job-era multiplier. */
+/** 펫 광고 수입 of a star pet per payday: allowance × talent × spouse ★ allowanceMult × job-era multiplier. */
 export function allowanceAmount(tx, c, child) {
   const cfg = cfgOf(tx.data);
   const kc = cfg.children ?? {};
@@ -536,7 +527,7 @@ export function allowanceAmount(tx, c, child) {
   return round5((kc.allowance ?? 30) * talent * stars * era);
 }
 
-/** Salary tile: every employed child sends 용돈 → `allowance {charId, childId, amount}` + moneyChanged. */
+/** Payday: every star pet earns 펫 광고 수입 → `allowance {charId, childId, amount}` + moneyChanged. */
 export function payAllowances(tx, c) {
   let total = 0;
   for (const child of c.children ?? []) {
@@ -545,7 +536,7 @@ export function payAllowances(tx, c) {
     if (!amount) continue;
     emit(tx, 'allowance', { charId: c.id, childId: child.id, amount, tone: 'good', emotion: 'joy' });
     changeMoney(tx, c, amount, 'allowance', { childId: child.id, tone: 'good', emotion: 'joy' });
-    addLog(tx, `💌 ${child.name}의 용돈 송금 +${won(amount)}`, { tone: 'good', charId: c.id, emotion: 'joy' });
+    addLog(tx, `💌 ${child.name}의 펫 광고 수입 +${won(amount)}`, { tone: 'good', charId: c.id, emotion: 'joy' });
     total += amount;
   }
   return total;
@@ -558,7 +549,7 @@ function dateOptions(tx, c) {
   const partner = c.love.partner;
   const scale = scaleOf(tx.data, c.era);
   const bonus = cfg.affection?.matchBonus ?? 0;
-  // blue cards: 결혼운◎ (+affectionBonus on every gain) and 인기 폭발◎ (+dateGain) — shown in the option's gain
+  // blue cards: 단짝운◎ (+affectionBonus on every gain) and 인기 폭발◎ (+dateGain) — shown in the option's gain
   const cardBonus = affectionBonus(tx.data, c) + (popularEffect(tx.data, c)?.dateGain ?? 0);
   return (cfg.dates ?? []).map((d) => {
     const cost = d.cost ? round5(d.cost * scale) : 0;
@@ -574,7 +565,7 @@ function dateOptions(tx, c) {
       price: cost,
       gain,
       match,
-      desc: `호감도 +${gain}${match ? ` (${partner.name} 취향 저격!)` : ''}${cost ? ` · ${won(cost)}` : ' · 무료'}`,
+      desc: `친밀도 +${gain}${match ? ` (${partner.name} 취향 저격!)` : ''}${cost ? ` · ${won(cost)}` : ' · 무료'}`,
     };
     if (cost > (c.money ?? 0)) Object.assign(opt, { disabled: true, desc: `${opt.desc} · 돈이 부족해요` });
     return opt;
@@ -582,13 +573,13 @@ function dateOptions(tx, c) {
 }
 
 registerPrompts({
-  /** 만남 (heart tile, no partner): 2 candidates (weighted trait / ★) or pass. */
+  /** 💘 새 친구 (heart tile, no partner): 2 단짝 후보 (weighted trait / ★, NPC species) or pass. */
   meet: {
     resultCutin: 'auto',
     build(tx, c, { school = false } = {}) {
       const cfg = cfgOf(tx.data);
       const taken = usedNames(tx.room);
-      // 고교 첫 만남 (loop maps: the first high-school turn): two ★1 classmates
+      // 🏫 고교 첫 친구 (loop maps: the first high-school turn): two ★1 classmates
       const stars = school ? 1 : null;
       const candidates = popularize(tx, c, [makePartner(tx, c, { taken, stars }), makePartner(tx, c, { taken, stars })], { school });
       c.love.candidates = candidates.map(personSpec);
@@ -606,15 +597,15 @@ registerPrompts({
           salary,
           match,
           partner: personSpec(p),
-          desc: `${traitName(tx.data, p.trait)} · 맞벌이 월급 ${won(salary)}${match ? ` · 찰떡궁합! 호감도 +${bonus}` : ''}`,
+          desc: `${traitName(tx.data, p.trait)} ${npcSpeciesName(tx.data, p.species)} · 단짝 생활비 ${won(salary)}${match ? ` · 찰떡궁합! 친밀도 +${bonus}` : ''}`,
         };
       });
       const best = [...options].sort((a, b) => Number(b.match) - Number(a.match) || b.stars - a.stars)[0];
-      options.push({ id: 'pass', label: '🙅 다음 기회에', icon: '🙅', desc: '이번 만남은 그냥 지나쳐요' });
+      options.push({ id: 'pass', label: '🙅 다음 기회에', icon: '🙅', desc: '이번 친구들과는 인사만 하고 지나가요' });
       return {
         forCharacterIds: [c.id],
-        title: school ? '🏫 고교 첫 만남' : '💘 운명의 만남',
-        text: school ? `고등학생이 된 ${josa(c.name, '이/가')} 설레는 두 친구를 만났다! 누구와 사귀어 볼까?` : `${josa(c.name, '이/가')} 설레는 두 사람을 만났다! 누구와 사귀어 볼까?`,
+        title: school ? '🏫 고교 첫 친구' : '💘 새 친구',
+        text: school ? `고등학생이 된 ${josa(c.name, '이/가')} 새 친구 둘을 만났다! 누구와 친해져 볼까?` : `${josa(c.name, '이/가')} 새 친구 둘을 만났다! 누구와 단짝이 되어 볼까?`,
         options,
         defaultOptionId: best.id,
         context: { candidates: candidates.map(personSpec), ...(school ? { school: true } : {}) },
@@ -637,7 +628,7 @@ registerPrompts({
       gainAffection(tx, c, (aff.meet ?? 25) + (match ? aff.matchBonus ?? 0 : 0), { set: true });
       c.love.dates = 0;
       emit(tx, 'met', { charId: c.id, partner: personSpec(partner), affection: c.love.affection, match, ...(school ? { school: true } : {}), tone: 'love', emotion: 'love' });
-      addLog(tx, `${school ? '🏫' : '💘'} ${josa(c.name, '과/와')} ${partner.name}(${traitName(tx.data, partner.trait)} ${starsText(partner.stars)}) 사귀기 시작!${match ? ' 찰떡궁합!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
+      addLog(tx, `${school ? '🏫' : '💘'} ${josa(c.name, '과/와')} ${partner.name}(${traitName(tx.data, partner.trait)} ${npcSpeciesName(tx.data, partner.species)} ${starsText(partner.stars)}) 친구가 됐다!${match ? ' 찰떡궁합!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
       if (school) {
         (tx.room.schoolMeetPairs ??= []).push({ charId: c.id, partner: personSpec(partner) });
         schoolMeetSummary(tx);
@@ -647,8 +638,8 @@ registerPrompts({
   },
 
   /**
-   * 데이트 (heart tile, partner): trait-matched dates give more affection; cost × era scale. Reaching `proposeAt`
-   * in a propose era opens the 프러포즈 prompt right away (same heart tile).
+   * 💑 같이 놀기 (heart tile, partner): trait-matched outings give more 친밀도; cost × era scale. Reaching `proposeAt`
+   * in a propose era opens the 「같이 살자!」 prompt right away (same heart tile).
    */
   date: {
     resultCutin: true,
@@ -659,8 +650,8 @@ registerPrompts({
       const def = enabled.find((o) => o.match) ?? [...enabled].sort((a, b) => a.cost - b.cost || b.gain - a.gain)[0] ?? options[0];
       return {
         forCharacterIds: [c.id],
-        title: '💕 데이트',
-        text: `${c.name}♥${partner.name} (호감도 ${c.love.affection}) — 어디로 갈까? ${traitName(tx.data, partner.trait)}인 ${partner.name}의 취향을 맞추면 호감도가 더 올라요`,
+        title: '💑 같이 놀기',
+        text: `${c.name}♥${partner.name} (친밀도 ${c.love.affection}) — 뭐 하고 놀까? ${traitName(tx.data, partner.trait)}인 ${partner.name}의 취향을 맞추면 친밀도가 더 올라요`,
         options,
         defaultOptionId: def.id,
         context: { partnerId: partner.id },
@@ -676,7 +667,7 @@ registerPrompts({
       c.love.affection = Math.min(aff.max ?? 100, (c.love.affection ?? 0) + opt.gain); // opt.gain includes the card bonuses
       c.love.dates = (c.love.dates ?? 0) + 1;
       emit(tx, 'dated', { charId: c.id, partnerId: partner.id, partner: personSpec(partner), dateId: opt.dateId, trait: opt.trait, cost: opt.cost, gain: opt.gain, affection: c.love.affection, match: opt.match, tone: 'love', emotion: 'love' });
-      addLog(tx, `${opt.icon} ${josa(c.name, '과/와')} ${partner.name}의 ${opt.label.replace(/^\S+\s/, '')}! 호감도 +${opt.gain} (${c.love.affection})${opt.match ? ' 취향 저격!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
+      addLog(tx, `${opt.icon} ${josa(c.name, '과/와')} ${partner.name}의 ${opt.label.replace(/^\S+\s/, '')}! 친밀도 +${opt.gain} (${c.love.affection})${opt.match ? ' 취향 저격!' : ''}`, { tone: 'love', charId: c.id, emotion: 'love' });
       const cfg = cfgOf(tx.data);
       const propose = c.love.affection >= (aff.proposeAt ?? 50) && inEra(cfg.propose?.eras, c.era);
       if (propose) openPrompt(tx, 'propose', c);
@@ -684,7 +675,7 @@ registerPrompts({
     },
   },
 
-  /** 프러포즈 (heart tile, affection ≥ proposeAt, job eras): success → wedding, fail → affection drop. */
+  /** 🏡 「같이 살자!」 제안 (heart tile, 친밀도 ≥ proposeAt, job eras): success → 단짝 동거 (집들이 파티), fail → 친밀도 drop. */
   propose: {
     build(tx, c) {
       const partner = c.love.partner;
@@ -693,11 +684,11 @@ registerPrompts({
       c.love.askedEra = c.era; // at most one epilogue proposal per era (heart tiles may still ask again)
       return {
         forCharacterIds: [c.id],
-        title: '💍 프러포즈',
-        text: `${josa(partner.name, '과/와')}의 호감도 ${c.love.affection}! ${josa(c.name, '은/는')} 오늘 반지를 꺼낼까?`,
+        title: '🏡 「같이 살자!」 제안',
+        text: `${josa(partner.name, '과/와')}의 친밀도 ${c.love.affection}! ${josa(c.name, '은/는')} 오늘 「같이 살자!」고 말해 볼까?`,
         options: [
-          { id: 'propose', label: '💍 프러포즈!', icon: '💍', chance, partnerId: partner.id, desc: `성공 확률 약 ${Math.round(chance * 100)}% · 성공하면 결혼식 (축의금·맞벌이)` },
-          { id: 'steady', label: '💕 조금 더 사귀기', icon: '💕', chance: 0, partnerId: partner.id, desc: `호감도 +${steady} (무료) · 다음 하트 칸에서 다시` },
+          { id: 'propose', label: '🏡 같이 살자!', icon: '🏡', chance, partnerId: partner.id, desc: `성공 확률 약 ${Math.round(chance * 100)}% · 성공하면 🎉 집들이 파티 (집들이 선물·단짝 생활비)` },
+          { id: 'steady', label: '💕 조금 더 친하게 지내기', icon: '💕', chance: 0, partnerId: partner.id, desc: `친밀도 +${steady} (무료) · 다음 하트 칸에서 다시` },
         ],
         defaultOptionId: 'propose',
         context: { partnerId: partner.id, chance },
@@ -713,18 +704,18 @@ registerPrompts({
         const gain = gainAffection(tx, c, aff.steadyGain ?? 10) - before;
         c.love.dates = (c.love.dates ?? 0) + 1;
         emit(tx, 'dated', { charId: c.id, partnerId: partner.id, partner: personSpec(partner), dateId: 'steady', trait: null, cost: 0, gain, affection: c.love.affection, match: false, tone: 'love', emotion: 'love' });
-        addLog(tx, `💕 ${josa(c.name, '은/는')} ${josa(partner.name, '과/와')} 조금 더 천천히 사귀기로 했다 (호감도 ${c.love.affection})`, { tone: 'love', charId: c.id, emotion: 'love' });
+        addLog(tx, `💕 ${josa(c.name, '은/는')} ${josa(partner.name, '과/와')} 조금 더 천천히 친해지기로 했다 (친밀도 ${c.love.affection})`, { tone: 'love', charId: c.id, emotion: 'love' });
         return null;
       }
       const chance = proposeChance(c, tx.data);
       const success = tx.rng.next() < chance;
       emit(tx, 'proposed', { charId: c.id, partnerId: partner.id, partner: personSpec(partner), success, chance, tone: success ? 'love' : 'bad', emotion: success ? 'love' : 'cry' });
       if (success) {
-        addLog(tx, `💍 ${c.name}의 프러포즈 대성공! ${partner.name}: "좋아!"`, { tone: 'love', charId: c.id, emotion: 'love' });
+        addLog(tx, `🏡 ${c.name}의 「같이 살자!」 제안 대성공! ${partner.name}: "좋아!"`, { tone: 'love', charId: c.id, emotion: 'love' });
         marry(tx, c);
       } else {
         c.love.affection = Math.max(0, c.love.affection - (aff.failDrop ?? 15));
-        addLog(tx, `💔 ${c.name}의 프러포즈 실패… ${partner.name}: "아직은 좀…" (호감도 ${c.love.affection})`, { tone: 'bad', charId: c.id, emotion: 'cry' });
+        addLog(tx, `💔 ${c.name}의 「같이 살자!」 제안 실패… ${partner.name}: "아직은 좀…" (친밀도 ${c.love.affection})`, { tone: 'bad', charId: c.id, emotion: 'cry' });
       }
       return null;
     },

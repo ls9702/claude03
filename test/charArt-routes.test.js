@@ -8,13 +8,13 @@ import sharp from 'sharp';
 import { startServer } from '../server/index.js';
 import { ART_STEPS, ART_VERSION, MSG, artKey, placeFigure } from '../server/assets/charArt.js';
 import { chromaKey } from '../server/assets/postprocess.js';
-import { getAvatars } from '../server/data/index.js';
 import { fakeGeminiFetch, jsonResponse, magentaCharacter, tempManifest } from './assetFixtures.js';
 import { httpCall, sseReader, tempDir } from './helpers.js';
 
 const KEY = 'AIzaSyROUTES_CHARART_KEY_0123456789ab';
-const D = getAvatars().default;
-const AV = { ...D, hair: 'curly', hairColor: 'red' };
+// CH-1: player looks are roster characters + props (the legacy AI art pipeline is keyed by any avatar JSON)
+const D = { character: 'chiikawa', props: {} };
+const AV = { character: 'usagi', props: { head: 'ribbon' } };
 const ANCHOR = path.join(import.meta.dirname, 'fixtures', 'anchor.jpg');
 const ctl = { mode: 'ok', delayMs: 0 };
 const ok = fakeGeminiFetch();
@@ -173,7 +173,7 @@ test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per charact
   assert.equal(Buffer.from(await img.arrayBuffer()).toString('ascii', 8, 12), 'WEBP');
 
   // a changed look drops the art; the player's one generation is used up
-  const e1 = await call(srv, 'PATCH', `/api/rooms/${roomId}/characters/${c1}`, { token: A, body: { avatar: { ...AV, hair: 'afro' } } });
+  const e1 = await call(srv, 'PATCH', `/api/rooms/${roomId}/characters/${c1}`, { token: A, body: { avatar: { ...AV, props: { head: 'crown' } } } });
   assert.equal(e1.json.room.characters.find((c) => c.id === c1).art, undefined);
   const again2 = await call(srv, 'POST', url, { token: A });
   assert.equal(again2.status, 409);
@@ -200,7 +200,7 @@ test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per charact
 });
 
 test('402 → failed with the Korean credits reason; delete cancels a running job', async () => {
-  const c3 = (await call(srv, 'POST', `/api/rooms/${roomId}/characters`, { token: A, body: { name: '크레딧', avatar: { ...D, hair: 'bun' } } })).json.characterId;
+  const c3 = (await call(srv, 'POST', `/api/rooms/${roomId}/characters`, { token: A, body: { name: '크레딧', avatar: { character: 'momonga', props: {} } } })).json.characterId;
   ctl.mode = '402';
   const r = await call(srv, 'POST', `/api/rooms/${roomId}/characters/${c3}/art`, { token: A });
   assert.equal(r.status, 202);

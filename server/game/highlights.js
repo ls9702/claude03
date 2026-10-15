@@ -159,13 +159,13 @@ export function highlightsOf(ev, { room, data, events, index }) {
   const add = (charId, score, text, amount) => out.push({ charId, score, text, ...(amount != null ? { amount } : {}) });
   switch (ev.type) {
     case 'married':
-      add(ev.charId, 8, `💒 ${josa(ev.spouse?.name ?? '', '과/와')} 결혼!`);
+      add(ev.charId, 8, `🎉 ${josa(ev.spouse?.name ?? '', '과/와')} 단짝 동거 시작!`);
       break;
     case 'childBorn':
-      add(ev.charId, ev.child?.talent === 'genius' ? 8 : 6, `👶 ${ev.child?.name ?? '아기'} 탄생!${ev.child?.talent === 'genius' ? ' (천재)' : ''}`);
+      add(ev.charId, ev.child?.talent === 'genius' ? 8 : 6, `🐣 ${ev.child?.name ?? '새 식구'} 입양!${ev.child?.talent === 'genius' ? ' (천재 펫)' : ''}`);
       break;
     case 'proposed':
-      if (!ev.success) add(ev.charId, 4, `💔 ${ev.partner?.name ?? ''}에게 프러포즈했다가 거절당했다`);
+      if (!ev.success) add(ev.charId, 4, `💔 ${ev.partner?.name ?? ''}에게 「같이 살자!」 했다가 거절당했다`);
       break;
     case 'jobChanged': {
       const def = jobName(data, ev.jobId);

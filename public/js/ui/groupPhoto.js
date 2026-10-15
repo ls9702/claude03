@@ -1,11 +1,9 @@
-// Stage 9 — 엔딩 단체 사진 📸. Pose picker (브이 / 만세 / 하트 / 점프) → every character's composed paper-doll art (or AI
-// art, else the SVG portrait) drawn into ONE canvas on the studio stage with a title banner ("인생게임 · 방 코드 ·
+// Stage 9 — 엔딩 단체 사진 📸. Pose picker (브이 / 만세 / 하트 / 점프) → every character's figure (Chiikawa conversion:
+// the chara.js rig with the pose baked in, or accepted `ch-<id>-base` raster art) drawn into ONE canvas on the studio stage with a title banner ("인생게임 · 방 코드 ·
 // 날짜"), names and places → PNG download (`canvas.toBlob` + `<a download>`) or the Web Share API. Works without
 // WebGL; in 3D mode a 「🧊 3D 시상대」 style captures the podium scene instead.
 import { esc, stripBidi } from '../format.js';
-import { renderAvatar } from './avatar2d.js';
-import { composeArt, composeAvatar } from './avatarCompose.js';
-import { resolveCharacterArt } from './cutinMap.js';
+import { charaImage } from './chara.js';
 import { MEDALS, PHOTO_H, PHOTO_POSES, PHOTO_W, photoFileName, photoLayout, photoPose, photoTitle, poseOffset } from '../shared/result.js';
 
 const FONT_STACK = '"Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Noto Sans CJK KR", "Malgun Gothic", system-ui, sans-serif';
@@ -20,8 +18,8 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/** Where the feet sit inside a full-body figure canvas (fraction of its height). */
-const FEET = 0.965;
+/** Figure height (canvas units of the shared full view) relative to the photo slot height: roster figures are small. */
+const FIGURE_SCALE = 1.0;
 
 function loadImage(src) {
   return new Promise((resolve) => {
@@ -33,28 +31,13 @@ function loadImage(src) {
   });
 }
 
-/** SVG portrait → image (fallback when the paper-doll layers are missing). */
-async function svgImage(avatar, { size = 512, expression = null } = {}) {
-  const svg = renderAvatar(avatar ?? {}, { size, expression });
-  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-  try {
-    return await loadImage(url);
-  } finally {
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  }
-}
+/** Photo pose → rig key pose baked into the figure (the jump lift comes from the photo layout). */
+const RIG_POSE = { wave: 'wave', cheer: 'cheer', jump: 'cheer' };
 
-/** Full-body figure for a character: AI art (pose / expression) > composed layers > SVG portrait ({img, kind}). */
+/** Full-body figure for a character ({img, kind, feet}): raster base art, else the SVG rig as an image. */
 async function figureFor(char, pose, h) {
-  const want = resolveCharacterArt(char, { pose: pose.pose, expression: pose.expression });
-  if (want.source === 'ai' && want.url) {
-    const cv = await composeArt(want.url, { crop: 'full', size: h, dpr: 1 }).catch(() => null);
-    if (cv) return { img: cv, kind: 'ai' };
-  }
-  const cv = await composeAvatar(char?.avatar ?? {}, { expression: want.expression ?? null, crop: 'full', size: h, dpr: 1 }).catch(() => null);
-  if (cv) return { img: cv, kind: 'layers' };
-  const im = await svgImage(char?.avatar, { size: 512, expression: pose.expression === 'love' ? 'love' : 'joy' });
-  return im ? { img: im, kind: 'svg' } : null;
+  const fig = await charaImage(char, { expression: pose.expression ?? 'joy', pose: RIG_POSE[pose.pose] ?? null, height: Math.round(h * FIGURE_SCALE) }).catch(() => null);
+  return fig ?? null;
 }
 
 function drawStage(g, W, H, bg) {
@@ -168,13 +151,11 @@ export async function renderGroupPhoto({ entries = [], poseId = 'v', title = '',
     g.save();
     g.translate(s.x, s.y - lift);
     g.rotate(off.tilt);
-    if (f.kind === 'svg') {
-      const side = s.w * 1.25;
-      g.drawImage(f.img, -side / 2, -side, side, side);
-    } else {
-      const k = s.h / f.img.height;
+    {
+      const hh = s.h * FIGURE_SCALE;
+      const k = hh / f.img.height;
       const w = f.img.width * k;
-      g.drawImage(f.img, -w / 2, -s.h * FEET, w, s.h);
+      g.drawImage(f.img, -w / 2, -hh * (f.feet ?? 0.94), w, hh);
     }
     // pose glyph by the raised hand / over the head
     g.font = `${Math.round(s.h * 0.11)}px ${FONT_STACK}`;

@@ -1,4 +1,6 @@
 // Stage 9 — 3D 시상대 (result screen): a tiny separate Three.js scene that reuses the board's pawn builder.
+// CH-1: Chiikawa-style roster pawns (`char.avatar` = a look `{character, props}`; the 1st place smiles with closed
+// happy eyes), squash & stretch celebration hops; `defs` = `/api/meta` (the old avatars defs still work).
 // 1st / 2nd / 3rd pawns stand on a 3-step podium (ties share a step), everyone else in a half circle in front;
 // confetti bursts + a slow camera orbit. Budget: ≤ 30 draw calls (floor 1 + podium 1 + pawns ≤ 8 + tags ≤ 8 +
 // step numbers 3 + confetti ≤ 3), pixelRatio 1, no AA / shadows, Hemisphere + 1 Directional, Lambert + vertex colors.
@@ -7,7 +9,9 @@
 //   pd.celebrate(); pd.setCrown(charId); pd.snapshot() → 2D canvas copy; pd.stats(); pd.dispose();
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { buildPawnGeometry } from './pawn.js';
+import { buildPawnGeometry, pawnHeight } from './pawn.js';
+import { pawnLook } from './pawnParts.js';
+import { hopPose, breathePose } from './math.js';
 import { makeTextSprite, disposeSprite } from './sprites.js';
 import { createParticles } from './particles.js';
 import { podiumSlots } from './podiumLayout.js';
@@ -34,9 +38,11 @@ function coloredBox(w, h, d, color, x, y, z) {
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{defs?: object, entries: {char: object, step: number, crown?: boolean}[], reducedMotion?: boolean}} opts
+ * @param {{meta?: object, defs?: object, entries: {char: object, step: number, crown?: boolean}[], reducedMotion?: boolean}} opts
+ *   meta = `/api/meta` (roster / props; wins over `defs`)
  */
-export function createPodium3D(canvas, { defs = null, entries = [], reducedMotion = false } = {}) {
+export function createPodium3D(canvas, { defs: defsOpt = null, meta = null, entries = [], reducedMotion = false } = {}) {
+  const defs = meta ?? defsOpt;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'default', preserveDrawingBuffer: false });
   renderer.setPixelRatio(1);
   const scene = new THREE.Scene();
@@ -82,16 +88,18 @@ export function createPodium3D(canvas, { defs = null, entries = [], reducedMotio
     const holder = new THREE.Group();
     holder.scale.setScalar(PAWN_SCALE);
     base.add(holder);
-    const mesh = new THREE.Mesh(buildPawnGeometry(e.char?.avatar ?? {}, defs), lambert);
+    const look = pawnLook(e.char?.avatar ?? null, defs);
+    const mesh = new THREE.Mesh(buildPawnGeometry(look, defs, { expression: slot.step === 1 ? 'joy' : undefined }), lambert);
     holder.add(mesh);
+    const tagY = pawnHeight(look, defs) * PAWN_SCALE + 0.36;
     const y = slot.step ? STEP[slot.step].h + 0.06 : 0;
     base.position.set(slot.x, y, slot.z);
     base.rotation.y = slot.face;
     const tag = makeTextSprite(`${e.crown ? '👑 ' : ''}${e.char?.name ?? ''}`, { height: 0.4, size: 38, color: e.char?.isMe ? '#ffffff' : '#2d2a32', bg: e.char?.isMe ? 'rgba(255,122,47,0.95)' : 'rgba(255,255,255,0.92)', pad: 12, renderOrder: 15 });
-    tag.position.set(0, 1.6 * PAWN_SCALE + 0.36, 0);
+    tag.position.set(0, tagY, 0);
     base.add(tag);
     scene.add(base);
-    return { entry: e, slot, base, holder, tag, phase: i * 0.7 };
+    return { entry: e, slot, base, holder, tag, tagY, phase: i * 0.7 };
   });
 
   const particles = createParticles(scene);
@@ -132,10 +140,13 @@ export function createPodium3D(canvas, { defs = null, entries = [], reducedMotio
     size();
     place(S.t);
     for (const p of pawns) {
-      const k = S.t * (p.slot.step === 1 ? 3.2 : 2.2) + p.phase;
-      const hop = reducedMotion ? 0 : Math.max(0, Math.sin(k)) * (p.slot.step === 1 ? 0.32 : p.slot.step ? 0.14 : 0.06);
-      p.holder.position.y = hop;
-      p.holder.scale.set(PAWN_SCALE * (1 + hop * 0.12), PAWN_SCALE * (1 - hop * 0.08), PAWN_SCALE * (1 + hop * 0.12));
+      // celebration hops with squash & stretch (1st: big and fast, 2nd/3rd: small, others: breathing)
+      const period = p.slot.step === 1 ? 0.95 : 1.45;
+      const h = p.slot.step === 1 ? 0.42 : p.slot.step ? 0.18 : 0;
+      const k = (S.t + p.phase) / period;
+      const pose = reducedMotion ? { y: 0, sy: 1, sxz: 1 } : h ? hopPose(Math.min(1, (k % 1) / 0.62), h) : breathePose(S.t, p.phase, 0.03);
+      p.holder.position.y = pose.y;
+      p.holder.scale.set(PAWN_SCALE * pose.sxz, PAWN_SCALE * pose.sy, PAWN_SCALE * pose.sxz);
     }
     if (!reducedMotion && S.bursts < 5 && S.t - S.burstAt > 2.6) {
       S.burstAt = S.t;
@@ -167,7 +178,7 @@ export function createPodium3D(canvas, { defs = null, entries = [], reducedMotio
         p.base.remove(p.tag);
         disposeSprite(p.tag);
         p.tag = makeTextSprite(`${crown ? '👑 ' : ''}${p.entry.char?.name ?? ''}`, { height: 0.4, size: 38, color: p.entry.char?.isMe ? '#ffffff' : '#2d2a32', bg: crown ? 'rgba(255,210,63,0.97)' : p.entry.char?.isMe ? 'rgba(255,122,47,0.95)' : 'rgba(255,255,255,0.92)', pad: 12, renderOrder: 15 });
-        p.tag.position.set(0, 1.6 * PAWN_SCALE + 0.36, 0);
+        p.tag.position.set(0, p.tagY, 0);
         p.base.add(p.tag);
       }
     },

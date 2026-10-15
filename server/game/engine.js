@@ -47,6 +47,7 @@ import { ensureFamily, ensureRoomFamily, growChildrenOnEra, growChildrenOnSpin, 
 import { drawHousingMarket, houseValue, syncHouseOwners } from './houses.js';
 import { ensureRoomTreasures, ensureTreasures } from './treasures.js';
 import { ensureRecord, initRecord, recordHighlights, topHighlights, trackRecords } from './highlights.js';
+import { migrateRoomLooks } from './avatar.js';
 import './submaps.js'; // Stage 9: registers the hometown / temple / jeju / reversal prompts
 import { enterPassTile } from './passTile.js'; // loop maps: 찬스 광장
 import { finishCharacter } from './finish.js'; // final era: goal order / 조기 은퇴 / 올인 파산
@@ -84,6 +85,7 @@ export function startGame(room, ctx = {}) {
   const r = lobbyStartGame(room, now);
   if (!r.ok) return r;
   const next = r.room;
+  migrateRoomLooks(next, data); // CH-1: a lobby saved with human avatars
   next.board = buildBoard(next.config, boardRng, data);
   const firstEra = next.board.eras[0];
   // Stage 6 life records (stats, education, military, job…). Starting stats are public like the board, so they
@@ -253,7 +255,7 @@ function eraTransition(tx) {
   for (const c of chars) enterEra(tx, c, toIndex);
   drawNews(tx, to.id); // 뉴스 속보 of the new era
   if (to.id === tx.data.balance.pension.era) grantPensions(tx);
-  if (fromEra.id === 'high') schoolMeetSummary(tx, { force: true }); // 고교 첫 만남 recap (if not shown yet)
+  if (fromEra.id === 'high') schoolMeetSummary(tx, { force: true }); // 고교 첫 친구 recap (if not shown yet)
   drawHousingMarket(tx, to.id); // Stage 8: 노년 시세 (senior)
   for (const c of chars) {
     applyEraNews(tx, c, to.id);
@@ -851,6 +853,7 @@ export function applyAction(room, action, ctx = {}) {
   // saves from before the loop maps → the loop board at the most advanced era's start (normally done at boot)
   const mig = isLoopBoard(room.board) ? null : migrateLoopBoard(room, { now: c.now, data: c.data });
   const next = mig ? mig.room : structuredClone(room);
+  migrateRoomLooks(next, c.data); // CH-1: human avatars / partners / children of old saves → roster / NPC friends / pets
   next.eraIndex ??= 0;
   for (const ch of next.characters) {
     ch.laps ??= 0;

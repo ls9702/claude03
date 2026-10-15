@@ -11,7 +11,7 @@
 // Importable: `playCpuGame({cpus, randoms, mode, seed, eraTurns, holidays, roulette, data})`, `cpuVsRandom({games, seed, ...})`.
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { gameData } from '../server/data/index.js';
+import { gameData, getRoster } from '../server/data/index.js';
 import { validateRoomConfig } from '../server/game/config.js';
 import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, addCpuCharacter, joinRoom } from '../server/game/lobby.js';
@@ -19,6 +19,9 @@ import { cpuDecide, cpuPersonality, isCpu } from '../server/game/cpu.js';
 import { jobDef } from '../server/game/jobs.js';
 import { createRng } from '../server/game/rng.js';
 import { cardBlockReason, cardDef } from '../server/game/cards.js';
+
+/** CH-1: player looks are roster characters (no gender); a random one per character. */
+const ROSTER_IDS = getRoster().characters.map((x) => x.id);
 
 const MAX_ACTIONS = 20000;
 
@@ -78,7 +81,7 @@ export function playCpuGame({ cpus = 4, randoms = 0, mode = 'lifetime', seed = 1
       room = r.room;
       ci++;
     } else {
-      const r = addCharacter(room, 'rand', { name: `랜덤${ri + 1}`, avatar: { body: meta.next() < 0.5 ? 'boy' : 'girl' } }, 0);
+      const r = addCharacter(room, 'rand', { name: `랜덤${ri + 1}`, avatar: { character: ROSTER_IDS[Math.min(ROSTER_IDS.length - 1, Math.floor(meta.next() * ROSTER_IDS.length))] } }, 0); // CH-1 roster look (one draw, like the old body roll)
       if (!r.ok) throw new Error(r.error);
       room = r.room;
       ri++;
