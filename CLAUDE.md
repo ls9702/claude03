@@ -51,10 +51,17 @@
   `broadcastState(roomId)` (per-session `viewFor`). Mutations go through `store.commit(nextRoom, logs)`
   (bump version, save, broadcast `state` + `log`); silent updates via `store.put(room)`. Snapshot writes are chained
   per file (serialized at call time, written after the previous write of that file) → an older snapshot can never
-  overwrite a newer one; nothing is scheduled after `close()`. Sessions `{createdAt, lastSeenAt}` (`hasSession`
+  overwrite a newer one; nothing is scheduled after `close()`. The debounce has a max wait (`maxWaitMs`, `SAVE_MAX_WAIT_MS`
+  2000): a room committing faster than every `debounceMs` is still written at least every 2 s. Sessions `{createdAt, lastSeenAt}` (`hasSession`
   refreshes lastSeenAt, persisted at most hourly); `pruneSessions()` drops sessions unused for `SESSION_TTL_MS`
   (7 days) that are not a player of any room — at `load()` and hourly (`startPruning()`, started by `startServer`).
-  `subscribe` caps SSE streams at `MAX_STREAMS_PER_SESSION` (3) per session per room: the oldest is ended.
+  `subscribe(roomId, sessionId, res, {state})` caps SSE streams at `MAX_STREAMS_PER_SESSION` (3) per session per room: the
+  oldest first gets `event: superseded {roomId, reason: 'tabs', max}`, then is ended (the client stops reconnecting, see
+  "E2E round 4 fixes"). Every write goes through `#send`: a stream whose unsent buffer (`res.writableLength`) exceeds
+  `maxBufferedBytes` (`SSE_MAX_BUFFERED_BYTES` 1.5 MB — a client that stopped reading) is destroyed + unsubscribed (log
+  「느린 SSE 연결을 끊었습니다…」). `state` frames go through `stateFrame(room, sub)`: the static board only when this stream
+  has not got that `boardKey` yet (SSE board cache). `load()` skips save files whose players / characters / status are
+  malformed (`savedRoomProblem`, Korean log) and fills missing `log` / `config` / `code` (`normalizeSavedRoom`).
 - `server/game/lobby.js` — pure lobby rules (join, characters, ready, presence, start, end). Each returns
   `{ok:true, room, logs}` or `{ok:false, status, error}` and never mutates its input.
 - `server/game/config.js` — room config validation. `server/game/order.js` — `buildTurnOrder`.
@@ -129,11 +136,17 @@
 - Side bets (`balance.bets`): `ranges {"1-3":[1,3], "4-6":[4,6], "7-10":[7,10]}`, `payouts` per pick (stake
   included) `{odd:2, even:2, "1-3":3, "4-6":3, "7-10":2.5}`; winnings `betWinDelta` = floor(amount × (payout − 1))
   → no pick has a positive expected value (tested for every stake). `/api/meta.balance.bets` carries both. The stake is
-  HELD at bet time (see "Post-simulation fixes (server)").
+  HELD at bet time (see "Post-simulation fixes (server)"). Any pending spin mod that changes the value bets settle on —
+  `cards.BET_VOID_MODS` exact / range / rush AND 택시 max2 / 층간소음 min2 (`betsVoided`, `betVoidReason`) — refuses new bets
+  (409 「…카드로 정해져서 / 두 번 돌려서 훈수 베팅을 할 수 없어요.」) and voids + refunds the turn's bets when the card is played
+  after them (a visible taxi was +58 % EV).
 - 기초연금 (`balance.pension`): recipients are decided ONCE at the transition into the pension era — bottom
-  `bottomN` by total assets (`pensionWorth` = cash − debt + house + items; ≥ `minCharacters`) → `room.pension`; each
-  recipient is paid at once (amount = base + asset gap to the richest × gapRatio, ≤ max). Never more than `bottomN`
-  payouts.
+  `bottomN` characters by FAMILY-average total assets (`pensionRankWorth`: `pensionWorth` = cash − debt + house + items,
+  averaged over `pensionFamily` = one player's characters (same owner session); every CPU is its own family; ties → the
+  poorer character itself, then creation order; ≥ `minCharacters`) → `room.pension`; each recipient is paid at once (amount
+  = base + the gap between the richest family average and the recipient's × gapRatio, ≤ max). Never more than `bottomN`
+  payouts. (E2E-4: with per-character worth a player could gift cash between own characters right before the transition to
+  make one look poor; the family average can't be moved by own-character transfers.)
 - Goal race (final era only since the loop maps): `goalPrizes [60,50,45,40,35,30,25,20]`, `bonusSpinUnit` 2,
   `retirePrizeMult` 0.5 (조기 은퇴).
 - Board: tile ids `${eraId}:${main|love|career|money}:${index}` are stable. Every era but the final one is a loop map
@@ -618,8 +631,9 @@
   (decremented per spin). Hidden unlocks (data `unlock`, all must hold, job eras only; values since the post-simulation
   fixes): 우주비행사 int 8 & str 8; 국민 MC max rank of 개그맨/배우/유튜버 (now or history) & charm 8; 재벌 총수 max 대기업 &
   net worth ≥ 3,000; 트로트 스타 senior & charm 7 & luck 7; 산신령 (Stage 9) 사찰 소원 성취 `wishes` ≥ 2; 건물주 (Stage 8)
-  houseSwaps ≥ 3 or penthouse / jeju_villa (loop-map values: 우주비행사 9/9, 국민 MC charm 9, 재벌 총수 net worth ≥ 2,000, 트로트
-  스타 charm 9 & luck 9, 산신령 wishes ≥ 8 (찬스 광장 소원 count too), 건물주 houseSwaps ≥ 4). News: every era transition (loop maps: `eraTransition`, not a first entrant; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
+  houseSwaps ≥ 3 or penthouse / jeju_villa (loop-map values: 우주비행사 9/9, 국민 MC charm 9, 재벌 총수 net worth ≥ 1,200 (E2E-4;
+  was 2,000), 트로트 스타 charm 9 & luck 9, 산신령 wishes ≥ 8 (granted 찬스 광장 소원 count too; 모두를 위한 소원 never), 건물주
+  houseSwaps ≥ 3 (E2E-4; was 4)). News: every era transition (loop maps: `eraTransition`, not a first entrant; adult mode draws 청년 at start) → `room.news[era]`, `newsFlash`
   (global, no charId; MC studio `news`), `statBonus` for every entrant; effects via `effectsFor(tx, c)` (character's era).
 - Events: `statChanged {charId, stat, delta, value, reason}` (habit/event/news/military/graduation/rankUp/overtime),
   `jobChanged {charId, jobId, fromJobId, rank, reason: hire|change|hidden|parttime}`, `rankUp {charId, jobId, rank, rankName}`,
@@ -1092,7 +1106,7 @@
   admin CPU tools print it (`cpuHandicapText`: 「🤖 CPU 핸디캡(사람이 이기기 쉽게): 시작 자금 20% · 월급·돈 칸 수입 45% · 보물 감정가
   30% — CPU끼리만 하는 방은 그대로」).
 - Runner (`GameRunner`): sibling CPU timer per room (`cpuTimers`), armed by `schedule(room, events)` from start / dispatch /
-  restore with `cpuDue`; delay `cpuDelayMs` (`CPU_DELAY_MS` spin 1600 / prompt 1200 / trade 1200, + `cutin` 2500 when the
+  restore with `cpuDue`; delay `cpuDelayMs` (`CPU_DELAY_MS` spin 1000 / prompt 800 / trade 800, + `cutin` 1200 when the
   last batch had an `event.cutin`; a number sets all four — tests pass 0 or `{cutin: 0}`), fires `runCpu(roomId, key)` →
   `cpuDecide` dispatched with actor `{system: true, cpu: true}` (only for `ownerSessionId === 'cpu'`); a refused action
   falls back to the default option / plain spin / reject, then logs. `end()` / `stop()` clear it. Simultaneous prompts:
@@ -1137,8 +1151,10 @@
 
 ## Stage 9 — submaps, treasures, awards, result show (server)
 - Data (`gameData().treasures|awards|titles`, `/api/meta.treasures|awards|titles`, `/api/meta.balance.submaps|result`):
-  `server/data/treasures.json` (22 `{id, name, icon, desc, min, max, fakeChance, weight, eras?}` + `fake {min 0, max 5}`),
-  `awards.json` (10 `{id, name, icon, desc, metric, route?, min, bonus, tie: all|split|place|qualify}`), `titles.json`
+  `server/data/treasures.json` (22 `{id, name, icon, desc, min, max, fakeChance, weight, eras?}` + `fake {min 0, max 5}`; since
+  E2E-4 every value range × 0.6 with max ≤ 400 (min ≤ max / 2): 5–50 … 200–400 — 「remove the treasures and the winner changes」 was
+  27–32 % of casual games, now 17.5–18 %), `awards.json` (10 `{id, name, icon, desc, metric, route?, min, bonus, tie:
+  all|split|place|qualify}`; E2E-4: 대가족 집사상 dabok 150 → 100, 인생 만렙 max_level 100 → 50), `titles.json`
   (`perCharacter` 2, 25 titles `{id, name, icon, desc, priority, when}` + the `fallback` 평범한 인생), `balance.json` `submaps`
   (era `scale`, hometown / temple / jeju / reversal numbers) and `result` (`mvpVoteMs` 180000 (the result show takes ~60–80 s), `mvpSettleMs` 5000, `highlights
   {keep 8, show 5, bigMoney 300}`). jobs.json 산신령 `unlock {wishes: 8}` (loop maps; 2 after the post-simulation fixes, 3 before) (`unlockMet` knows `wishes`; the Stage 6 interim rule is
@@ -1429,7 +1445,7 @@ the data files) and the MC sibling test in `test/mc.test.js`.
 ## Roulette skill mode (룰렛 실력 모드)
 - Room config `rouletteMode: 'random' | 'skill'` (`ROULETTE_MODES`, default random, 400 "룰렛 방식은 완전 랜덤(random) 또는 실력 모드(skill)
   중 하나여야 합니다."); admin form 「룰렛: 완전 랜덤 / 실력 모드 (흔들기·타이밍)」 (sent only when skill) + room detail line; lobby
-  `modeLabel` appends 「🎯 룰렛 실력 모드」. `/api/meta.balance.roulette` = `balance.json.roulette` {`skill.jitter`,
+  mode line (`ui/lobbyText.js` `modeSummary`) shows 「🎯 룰렛 실력 모드」. `/api/meta.balance.roulette` = `balance.json.roulette` {`skill.jitter`,
   `cpu.aimNoise`}.
 - Pure rules `public/js/shared/roulette.js` (no imports; `server/game/roulette.js` = `export *` re-export): `isSkillRoom`, `parseTarget`
   (int 1..10 or digit string, else null), `jitterTable(jitter)` (`{"<|offset|>": share}` → signed offsets 0, −1, +1, −2, +2 with ± halves,
@@ -1504,8 +1520,8 @@ Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A, which wins); devi
   consume rounds.
 - Map (`board.js`): `loopConfig()` = `board.json.loop`; `lapSize(turns)` = clamp(round(turns × 5.4), 18, 100) (15 turns → 81, 3 → 18);
   `tiles[0]` = `start`; `paydayCount(lap)` / `placePaydays` = forced-stop `salary` tiles every 18–25 tiles on every lap path (each
-  route and across the wrap; laps that cannot be split use the nearest count: ≤ 27 → 1, 32 → 2); `placePasses` = round(lap / 27)
-  (2–4) `pass` tiles (찬스 광장), never next to a payday; blocked slots = start, fork ± 1, merge ± 1. Route eras (young /
+  route and across the wrap; laps that cannot be split use the nearest count: ≤ 27 → 1, 32 → 2); `placePasses` = round(lap / 45)
+  (1–3; was 27 / 2–4 before the E2E-4 fixes: 81-tile laps 3 → 2, 18-tile laps 2 → 1) `pass` tiles (찬스 광장), never next to a payday; blocked slots = start, fork ± 1, merge ± 1. Route eras (young /
   middle_age): `fork` (a `stop` with `promptId: 'routeChoice'`) and `rejoin` (`merge`) inside the ring, three equal route tracks
   (≈ 40–50 % of the lap) that carry their paydays / passes at the same indexes. `nextPosition` wraps (`wrapsAt`), `lapPositions`,
   `eraPathLength` = lap (or the final length), `HALT_TYPES` salary / stop / goal. Tile pools: no `salary` / `shop` in pools.
@@ -1526,8 +1542,10 @@ Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A, which wins); devi
   (job salary + spouse + 용돈; kids = `balance.salary.pocketMoney[era]` → `salary {jobId: null, rank: 0, pocket: true}` + 동아리
   training), `start` nothing, `pass` → the 찬스 광장 prompt too.
 - 찬스 광장 (`passTile.js`, prompt `passTile`, resultCutin true; always opens — landing or passing): options `wish {cost, price, chance,
-  money}` (offering × `passTile.scale[era]`, chance base 0.3 + 0.04 × 운 ∈ [0.1, 0.7] → 운 +1 + money, `wishes` +1), `wishAll {cost,
-  price, gift, others}` (offering, every other unfinished character gets `gift` × scale, 운 +1, `wishes` +1), `buy {price, offers}`
+  money}` (offering × `passTile.scale[era]`, chance base 0.3 + 0.04 × 운 ∈ [0.1, 0.7] → 운 +1 + money (prize `wish.moneyByEra[era]` 35 in
+  the kids eras since E2E-4, else `wish.money` 25, × scale), `wishes` +1), `wishAll {cost,
+  price, gift, others}` (offering, every other unfinished character gets `gift` × scale, 운 +1; NOT counted in `wishes` since the
+  E2E-4 fixes — only granted wishes unlock 산신령), `buy {price, offers}`
   (→ the `shop` prompt with those offers; disabled when nothing is affordable), `jobChange {jobId, salary, requires}` (one eligible
   other job, adult job eras; disabled with a Korean reason otherwise) and `pass {buff}` (default). The buff is rolled when the prompt
   opens (`balance.chanceBuffs` weights salaryX2 4 / moneyX15 3 / lossShield 3 / statUp 2) and becomes `character.chanceBuff` until the
@@ -1644,7 +1662,7 @@ Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A, which wins); devi
 - Admin: 「시대 길이(턴)」 rows with 「🗺️ n칸 순환」 per era (`lapSize`), 「🏁 노년 길이(칸)」 row (`finalLength`, eras.json
   `limits.finalLength` / `meta.defaults.finalLength`, fallback 20–80 / 40) instead of senior turns in race modes (senior turns not
   sent); estimate = Σ turns + final race (length ÷ 5.5 × 1.3) × characters × 15 s with a ⚠️ long-game note (≥ 40 turns); room
-  detail 「노년 골인 경쟁 N칸」. Lobby mode label: 「청년 15턴 / … / 노년 🏁 40칸」. Result rows name 골인 보너스 / n번째 골인 only when
+  detail 「노년 골인 경쟁 N칸」. Lobby mode line: 「… · 청년 15턴 · … · 노년 🏁 40칸」 (small era line). Result rows name 골인 보너스 / n번째 골인 only when
   there was a goal prize. Skill panel: 「💡 큰 숫자일수록 멀리 가서 💵 월급날·🎪 찬스 광장을 더 자주 만나요.」
 - E2E (session scratchpad `loopb/`): `inject.cjs` (synthetic loop board injected into a real room: every era in 3D 1280 + 2D 390,
   young last round with lane pawns, wrap + pass pause + passTile prompt + resume + payday stop, the era transition, final race,
@@ -1669,7 +1687,8 @@ Contract: session scratchpad `cards-contract.md` (FIXED CONTRACT) + `cards-devia
   status), `rollPlan` / `spinFixed`, `rushDistance(room, c)` (tiles to the next payday on the path; null when the fork / goal comes
   first or no payday is left), `cardBlockReason(room, c, def, data)` (shared by useCard, simulators, CPU). `cardGained` gains `color`
   and sources `club | graduation | job | status | start`; new event `cardLost {charId, cardId, uid, reason: married|healed|discarded|
-  merit}` (EVENT_TYPES; chip, never a line). Trades / gifts refuse the injury card (409); blue cards trade / gift like any card.
+  merit|used}` (EVENT_TYPES; chip, never a line; `used` = a 로또 복권 / 쿠지 응모권 spent in an era-opening draw, emitted right
+  after its `lottoDraw`). Trades / gifts refuse the injury card (409); blue cards trade / gift like any card.
 - useCard: blue / merit / status → 409; `exact_roll` needs `value` 1..10 (digit string OK; route passes `body.value`) → 400; roulette
   cards push spin mods `{kind: 'range', min, max}` / `{kind: 'exact', value}` / `{kind: 'rush'}`; a card-fixed spin refunds side bets
   already placed on the turn and refuses new ones (409). doSpin: exact = the number (no draw, no aim, no taxi / noise second roll),
@@ -1853,7 +1872,8 @@ Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (
   hop tween uses `hopPose`; after a move `P.settleAt` → 0.28 s `landPose`; idle = current pawn `bobPose`, others `breathePose`
   (desynchronised by order); tv quality / prefers-reduced-motion → no breathing / settle (hops stay).
 - `scene/pawnPreview.js` (lobby picker 3D preview, same API): `createPawnPreview(canvas, {meta | defs, size})` → `set(look)` (squashy
-  pop on change, camera frames the look's height), `play('hop' | 'cheer')`, `dispose()`; breathing + slow turn. `scene/podium3d.js`:
+  pop on change, camera = pure `previewFrame(positions)`: every vertex + the stand inside the round canvas while it turns —
+  wings / fishing rod / balloon no longer cropped), `play('hop' | 'cheer')`, `dispose()`; breathing + slow turn. `scene/podium3d.js`:
   `createPodium3D(canvas, {meta | defs, entries, reducedMotion})` — roster pawns (1st place with `expression: 'joy'`), tag heights per
   look, celebration hops via `hopPose` (others breathe); `snapshot()` unchanged (group photo 🧊 3D style).
 - Budgets (measured): per pawn bare 1,072–1,306 triangles, ≤ 1,926 with the heaviest prop in every slot (Pochette), test cap 2,000
@@ -2039,8 +2059,8 @@ fallback CHAIN), `assets-manifest` / `chara-pipeline` / `client-chara` counts). 
 - Room config `world: 'chiikawa' | 'real'` (`config.js` `WORLDS`, 400 「세계는 치이카와 모드(chiikawa) 또는 현실 모드(real) 중 하나여야
   합니다.」): `defaultRoomConfig()` / `validateRoomConfig({})` = **'chiikawa'** (new rooms); inside the engine a missing / unknown
   `config.world` = **'real'** (`worldOf`) → old saves, `makeRoom` engine tests and every pre-world fixture play today's content.
-  Admin create form 「세계」 select (always sent) + hint, room detail 「세계」 line (`worldText`), `adminSummary.world`; lobby mode label
-  appends 「🐹 치이카와 모드」 / 「🏙️ 현실 모드」 (`worldLabel`). Only the CONTENT differs (rules, roster looks, family rules are shared).
+  Admin create form 「세계」 select (always sent) + hint, room detail 「세계」 line (`worldText`), `adminSummary.world`; the lobby shows
+  it on its own world line (`#lobby-world` 「<b>🐹 치이카와 모드</b> · desc」; no longer repeated in the mode line). Only the CONTENT differs (rules, roster looks, family rules are shared).
 - Data: the data files ARE the real world. The Chiikawa world = overlay `server/data/worlds/chiikawa.json` `{<dataName>: patch}`
   (loader: `loadData('worlds/<id>')` — one sub-folder allowed — `getWorldOverlays()` = `{chiikawa}`). Pure module
   `public/js/shared/world.js` (no imports; `server/game/world.js` = `export *` + `dataForWorld(world, data?)` / `roomData(room,
@@ -2091,12 +2111,12 @@ fallback CHAIN), `assets-manifest` / `chara-pipeline` / `client-chara` counts). 
   payday?}` (anchor) then moneyChanged `weed` / `weedFee`. `balance.json.weed` (base) holds the knobs.
 - 쿠지 (holidays.js `kujiDraw`, `balance.lottoMode` 'numbers' (base) | 'kuji' (overlay)): at the era opening every holder of a
   `lotto` card (🎟️ 쿠지 응모권) draws one ticket (seeded) from `balance.kuji.prizes` (1등 0.02 money 150 + treasure `kuji_plush`
-  (overlay add, weight 0, 100–200), 2등 0.06 money 60, 3등 0.15 a random card, 4등 0.27 money 10 + 체력 +1, 꽝 휴지); news `kujiLuck`
+  (overlay add, weight 0, 60–120 since E2E-4 (was 100–200)), 2등 0.06 money 60, 3등 0.15 a random card, 4등 0.27 money 10 + 체력 +1, 꽝 휴지); news `kujiLuck`
   multiplies the chances of `luckRanks` 1–3 (꽝 shrinks; Chiikawa `lotto_fever` 1.25). `lottoDraw {eraId, kuji: true, entries [{charId,
   rank, prize {name, money?, cardId?, treasureId?, stats?}}]}` (no numbers; lines per entry) then moneyChanged `kuji` (CPU handicap),
   statChanged `kuji`, cardGained `{source: 'kuji'}`, treasureFound `{source: 'kuji'}` (`treasures.giveTreasure`). `room.lotto.draws`
-  keeps `{eraId, kuji: true, entries, at}`. `kujiExpectedValue(data, {luck})` (money + card at 0.5 × mean price + plush mean) = 15.75
-  (19.01 with the fever) < price 20 (tested). Records count kuji money as `luckWin`; highlights for 1등 / 2등.
+  keeps `{eraId, kuji: true, entries, at}`. `kujiExpectedValue(data, {luck})` (money + card at 0.5 × mean price + plush mean) = 14.55
+  (17.51 with the fever; 15.75 / 19.01 before the E2E-4 treasure cut) < price 20 (tested). Records count kuji money as `luckWin`; highlights for 1등 / 2등.
 - Presentation: `EVENT_TYPES` / `CUTIN_TYPES` / `BOUNDARY` / prompts `ANCHOR_TYPES` + huntResult, weedResult; `SCENES` + weed-field
   hunt-forest ramen-shop workshop sento bookstore cafe kuji (tones.json scenes + `sceneFallbacks` park / mountain-trail / kitchen /
   office / house (→ office chain) / office / kitchen / shop; manifest `bg-<scene>` todo); prompt looks hunt (career, shock,
@@ -2111,8 +2131,8 @@ fallback CHAIN), `assets-manifest` / `chara-pipeline` / `client-chara` counts). 
   ramen_bowl chimera_flee usagi_yaha rain_umbrella picnic_day island_trip hachiware_song momonga_tantrum kurimanju_cheers rakko_training
   labor_reward weed_job kuji_miss armor_shop_sale shisa_bakery pochette_fashion chimera_reward), money / loss labels, news (renamed +
   chimera_surge / weed_boom / ramen_price; new effect keys huntRewardMult huntInjuryMult weedMult jobSalaryMult eventMult kujiLuck in
-  `NEWS_DEFAULTS`), habits labels, `balance.shop.title` 「🛍️ 갑옷씨 상점」, awards (+hunt_king 토벌왕 hunts ≥ 3 / 60 split, weed_master
-  풀뽑기 명인상 level ≥ 3 / 50 all), titles (만년 풀뽑기 일꾼, 쿠지 인생, + 사스마타 마스터 hunts ≥ 5, 평화주의자 (≥ 3 hunts, always ran),
+  `NEWS_DEFAULTS`), habits labels, `balance.shop.title` 「🛍️ 갑옷씨 상점」, awards (+hunt_king 토벌왕 hunts ≥ 3 / 40 split, weed_master
+  풀뽑기 명인상 level ≥ 3 / 35 all — E2E-4; was 60 / 50), titles (만년 풀뽑기 일꾼, 쿠지 인생, + 사스마타 마스터 hunts ≥ 5, 평화주의자 (≥ 3 hunts, always ran),
   풀뽑기 1급), line pools that named 회사 / 코인 / 로또 … and MC job / lotto (쿠지) pools.
 - Props (base props.json, world-independent; the client draws them): sasumata, armor_helmet, guitar, head_towel (choosable → 34),
   weed_basket, ladle, hammer, turner, delivery_box, armor_plate; `shared/roster.js` DEFAULT_PROPS / DEFAULT_JOB_PROPS mirror them.
@@ -2212,3 +2232,183 @@ with 2 CPUs; `lineup.cjs` 3D pawn lineup; `props2d.mjs` / `art.mjs` sharp contac
   hand 48–92, back 60–112 triangles (≤ the heaviest prop of each slot → the per-pawn budget 2,000 holds); armor_helmet is a TALL_HAT.
 - CSS `public/css/world.css` (linked after chara.css): side tags, chimera moods / foe / clash / coins / tumble, stamp / badge / work
   weeds, kuji box / tickets / plush, battle / field cards (cut-in + 2D sheet; 390 px: one column), lobby world line, reduced motion.
+
+## E2E round 4 fixes (server)
+Source: the E2E-4 tester notes (session scratchpad `e2e4/findings.md`, harnesses `e2e4/t2` / `e2e4/t4`). Tests:
+`test/fixes-e2e4-engine.test.js`, `test/fixes-e2e4-server.test.js` (+ updated expectations in `cpu-server`, `loop-board`, `board`,
+`engine`, `fixes-playtest`, `fixes-engine`, `stage6-life`, `stage6-jobs`, `cards-bluered`, `presentation`, `cworld`, `assets-routes`,
+`chiikawa-server`). Measurement harness (copies of the tester's t4 scripts + `luck/luckvar/hidden/rep/frames/slow.mjs`, a
+`base/` copy with the balance edits reverted for "before"): session scratchpad `fixa/`.
+- **Bugs / stability**: ① side bets vs 택시 / 층간소음 — see Domain notes (`BET_VOID_MODS`; a played taxi voids + refunds the
+  turn's bets, log 「…카드로 두 번 돌려서 이번 훈수 베팅은 무효예요 (판돈 반환)」); every pick's EV ≤ 0 in every mod state is tested by
+  exact enumeration. ② RoomStore debounce max wait 2 s (Layout Stage 1). ③ slow SSE consumers dropped past 1.5 MB unsent (checked
+  with a real paused TCP client: dropped at ≈ 1.6 MB, presence → offline, server fine). ④ `superseded` before a stream is evicted
+  (≥ 4 tabs). ⑤ boot robustness: `RoomStore.load` skips saves with malformed players / characters / status (Korean log) and
+  normalizes log / config / code; `GameRunner.restore()` wraps every room — a playing room the engine can't run
+  (`playingRoomProblem`: no characters / board eras / turn order / config, or migrateLoopBoard throws) is kept but marked broken
+  (`runner.brokenReason(id)`, Korean log 「방 …을(를) 복원하지 못해 멈춰 둡니다…」): no timers, `dispatch` / `end` → 409 「이 방은
+  저장 파일이 손상돼서 진행할 수 없어요. 관리자가 삭제해 주세요. (…)」, admin `GET /admin/api/rooms[/:id]` rows carry `broken` (reason |
+  null), delete works. `start / end / dispatch` go through `#transact`: an unexpected engine error → logged + `{ok: false, status: 500,
+  error: '게임을 처리하다 오류가 났어요. 관리자에게 알려 주세요.'}`; the deadline and CPU timer callbacks are try/catch'd (a bug can't
+  crash the process from a timer). ⑥ 기초연금 by family average (Domain notes). ⑦ names: `lobby.cleanName` also drops U+034F, U+17B4–
+  17B5, U+180B–180F and lone surrogates; variation selectors (U+FE00–FE0F, U+E0100–E01EF) survive only right after a visible base
+  character (❤️, 1️⃣, ideographic variants); a name needs at least one visible base character (not whitespace / a mark / a selector)
+  → 「️」, 「឵」, 「᠋͏」 … refused. (Client mirror `format.cleanName` = Fix-B.) ⑧ `studio.upload` decodes the whole
+  image inside a try (a truncated PNG passes `metadata()` but fails to decode) → 400 「이미지 파일을 읽을 수 없습니다.」; the app
+  error handler answers 413 「요청이 너무 커요.」, other 4xx 「요청 형식이 올바르지 않습니다.」. ⑨ SSE board cache (`boardKey`,
+  below). ⑩ 로또 / 쿠지 tickets: `cardLost {reason: 'used'}` per used ticket right after its `lottoDraw` (holidays.js `takeTicket` +
+  cards.js `emitLost`, now exported); `gameStarted.laps` = lap per loop era and the final race's length (no nulls; `turns` stays null
+  for the final era — no client reads either). ⑪ MC 봄이 「투표 시간은 1분입니다.」 → 「마감 전까지는 투표를 바꿀 수 있습니다.」 /
+  「마감 전에 투표해 주세요.」 (time-free; `mvpVoteMs` is 3 min); baby events `doljabi_*` say 「첫 생일 선물 고르기」 (ids kept; the
+  CH-1 wording grep now also bans 돌잡이).
+- **SSE board cache (item 9)**: the engine sets `room.boardKey` whenever it builds a board (`startGame`, `migrateLoopBoard`; old
+  saves get it on their next action) = `view.boardKeyFor(board)` (FNV-1a of the board JSON + its length, base 36; rooms without one
+  get the same key computed + WeakMap-cached in `view.boardKeyOf`). `viewFor(room, sid, {board})` always carries `boardKey`
+  (null without a board) and leaves `board` out with `board: false`. `roomStore.stateFrame(room, sub)` sends the board only when the
+  stream (`sub.boardKey`) has not got that key yet — the first frame of every stream (the SSE route's initial state now goes through
+  `store.subscribe(…, {state: true})`), game start, a migration. HTTP responses keep the full board. Measured (8-character lifetime,
+  4 casual + 4 CPU, every action's state frame for one client, 3 seeds × both worlds): mean frame 64–66 → 27–30 KB, ≈ 40–42 → 17–19
+  MB per client per game (−55…57 %); the largest frame (the one with the board) ≈ 100 → 64 KB.
+- **Client network contract (public/js/api.js; UI = Fix-B)**: `connectEvents(roomId, handlers)` — `handlers.state` always gets a
+  room WITH `board` (the stream's cached board re-attached by the pure `attachBoard(cache, state)`; a frame whose key the cache
+  doesn't hold → the room is fetched over HTTP instead); `room.boardKey` is available (board3d can use it as its `setBoard` key).
+  `superseded {roomId, reason: 'tabs', max}` → the EventSource is closed for good (no auto-reconnect ping-pong), then
+  `handlers.superseded(payload)` + every `onSuperseded(fn)` listener; `sseSuperseded()` = the payload or null (reset by the next
+  `connectEvents`). 「다시 연결」 = call `connectEvents` again (app.js `enterRoom`), which supersedes the oldest other tab instead.
+- **CPU pacing (B5)**: `CPU_DELAY_MS` spin 1000 / prompt 800 / trade 800 (+ cut-in 1200), was 1600 / 1200 / 1200 (+ 2500).
+
+## E2E round 4 fixes — client pages (lobby / picker / result / admin; Fix-B2)
+Source: session scratchpad `e2e4/findings-la.md` 1–22 + the page items of `findings.md` (T1 / T3). E2E: session scratchpad `fixb2/`
+(`measure.cjs <tag> join,lobby,spec,picker,admin,assets` per-item geometry on the real server, `show.cjs` injected rich result
+(6 awards, 5 treasures, titles, open MVP vote) through every show step + page + photo, `pick3d.cjs` big props in the 3D preview;
+screenshots `fixb2/shots/`). Note: a Playwright full-page screenshot drops the `pointer: coarse` emulation of that page — measure
+touch targets before taking one. Tests: `test/client-pages.test.js`.
+- Picker (`lobby.css` / `chara.css`): phones — the dialog scrolls and `.cz-body` is `flex: 1 0 auto` (never shrinks under its
+  content) → the sticky footer stays at the screen bottom at every scroll position (was mid-screen / off-screen at max scroll);
+  sticky title bar (✕ 40 px). Preview box `--pv-w/--pv-h`, the 3D canvas = a square of min(both) (was squashed 198×170). Stage tools:
+  2D|3D on its own line, the four action chips in ONE row (`.cp-acts` 4-column grid; 2 columns in landscape). Prop names wrap to two
+  lines (keep-all) instead of an ellipsis. Coarse pointers: slot tabs / seg / chips / random / footer ≥ 40 px. Short landscape
+  (≥ 769 px wide, ≤ 520 px tall): full-screen dialog, compact bars, stage grid = 132×150 preview beside who / chips / tools, name
+  below. `pawnPreview.previewFrame(positions)` (pure): fits every vertex (distance from the turning axis + height from the centre) and
+  the stand into the circular canvas.
+- Lobby (`lobby.css`, `app.js`, `ui/lobbyText.js`): mode line = `modeSummary(room, meta)` → `<b>모드</b> · 초기 자금 · 🎯` + a small
+  era line (`.lm-eras`, every era / extra nowrap); the world appears only on `#lobby-world` (`<b>icon name</b> · desc`). `.player-list`
+  one `minmax(0, 1fr)` column (320 px no h-scroll), `.pname` title. Empty hints `.empty-hint` span the grid, centred. 편집/삭제
+  `flex: 1 1 0; max-width 64px; nowrap`. My panel: `#my-list-wrap` flex column, `.my-chars` scrolls inside, the two buttons always
+  visible (bottom sheet and sidebar); desktop sidebar max-height leaves 60 px for the reaction bar; short landscape → 320 px sidebar,
+  buttons side by side. Spectators / TV ≥ 769 px: one centred 880 px column. CPU tools: select / add / ✕ one height (30, coarse 40;
+  chips 36 / 46). Reaction bar: coarse 40×40 buttons; when the row doesn't fit it scrolls and the hidden side fades (`data-more`
+  left|right|both from `scrollCue`, CSS mask). Join: empty `.form-error` hidden. Top bar on non-game screens (and the admin pages)
+  lines up with the 1200 px column ≥ 1232 px. Superseded stream (api.js `superseded`, ≥ 4 tabs of one session): the 연결 badge
+  becomes the button 「● 다시 연결」 (`.conn.gone`, coarse 40 px, + a 7 s toast) → `enterRoom` takes the stream back (the server then
+  retires the oldest other tab — one tab per click, no ping-pong); the watchdog / `online` handler skip a superseded tab.
+- Result show / page (`stage9.css`, `resultShow.js`): the show body scrolls its own content (`.rshow-body` overflow auto, MC booth
+  `flex: none` below it — no more MC over award titles / ranking rows); phones with the 「👑 MVP 투표」 pill at the bottom → `.rshow.
+  has-vote` padding so the booth sits above it; ≤ 480 px LIVE = a red dot, step dots on their own line, the title may use two lines;
+  landscape ≤ 500 px tall = grid (body left, MC booth right, appraisal cards up to five per row). Appraisal cards / award cards: flex
+  rows centred (last row too); award cards equal width per row via a container query (`.rs-awards` `container-type`, `--n` 1–4).
+  Ranking rows: markup `div.rk-body > div.rk-head (name · owner · 👑)`; ≤ 600 px rows are a grid (medal · face · name · total on line 1,
+  titles / bar / career / money full width below; `.rk-body` `display: contents`). Tools left-aligned (same edge as the title),
+  nowrap labels, ≤ 480 px two equal columns with short labels (`.rs-tl-long` hidden: 「▶ 다시 보기」「📸 단체 사진」, aria-labels
+  keep the full text), coarse 44 px. Legend 10 px below 「▼ 4위부터」. `.rshow` and the 📸 pose / style buttons are
+  `user-select: none` + `touch-action: manipulation` (no text selection on a double tap).
+- Admin (`admin.html`, `admin.css`, `admin.js`): `a.btn` no underline (inline-flex), ≤ 480 px short logo 「🛠 관리자」 and buttons
+  「🎨 에셋」「🎲 게임」 (`.logo-long` / `.tb-long`, `&nbsp;` inside the flex item), era fieldset legend = 「시대 길이(턴)」 + `.era-note`;
+  era rows wrap between chips (기본 n턴 · 🗺️ n칸 순환 · 최소 n are nowrap; final row label split into two chips; ≤ 400 px input
+  column 72 px); coarse: `.btn.small/.tiny` 40 px, era inputs 44 px. Stale hints fixed: skill roulette (no number deck), 명절 only
+  중학생·중년. Asset studio: caption = `ui/assetText.js` `acceptedCaption(acc)` (후보 #n · model | 업로드 | 가져오기 (file); compact
+  date; parts nowrap — was 「후보 #undefined · import」), one-figure `.accepted-box` = one column (≤ 520 px figure; `.two` for pose /
+  sprite), item rows carry a `title`, coarse chips / selects 40 px.
+- **Balance (both worlds; "before" = the repo before these fixes, measured on the `fixa/base/` copy; casual / expert = the
+  `cpu-game.js` human proxies; duels = 1 test seat + 3 expert seats, lifetime, seats rotate)**:
+  - B1 「모두를 위한 소원」 never counts toward `wishes` (passTile.js; the hard CPU's 산신령 pursuit term left wishAll). Duel 「always
+    wishAll」 1st 38.8 → 11.5 % (real, Δ total +254 → −337) / 32.5 → 9.0 % (치이카와) — no longer an exploit (spamming it now forgoes the
+    free buff / wishes; a cheaper offering 4 changed nothing, 12 %). 산신령 for 4 experts 10.2 → 0.5 % of characters (threshold 8 kept).
+  - B2 routes: `routePools.money.eraOverrides` young `{money: {weight: 3}}` + middle_age `{treasure: {weight: 0.5}, house: {weight:
+    2}}`, `routePools.career.eraOverrides.young {money: {scale: 1.6}, loss: {weight: 1}}` (base board.json; the overlay keeps the base
+    `eraOverrides`). 4 casual × random routes (1000 games; before 600): real young love / career / money 27.7 / 21.5 / 26.0 → 26.9 /
+    23.7 / 24.2, middle_age 24.2 / 22.9 / 27.9 → 26.1 / 24.8 / 24.3; 치이카와 young 27.4 / 22.1 / 25.5 → 27.6 / 24.5 / 22.7, middle_age
+    24.5 / 22.0 / 28.7 → 24.8 / 25.5 / 25.0 (fair 25; every route within ±3 pt).
+  - B3 `board.json loop.pass` every 45 / min 1 / max 3 (was 27 / 2 / 4; `loopConfig` defaults too). `simulate --games 300 --seed 11`
+    (random policy) decisions per character: real lifetime 36.3 → 30.6 (찬스 광장 10.5 → 5.6), adult 20.6 → 18.3, kids 13.9 → 10.6
+    (5.6 → 2.9); 치이카와 lifetime 37.8 → 32.1, kids 14.3 → 11.1 (new simulate line 「모드별 캐릭터당 선택」).
+  - B4 treasures × 0.6 with max ≤ 400 (Stage 9 data; kuji_plush 60–120); awards dabok 100, max_level 50, 🐹 hunt_king 40 / weed_master
+    35. 4 casual × 400 lifetime: the winner changes without treasures real 27.5 → 14.5 %, 치이카와 28.0 → 12.8 % (without awards 16.0 →
+    15.3 / 17.0 → 16.5 %); treasure value per character ≈ 190–200 → 90; characters with ≥ 500 in treasures 13 → 1.8 %. (Tried: caps
+    500 / 600 alone 26–28 %, × 0.6 alone ≈ 20 %, × 0.5 ≈ 18 %.)
+  - B5 CPU pacing above.
+  - B6 jobs.json chaebol `netWorth` 1200 (was 2000), landlord `houseSwaps` 3 (was 4; shared by both worlds). Hidden jobs held (300
+    games): real casual × 4 12.3 → 11.3 % (chaebol 0 → 0.3, landlord 0.3 → 0.7; trot_star 6.8 → 4.5, astronaut 4.0 → 4.9), casual 1 +
+    3 CPU: human 11.7 → 10.3 %, CPU 26.8 → 19.4 % (trot_star 16.3 → 13.9 — the CPUs' own dream-job table; 산신령 5.7 → 0 by B1);
+    치이카와 casual 7.2 → 9.8 % (armor_san 5.6 → 6.5, landlord 0.1 → 0.7), CPU 12.2 → 3.8 % (산신령 7.6 → 0).
+  - B7 line pools ≥ 20 (≤ 30) for pass_tile, house, card, job, stat_up, route_choice, club, promotion (+ the 🐹 overlay's job /
+    promotion pools); tests allow 20–30 for exactly these tags. Shown lines (cut-in anchors + prompts) per 8-character game: pass_tile
+    91 → 54 uses at 9.1 → 2.7 per line, house 5.9 → 1.4, card 5.0 → 1.3, job 3.6 → 1.0, promotion / route_choice / club 2.6–3.2 →
+    0.8 per line (busiest remaining small pools: date / heart / hunt ≈ 2.3–2.4 per line).
+  - B8 생일 파티 답례: `balance.groupGift.thanks {stat: charm, gain: 1, chance: 0.5}` — each giver rolls once (game RNG) → statChanged
+    reason `thanks` + log 「💝 ○○의 답례 인사! …」; the gift option carries `desc` 「10만원 선물 · 답례로 매력 +1 (50%)」, `price`, `thanks`
+    (`spaces.giftThanks(data)`). Hard CPU `answerGroupGift`: gift when the stat is useful and 0.5 × 60 > 1.5 × the gift. Duel always /
+    never gift: real 20.5 / 22.3 → 25.0 / 26.8 %, 치이카와 23.0 / 23.3 → 21.5 / 22.3 % (Δ total within noise both ways).
+  - B9 kids: `passTile.wish.moneyByEra {baby, elem, middle, high: 35}` (base prize 25 elsewhere; passTile.js reads `moneyByEra[c.era]`).
+    Kids duels (600, current board): real pass_pass / pass_wish / shop_leave / control / shop_buy 29.5 / 27.0 / 26.5 / 24.3 / 23.8 →
+    28.0 / 30.2 / 26.0 / 24.0 / 23.5 % (Δ total wish +1 → +13 vs pass +17 → +10); 치이카와 pass 32.5 → 28.8, wish 29.7 → 32.5 (+4 → +18 vs
+    +28 → +19) — spending at 찬스 광장 is no longer strictly worse than passing (40 / 50 made wishes dominant). ("current board" =
+    after B3; on the old board with 2 찬스 광장 per kids lap: real pass 31.3 / wish 32.3, 치이카와 pass 30.8 / wish 42.5 %.) The kids shop stays −EV
+    (adult-priced items, pass_buy 7–10 %).
+  - Checks after all changes: `cpu-game --matrix --games 200 --seed 1` — real / 치이카와: casual 1 + 3 CPU human 1st 96.5 / 98.5 %, random 1
+    + 3 87.0 / 90.5, casual 2 + 2 100 / 100, casual 4 + 4 100 / 100, expert 1 + 3 99.5 / 100, adult 98.5 / 97.0, kids 100 / 100, skill
+    97.5 / 96.0 and random 87.5 / 91.0, vs all-🐢 / 🙂 / 🔥 95.0 / 96.5 / 99.0 and 98.5 / 96.0 / 97.0 % (every target ✅); CPU-only rooms
+    (`--cpus 4 --games 100 --seed 9`, both worlds) all finish. `simulate --bias --games 300 --seed 1`: 9.3–14.7 %, spread −0.28; aim
+    duel 100 × seed 1: CPU 23.8 · max 16.9 · none 9.4 · random 7.5 · min 5.0 %; pass duel 60: always pass 17.5 · CPU 13.8 · never 6.3 %.
+
+## E2E round 4 fixes — in-game client layout (Fix-B1)
+Source: session scratchpad `e2e4/findings-lb.md` (all) + the in-game items of `e2e4/findings.md` T1 / T3. E2E: session scratchpad
+`fixb1/lb/` (`fit.cjs` cut-in / prompt fit per viewport 320×568 … 1920×1080, 844×390, 375×667, 1366×768, TV; `layout.cjs` header /
+board / dock / hand / sheets / inbox; `hudprobe.cjs` 3D spectator HUD lag; `fu.cjs` Fix-A follow-ups; `launch.mjs` = the real server on
+4301 + a unix-socket control hook; shots `fixb1/after/`, frozen-copy baseline `fixb1/before/`). Tests: `test/client-cutinFit.test.js`
+(+ a block in `client-bluered`).
+- **Cut-in fit** (pure `public/js/ui/cutinFit.js`): the stage is `--ci-wmax` wide (desktop min(1040, 100vw − 32), phones 100vw − 16,
+  vertical-reaction-bar screens 100vw − 200, TV min(1080, 100vw / 1.4 − 40)); cutin2d `fit()` (render, prompt updates, resize, a
+  `ResizeObserver` on the box → next frame) measures the real stage and sets `--ci-winw` (16:9 window) / `--ci-boxw` (box + tabs):
+  `fitStacked` (the window gets the height the box + tabs leave, ≤ 4 passes because a narrower event box gets taller;
+  `minWindowWidth` = max(240, ½ stage), prompts on < 700 px tall screens max(200, ½ stage); `boxWidth` = full width for prompts, events
+  follow the window but ≥ 680 px), `wantsSide` (≥ 900 px wide, aspect ≥ 1.25, stacked window < 62 % → `.cutin.fit-side` = window left /
+  box + tabs right — kept only when the stacked layout didn't fit or the side window is > 10 % bigger; phone landscape ≤ 500 px tall
+  always uses that grid), `bodyCap` (last resort: `.cutin.fit-scroll` → the `.ci-body` wrapper (chips / text / extra / options)
+  scrolls inside the box with a fade, ▼ and tabs stay on screen; ≥ 96 px). TV zoom: sizes are read as offsetHeight × rect /
+  offsetWidth, 2 px spare. Typed text: a hidden ghost (`.ci-text-ghost` grid: the full line + the studio's last 3 lines, stacked) under
+  `.ci-text-live` → the box never grows while typing and studio lines never overlap the extra rows. Narrow screens: `.cutin.exit-pad`
+  (stage below the 🚪 pill, era label beside it). Phones: compact prompt options (min-height 48; < 700 px tall 44 + 15 px text); 매물
+  cards ≤ 480 px hide the desc, art 64 px; hunt / weed cards keep-all.
+- Chips: > 3 → `.ci-chips.row` (wrapping row, not the right float); beyond `chipRowCap` (2 rows; 3 on ≥ 760 px tall and ≥ 400 px wide)
+  they fold into 「+n ▾」 (`data-ci-act="chips"`, toggles all + 「접기 ▲」, refits): `chipHideOrder` = `minor` chips from the end first
+  (per-guest 집들이 / 입양 축하금 chips — short 「💌 이름 +n만원」 when > 2 guests), then the rest from the end; the first chip and `keep` (합계)
+  stay. Chip `who` = an ellipsized `<bdi class="ci-chip-n">`.
+- Tabs: > 4 characters → compact (others: portrait + 3.4em name; phones / landscape portrait only), the current tab centred after every
+  fit, `fade-l` / `fade-r` masks; 🔊 icon-only on phones (aria-label). Contrast: `.ci-era` / `.ci-exit` dark pills. Coarse pointers:
+  ▼ 44×40, 🚪 40, 🔊 40×40.
+- HUD vs 3D board (spectators / TV / back-to-back CPU turns): cutinPolicy `hudHoldLeft({heldMs, mine})` — the HUD waits for the board at
+  most `HUD_HOLD_MS` 3000 (others / spectators) / `HUD_HOLD_MINE_MS` 8000 (my turn); game2d re-renders when it runs out (`ui.hudHeldAt`,
+  `ui.hudTimer`); `boardBehind({stateTurn, boardTurn})` (≥ `BOARD_BEHIND_TURNS` 2) → `animator.rush()` (`ui.animTurnNo` = the last
+  `turnStarted` the board played, via a wrapped handler). sync3D passes `k:${room.boardKey}` as the `setBoard` key (no JSON key per render).
+- Shrink-to-fit centring (a `left: 50%` box is capped at half the screen): `.toast` (base.css) = `left/right + margin-inline: auto +
+  width: fit-content`, max min(560, 100vw − 32), keep-all, below the inbox while it shows (`body.has-inbox`); `.news-flash` the same (own
+  `nf-show` keyframes); `.roulette-pop` max-content; 월급날 ribbon nowrap.
+- Header / board head: chips one height (28 px); ≤ 430 px the turn info shrinks and the header's 「이번 시대 마지막 턴!」 is hidden (the dock
+  hint keeps it); the 📰 badge is icon-only when `.g-top` < 300 px (container query). Era tabs on their own row, the current one scrolled
+  into view + fades (`scrollHint`); phones (≤ 600 px): left-aligned icon tools (`.tl-l` labels hidden, 「🎬 간단히」 via `narrowTools`).
+- 2D track (rules in loop.css — it loads after game.css): centred, uniform rows (`grid-auto-rows` 96 / 88 px ≤ 480), amounts nowrap,
+  labels keep-all + break-word, route labels = icon line + name (`.rl-ic` / `.rl-n`); pawns one row: ≥ 3 overlap (`.pawns.crowd`), ≥
+  `MAX_TILE_PAWNS` 4 → two + 「+N」.
+- Dock: sticky only on screens > 600 px tall (shorter ones use the floating 🎡); the sticky phone dock hides 「최근 룰렛」 and has a 52 px
+  dial; `fitHand` caps per breakpoint (sticky phone 44) with min 38 / gap 3 → six cards fit 320 px; the 🏅 「×n」 badge is top-right;
+  ≥ 700 px the hand header wraps. `.b3-sub` sits above whatever covers the canvas bottom (`--b3-cover-b` from `boardCover().bottomPx`).
+  Sheets: card sheet / trade dialog `.cs-actions` sticky at the sheet bottom. Reaction bar (game): 40×40 on touch, scroll-snap + fades,
+  hidden while the skill panel is open. Long names wrap to 2 lines (side list, target picker, inbox); `.gd-fact` top-aligned. Touch hit
+  areas: `::after` on `.news-badge` / `.hand-tab`; `#leave-btn`, era tabs, tools, `.td-kind`, inbox buttons, `.sk-close` 40 px. `.mc >
+  svg` alone gets `overflow: visible` (Chrome warned on `<img>`). 3D roulette: 6 and 9 underlined. 베팅하기 = primary.
+- Fix-A follow-ups: side bets close while the spinner has ANY bet-voiding mod — `shared/cards.js` `BET_VOID_MODS` (= the server's, tested)
+  + `betBlockReason(spinMods)` (택시 max2 / 층간소음 min2 too; `rollConstraint` stays for the fixed rolls); `cardLost {reason: 'used'}`
+  (로또 복권 / 쿠지 응모권 spent in a draw): `cardLostInfo` → 「🎱 복권 사용」/「🎟️ 응모권 사용」 `quiet` — folded into its lottoDraw group
+  (never a lone banner, no float / 3D pop); 생일 파티 답례 `statChanged {reason: 'thanks'}` → chip 「🎁 답례 · 이름 ✨ 매력 +1」, float 「🎁 답례
+  ✨매력 +1」, 3D 🎁 float (the gift option's server `desc` shows in the cut-in / 2D list).

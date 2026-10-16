@@ -5,7 +5,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  BET_VOID_MODS,
   DEFAULT_CARDS,
+  betBlockReason,
   cardColor,
   cardEffectText,
   cardInfo,
@@ -38,6 +40,7 @@ import { planCutins, tagLabel } from '../public/js/ui/cutinMap.js';
 import { haltNote } from '../public/js/shared/loop.js';
 import { classifyGroup, isBannerGroup } from '../public/js/ui/cutinPolicy.js';
 import { cardChipHtml, cardHtml, shopOptionsHtml } from '../public/js/ui/cardArt.js';
+import { BET_VOID_MODS as SERVER_BET_VOID_MODS } from '../server/game/cards.js';
 
 // the server's cards.json shape for the new cards (color + kind)
 const META = {
@@ -280,6 +283,39 @@ test('cardLost: chips (💞 소멸 · 🩹 회복 · 🗑️ 버림 · 🏅 ×n)
   assert.equal(isBannerGroup(groups[1]), true);
   assert.equal(classifyGroup(groups[1], { mine: ['c2'], mode: 'full' }), 'banner');
   assert.equal(tagLabel(groups[1].anchor), '🩹 부상 회복');
+});
+
+test('E2E-4 follow-ups: side bets close for every bet-voiding mod (택시 / 층간소음 too), 응모권 / 복권 used in a draw fold into it', () => {
+  // the server's BET_VOID_MODS (cards.js) — 🚕 max2 / 📢 min2 roll twice, so a visible one would hand bettors a +EV pick
+  assert.deepEqual([...BET_VOID_MODS].sort(), ['exact', 'max2', 'min2', 'range', 'rush']);
+  assert.deepEqual([...BET_VOID_MODS].sort(), [...SERVER_BET_VOID_MODS].sort()); // mirrors the server
+  assert.equal(betBlockReason([]), null);
+  assert.equal(betBlockReason(undefined), null);
+  assert.equal(betBlockReason([{ kind: 'plus', value: 2 }, { kind: 'minus', value: 3 }]), null); // ⚡ / ✂️ keep the roulette value
+  assert.match(betBlockReason([{ kind: 'max2', by: 'c2' }]), /두 번 돌려서/);
+  assert.match(betBlockReason([{ kind: 'min2' }]), /두 번 돌려서/);
+  assert.match(betBlockReason([{ kind: 'range', min: 6, max: 10 }]), /카드로 정해져서/);
+  assert.match(betBlockReason([{ kind: 'max2' }, { kind: 'exact', value: 3 }]), /카드로 정해져서/);
+  assert.equal(rollConstraint([{ kind: 'max2' }]), null); // the dock hint stays for the fixed rolls only
+  // cardLost reason 'used': a quiet chip text, 🎟️ 응모권 (쿠지 world) / 🎱 복권 (real world)
+  const kujiMeta = { cards: { cards: [{ id: 'lotto', name: '쿠지 응모권', icon: '🎟️', kind: 'passive', color: 'red' }] } };
+  const lottoMeta = { cards: { cards: [{ id: 'lotto', name: '로또 복권', icon: '🎱', kind: 'passive', color: 'red' }] } };
+  const used = { type: 'cardLost', charId: 'c1', cardId: 'lotto', uid: 'k1', reason: 'used' };
+  assert.equal(cardLostInfo(used, kujiMeta).text, '🎟️ 응모권 사용');
+  assert.equal(cardLostInfo(used, kujiMeta).quiet, true);
+  assert.equal(cardLostInfo(used, lottoMeta).text, '🎱 복권 사용');
+  assert.equal(cardLostInfo(used, lottoMeta).glyph, '🎱');
+  assert.deepEqual(cardLostChips([used, { ...used, uid: 'k2' }], kujiMeta).map((c) => c.text), ['🎟️ 응모권 사용 ×2']);
+  assert.equal(tagLabel({ type: 'cardLost', reason: 'used' }), '🎟️ 응모권 사용');
+  // emitted right after its lottoDraw → follow-ups of the draw; never a lone banner (even split from it)
+  const draw = { type: 'lottoDraw', eraId: 'young', kuji: true, entries: [{ charId: 'c1', rank: 5, prize: { name: '꽝' } }, { charId: 'c2', rank: 4, prize: { name: '4등', money: 10 } }] };
+  const groups = planCutins([draw, used, { ...used, charId: 'c2', uid: 'k2' }, { type: 'moneyChanged', charId: 'c2', delta: 10, reason: 'kuji' }]);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].anchor.type, 'lottoDraw');
+  assert.deepEqual(groups[0].cards.map((c) => c.reason), ['used', 'used']);
+  assert.equal(planCutins([{ type: 'turnStarted', charId: 'c1' }, used]).length, 0);
+  // other lone cardLost reasons still get their banner group
+  assert.equal(planCutins([{ ...used, cardId: 'taxi', reason: 'discarded' }]).length, 1);
 });
 
 test('markup: colour frames, 보유 / 사용 / 자동 / 부상 tags, 🏅 ×n stack, chips, shop tags', () => {

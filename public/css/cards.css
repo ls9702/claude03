@@ -108,6 +108,8 @@ button.cardf:focus-visible { outline: 3px solid rgba(255, 122, 47, 0.55); outlin
 .ti-a { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 4px; }
 .ti-a .btn { min-height: 34px; }
 body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px)); }
+/* a toast never covers the inbox's 수락 / 거절 (e.g. the 「거래를 제안했어요」 toast arriving with the offer) */
+body.has-inbox .toast { top: calc(var(--topbar-h) + 12px + var(--inbox-h, 0px)); }
 @media (max-width: 480px) { .trade-inbox { left: 8px; right: 8px; width: auto; } }
 
 /* ---------- side list / detail card / result ---------- */
@@ -325,7 +327,7 @@ body.has-inbox .ev-banner { top: calc(var(--topbar-h) + 8px + var(--inbox-h, 0px
 .cardf .cf-tag.t-status { background: #4b5563; }
 .cardf .cf-tag.cf-auto { background: #fff; color: #b91c1c; box-shadow: inset 0 0 0 1.5px #e2504c, 0 1px 2px rgba(0, 0, 0, 0.2); }
 .cardf .cf-stack {
-  position: absolute; right: -5px; bottom: -5px; min-width: 1.6em; background: #f59e0b; color: #fff; font-size: 0.68rem; font-weight: 900;
+  position: absolute; right: -5px; top: -5px; min-width: 1.6em; background: #f59e0b; color: #fff; font-size: 0.68rem; font-weight: 900;
   border-radius: 999px; padding: 0 5px; line-height: 1.55; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); text-align: center;
 }
 .cardf.stacked .cf-frame { filter: drop-shadow(3px -3px 0 #93b4f0) drop-shadow(3px -3px 0 #6d93dd) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18)); }
@@ -378,3 +380,32 @@ button.cardf.held:hover, button.cardf.held:focus-visible { transform: translateY
 .roll-lim.rush { background: #fef3c7; color: #92400e; }
 .sk-cell.out { opacity: 0.35; background: repeating-linear-gradient(135deg, #eee 0 4px, #ddd 4px 8px) !important; color: #999 !important; }
 .sk-lim { text-align: center; margin: 6px 0 0; font-weight: 800; font-size: 0.85rem; color: #991b1b; }
+/* card sheet / trade dialog: the action row sticks to the bottom of the sheet (닫기 / 사용 / 제안하기 reachable on
+   short screens without scrolling past the target list — 320×568, 844×390) */
+.g-sheet .cs-actions {
+  position: sticky; bottom: calc(-20px - env(safe-area-inset-bottom)); z-index: 2; margin: 14px -16px calc(-20px - env(safe-area-inset-bottom));
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 16px rgba(255, 255, 255, 0.9);
+}
+@media (min-width: 900px) { .g-sheet .cs-actions { border-radius: 0 0 20px 20px; } }
+@media (max-height: 500px) { .g-sheet { max-height: calc(100dvh - 12px); } }
+.cs-tn b { word-break: keep-all; }
+/* target picker / inbox: long names wrap (two lines) instead of ending in 「…」 */
+.cs-tn b { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ti-tt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+/* shop product cards (320 px): the kind pill stays one line, the cards line up */
+.shop-item .si-tag { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.shop-item .si-name { word-break: keep-all; }
+@media (max-width: 480px) { .shop-item .si-tag { font-size: 0.6rem; padding: 0 6px; } }
+/* hand header beside the spin button (≥ 700 px): title + owner tabs on one line, the hint below it (was squeezed to
+   「🃏 치이…」 with the 3rd tab hidden and 「6/6」 clipped) */
+@media (min-width: 700px) {
+  .spin-dock:has(.hand:not([hidden])) .hand-head { flex-wrap: wrap; row-gap: 2px; }
+  .spin-dock:has(.hand:not([hidden])) .hand-t { flex: 0 1 auto; min-width: 0; }
+  .spin-dock:has(.hand:not([hidden])) .hand-tabs { flex: 1 1 0; min-width: 6em; }
+  .spin-dock:has(.hand:not([hidden])) .hand-hint { flex: 1 1 100%; }
+}
+.hand-t small.hand-n { white-space: nowrap; }
+.hand-tab { min-height: 26px; padding: 2px 10px; max-width: 7.5em; }
+.hand-tabs { scroll-snap-type: x proximity; }
+.shop-item .si-desc { word-break: keep-all; }

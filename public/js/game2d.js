@@ -15,8 +15,10 @@ import {
   MY_TURN_CATCHUP_MS,
   PROMPT_BOARD_WAIT_MS,
   betPicks,
+  boardBehind,
   classifyGroup,
   eraBannerText,
+  hudHoldLeft,
   involvesMe,
   markRepeats,
   mergeGroups,
@@ -43,6 +45,7 @@ import {
   heldCards,
   meritCount,
   rollConstraint,
+  betBlockReason,
   statusCards,
   tradableCards,
   useCardBody,
@@ -211,6 +214,8 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     const raw = uiRef.ui?.rawRoom;
     return raw ? worldMeta(m, worldOf(raw)) : m;
   };
+  // phones: compact toolbar (the cut-in select names only the mode; full label in aria-label / title)
+  const narrowTools = !!globalThis.matchMedia?.('(max-width: 600px)').matches;
   root.innerHTML = `
     <div class="g-top card">
       <div class="g-era-line"><span class="era-chip" data-el="era"></span><span class="muted small" data-el="turninfo"></span>
@@ -224,16 +229,16 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
           <div class="board-head">
             <div class="era-tabs" data-el="tabs" role="tablist" aria-label="시대"></div>
             <div class="board-tools">
-              <button type="button" class="btn tiny ghost" data-el="camreset" hidden title="카메라를 현재 캐릭터로 되돌려요">🎥 카메라 리셋</button>
+              <button type="button" class="btn tiny ghost" data-el="camreset" hidden title="카메라를 현재 캐릭터로 되돌려요" aria-label="카메라 리셋">🎥<span class="tl-l"> 카메라 리셋</span></button>
               <select class="quality-select" data-el="quality" hidden aria-label="그래픽 품질">${Object.values(QUALITY_PRESETS)
                 .map((q) => `<option value="${q.name}">${q.label}</option>`)
                 .join('')}</select>
               <button type="button" class="btn tiny" data-el="modebtn" aria-pressed="false">2D 보기</button>
               <select class="quality-select cutin-select" data-el="cutinmode" aria-label="관전 컷인" title="다른 사람 이벤트의 컷인 연출 (내 이벤트는 항상 전체)">${CUTIN_MODES.map(
-                (m) => `<option value="${m}">🎬 관전 컷인: ${CUTIN_MODE_LABEL[m]}</option>`,
+                (m) => `<option value="${m}">🎬 ${narrowTools ? '' : '관전 컷인: '}${CUTIN_MODE_LABEL[m]}</option>`,
               ).join('')}</select>
-              <button type="button" class="btn tiny ghost tool-toggle ff-btn" data-el="ffbtn" aria-pressed="false" title="다른 사람 이벤트의 컷인을 건너뛰고 작은 알림으로만 보여요">⏩ 빨리 감기</button>
-              <button type="button" class="btn tiny ghost tool-toggle" data-el="bgmbtn" aria-pressed="true" title="배경음악 켜기/끄기">🎵 BGM</button>
+              <button type="button" class="btn tiny ghost tool-toggle ff-btn" data-el="ffbtn" aria-pressed="false" aria-label="빨리 감기" title="다른 사람 이벤트의 컷인을 건너뛰고 작은 알림으로만 보여요">⏩<span class="tl-l"> 빨리 감기</span></button>
+              <button type="button" class="btn tiny ghost tool-toggle" data-el="bgmbtn" aria-pressed="true" aria-label="배경음악" title="배경음악 켜기/끄기">🎵<span class="tl-l"> BGM</span></button>
               <button type="button" class="btn tiny ghost tool-toggle" data-el="soundbtn" aria-pressed="false" aria-label="소리 켜기/끄기">🔊</button>
             </div>
           </div>
@@ -267,6 +272,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     <button type="button" class="btn primary spin-fab" data-el="spinfab" hidden>🎡 룰렛 돌리기</button>`;
 
   const el = Object.fromEntries([...root.querySelectorAll('[data-el]')].map((n) => [n.dataset.el, n]));
+  const reactBar = typeof document !== 'undefined' ? document.getElementById('reaction-bar') : null;
   const params = new URLSearchParams(location.search);
   const modeParam = params.get('board');
   // debug-only knob for testing the automatic 2D fallback (e.g. ?debug=1&fpsMin=1000)
@@ -677,22 +683,34 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     if (el.tabs.dataset.html !== html) {
       el.tabs.dataset.html = html;
       el.tabs.innerHTML = html;
+      // keep the shown / current era's tab in view (7 tabs never fit a phone row) + fades on the hidden side
+      const on = el.tabs.querySelector('.era-tab.on') ?? el.tabs.querySelector('.era-tab.now');
+      if (on && el.tabs.scrollWidth > el.tabs.clientWidth + 1) el.tabs.scrollLeft = Math.max(0, on.offsetLeft - el.tabs.offsetLeft - (el.tabs.clientWidth - on.offsetWidth) / 2);
     }
+    scrollHint(el.tabs);
+  }
+  /** Horizontal strip: fade the side that hides more content (no scrollbar hint otherwise). */
+  function scrollHint(strip) {
+    const more = strip.scrollWidth > strip.clientWidth + 1;
+    strip.classList.toggle('fade-l', more && strip.scrollLeft > 2);
+    strip.classList.toggle('fade-r', more && strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
   }
 
   function pawnsHtml(list, curId) {
     if (!list?.length) return '';
-    // crowded tile (e.g. 7–8 on the start tile): overlapping row, current + mine first, the rest as "+N"
-    const many = list.length > MAX_TILE_PAWNS;
+    // crowded tile: ≥ 3 overlap in one row; ≥ MAX_TILE_PAWNS → two (current + mine first) and the rest as "+N"
+    // (one row inside the tile: never over the label / past the tile edge)
+    const many = list.length >= MAX_TILE_PAWNS;
+    const crowd = list.length >= 3;
     const sorted = many ? [...list].sort((a, b) => (b.id === curId) - (a.id === curId) || !!b.isMe - !!a.isMe) : list;
-    const shown = many ? sorted.slice(0, MAX_TILE_PAWNS - 1) : sorted;
+    const shown = many ? sorted.slice(0, MAX_TILE_PAWNS - 2) : sorted;
     const rest = list.length - shown.length;
-    return `<div class="pawns${many ? ' many' : ''}">${shown
+    return `<div class="pawns${crowd ? ' crowd' : ''}${many ? ' many' : ''}">${shown
       .map(
         (c) =>
           `<span class="pawn${c.id === curId ? ' cur' : ''}${c.isMe ? ' me' : ''}" title="${esc(c.name)}" data-char="${esc(c.id)}">${charaToken(c, { size: 26, title: c.name })}</span>`,
       )
-      .join('')}${rest > 0 ? `<span class="pawn-more" title="${esc(sorted.slice(MAX_TILE_PAWNS - 1).map((c) => c.name).join(', '))}">+${rest}</span>` : ''}</div>`;
+      .join('')}${rest > 0 ? `<span class="pawn-more" title="${esc(sorted.slice(shown.length).map((c) => c.name).join(', '))}">+${rest}</span>` : ''}</div>`;
   }
 
   function tileHtml(t, pawns, curId, style = '', extraClass = '') {
@@ -738,7 +756,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     if (g.road) html += `<div class="loop-road" style="grid-column:${g.road.col} / span ${g.road.colSpan};grid-row:${g.road.row}" aria-hidden="true"><span>${g.linear ? '' : '← ← 🚩 출발로'}</span></div>`;
     for (const l of g.labels) {
       const info = routes()[l.route] ?? { name: l.route, icon: '' };
-      html += `<div class="route-label r-${esc(l.route)}" style="grid-column:${l.col};grid-row:${l.row}">${esc(info.icon)} ${esc(info.name)}</div>`;
+      html += `<div class="route-label r-${esc(l.route)}" style="grid-column:${l.col};grid-row:${l.row}"><span class="rl-ic">${esc(info.icon)}</span><span class="rl-n">${esc(info.name)}</span></div>`;
     }
     for (const cell of g.cells) {
       const t = byTile.get(cell.id);
@@ -838,8 +856,9 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     // betting on another family's roulette only (the server refuses my own family's turn)
     const mine = chars().filter((c) => c.isMe && !c.finished && c.ownerId !== cur?.ownerId); // finished characters can't bet
     // 룰렛 실력 모드: no side bets (the server refuses them)
-    // a red roulette card (큰 수 / 작은 수 / 딱 그 칸 / 월급날 직행) fixes this spin → no side bets (the server refuses + refunds)
-    const open = room.status === 'playing' && !hold && !isSkillRoom(room) && cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0 && !rollConstraint(cur.spinMods);
+    // a red roulette card (큰 수 / 작은 수 / 딱 그 칸 / 월급날 직행) fixes this spin, a 🚕 택시 / 📢 층간소음 rolls twice → no side
+    // bets (the server refuses new ones and refunds earlier ones: `betBlockReason`)
+    const open = room.status === 'playing' && !hold && !isSkillRoom(room) && cur && !cur.isMe && turn.phase === 'awaitSpin' && !turn.pending && mine.length > 0 && !betBlockReason(cur.spinMods);
     el.bet.hidden = !open;
     if (!open) {
       el.bet.innerHTML = '';
@@ -888,7 +907,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
       <label class="bet-row">금액 <b data-bet="amt-label">${won(ui.bet.amount)}</b>
         <input type="range" data-bet="amount" min="${cfg.minAmount}" max="${Math.max(cfg.minAmount, maxAmt)}" step="1" value="${ui.bet.amount}" ${canAfford ? '' : 'disabled'}>
       </label>
-      <button type="button" class="btn small bet-go" data-bet="go" ${canAfford ? '' : 'disabled'}>${placed ? '베팅 바꾸기' : '베팅하기'} (${esc(pickObj.label)} · ${won(ui.bet.amount)})</button>
+      <button type="button" class="btn primary small bet-go" data-bet="go" ${canAfford ? '' : 'disabled'}>${placed ? '베팅 바꾸기' : '베팅하기'} (${esc(pickObj.label)} · ${won(ui.bet.amount)})</button>
       <p class="small muted bet-status">${
         placed ? `✅ ${esc(bettor.name)}: ${esc(PICK_LABEL[placed.pick] ?? placed.pick)}에 ${won(placed.amount)} 베팅함` : canAfford ? '룰렛이 돌기 전까지 베팅할 수 있어요.' : '돈이 부족해 베팅할 수 없어요.'
       }${others ? ` · 다른 가문 ${others}명 베팅 중` : ''}</p>`;
@@ -976,7 +995,10 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     const cs = getComputedStyle(row);
     const w = row.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
     if (!n || w <= 0) return;
-    const L = handLayout(n, w, { max: 62, min: 46 });
+    // the CSS caps per breakpoint (62 / 54 phones / 56 desktop dock / 44 sticky phone dock): six cards fit 320 px too
+    const vw = globalThis.innerWidth ?? 1024;
+    const cap = vw < 700 && el.dock.classList.contains('can-spin') ? 44 : vw >= 700 ? 56 : vw <= 480 ? 54 : 62;
+    const L = handLayout(n, w, { max: cap, min: Math.min(cap, 38), gap: 6, minGap: 3 });
     const key = `${L.cardW}:${L.gap}`;
     if (row.dataset.fit === key) return;
     row.dataset.fit = key;
@@ -1709,7 +1731,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     // the 🗺️ toggle floats over the top-left corner of the canvas
     const vb = el.viewbtn.hidden ? null : el.viewbtn.getBoundingClientRect();
     const avoid = vb?.width ? [{ x: vb.left - c.left, y: vb.top - c.top, w: vb.width, h: vb.height }] : [];
-    return { top: q(top), bottom: q(bottom), avoid };
+    return { top: q(top), bottom: q(bottom), avoid, bottomPx: Math.round(bottom) };
   }
   let coverRaf = 0;
   function applyBoardCover() {
@@ -1718,10 +1740,18 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
       coverRaf = 0;
       const cv = boardCover();
       if (cv) ui.b3?.setViewInsets?.(cv);
+      el.wrap3d.style.setProperty('--b3-cover-b', `${cv?.bottomPx ?? 0}px`); // the 3D subtitle sits above it
     });
   }
   window.addEventListener('scroll', applyBoardCover, { passive: true });
   window.addEventListener('resize', applyBoardCover, { passive: true });
+  // the reaction bar (app shell) scrolls on narrow phones: fade the hidden side
+  if (reactBar) {
+    const hint = () => scrollHint(reactBar);
+    reactBar.addEventListener('scroll', hint, { passive: true });
+    window.addEventListener('resize', hint, { passive: true });
+    setTimeout(hint, 400);
+  }
   queueMicrotask(() => applyModeUi());
 
   // ---------- interactions ----------
@@ -1988,6 +2018,8 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     if (room.id !== ui.roomId) {
       ui.roomId = room.id;
       ui.hudShown = false;
+      ui.animTurnNo = null;
+      ui.hudHeldAt = null;
       ui.gameOver = false;
       ui.seen = seenFromRoom(raw, { mine: raw.characters?.filter((c) => c.isMe).map((c) => c.id) ?? [] });
     }
@@ -2034,7 +2066,26 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
         myTurnFree = true;
       }
     }
-    const holdHud = !myTurnFree && ui.b3 && ui.hudShown && (ui.b3.isBusy() || cutin.busyEvents() || performance.now() - ui.lastStateAt < 400);
+    // the board several turns behind the state (back-to-back CPU turns while spectating) → it plays its backlog
+    // instantly; others' cut-ins on rushed steps become banners
+    if (ui.b3 && !ui.gameOver) {
+      const tn = Number(room.turn.turnNo) || 0;
+      if (ui.animTurnNo == null || tn < ui.animTurnNo) ui.animTurnNo = tn;
+      else if (boardBehind({ stateTurn: tn, boardTurn: ui.animTurnNo }) && !ui.b3.animator?.rushing) ui.b3.animator?.rush();
+    }
+    let holdHud = !myTurnFree && ui.b3 && ui.hudShown && (ui.b3.isBusy() || cutin.busyEvents() || performance.now() - ui.lastStateAt < 400);
+    if (holdHud) {
+      // never minutes behind: the HUD follows the state ≤ 3 s late (others' turns, spectators, TV) / ≤ 8 s (mine)
+      const now = performance.now();
+      ui.hudHeldAt ??= now;
+      const left = hudHoldLeft({ heldMs: now - ui.hudHeldAt, mine: !!cur?.isMe && !isSpectator() });
+      if (left <= 0) holdHud = false;
+      else {
+        clearTimeout(ui.hudTimer);
+        ui.hudTimer = setTimeout(() => ui.room?.status === 'playing' && render(ui.room), left + 30);
+      }
+    }
+    if (!holdHud) ui.hudHeldAt = null;
     const bgmEra = room.board.eras[currentEraIndex(room)]?.id;
     if (bgmEra) audio.setEra(bgmEra);
     preloadLayers();
@@ -2062,6 +2113,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
       }
     }
     renderInbox(room);
+    if (reactBar) scrollHint(reactBar);
     flushDeferred();
     if (!holdHud) {
       renderChars(room);
@@ -2222,6 +2274,12 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
         }
       });
     }
+    // the turn the board is showing (render() compares it with the state's to rush a backlog)
+    const turnStarted = anim.getHandler('turnStarted');
+    anim.setHandler('turnStarted', (e, ctx) => {
+      if (Number.isFinite(Number(e?.turnNo))) ui.animTurnNo = Math.max(ui.animTurnNo ?? 0, Number(e.turnNo));
+      return turnStarted?.(e, ctx);
+    });
     const moved = anim.getHandler('moved');
     anim.setHandler('moved', (e, ctx) => {
       if (!ctx.instant) audio.play('whoosh');
@@ -2263,7 +2321,8 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
   function sync3D(room) {
     const b3 = ui.b3;
     const cur = currentChar();
-    b3.setBoard(room.board, { eraIndex: currentEraIndex(room) }); // loop maps: only the shared era's loop
+    // loop maps: only the shared era's loop; the server's `boardKey` (every view carries it) saves a JSON key per render
+    b3.setBoard(room.board, { eraIndex: currentEraIndex(room), key: typeof room.boardKey === 'string' ? `k:${room.boardKey}` : undefined });
     // the era's last rounds: build the next era's map in idle time so the transition is a swap (no hitch)
     const clock = eraClock(room);
     if (!clock.race && clock.left != null && clock.left <= 1 && clock.index + 1 < clock.count) b3.prepareEra?.(clock.index + 1);
@@ -2529,7 +2588,8 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
         // ---------- Stage 6 ----------
         case 'statChanged': {
           const info = STAT_INFO[e.stat];
-          if (info && e.delta) floatOn(e.charId, `${info.icon}${info.label} ${e.delta > 0 ? '+' : ''}${e.delta}`, e.delta > 0 ? 'plus stat' : 'minus stat');
+          // 생일 파티 답례 (statChanged reason thanks): 「🎁 답례 ✨매력 +1」
+          if (info && e.delta) floatOn(e.charId, `${e.reason === 'thanks' ? '🎁 답례 ' : ''}${info.icon}${info.label} ${e.delta > 0 ? '+' : ''}${e.delta}`, e.delta > 0 ? 'plus stat' : 'minus stat');
           break;
         }
         case 'salary':
@@ -2555,6 +2615,8 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
         // ---------- Stage 7 ----------
         case 'cardLost': {
           const lost = cardLostInfo(e, getMeta());
+          // a 로또 복권 / 쿠지 응모권 spent in the era-opening draw: silent (the draw's rank / prize floats say it)
+          if (lost.quiet) break;
           floatOn(e.charId, lost.text, e.reason === 'healed' ? 'plus' : 'minus');
           if (c?.isMe && e.reason === 'discarded') toast(`🗑️ ${c.name}: 손패가 가득 차서 ${lost.info.icon} ${lost.info.name} 카드를 버렸어요`, 'info');
           else if (c?.isMe && !cutinsOn()) toast(`${c.name}: ${lost.text}`, 'info');

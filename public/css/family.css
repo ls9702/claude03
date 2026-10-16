@@ -219,3 +219,14 @@
   position: absolute; left: 50%; top: -4%; transform: translateX(-50%) rotate(-6deg); font-style: normal; font-weight: 900; white-space: nowrap;
   font-size: clamp(9px, 1.5cqw, 15px); color: #fff; background: #e2504c; border: 2px solid #fff; border-radius: 6px; padding: 0 0.4em;
 }
+/* 새 친구 cards: equal heights, the 「친구 하기」 pill on the same line in both */
+.partner-item { height: 100%; }
+.partner-item .pi-go { margin-top: auto; }
+.pi-trait { word-break: keep-all; }
+/* 매물 cards: Korean wraps between words (「실/제」 broke mid-word) */
+.house-item .hi-name, .house-item .hi-price, .house-item .hi-trade, .house-item .hi-val, .house-item .hi-cap { word-break: keep-all; }
+/* phones (≤ 480 px): the flavour line goes (the three cards stay side by side — a list per row was taller) */
+@media (max-width: 480px) {
+  .house-item .hi-desc { display: none; }
+  .house-item .hi-art { width: 64px; }
+}

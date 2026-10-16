@@ -42,6 +42,14 @@ function faceTexture() {
     ctx.textBaseline = 'middle';
     ctx.strokeText(String(v), 0, 0);
     ctx.fillText(String(v), 0, 0);
+    if (v === 6 || v === 9) {
+      // rotated on the wheel 6 and 9 look alike → underline them (like real dice / billiard balls)
+      const fs = Math.round(N * 0.13);
+      const w = ctx.measureText(String(v)).width;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(-w * 0.42, fs * 0.42, w * 0.84, fs * 0.08);
+      ctx.fillRect(-w * 0.42, fs * 0.42, w * 0.84, fs * 0.08);
+    }
     ctx.restore();
   }
   ctx.beginPath();

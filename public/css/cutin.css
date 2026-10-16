@@ -28,20 +28,21 @@ body.cutin-open { overflow: hidden; }
 }
 @keyframes ci-pan { to { background-position: 240px 240px; } }
 
+.cutin { --ci-wmax: min(1040px, calc(100vw - 32px)); }
+/* the stage is as wide as the screen allows; cutin2d.js fit() (pure math in cutinFit.js) sizes the 16:9 window
+   (--ci-winw) and the dialogue box / tabs (--ci-boxw) so the whole stage fits above the reaction bar */
 .ci-stage {
-  position: relative; margin: auto;
-  width: min(1040px, calc(100vw - 32px), calc((100dvh - 330px) * 16 / 9));
-  min-width: min(560px, calc(100vw - 16px));
-  display: flex; flex-direction: column; gap: 14px;
+  position: relative; margin: auto; width: var(--ci-wmax); min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
-.cutin.prompt .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 400px) * 16 / 9)); }
-@media (min-width: 701px) {
-  /* prompts: smaller window, full-width dialogue box so the options fit above the reaction bar */
-  .cutin.prompt .ci-box, .cutin.prompt .ci-tabs, .cutin.prompt .ci-reacts { width: min(1040px, calc(100vw - 32px)); align-self: center; }
-}
+.ci-stage > * { width: var(--ci-boxw, 100%); max-width: 100%; }
+.ci-stage > .ci-win { width: var(--ci-winw, 100%); flex: none; }
 .ci-top { display: flex; justify-content: flex-end; min-height: 18px; margin-bottom: -8px; }
 .ci-top:has(.ci-era:empty) { display: none; }
-.ci-era { font-weight: 900; font-size: 0.9rem; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45); }
+.ci-era {
+  font-weight: 900; font-size: 0.9rem; color: #fff; background: rgba(20, 12, 24, 0.72); padding: 2px 12px; border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
 
 /* illustration window */
 .ci-win {
@@ -105,6 +106,15 @@ body.cutin-open { overflow: hidden; }
   font-size: 0.95rem; font-weight: 900; padding: 3px 14px; border-radius: 8px;
 }
 .ci-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; float: right; max-width: 48%; margin: -4px 0 6px 12px; }
+.ci-chips.row { float: none; max-width: none; justify-content: flex-start; gap: 6px; margin: 0 0 8px; }
+.ci-chips.row .ci-chip { font-size: 0.82rem; padding: 3px 10px; }
+.ci-chip.fold { display: none; }
+.ci-chips.open .ci-chip.fold { display: inline-block; }
+.ci-chip.more {
+  appearance: none; border: 0; font: inherit; font-size: 0.82rem; font-weight: 900; cursor: pointer; animation: none;
+  background: #fde047; color: #7c2d12; padding: 3px 10px; border-radius: 999px;
+}
+.ci-chip-n { display: inline-block; max-width: 6.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .ci-chip {
   font-size: 0.9rem; font-weight: 800; background: var(--ci-chipBg); color: var(--ci-chipInk);
   padding: 4px 12px; border-radius: 999px; animation: ci-bubble-pop 0.3s 0.4s both;
@@ -112,7 +122,18 @@ body.cutin-open { overflow: hidden; }
 .ci-chip.plus { background: #dcfce7; color: #14532d; }
 .ci-chip.minus { background: #fee2e2; color: #7f1d1d; }
 .ci-text { font-size: clamp(17px, 2.3vw, 27px); font-weight: 700; line-height: 1.5; min-height: 1.5em; word-break: keep-all; overflow-wrap: anywhere; }
+.ci-text { position: relative; }
+.ci-text-ghost { display: grid; visibility: hidden; }
+.ci-text-ghost > * { grid-area: 1 / 1; }
+.ci-text-live { position: absolute; left: 0; right: 0; top: 0; }
 .ci-options { clear: both; }
+/* fit() last resort: the body (chips / text / extra / options) scrolls inside the box, ▼ and the tabs stay on screen */
+.ci-body { min-height: 0; }
+.cutin.fit-scroll .ci-body {
+  max-height: var(--ci-body-max, none); overflow-y: auto; overscroll-behavior: contain; margin-right: -10px; padding-right: 10px;
+  mask-image: linear-gradient(180deg, #000 calc(100% - 18px), transparent); -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 18px), transparent);
+}
+.cutin.fit-scroll .ci-body.at-end { mask-image: none; -webkit-mask-image: none; }
 .ci-opt-who { margin: 10px 0 0; font-size: 0.95rem; color: #fde047; font-weight: 800; }
 .ci-opt-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
 .ci-opt {
@@ -127,6 +148,7 @@ body.cutin-open { overflow: hidden; }
 .ci-opt.picked { opacity: 1; background: #fde047; }
 .ci-opt .c-icon { font-size: 1.4rem; }
 .ci-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; min-height: 28px; clear: both; }
+.ci-foot:has(.ci-next[hidden]):has(.ci-wait:empty) { min-height: 6px; }
 .ci-wait { color: #fde68a; font-weight: 700; font-size: 0.95rem; }
 .ci-deadline { color: #fff; opacity: 0.85; font-size: 0.85rem; }
 .ci-next {
@@ -134,6 +156,7 @@ body.cutin-open { overflow: hidden; }
   padding: 2px 4px; margin-left: auto; position: relative; animation: ci-next-bob 0.9s ease-in-out infinite;
 }
 .ci-next[hidden] { display: none; }
+@media (pointer: coarse) { .ci-next { min-width: 44px; min-height: 40px; } }
 .ci-progress { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 3px; border-radius: 2px; background: rgba(253, 224, 71, 0.85); transform: scaleX(0); transform-origin: left; pointer-events: none; }
 .ci-progress.run { animation: ci-auto var(--ci-auto, 4s) linear both; }
 @keyframes ci-next-bob { 50% { transform: translateY(4px); } }
@@ -254,13 +277,16 @@ body.cutin-open { overflow: hidden; }
 /* ---------- phones: same structure stacked, window stays 16:9 ---------- */
 @media (max-width: 700px), (max-aspect-ratio: 4/5) {
   .cutin { padding: 10px 8px calc(76px + env(safe-area-inset-bottom)); }
-  .ci-stage { width: calc(100vw - 16px); min-width: 0; gap: 12px; }
+  .cutin { --ci-wmax: calc(100vw - 16px); }
+  .ci-stage { gap: 12px; }
   .ci-box { padding: 20px 14px 10px; min-height: 0; }
-  .ci-chips { float: none; max-width: none; justify-content: flex-start; margin: 2px 0 8px; }
+  .ci-chips { float: none; max-width: none; justify-content: flex-start; margin: 2px 0 8px; gap: 6px; }
   .ci-chip { font-size: 0.8rem; }
   .ci-text { font-size: 17px; }
-  .ci-opt-list { grid-template-columns: 1fr; }
-  .cutin.prompt .ci-stage { width: calc(100vw - 16px); }
+  .ci-opt-list { grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+  .cutin.prompt .ci-text { font-size: 16px; line-height: 1.4; }
+  .ci-opt { min-height: 48px; padding: 6px 12px; font-size: 0.98rem; border-radius: 12px; }
+  .ci-opt .ci-opt-desc { font-size: 0.74rem; line-height: 1.2; }
   .ci-bubble { max-width: 50%; top: 14%; font-size: clamp(11px, 3.3cqw, 16px); border-width: 2px; }
   .ci-tag { font-size: 11px; padding: 3px 10px; left: 8px; top: 8px; }
   .ci-tab { font-size: 0.72rem; }
@@ -282,16 +308,14 @@ body.cutin-open { overflow: hidden; }
 .ci-who { max-width: calc(100% - 44px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ci-bubble, .ci-chip, .ci-opt-who, .ci-wait { overflow-wrap: anywhere; }
 .ci-chip { max-width: 100%; }
-.ci-opt-l { display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-width: 0; }
+.ci-opt-l { display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-width: 0; word-break: keep-all; overflow-wrap: anywhere; }
 .ci-opt.has-desc { justify-content: flex-start; }
 .ci-opt-desc { font-size: 0.78rem; font-weight: 700; color: #57534e; line-height: 1.25; margin-top: 2px; }
 .ci-deadline.urgent { color: #fecaca; opacity: 1; font-weight: 900; }
 /* the reaction bar (fixed, bottom) never covers the tab row: keep the stage above it */
 .cutin { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
-.ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 350px) * 16 / 9)); }
 @media (max-width: 700px), (max-aspect-ratio: 4/5) {
   .cutin { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
-  .ci-stage { width: calc(100vw - 16px); }
   .ci-tab { max-width: 42vw; }
 }
 /* reactions: one row of chips (newest right), never a pile over the dialogue box */
@@ -310,6 +334,26 @@ body.cutin-open { overflow: hidden; }
   .ci-tabs-l .ci-tab { flex: none; }
   .ci-tabs-r { flex: none; }
 }
+/* many characters: compact tabs (portrait + 3-letter name; current = full name), fades on the hidden side */
+.ci-tabs-l.many .ci-tab:not(.on) .ci-tab-n { display: none; }
+.ci-tabs-l.many .ci-tab:not(.on) .ci-tab-name { max-width: 3.4em; }
+.ci-tabs-l.many .ci-tab:not(.on) { padding-right: 8px; }
+.ci-tabs-l.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+.ci-tabs-l.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px); mask-image: linear-gradient(90deg, transparent, #000 28px); }
+.ci-tabs-l.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+.ci-tab.btn-sound { min-height: 30px; white-space: nowrap; }
+@media (max-width: 700px), (max-aspect-ratio: 4/5) {
+  .ci-tabs-l.many .ci-tab:not(.on) .ci-tab-name { display: none; }
+  .ci-tabs-l.many .ci-tab:not(.on) { padding-right: 4px; }
+  .ci-snd-l { display: none; }
+  .ci-tab.btn-sound { padding: 4px 10px; font-size: 1rem; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .ci-tabs-l.many .ci-tab:not(.on) .ci-tab-name { display: none; }
+  .ci-tabs-l.many .ci-tab:not(.on) { padding-right: 4px; }
+  .ci-snd-l { display: none; }
+}
+@media (pointer: coarse) { .ci-tab.btn-sound { min-height: 40px; min-width: 40px; } }
 /* reaction chips float over the bottom edge of the window: no layout shift under a finger aiming at an option */
 .ci-reacts { height: 0; min-height: 0; margin: -7px 10px 7px; overflow: visible; align-items: flex-end; position: relative; z-index: 5; pointer-events: none; }
 /* wide screens: while a cut-in is open the reaction bar stands vertically at the right edge (free space beside the
@@ -319,9 +363,7 @@ body.cutin-open { overflow: hidden; }
     left: auto; right: 12px; bottom: 50%; transform: translateY(50%); flex-direction: column; border-radius: 24px;
     max-height: calc(100vh - 80px); overflow-y: auto; overflow-x: hidden;
   }
-  .cutin { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
-  .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 330px) * 16 / 9)); }
-  .cutin.prompt .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 390px) * 16 / 9)); }
+  .cutin { padding-bottom: calc(20px + env(safe-area-inset-bottom)); --ci-wmax: min(1040px, calc(100vw - 200px)); }
 }
 
 /* ---------- Stage 6: stat / salary chips, job badge, hidden-job gold, news strip, jobOffer badges ---------- */
@@ -380,36 +422,58 @@ body.cutin-open { overflow: hidden; }
 /* A6: the top bar (나가기) is covered while a cut-in is open → an exit button of its own (top-left) */
 .ci-exit {
   position: fixed; left: 8px; top: 8px; z-index: 6; appearance: none; border: 0; cursor: pointer; font: inherit;
-  font-size: 0.78rem; font-weight: 800; color: #fff; background: rgba(0, 0, 0, 0.38); border-radius: 999px; padding: 5px 12px;
+  font-size: 0.78rem; font-weight: 800; color: #fff; background: rgba(20, 12, 24, 0.78); border-radius: 999px; padding: 5px 12px;
+  min-height: 32px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
-.ci-exit:hover, .ci-exit:focus-visible { background: rgba(0, 0, 0, 0.6); }
+.ci-exit:hover, .ci-exit:focus-visible { background: rgba(20, 12, 24, 0.92); }
+@media (pointer: coarse) { .ci-exit { min-height: 40px; padding: 8px 14px; } }
 .ci-exit[hidden] { display: none; }
+.cutin.exit-pad { padding-top: 54px; }
+@media (pointer: coarse) { .cutin.exit-pad { padding-top: 58px; } }
+/* … and the era label moves up beside it (no row of its own) */
+.cutin.exit-pad .ci-top { position: absolute; right: 0; top: -44px; margin: 0; width: auto; }
+@media (pointer: coarse) { .cutin.exit-pad .ci-top { top: -48px; } }
 /* A14 (1280×720): long 명절 정산 / lotto tables scroll inside the box, the ▼ stays on screen */
 .ci-extra .ci-hres, .ci-extra .ci-lotto-rows { max-height: min(26vh, 240px); overflow-y: auto; overscroll-behavior: contain; }
-.cutin.holiday-res .ci-stage { width: min(1040px, calc(100vw - 32px), calc((100dvh - 470px) * 16 / 9)); min-width: min(420px, calc(100vw - 16px)); }
-/* A14: phone landscape (e.g. 844×390): illustration left, dialogue / options right; reaction bar on the right edge */
+/* side-by-side stage: illustration left, dialogue / options right. Phone landscape (e.g. 844×390) always; wide
+   short screens (1280×720 house / shop prompts, 집들이 with many guests) when fit() finds the stacked window too small */
+.cutin.fit-side .ci-stage {
+  width: min(1400px, var(--ci-wside, calc(100vw - 200px))); margin: auto; display: grid; gap: 6px 14px; align-items: start;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto;
+}
+.cutin.fit-side .ci-stage > * { width: auto; }
+.cutin.fit-side .ci-top { display: none; }
+.cutin.fit-side .ci-win { grid-column: 1; grid-row: 1 / span 3; align-self: center; width: 100%; }
+.cutin.fit-side .ci-reacts { grid-column: 2; grid-row: 1; margin: 0; height: auto; }
+.cutin.fit-side .ci-box { grid-column: 2; grid-row: 2; margin-top: 14px; }
+.cutin.fit-side .ci-tabs { grid-column: 2; grid-row: 3; }
+.cutin.fit-side .ci-opt-list { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 @media (orientation: landscape) and (max-height: 500px) {
   .cutin { padding: 6px 70px 6px 8px; align-items: stretch; }
-  .ci-stage {
-    width: 100%; min-width: 0; margin: 0; display: grid; gap: 6px 10px;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto; align-items: start;
-  }
-  .cutin.prompt .ci-stage { width: 100%; }
-  .ci-top { display: none; }
-  .ci-win { grid-column: 1; grid-row: 1 / span 3; align-self: center; max-height: calc(100dvh - 16px); }
-  .ci-reacts { grid-column: 2; grid-row: 1; margin: 0; height: auto; }
-  .ci-box, .cutin.prompt .ci-box { grid-column: 2; grid-row: 2; width: auto; margin-top: 14px; padding: 18px 12px 8px; }
-  .ci-options { max-height: calc(100dvh - 170px); overflow-y: auto; overscroll-behavior: contain; }
-  .ci-tabs, .cutin.prompt .ci-tabs { grid-column: 2; grid-row: 3; width: auto; }
+  .cutin.fit-side .ci-stage { width: 100%; margin: 0; gap: 6px 10px; }
+  .ci-win { max-height: calc(100dvh - 16px); }
+  .ci-box { padding: 18px 12px 8px; }
   .ci-text { font-size: 15px; }
-  .ci-opt-list { grid-template-columns: 1fr; }
+  .cutin.fit-side .ci-opt-list { grid-template-columns: 1fr; }
   .ci-opt { min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
   body.cutin-open .reaction-bar {
     left: auto; right: 6px; bottom: 50%; transform: translateY(50%); flex-direction: column; border-radius: 22px;
     max-height: calc(100dvh - 12px); overflow-y: auto; overflow-x: hidden; padding: 4px;
   }
-  body.cutin-open .reaction-bar .react { min-width: 36px; height: 34px; font-size: 0.85rem; padding: 0 4px; }
+  body.cutin-open .reaction-bar .react { min-width: 40px; height: 34px; font-size: 0.85rem; padding: 0 4px; }
 }
 /* TV (?quality=tv): the cut-in is ~1.4× (read from the couch); the width follows the screen height */
-body.q-tv .ci-stage { zoom: 1.4; width: min(1080px, calc(100vw / 1.4 - 40px), calc((100vh / 1.4 - 250px) * 16 / 9)); min-width: 0; }
+body.q-tv .cutin { --ci-wmax: min(1080px, calc(100vw / 1.4 - 40px)); --ci-wside: calc(100vw / 1.4 - 150px); }
+body.q-tv .ci-stage { zoom: 1.4; }
 body.q-tv .ci-exit { display: none; }
+/* short phones (< 700 px high, e.g. 375×667): denser prompt options so a 5-option 찬스 광장 needs (almost) no scrolling */
+@media (max-height: 700px) and (max-width: 700px) {
+  .cutin.prompt .ci-text { font-size: 15px; line-height: 1.35; }
+  .ci-opt-list { gap: 6px; margin-top: 8px; }
+  .ci-opt { min-height: 44px; padding: 5px 10px; gap: 6px; }
+  .ci-opt .ci-opt-desc { line-height: 1.15; }
+  .ci-opt .c-icon { font-size: 1.2rem; }
+  .ci-box { padding-top: 18px; }
+}
+/* Korean wraps between words in the speech bubbles / chips too (「가/득」) */
+.ci-bubble, .ci-chip, .ci-opt-who, .ci-wait { word-break: keep-all; }

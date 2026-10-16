@@ -29,7 +29,7 @@
 }
 .tile.t-salary .t-label { color: #1f7a45; font-weight: 900; }
 .tile.t-salary::before {
-  content: '멈춤'; position: absolute; top: -7px; left: 50%; transform: translateX(-50%);
+  content: '멈춤'; position: absolute; top: -7px; left: 50%; transform: translateX(-50%); white-space: nowrap;
   background: #2f9e57; color: #fff; font-size: 0.56rem; font-weight: 900; padding: 0 5px; border-radius: 6px; line-height: 1.4;
 }
 /* 찬스 광장: striped tent colours */
@@ -91,3 +91,17 @@
 .sm-allin .sm-num b { font-size: 1.35rem; }
 .sm-allin-info { margin: 0 0 8px; font-weight: 700; font-size: 0.9rem; }
 .ci-options .sm-allin-info { color: #fff; }
+
+/* ---------- E2E-4 layout fixes: centred track, uniform rows, amounts / labels never break mid-word ---------- */
+.track { margin-inline: auto; }
+.track.loop { grid-auto-rows: 96px; }
+.track.loop .tile { min-height: 0; }
+.track.loop .t-label { overflow-wrap: break-word; letter-spacing: -0.02em; }
+.track.loop .t-amt { white-space: nowrap; letter-spacing: -0.03em; }
+.route-label { flex-direction: column; gap: 1px; line-height: 1.15; }
+.route-label .rl-n { word-break: keep-all; overflow-wrap: break-word; }
+@media (max-width: 480px) {
+  .track.loop { grid-auto-rows: 88px; }
+  .track.loop .t-amt { font-size: 0.6rem; }
+  .track.loop .route-label { font-size: 0.6rem; padding: 3px 2px; letter-spacing: -0.03em; }
+}

@@ -200,6 +200,8 @@ export function planCutins(events = []) {
   // 전역 / Stage 7 card · gift · trade events without an anchor in front of them → their own (banner) group
   events.forEach((e, i) => {
     if (covered.has(i) || isAnchor(e)) return;
+    // a 로또 복권 / 쿠지 응모권 spent in a draw (cardLost used) belongs to its lottoDraw → never a lone banner
+    if (e?.type === 'cardLost' && e.reason === 'used') return;
     if (e?.type === 'militaryEnd' || STAGE7_LONE.has(e?.type) || isHuntRunEvent(e)) groups.push(build(i, e));
   });
   groups.sort((x, y) => x._i - y._i);
@@ -339,7 +341,7 @@ export function fallbackText(anchor, name = '') {
     case 'cardGained':
       return `${name} 카드 획득!`;
     case 'cardLost':
-      return anchor.reason === 'healed' ? `${name}의 부상이 나았어요!` : anchor.reason === 'married' ? `${name}의 단짝운 카드가 할 일을 다 했어요` : anchor.reason === 'merit' ? `${name}, 공적 카드로 승진!` : `${name}의 카드가 사라졌어요`;
+      return anchor.reason === 'healed' ? `${name}의 부상이 나았어요!` : anchor.reason === 'married' ? `${name}의 단짝운 카드가 할 일을 다 했어요` : anchor.reason === 'merit' ? `${name}, 공적 카드로 승진!` : anchor.reason === 'used' ? `${name}, 추첨에 응모했어요` : `${name}의 카드가 사라졌어요`;
     case 'gift':
       return `${name}의 선물!`;
     case 'tradeResolved':
@@ -430,7 +432,7 @@ const STAGE7_TAGS = {
   holidayResult: (a) => (a.kind === 'chuseok' ? '🌕 추석 정산' : a.kind === 'seol' ? '🧧 설날 정산' : '🎴 명절 정산'),
   lottoDraw: (a) => (a?.kuji ? '🎟️ 쿠지 뽑기' : '🎱 전국 로또'),
   cardGained: () => '🃏 카드 획득',
-  cardLost: (a) => (a.reason === 'healed' ? '🩹 부상 회복' : a.reason === 'married' ? '💞 카드 소멸' : a.reason === 'merit' ? '🏅 공적 사용' : '🗑️ 카드 버림'),
+  cardLost: (a) => (a.reason === 'healed' ? '🩹 부상 회복' : a.reason === 'married' ? '💞 카드 소멸' : a.reason === 'merit' ? '🏅 공적 사용' : a.reason === 'used' ? '🎟️ 응모권 사용' : '🗑️ 카드 버림'),
   gift: () => '🎁 선물',
   tradeResolved: (a) => (a.status === 'accepted' ? '🤝 거래 성사' : '🤝 거래 불발'),
   chanceBuff: (a) => `${a.buff?.icon ?? '🎪'} 찬스 버프${a.action === 'expired' ? ' 종료' : ''}`,

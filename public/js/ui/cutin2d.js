@@ -14,6 +14,7 @@ import { renderCutinFigure, portraitHtml, hydratePortraits, preloadChara } from 
 import { attachParallax, parallaxLayers, screenShake } from './rig.js';
 import { autoAdvanceMs, fallbackText, isBigWin, isCardAnchor, planCutins, poseFor, resolveSceneBg, tagLabel, EMOTION_GLYPH } from './cutinMap.js';
 import { CAST_PRELOAD_MS, OTHERS_AUTO_MS, PREEMPT_KEEP_MS, routeOptionInfo } from './cutinPolicy.js';
+import { bodyCap, chipHideOrder, chipRowCap, chipRows, fitStacked, minWindowWidth, wantsSide } from './cutinFit.js';
 /** A new / changed prompt ignores option taps this long (a late tap meant for the previous one, A5). */
 export const PROMPT_GUARD_MS = 700;
 import { MC_NAMES, createMcBooth, mcScriptMs, mcSpeakers, playMcScript } from './mc.js';
@@ -305,10 +306,12 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       <div class="ci-reacts" data-ci="reacts" aria-live="polite"></div>
       <div class="ci-box" data-ci="box">
         <div class="ci-who" data-ci="who"></div>
-        <div class="ci-chips" data-ci="chips"></div>
-        <div class="ci-text" data-ci="text" aria-live="polite"></div>
-        <div class="ci-extra" data-ci="extra"></div>
-        <div class="ci-options" data-ci="options"></div>
+        <div class="ci-body" data-ci="body">
+          <div class="ci-chips" data-ci="chips"></div>
+          <div class="ci-text" aria-live="polite"><span class="ci-text-ghost" data-ci="ghost" aria-hidden="true"></span><span class="ci-text-live" data-ci="text"></span></div>
+          <div class="ci-extra" data-ci="extra"></div>
+          <div class="ci-options" data-ci="options"></div>
+        </div>
         <div class="ci-foot"><span class="ci-wait" data-ci="wait"></span><button type="button" class="ci-next" data-ci="next" aria-label="다음">▼</button></div>
         <i class="ci-progress" data-ci="progress" aria-hidden="true"></i>
       </div>
@@ -316,6 +319,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     </div>`;
   root.appendChild(overlay);
   const $ = Object.fromEntries([...overlay.querySelectorAll('[data-ci]')].map((n) => [n.dataset.ci, n]));
+  $.stage = overlay.querySelector('.ci-stage');
 
   // ---------- spec building ----------
   const nameOf = (chars, id) => chars.find((c) => c.id === id)?.name ?? '';
@@ -355,7 +359,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     for (const st of g.stats ?? []) {
       const c = statChip(st);
       const who = st.charId && st.charId !== g.charId ? `${nameOf(characters, st.charId)} ` : '';
-      chips.push({ ...c, text: who ? `${who}${c.text}` : c.text });
+      // 생일 파티 답례 (reason thanks): the giver's ✨ 매력 chip says why
+      const note = st.reason === 'thanks' ? '🎁 답례 · ' : '';
+      chips.push({ ...c, text: `${note}${who}${c.text}` });
     }
     for (const id of g.discharged ?? []) chips.push({ text: `🎖️ ${id !== g.charId ? `${nameOf(characters, id)} ` : ''}전역!`, kind: 'plus' });
     // Stage 7: cards gained / used, gifts, a purchase without its own money chip
@@ -565,9 +571,10 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         out.gifts = gifts;
         const sp = partnerInfo(a.spouse ?? main?.spouse, meta);
         if (sp) chips.unshift({ text: `💞 단짝 ${sp.name} ${sp.speciesIcon} ${sp.traitIcon}${sp.starsText ? ` ${sp.starsText}` : ''}`, kind: 'plus love' });
-        for (const r of gifts.rows) chips.push({ text: `💌 ${r.name} 집들이 선물 +${won(r.amount)}`, kind: 'plus' });
+        const many = gifts.rows.length > 2; // per-guest chips get short (the total names the gift)
+        for (const r of gifts.rows) chips.push({ text: many ? `💌 ${r.name} +${won(r.amount)}` : `💌 ${r.name} 집들이 선물 +${won(r.amount)}`, who: r.name, kind: 'plus', minor: many });
         if (!gifts.rows.length) chips.push({ text: '💌 집들이 선물은 마음만…', kind: '' });
-        if (gifts.total > 0 && gifts.rows.length > 1) chips.push({ text: `🎉 집들이 선물 합계 +${won(gifts.total)}`, kind: 'plus' });
+        if (gifts.total > 0 && gifts.rows.length > 1) chips.push({ text: `🎉 집들이 선물 합계 +${won(gifts.total)}${many ? ` (${gifts.rows.length}명)` : ''}`, kind: 'plus', keep: true });
         break;
       }
       case 'childBorn': {
@@ -584,7 +591,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
           out.dol = true;
           const gifts = weddingGifts(a, characters);
           out.gifts = gifts;
-          for (const r of gifts.rows) chips.push({ text: `💌 ${r.name} 입양 축하금 +${won(r.amount)}`, kind: 'plus' });
+          const many = gifts.rows.length > 2;
+          for (const r of gifts.rows) chips.push({ text: many ? `💌 ${r.name} +${won(r.amount)}` : `💌 ${r.name} 입양 축하금 +${won(r.amount)}`, who: r.name, kind: 'plus', minor: many });
+          if (many && gifts.total > 0) chips.push({ text: `🎂 입양 축하금 합계 +${won(gifts.total)} (${gifts.rows.length}명)`, kind: 'plus', keep: true });
         } else if (a.kind === 'job' && Number(a.amount) > 0) chips.push({ text: `💌 앞으로 펫 광고 수입 +${won(Number(a.amount))}`, kind: 'plus' });
         else if (Number(a.amount) && !g.money.some((m) => m.charId === g.charId)) chips.push({ text: `${info?.icon ?? '💰'} ${Number(a.amount) > 0 ? '+' : ''}${won(Number(a.amount))}`, kind: Number(a.amount) > 0 ? 'plus' : 'minus' });
         break;
@@ -1350,6 +1359,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     stage.appendChild(booth.el);
     $.fx.appendChild(stage);
     const shown = [];
+    // the box keeps the height of the last three lines from the start (they accumulate; typeText keeps this too)
+    item.studioGhost = lines.slice(-3).map((l) => `<span class="mc-line-who">${esc(MC_NAMES[l.speaker] ?? '')}</span>${esc(l.line)}`).join('<br>');
+    $.ghost.innerHTML = `<span>${item.studioGhost}</span>`;
     playMcScript(booth, lines, {
       delay: isReduced() ? 0 : 350,
       gap: 1500,
@@ -1381,26 +1393,166 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   function renderTabs(spec) {
     const chars = spec.characters ?? [];
     const state = audio?.state;
-    $.tabs.innerHTML = `<div class="ci-tabs-l">${chars
+    // many characters: the other tabs are compact (portrait + short name; phones: portrait only), the current
+    // one keeps its name; the row scrolls with a fade on the hidden side and the current tab centred
+    $.tabs.innerHTML = `<div class="ci-tabs-l${chars.length > 4 ? ' many' : ''}">${chars
       .map(
         (c, i) =>
-          `<span class="ci-tab${c.id === spec.currentId ? ' on' : ''}${c.isMe ? ' me' : ''}"><span class="ci-tab-av">${portraitHtml(c, { size: 22 })}</span><span class="ci-tab-n">${i + 1}</span><span class="ci-tab-name">${esc(c.name)}</span>${c.id === spec.currentId ? '<span class="ci-tab-cur">▶</span>' : ''}</span>`,
+          `<span class="ci-tab${c.id === spec.currentId ? ' on' : ''}${c.isMe ? ' me' : ''}" title="${esc(c.name)}"><span class="ci-tab-av">${portraitHtml(c, { size: 22 })}</span><span class="ci-tab-n">${i + 1}</span><span class="ci-tab-name">${esc(c.name)}</span>${c.id === spec.currentId ? '<span class="ci-tab-cur">▶</span>' : ''}</span>`,
       )
       .join('')}</div>${
       audio
-        ? `<div class="ci-tabs-r"><button type="button" class="ci-tab btn-sound" data-ci-act="mute" aria-pressed="${state?.muted ? 'true' : 'false'}">${state?.muted ? '🔇 소리 꺼짐' : '🔊 소리'}</button></div>`
+        ? `<div class="ci-tabs-r"><button type="button" class="ci-tab btn-sound" data-ci-act="mute" aria-pressed="${state?.muted ? 'true' : 'false'}" aria-label="${state?.muted ? '소리 켜기' : '소리 끄기'}">${state?.muted ? '🔇' : '🔊'}<span class="ci-snd-l">${state?.muted ? ' 소리 꺼짐' : ' 소리'}</span></button></div>`
         : ''
     }`;
     hydratePortraits($.tabs);
-    // one scrollable row: keep the current character's tab in view
+    const row = $.tabs.querySelector('.ci-tabs-l');
+    row?.addEventListener('scroll', () => tabsHint(row), { passive: true });
+    centreTab();
+  }
+
+  /** Keep the current character's tab in view (after every layout change) and show which side hides tabs. */
+  function centreTab() {
     const row = $.tabs.querySelector('.ci-tabs-l');
     const on = row?.querySelector('.ci-tab.on');
-    if (row && on && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, on.offsetLeft - row.offsetLeft - (row.clientWidth - on.offsetWidth) / 2);
+    if (row && on && row.scrollWidth > row.clientWidth + 1) row.scrollLeft = Math.max(0, on.offsetLeft - row.offsetLeft - (row.clientWidth - on.offsetWidth) / 2);
+    if (row) tabsHint(row);
+  }
+  function tabsHint(row) {
+    const more = row.scrollWidth > row.clientWidth + 1;
+    row.classList.toggle('fade-l', more && row.scrollLeft > 2);
+    row.classList.toggle('fade-r', more && row.scrollLeft + row.clientWidth < row.scrollWidth - 2);
+  }
+
+  // ---------- fit: the whole stage always fits the screen above the reaction bar (math: cutinFit.js) ----------
+  const mq = (q) => !!globalThis.matchMedia?.(q).matches;
+  let fitRaf = 0;
+  let fitBoxH = 0;
+  function scheduleFit() {
+    if (fitRaf) return;
+    fitRaf = requestAnimationFrame(() => {
+      fitRaf = 0;
+      fit();
+    });
+  }
+  /** Many chips: one wrapping row; beyond the row cap they fold into a 「+n」 chip (minor ones first, totals stay). */
+  function layoutChips() {
+    $.chips.querySelector('.ci-chip.more')?.remove();
+    const chips = [...$.chips.querySelectorAll('.ci-chip')];
+    for (const c of chips) c.classList.remove('fold');
+    $.chips.classList.toggle('row', chips.length > 3);
+    if (chips.length < 3) return;
+    const open = $.chips.classList.contains('open');
+    const cap = chipRowCap({ vw: innerWidth, vh: innerHeight });
+    const rowsOf = (list) => chipRows(list.filter((c) => !c.classList.contains('fold')).map((c) => c.offsetTop));
+    if (!open && rowsOf(chips) <= cap) return;
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'ci-chip more';
+    more.dataset.ciAct = 'chips';
+    $.chips.appendChild(more);
+    if (open) {
+      more.textContent = '접기 ▲';
+      more.setAttribute('aria-expanded', 'true');
+      return;
+    }
+    const order = chipHideOrder(chips.map((c) => ({ minor: !!c.dataset.minor, keep: !!c.dataset.keep })));
+    let n = 0;
+    for (const i of order) {
+      chips[i].classList.add('fold');
+      n++;
+      more.textContent = `+${n} ▾`;
+      if (rowsOf([...chips, more]) <= cap) break;
+    }
+    if (!n) more.remove();
+    else {
+      more.setAttribute('aria-expanded', 'false');
+      more.setAttribute('aria-label', `${n}개 더 보기`);
+    }
+  }
+  function bodyEnd() {
+    const b = $.body;
+    b.classList.toggle('at-end', b.scrollTop + b.clientHeight >= b.scrollHeight - 2);
+  }
+  $.body.addEventListener('scroll', bodyEnd, { passive: true });
+  function fit() {
+    if (!cur || overlay.hidden) return;
+    const st = overlay.style;
+    const stage = $.stage;
+    const side0 = mq('(orientation: landscape) and (max-height: 500px)'); // phone landscape: always side by side
+    overlay.classList.remove('fit-scroll');
+    overlay.classList.toggle('fit-side', side0);
+    for (const k of ['--ci-winw', '--ci-boxw', '--ci-body-max']) st.removeProperty(k);
+    layoutChips();
+    // narrow screens: the stage starts below the fixed 🚪 나가기 pill (it covered the window's tag)
+    const exitShown = !$.exit.hidden && getComputedStyle($.exit).display !== 'none';
+    overlay.classList.toggle('exit-pad', exitShown && !side0 && stage.getBoundingClientRect().left < $.exit.getBoundingClientRect().right + 8);
+    const ocs = getComputedStyle(overlay);
+    const availPx = overlay.clientHeight - parseFloat(ocs.paddingTop) - parseFloat(ocs.paddingBottom);
+    const z = stage.offsetWidth ? stage.getBoundingClientRect().width / stage.offsetWidth || 1 : 1; // TV: zoom 1.4
+    const availH = availPx / z - 2; // offsetHeight rounds (and TV zoom scales the rounding): keep 2 px spare
+    if (!side0) {
+      const maxW = stage.offsetWidth;
+      const measure = (winW, boxW) => {
+        st.setProperty('--ci-winw', `${winW}px`);
+        st.setProperty('--ci-boxw', `${boxW}px`);
+        layoutChips(); // the row cap depends on the box width
+        return { stageH: stage.offsetHeight, winH: $.win.offsetHeight };
+      };
+      const prompt = !!cur.spec.prompt;
+      const r = fitStacked({ availH, maxW, prompt, measure, minW: minWindowWidth(maxW, { prompt, vh: innerHeight }) });
+      if (wantsSide({ winW: r.winW, maxW, vw: innerWidth, vh: innerHeight })) {
+        // a wide but short screen: the window beside the box keeps its size (house / shop prompts at 1280×720)
+        overlay.classList.add('fit-side');
+        st.removeProperty('--ci-winw');
+        st.removeProperty('--ci-boxw');
+        layoutChips();
+        const sideH = stage.offsetHeight;
+        // keep it only when it helps: the stacked stage didn't fit, or the side window is clearly bigger
+        const better = r.fits ? $.win.offsetWidth > r.winW * 1.1 : sideH <= availH + 1 || sideH < r.stageH;
+        if (!better) {
+          overlay.classList.remove('fit-side');
+          measure(r.winW, r.boxW);
+        }
+      }
+    }
+    // last resort: the body (chips / text / options) scrolls inside the box; ▼ and the tabs stay on screen
+    const overflow = overlay.scrollHeight - overlay.clientHeight;
+    if (overflow > 1) {
+      const cap = bodyCap({ bodyH: $.body.offsetHeight, overflow: overflow / z });
+      if (cap != null) {
+        st.setProperty('--ci-body-max', `${cap}px`);
+        overlay.classList.add('fit-scroll');
+      }
+    }
+    bodyEnd();
+    centreTab();
+    fitBoxH = $.box.offsetHeight;
+  }
+  globalThis.addEventListener?.('resize', () => cur && !overlay.hidden && scheduleFit());
+  // late layout changes (portraits, rows appended by an animation, answered prompts): refit next frame
+  const fitObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver(() => {
+        if (cur && !overlay.hidden && Math.abs($.box.offsetHeight - fitBoxH) > 2) scheduleFit();
+      })
+    : null;
+  fitObserver?.observe($.box);
+
+  /** One chip; `who` (a name inside the text) ellipsizes on its own, `minor` / `keep` steer the +n folding (fit). */
+  function chipHtml(c) {
+    const t = String(c.text ?? '');
+    const at = c.who ? t.indexOf(c.who) : -1;
+    const body = at >= 0 ? `${esc(t.slice(0, at))}<bdi class="ci-chip-n">${esc(c.who)}</bdi>${esc(t.slice(at + c.who.length))}` : esc(t);
+    return `<span class="ci-chip ${esc(c.kind ?? '')}"${c.minor ? ' data-minor="1"' : ''}${c.keep ? ' data-keep="1"' : ''}${at >= 0 ? ` title="${esc(t)}"` : ''}>${body}</span>`;
   }
 
   function typeText(lines, done) {
-    $.text.innerHTML = '';
+    // the hidden ghost holds the full text: the box has its final height at any width while the live line types
+    // (fit() measures the final size, nothing grows under a finger)
     const full = lines.map((l) => esc(l)).join('<br>');
+    // a studio replaces the typed text with its MC lines later: the ghost reserves the taller of the two
+    $.ghost.innerHTML = `<span>${full}</span>${cur?.studioGhost ? `<span>${cur.studioGhost}</span>` : ''}`;
+    $.text.innerHTML = '';
     if (isReduced()) {
       $.text.innerHTML = full;
       return done?.();
@@ -1440,7 +1592,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     $.era.textContent = spec.era ?? '';
     $.who.textContent = spec.who ?? '';
     $.who.hidden = !spec.who;
-    $.chips.innerHTML = (spec.chips ?? []).map((c) => `<span class="ci-chip ${c.kind ?? ''}">${esc(c.text)}</span>`).join('');
+    $.chips.innerHTML = (spec.chips ?? []).map(chipHtml).join('');
+    $.chips.classList.remove('open');
     $.reacts.innerHTML = '';
     renderTabs(spec);
     renderOptions(spec);
@@ -1459,6 +1612,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     else if (spec.mc?.length) renderSmallMc(item);
     audio?.play(spec.sfx ?? pres().tones?.[spec.tone]?.sfx ?? 'pop');
     typeText(spec.text ?? [], null);
+    fit();
     // keyposes after the entry squash: cross-fade to the target pose, speech bubble pops, big win → jump sprite
     item.timers.push(
       setTimeout(() => {
@@ -1683,6 +1837,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       });
       return;
     }
+    if (ev.target.closest('[data-ci-act="chips"]')) {
+      $.chips.classList.toggle('open');
+      fit();
+      return;
+    }
     if (ev.target.closest('[data-ci-act="mute"]')) {
       audio?.toggleMuted();
       if (cur) renderTabs(cur.spec);
@@ -1829,6 +1988,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
           renderOptions(spec);
           $.next.hidden = !!forMe.length;
           renderTabs(spec);
+          fit();
           overlay.querySelector('.ci-opt')?.focus({ preventScroll: true });
         } else promptItem.item.spec = spec;
         return;

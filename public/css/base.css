@@ -109,14 +109,15 @@ input, select {
 input:focus, select:focus, .btn:focus-visible { outline: 3px solid rgba(255, 122, 47, 0.35); outline-offset: 1px; }
 .form-error { color: var(--danger); min-height: 1.2em; font-size: 0.9rem; }
 
-/* toast */
+/* toast: centred with inset + auto margins (a `left: 50%` box shrinks to half the screen and wraps into a blob) */
 .toast {
-  position: fixed; left: 50%; top: calc(var(--topbar-h) + 12px); transform: translate(-50%, -20px);
-  background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px;
-  opacity: 0; pointer-events: none; transition: 0.25s; z-index: 60; max-width: calc(100% - 32px);
+  position: fixed; left: 16px; right: 16px; margin-inline: auto; width: fit-content; max-width: min(560px, calc(100vw - 32px));
+  top: calc(var(--topbar-h) + 12px); transform: translateY(-20px);
+  background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 18px; text-align: center; word-break: keep-all; overflow-wrap: anywhere;
+  opacity: 0; pointer-events: none; transition: 0.25s; z-index: 60;
   font-size: 0.9rem;
 }
-.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.show { opacity: 1; transform: none; }
 .toast[data-kind='error'] { background: var(--danger); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -138,3 +139,4 @@ canvas.av-pt-img { display: block; border-radius: 50%; background: #fff0dc; }
 }
 .topbar .logo { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .topbar-right { flex: none; }
+@media (pointer: coarse) { #leave-btn { min-height: 40px; } }

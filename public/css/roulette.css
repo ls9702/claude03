@@ -72,3 +72,10 @@ body.skill-open .spin-fab { display: none !important; }
 @media (orientation: landscape) and (max-height: 500px) {
   .skill-panel { bottom: 8px; }
 }
+/* touch: the ✕ is a real target; short landscape (844×390): the panel stays above the reaction bar (hidden while
+   aiming — the panel is a sheet of its own) */
+@media (pointer: coarse) { .sk-close { min-width: 40px; min-height: 40px; } }
+body.skill-open[data-screen='game'] .reaction-bar { display: none; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .skill-panel { max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; }
+}

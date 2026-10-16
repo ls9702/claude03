@@ -45,6 +45,29 @@ export const OTHERS_AUTO_MS = 3000;
 export const MY_TURN_CATCHUP_MS = 900;
 /** …and with a turn timer, never hold my spin button once fewer than this many ms are left. */
 export const DEADLINE_RESERVE_MS = 12000;
+/**
+ * 3D board vs the HUD (header / side list / log): the HUD waits for the board's animations (no spoilers), but never
+ * longer than this on other players' turns / for spectators and TVs — back-to-back CPU turns keep the board busy
+ * all the time (the HUD used to stay minutes behind).
+ */
+export const HUD_HOLD_MS = 3000;
+/** My own turn: the board plays my move before the HUD shows its result (a long move + roulette ≈ 6 s). */
+export const HUD_HOLD_MINE_MS = 8000;
+/** The 3D board this many turns behind the state → it plays its backlog instantly (others' cut-ins → banners). */
+export const BOARD_BEHIND_TURNS = 2;
+
+/** How much longer the HUD may wait for the board (ms; 0 = show the state now). */
+export function hudHoldLeft({ heldMs = 0, mine = false } = {}) {
+  return Math.max(0, (mine ? HUD_HOLD_MINE_MS : HUD_HOLD_MS) - Math.max(0, Number(heldMs) || 0));
+}
+
+/** Is the 3D board so far behind the state (turn numbers) that it should rush its backlog? */
+export function boardBehind({ stateTurn, boardTurn } = {}) {
+  if (stateTurn == null || boardTurn == null) return false;
+  const s = Number(stateTurn);
+  const b = Number(boardTurn);
+  return Number.isFinite(s) && Number.isFinite(b) && s - b >= BOARD_BEHIND_TURNS;
+}
 
 /** Tiles that will become marriage / job events (Stage 6) — always full cut-ins. */
 export const BIG_TILE_TYPES = ['heart', 'job'];

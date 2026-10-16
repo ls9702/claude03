@@ -6,7 +6,7 @@
 //   validateTrade(form, ctx) / validateGift(form, ctx) / tradeSideText / tradeLists  → 🤝 거래 · 🎁 선물
 //   spinModBadges(spinMods) / handLayout(n, width)               → pawn / side-row badges, card row sizing
 //   cardColor / cardTag / sortHand / handStacks / heldCards / meritCount / statusCards  → 파랑(보유) · 빨강(사용) · 부상 cards
-//   rollConstraint(spinMods) / useCardBody / paydayAhead / tradableCards → 큰 수·작은 수·딱 그 칸·월급날 직행, trades
+//   rollConstraint(spinMods) / betBlockReason / useCardBody / paydayAhead / tradableCards → 큰 수·작은 수·딱 그 칸·월급날 직행, bets, trades
 //   holidayRows(event, ctx) / lottoRows(event, ctx)               → 명절 정산 / 전국 로또 cut-in rows
 //
 // Everything is feature-detected: characters / rooms / meta without the Stage 7 fields render as before.
@@ -620,6 +620,18 @@ export function rollConstraint(spinMods) {
   return null;
 }
 
+/** Spin-mod kinds that refuse / void side bets on that roulette (server `cards.BET_VOID_MODS`): a fixed / bounded roll
+ *  (딱 그 칸 · 큰 수 · 작은 수 · 월급날 직행) or a second roll (🚕 택시 max2 / 📢 층간소음 min2). */
+export const BET_VOID_MODS = Object.freeze(['exact', 'range', 'rush', 'max2', 'min2']);
+
+/** Why side bets on a roulette with these pending `spinMods` are refused (Korean, = the server's 409) — null when allowed. */
+export function betBlockReason(spinMods) {
+  const kinds = (Array.isArray(spinMods) ? spinMods : []).map((m) => m?.kind);
+  if (kinds.some((k) => k === 'exact' || k === 'range' || k === 'rush')) return '이번 룰렛은 카드로 정해져서 훈수 베팅을 할 수 없어요.';
+  if (kinds.some((k) => k === 'max2' || k === 'min2')) return '이번 룰렛은 카드로 두 번 돌려서 훈수 베팅을 할 수 없어요.';
+  return null;
+}
+
 const MOD_GLYPH = { plus: '⚡', minus: '✂️', max2: '🚕', min2: '📢', range: '🔼', exact: '🎯', rush: '💨' };
 /**
  * What a card / item did to a roulette (`spun {value, steps?, rolls?, mods?, car?, rush?}`) → "🚕 3·8 → 8칸", "✂️ 2칸",
@@ -669,6 +681,7 @@ const LOST = {
   healed: { glyph: '🩹', verb: '회복', note: '부상이 나았어요' },
   discarded: { glyph: '🗑️', verb: '버림', note: '손패가 가득 찼어요' },
   merit: { glyph: '🏅', verb: '사용', note: '승진에 썼어요' },
+  used: { glyph: '🎟️', verb: '사용', note: '추첨에 썼어요' },
 };
 
 /**
@@ -685,6 +698,12 @@ export function cardLostInfo(event, meta, { count = 1 } = {}) {
   else if (e.reason === 'married') text = `💞 ${info.icon} ${info.name} 소멸`;
   else if (e.reason === 'merit') text = `🏅 공적 카드 ${n}장 사용`;
   else if (e.reason === 'discarded') text = `🗑️ ${info.icon} ${info.name}${n > 1 ? ` ×${n}` : ''} 버림`;
+  else if (e.reason === 'used') {
+    // a 로또 복권 / 쿠지 응모권 spent in an era-opening draw (right after its lottoDraw) — quiet chip, never a lone banner
+    const kuji = e.kuji === true || /응모권|쿠지/.test(info.name ?? '');
+    const word = kuji ? '응모권' : '복권';
+    return { glyph: kuji ? '🎟️' : '🎱', text: `${kuji ? '🎟️' : '🎱'} ${word} 사용${n > 1 ? ` ×${n}` : ''}`, reason: 'used', note: r.note, info, count: n, quiet: true };
+  }
   else text = `${info.icon} ${info.name} ${r.verb}`;
   return { glyph: r.glyph, text, reason: e.reason ?? null, note: r.note, info, count: n };
 }

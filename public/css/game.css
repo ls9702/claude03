@@ -223,7 +223,7 @@ body:has(.game[data-quality='tv']) main { max-width: 1800px; }
 
 /* roulette pop */
 .roulette-pop {
-  position: fixed; z-index: 45; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  position: fixed; z-index: 45; top: 50%; left: 50%; transform: translate(-50%, -50%); width: max-content; max-width: calc(100vw - 32px);
   background: rgba(45, 42, 50, 0.9); color: #fff; border-radius: 24px; padding: 16px 32px; text-align: center; pointer-events: none;
 }
 .rp-name { font-size: 0.9rem; opacity: 0.85; }
@@ -374,11 +374,18 @@ body:not([data-screen='game']) .ev-banner { display: none; }
 }
 .news-pop p { margin: 4px 0; }
 .news-flash {
-  position: absolute; z-index: 5; left: 50%; top: 56px; transform: translateX(-50%); display: flex; max-width: calc(100% - 24px);
+  position: absolute; z-index: 5; left: 12px; right: 12px; margin-inline: auto; width: fit-content; top: 56px; display: flex; max-width: min(640px, calc(100% - 24px));
   background: rgba(20, 18, 40, 0.92); color: #fff; border-radius: 12px; overflow: hidden; font-weight: 900; pointer-events: none;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
 }
-.news-flash.show { animation: b3-banner 3.2s ease-out both; }
+.news-flash.show { animation: nf-show 3.2s ease-out both; }
+@keyframes nf-show {
+  0% { opacity: 0; transform: translateY(14px) scale(0.9); }
+  12% { opacity: 1; transform: scale(1.05); }
+  22% { transform: none; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
 .news-flash .nf-tag { flex: none; background: #e11d48; padding: 6px 10px; }
 .news-flash .nf-t { min-width: 0; padding: 6px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -483,3 +490,85 @@ bdi, .gc-name, .now-text b, .eb-tag b, .rk-body b, .char-name, .pname, .ci-who, 
 }
 .rs-more { display: none; margin: 6px auto 0; }
 @media (max-width: 600px) { .rs-more { display: block; } }
+
+/* ---------- layout review fixes (in-game: header, board head, track, dock, touch targets) ---------- */
+/* header chips: one height (era 30 / clock 24 / news 28 before) */
+.era-chip, .era-clock, .news-badge { display: inline-flex; align-items: center; min-height: 28px; box-sizing: border-box; line-height: 1.2; }
+.era-chip { padding: 2px 12px; font-size: 0.92rem; white-space: nowrap; }
+.era-clock { padding: 2px 9px; white-space: nowrap; }
+.news-badge { padding: 2px 10px; }
+.g-era-line [data-el='turninfo'] { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.g-top { container-type: inline-size; }
+/* the pulsing last-round clock (scale 1.06) stays inside the line */
+.g-top .g-era-line [data-el='turninfo'] { padding: 2px 3px; margin: -2px -3px; }
+@media (max-width: 430px) {
+  /* last round + 📰 badge: the header keeps the red pulsing clock only (the spin hint / 3D subtitle say 「이번 시대 마지막
+     턴!」) — the label used to push the line 2 px (390) / 39 px (320) past the card and squeeze the news title to 「📰 부…」 */
+  .g-top .g-era-line [data-el='turninfo'] { flex: 0 1 auto; overflow: hidden; }
+  .g-top .g-era-line .era-last { display: none; }
+}
+@container (max-width: 300px) { .news-badge .nb-t { display: none; } }
+/* tap targets ≥ 40 px on touch screens without making the chips taller: an invisible hit area */
+@media (pointer: coarse) {
+  .news-badge, .hand-tab, .era-tab { position: relative; }
+  .news-badge::after, .hand-tab::after { content: ''; position: absolute; inset: -7px 0; }
+  .era-tab { min-height: 40px; }
+  .board-tools .btn.tiny, .board-tools .quality-select { min-height: 40px; }
+  .board-tools .btn.tiny { font-size: 0.9rem; }
+  .td-kind, .ti-a .btn { min-height: 40px; }
+  body[data-screen='game'] .reaction-bar .react { min-width: 40px; height: 40px; }
+}
+
+/* board head: the era tabs get their own row (the toolbar used to squeeze them to 300 px at ≥ 1280) */
+.board-head .era-tabs { flex: 1 1 100%; }
+.era-tabs.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+.era-tabs.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
+.era-tabs.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+@media (max-width: 600px) {
+  /* phones: one left-aligned row of compact tools (icons; labels in the title / aria-label) */
+  .board-tools { justify-content: flex-start; margin-left: 0; flex: 1 1 100%; }
+  .board-tools .tl-l { display: none; }
+}
+
+/* crowded tile: ≥ 3 pawns overlap in one row, ≥ 4 → two pawns + 「+N」 (never past the tile edge / over the label) */
+.pawns { flex-wrap: nowrap; }
+.pawns.crowd .pawn + .pawn { margin-left: -18px; }
+.pawns.crowd .pawn.cur { transform: translateY(-3px); animation: none; z-index: 3; }
+.pawns.many .pawn + .pawn { margin-left: -18px; }
+.pawn-more { margin-left: -8px; }
+
+/* character detail: labels on the first line of their value (portrait / art blocks too) */
+.gd-fact { align-items: start; }
+.gd-k { padding-top: 1px; }
+.fam-kid .kid-genius { white-space: nowrap; }
+/* Korean wraps between words, not inside them */
+.g-log li, .c-desc, .choice .c-label, .spin-hint, .hand-hint, .news-pop, .gd-v { word-break: keep-all; }
+
+/* spin dock: phones — sticky only on tall screens; short ones (≤ 600 px high, 844×390, 320×568) keep the dock in the
+   page and the floating 🎡 button shows when it's out of view (the dock used to cover the board / tabs) */
+@media (max-height: 600px) {
+  .spin-dock.can-spin { position: relative; bottom: auto; }
+}
+@media (max-width: 699px) {
+  .spin-dock.can-spin .spin-dial { width: 52px; height: 52px; font-size: 1.4rem; border-width: 3px; }
+  /* the sticky dock stays short: the dial already shows the last roulette, so its text line goes */
+  .spin-dock.can-spin .spin-hint { margin-top: 4px; }
+  .spin-dock.can-spin .last-spin, .spin-dock.can-spin .last-spin + br { display: none; }
+}
+/* 3D subtitle: lifted above whatever covers the bottom of the canvas (sticky dock / reaction bar, game2d boardCover) */
+.b3-sub { bottom: min(calc(10px + var(--b3-cover-b, 0px)), calc(100% - 52px)); }
+/* primary bet button */
+.bet-go { min-height: 44px; }
+/* reaction bar in the game: fades on the side that scrolls (≤ 390 px the ten reactions don't fit one row of 40 px
+   targets); emoji a little bigger to match the taller buttons */
+@media (pointer: coarse) { body[data-screen='game'] .reaction-bar .react { font-size: 1.05rem; } }
+body[data-screen='game'] .reaction-bar { scroll-snap-type: x proximity; }
+body[data-screen='game'] .reaction-bar .react { scroll-snap-align: start; }
+body[data-screen='game'] .reaction-bar.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 30px), rgba(0, 0, 0, 0.25)); mask-image: linear-gradient(90deg, #000 calc(100% - 30px), rgba(0, 0, 0, 0.25)); }
+body[data-screen='game'] .reaction-bar.fade-l { -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25), #000 30px); mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25), #000 30px); }
+body[data-screen='game'] .reaction-bar.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25), #000 30px, #000 calc(100% - 30px), rgba(0, 0, 0, 0.25)); mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25), #000 30px, #000 calc(100% - 30px), rgba(0, 0, 0, 0.25)); }
+body.cutin-open .reaction-bar.fade-l, body.cutin-open .reaction-bar.fade-r { -webkit-mask-image: none; mask-image: none; }
+/* side list: long names wrap to a second line instead of ending in 「…」 (12 characters = 175 px vs a 161 px column) */
+.gc-name { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; white-space: normal; overflow: visible; }
+.gc-name > bdi { min-width: 0; max-width: 100%; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gc-name > small { white-space: nowrap; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }

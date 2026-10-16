@@ -176,3 +176,7 @@
 /* ---------- lobby: the room's world line ---------- */
 .world-line { margin: 4px 0 0; padding: 6px 10px; border-radius: 10px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; background: #f1f5f9; color: #334155; }
 .world-line[data-world='chiikawa'] { background: #fff1f2; color: #9f1239; }
+/* E2E-4: battle / field option text starts at the icon and wraps between words (「풀뽑/기」 in narrow side-by-side boxes) */
+.hw-opt, .wd-opt { justify-content: flex-start !important; }
+.hw-opt .hw-body, .wd-opt .hw-body { flex: 1 1 auto; }
+.hw-opt .hw-body b, .wd-opt .hw-body b, .hw-opt small, .wd-opt small, .wd-cur, .hw-foe-txt { word-break: keep-all; }

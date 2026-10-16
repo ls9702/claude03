@@ -1261,7 +1261,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       hooks.onStep?.(e);
       if (ctx.instant || !e.delta) return;
       const [icon, color] = STAT_FLOAT[e.stat] ?? ['⭐', '#1f7a45'];
-      emotion.float(e.charId, `${icon}${e.delta > 0 ? '+' : ''}${e.delta}`, e.delta > 0 ? color : '#d6453f');
+      emotion.float(e.charId, `${e.reason === 'thanks' ? '🎁' : ''}${icon}${e.delta > 0 ? '+' : ''}${e.delta}`, e.delta > 0 ? color : '#d6453f');
       return ctx.sleep(120);
     },
     salary: (e, ctx) => {
@@ -1288,7 +1288,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     // blue / red cards: a card left the hand (💍 결혼운 소멸 · 🩹 부상 회복 · 🗑️ 버림 · 🏅 공적 사용)
     cardLost: async (e, ctx) => {
       hooks.onStep?.(e);
-      if (ctx.instant || !e.charId) return;
+      if (ctx.instant || !e.charId || e.reason === 'used') return; // 응모권 / 복권 used in a draw: the draw pops say it
       emotion.pop(e.charId, cardLostInfo(e, null).glyph, { dur: 1.3 });
       await ctx.sleep(250);
     },
