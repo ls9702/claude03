@@ -49,7 +49,7 @@ test('import: card / bg / mc files are processed, accepted, written and removed 
     for (const id of ['bg-stage', 'card-study', 'mc-hoya-neutral']) {
       const item = getItem(m, id);
       assert.equal(item.status, 'accepted', id);
-      assert.equal(item.accepted.source, 'upload');
+      assert.equal(item.accepted.source, id.startsWith('mc-') ? 'import' : 'upload'); // CH-2: MC art goes through import-chara.js
       assert.ok(await exists(path.join(s.outputDir, item.output)), `${id} written`);
     }
     // inbox emptied (except non-images)

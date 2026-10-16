@@ -246,7 +246,7 @@ test('raster art plugs in: ch-<id>-base replaces the SVG figure, body + arms kee
       'pet-chick-base': { url: '/g/pet/chick.webp', kind: 'chara', meta: { pet: 'chick', part: 'base' } },
     });
     const u = charaSvg({ character: 'usagi', props: { head: 'ribbon' } }, { meta: META });
-    assert.match(u, /<image class="ch-r base" href="\/g\/ch\/usagi-base.webp" x="0" y="0" width="1024" height="1536"\/>/);
+    assert.match(u, /<image class="ch-r base" href="\/g\/ch\/usagi-base.webp" x="0" y="0" width="1024" height="1536" preserveAspectRatio="none"\/>/);
     assert.match(u, /class="ch-ec" display="none"><image class="ch-r eyes"/);
     assert.match(u, /<image class="ch-prop-img" href="\/g\/props\/ribbon.png"/); // raster prop at the data anchor
     assert.doesNotMatch(u, /class="ch-head-i"/); // the SVG head is gone

@@ -19,6 +19,13 @@
 
 치이카와 기본·팔 없음·눈 감음·입 벌림·울음·점프 시트, 하치와레 기본, 펭귄, 공원 배경, 요리사 모자.
 
+> **테스트 그림을 게임에 넣어 보고 알게 된 것 (10-16):** ① 참조 이미지를 붙인 그림은 위치·크기가 그대로 맞아 자동으로
+> 배치됩니다. 참조 없이 그린 펭귄 첫 장은 발이 6.6 % 위, 크기 0.81배라 위치만 보정했어요 → **참조 첨부를 꼭 지켜 주세요.**
+> ② 편집 그림(팔 없음·눈·입·표정)은 바뀐 곳만 잘라 겹쳐 쓰므로 **팔·몸은 절대 움직이지 않게** (울음 그림은 완벽했어요).
+> ③ 점프 시트는 칸마다 크기·발 위치가 달라도 머리 크기 기준으로 맞춰 쓰지만, 웅크린 첫 칸이 앉은 자세로 나와서 프롬프트에
+> 「무릎 굽히고 두 발은 바닥에, 앉지 않기」와 「네 칸 모두 머리 크기 같게」를 넣었어요. ④ 파일 이름은 요청 id 그대로
+> (`<id>.png`, 원본 `<id>_original.jpg`, 두 번째 장 `<id>-2.png`)면 됩니다.
+
 
 ## 공통 그림체 문장 (프롬프트에 이미 들어 있음)
 
@@ -139,7 +146,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same character, same 
 - 비율 1:1 · 참조: `ch-hachiware-base`
 
 ```text
-Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
 ```
 
 ### `ch-usagi-noarms` — 우사기 팔 없음
@@ -197,7 +204,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same character, same 
 - 비율 1:1 · 참조: `ch-usagi-base`
 
 ```text
-Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
 ```
 
 ### `ch-momonga-noarms` — 모몽가 팔 없음
@@ -253,7 +260,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same character, same 
 - 비율 1:1 · 참조: `ch-momonga-base`
 
 ```text
-Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
 ```
 
 ### `ch-kurimanju-noarms` — 쿠리만쥬 팔 없음
@@ -311,7 +318,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same character, same 
 - 비율 1:1 · 참조: `ch-kurimanju-base`
 
 ```text
-Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
 ```
 
 ### `ch-rakko-noarms` — 랏코 팔 없음
@@ -369,7 +376,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same character, same 
 - 비율 1:1 · 참조: `ch-rakko-base`
 
 ```text
-Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
 ```
 
 ### `ch-shisa-noarms` — 시사 팔 없음
@@ -425,7 +432,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same character, same 
 - 비율 1:1 · 참조: `ch-shisa-base`
 
 ```text
-Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
 ```
 
 ### `ch-pochette-base` — 포셰트 기본
@@ -491,7 +498,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same character, same 
 - 비율 1:1 · 참조: `ch-pochette-base`
 
 ```text
-Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.
 ```
 
 ### `npc-hamster-base` — 단짝 후보 햄스터

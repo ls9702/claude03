@@ -452,6 +452,7 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     const { m, item } = await mustItem(id);
     if (item.kind === 'sprite') throw new StudioError('스프라이트는 업로드를 지원하지 않습니다. 생성 후 채택하세요.');
     if (item.kind === 'part') throw new StudioError('아바타 파츠는 업로드를 지원하지 않습니다. 생성 후 채택하세요.');
+    if (item.kind === 'chara') throw new StudioError('캐릭터 그림은 scripts/import-assets.js로 가져오세요 (배치·파츠 추출이 필요해요).');
     let meta;
     try {
       meta = await sharp(buffer).metadata();
@@ -484,6 +485,36 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
       const now = new Date().toISOString();
       it.accepted = { file: it.output, model: 'upload', promptUsed: null, generatedAt: now, acceptedAt: now, source: 'upload', width: out.width, height: out.height };
       return { ...summarize(mm, it), ...(watermark ? { watermarkRemoved: removed } : {}) };
+    });
+  }
+
+  /**
+   * Publish an already processed image (CH-2 hand-delivered art, scripts/import-chara.js): written to the item's output
+   * (WebP q88 / PNG by extension, `lossless` for WebP), accepted with `source: 'import'`, `meta` merged into the item's
+   * meta (measured rect / anchors / pivots / sheet timing …) and `accepted.from` = the delivered file name.
+   */
+  async function publish(id, pngBuffer, { meta = null, from = null, lossless = false } = {}) {
+    const { item } = await mustItem(id);
+    const dest = await writeOutput(item, pngBuffer, item.output, { lossless });
+    const out = await sharp(pngBuffer).metadata();
+    const bytes = (await stat(dest)).size;
+    return withManifest((mm) => {
+      const it = getItem(mm, id);
+      it.status = 'accepted';
+      const now = new Date().toISOString();
+      it.accepted = { file: it.output, model: 'import', promptUsed: null, generatedAt: now, acceptedAt: now, source: 'import', width: out.width, height: out.height, ...(from ? { from } : {}) };
+      if (meta) it.meta = { ...(it.meta ?? {}), ...meta };
+      return { ...summarize(mm, it), bytes };
+    });
+  }
+
+  /** Merge fields into an item's meta (e.g. hand anchors measured from arms delivered after the base). */
+  async function patchMeta(id, patch) {
+    await mustItem(id);
+    return withManifest((mm) => {
+      const it = getItem(mm, id);
+      it.meta = { ...(it.meta ?? {}), ...patch };
+      return summarize(mm, it);
     });
   }
 
@@ -583,6 +614,8 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     reprocess,
     accept,
     upload,
+    publish,
+    patchMeta,
     deleteCandidates,
     listCandidates,
     candidateFile,

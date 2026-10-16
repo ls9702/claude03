@@ -14278,9 +14278,19 @@
         "resize:1920x1080",
         "webp"
       ],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "scene": "park"
+      },
+      "accepted": {
+        "file": "bg/park.webp",
+        "model": "upload",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:26:52.592Z",
+        "acceptedAt": "2026-10-16T05:26:52.592Z",
+        "source": "upload",
+        "width": 1920,
+        "height": 1080
       }
     },
     {
@@ -16340,6 +16350,3284 @@
       "status": "todo",
       "meta": {
         "treasure": "treasure_map"
+      }
+    },
+    {
+      "id": "ch-chiikawa-base",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 기본",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Chiikawa, the small round white creature with tiny round ears on top of the head, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Portrait 2:3 (1024x1536). ONE character, full body, front view, standing on an invisible floor, centred horizontally, feet at about 85% of the height, the character about 55% of the image height. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [],
+      "output": "chara/ch/chiikawa/base.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "character": "chiikawa",
+        "part": "base",
+        "res": 0.75,
+        "rect": [
+          140,
+          417.3,
+          745.3,
+          889.3
+        ],
+        "placement": {
+          "unit": 1625.1534,
+          "cx": 0.0008,
+          "feet": 0.7858
+        },
+        "anchors": {
+          "head": [
+            513.3,
+            444
+          ],
+          "face": [
+            513.3,
+            703.7
+          ],
+          "neck": [
+            513.3,
+            917.3
+          ],
+          "handL": [
+            165.3,
+            994.4
+          ],
+          "handR": [
+            858.9,
+            995.6
+          ],
+          "back": [
+            513.3,
+            1109.3
+          ]
+        },
+        "eyes": [
+          [
+            402,
+            703.7
+          ],
+          [
+            617.3,
+            703.7
+          ]
+        ],
+        "headBox": {
+          "left": 166.7,
+          "right": 856,
+          "top": 444,
+          "bottom": 917.3,
+          "wideY": 742.7
+        },
+        "headWidth": 689.3,
+        "bbox": {
+          "x": 142.7,
+          "y": 420,
+          "w": 740,
+          "h": 882.7
+        },
+        "source": [
+          896,
+          1200
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/base.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:26:47.276Z",
+        "acceptedAt": "2026-10-16T05:26:47.276Z",
+        "source": "import",
+        "width": 559,
+        "height": 667,
+        "from": "ch-chiikawa-base.png"
+      }
+    },
+    {
+      "id": "ch-chiikawa-body",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 몸 (팔 없음)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Do not move or redraw anything else.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/body.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "character": "chiikawa",
+        "part": "body",
+        "res": 0.75,
+        "rect": [
+          164,
+          417.3,
+          696,
+          888
+        ],
+        "pivots": {
+          "armL": [
+            250.4,
+            956.3
+          ],
+          "armR": [
+            774.9,
+            956.9
+          ]
+        }
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/body.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:44:29.391Z",
+        "acceptedAt": "2026-10-16T05:44:29.391Z",
+        "source": "import",
+        "width": 522,
+        "height": 666,
+        "from": "ch-chiikawa-noarms.png"
+      }
+    },
+    {
+      "id": "ch-chiikawa-arms",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 팔 (자동 추출)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Derived at import (no image request): base minus the arm-less body (-noarms) = both arms, with shoulder pivots.",
+      "refs": [
+        "ch-chiikawa-base",
+        "ch-chiikawa-body"
+      ],
+      "output": "chara/ch/chiikawa/arms.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "character": "chiikawa",
+        "part": "arms",
+        "res": 0.75,
+        "rect": [
+          140,
+          916,
+          745.3,
+          113.3
+        ],
+        "pivots": {
+          "armL": [
+            250.4,
+            956.3
+          ],
+          "armR": [
+            774.9,
+            956.9
+          ]
+        },
+        "hands": {
+          "handL": [
+            165.3,
+            994.4
+          ],
+          "handR": [
+            858.9,
+            995.6
+          ]
+        }
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/arms.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:44:29.465Z",
+        "acceptedAt": "2026-10-16T05:44:29.465Z",
+        "source": "import",
+        "width": 559,
+        "height": 85,
+        "from": "ch-chiikawa-noarms.png (기본 − 팔 없음)"
+      }
+    },
+    {
+      "id": "ch-chiikawa-eyes-closed",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 눈 감음 (깜빡임)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same and ONLY change the eyes to closed eyes (two small gentle downward-curved lines). Same position, size, framing and magenta background.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/eyes-closed.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "character": "chiikawa",
+        "part": "eyes-closed",
+        "res": 0.75,
+        "rect": [
+          342.7,
+          656,
+          338.7,
+          94.7
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/eyes-closed.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:26:50.151Z",
+        "acceptedAt": "2026-10-16T05:26:50.151Z",
+        "source": "import",
+        "width": 254,
+        "height": 71,
+        "from": "ch-chiikawa-eyes-closed.png"
+      }
+    },
+    {
+      "id": "ch-chiikawa-mouth-open",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 입 벌림 (말하기)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same and ONLY change the mouth to a small open mouth, as if talking. Same position, size, framing and magenta background.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/mouth-open.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "character": "chiikawa",
+        "part": "mouth-open",
+        "res": 0.75,
+        "rect": [
+          472,
+          792,
+          80,
+          73.3
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/mouth-open.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:26:50.714Z",
+        "acceptedAt": "2026-10-16T05:26:50.714Z",
+        "source": "import",
+        "width": 60,
+        "height": 55,
+        "from": "ch-chiikawa-mouth-open.png"
+      }
+    },
+    {
+      "id": "ch-chiikawa-expr-joy",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 기쁨",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/expr-joy.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "chiikawa",
+        "part": "expr-joy"
+      }
+    },
+    {
+      "id": "ch-chiikawa-expr-cry",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 울음",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep the same character, position, size, framing and magenta background, and change ONLY the face to Chiikawa's famous crying face: eyes squeezed, big wobbly mouth, big tear drops streaming down. Arms stay where they are.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/expr-cry.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "character": "chiikawa",
+        "part": "expr-cry",
+        "res": 0.75,
+        "rect": [
+          262.7,
+          581.3,
+          492,
+          414.7
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/expr-cry.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:26:49.655Z",
+        "acceptedAt": "2026-10-16T05:26:49.655Z",
+        "source": "import",
+        "width": 369,
+        "height": 311,
+        "from": "ch-chiikawa-cry.png"
+      }
+    },
+    {
+      "id": "ch-chiikawa-expr-shock",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 놀람",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/expr-shock.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "chiikawa",
+        "part": "expr-shock"
+      }
+    },
+    {
+      "id": "ch-chiikawa-sheet-jump",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 점프 4프레임",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1 (1024x1024), a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/sheet-jump.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "character": "chiikawa",
+        "part": "sheet-jump",
+        "res": 0.5,
+        "rect": [
+          118,
+          430,
+          788,
+          882
+        ],
+        "grid": [
+          2,
+          2
+        ],
+        "frames": 4,
+        "loop": false,
+        "seq": [
+          0,
+          1,
+          2,
+          1,
+          3
+        ],
+        "frameMs": [
+          180,
+          150,
+          190,
+          100,
+          230
+        ],
+        "heads": [
+          [
+            8.7,
+            116
+          ],
+          [
+            -9.3,
+            22
+          ],
+          [
+            2.7,
+            20
+          ],
+          [
+            0.7,
+            56
+          ]
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/sheet-jump.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:44:30.164Z",
+        "acceptedAt": "2026-10-16T05:44:30.164Z",
+        "source": "import",
+        "width": 788,
+        "height": 882,
+        "from": "ch-chiikawa-sheet-jump-2.png"
+      }
+    },
+    {
+      "id": "ch-hachiware-base",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 기본",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Hachiware, the small round white cat-like creature with pointed cat ears and a blue-grey 'hachiware' split pattern on the top of the head, standing front view with a cheerful smile. Same art style, same pose, same scale and same position in the frame as the attached image. Both short arms held slightly away from the body. Portrait 2:3 (1024x1536). ONE character, full body, front view, standing on an invisible floor, centred horizontally, feet at about 85% of the height, the character about 55% of the image height. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/hachiware/base.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "character": "hachiware",
+        "part": "base",
+        "res": 0.75,
+        "rect": [
+          145.3,
+          376,
+          746.7,
+          932
+        ],
+        "placement": {
+          "unit": 1625.1534,
+          "cx": 0.0008,
+          "feet": 0.7858
+        },
+        "anchors": {
+          "head": [
+            516.7,
+            444
+          ],
+          "face": [
+            516.7,
+            703.3
+          ],
+          "neck": [
+            516.7,
+            916
+          ],
+          "handL": [
+            193.4,
+            988
+          ],
+          "handR": [
+            839.9,
+            990.7
+          ],
+          "back": [
+            516.7,
+            1108.7
+          ]
+        },
+        "eyes": [
+          [
+            406.3,
+            703.2
+          ],
+          [
+            620.5,
+            703.3
+          ]
+        ],
+        "headBox": {
+          "left": 172,
+          "right": 858.7,
+          "top": 444,
+          "bottom": 916,
+          "wideY": 749.3
+        },
+        "headWidth": 686.7,
+        "bbox": {
+          "x": 149.3,
+          "y": 381.3,
+          "w": 736,
+          "h": 921.3
+        },
+        "source": [
+          848,
+          1264
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/base.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:26:47.819Z",
+        "acceptedAt": "2026-10-16T05:26:47.819Z",
+        "source": "import",
+        "width": 560,
+        "height": 699,
+        "from": "ch-hachiware-base.png"
+      }
+    },
+    {
+      "id": "ch-hachiware-body",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 몸 (팔 없음)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Do not move or redraw anything else.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/body.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "body"
+      }
+    },
+    {
+      "id": "ch-hachiware-arms",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 팔 (자동 추출)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Derived at import (no image request): base minus the arm-less body (-noarms) = both arms, with shoulder pivots.",
+      "refs": [
+        "ch-hachiware-base",
+        "ch-hachiware-body"
+      ],
+      "output": "chara/ch/hachiware/arms.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "arms"
+      }
+    },
+    {
+      "id": "ch-hachiware-eyes-closed",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 눈 감음 (깜빡임)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/eyes-closed.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "eyes-closed"
+      }
+    },
+    {
+      "id": "ch-hachiware-mouth-open",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 입 벌림 (말하기)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/mouth-open.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "mouth-open"
+      }
+    },
+    {
+      "id": "ch-hachiware-expr-joy",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 기쁨",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/expr-joy.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "expr-joy"
+      }
+    },
+    {
+      "id": "ch-hachiware-expr-cry",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 울음",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/expr-cry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "expr-cry"
+      }
+    },
+    {
+      "id": "ch-hachiware-expr-shock",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 놀람",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/expr-shock.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "expr-shock"
+      }
+    },
+    {
+      "id": "ch-hachiware-sheet-jump",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 점프 4프레임",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/sheet-jump.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "sheet-jump"
+      }
+    },
+    {
+      "id": "ch-usagi-base",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 기본",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cream-yellow chibi rabbit-like creature with two long upright rabbit ears, a round head, wide happy dot eyes, a big open mouth, orange-pink blush, energetic pose, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/usagi/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "base"
+      }
+    },
+    {
+      "id": "ch-usagi-body",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 몸 (팔 없음)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Do not move or redraw anything else.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/body.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "body"
+      }
+    },
+    {
+      "id": "ch-usagi-arms",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 팔 (자동 추출)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Derived at import (no image request): base minus the arm-less body (-noarms) = both arms, with shoulder pivots.",
+      "refs": [
+        "ch-usagi-base",
+        "ch-usagi-body"
+      ],
+      "output": "chara/ch/usagi/arms.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "arms"
+      }
+    },
+    {
+      "id": "ch-usagi-eyes-closed",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 눈 감음 (깜빡임)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/eyes-closed.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "eyes-closed"
+      }
+    },
+    {
+      "id": "ch-usagi-mouth-open",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 입 벌림 (말하기)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/mouth-open.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "mouth-open"
+      }
+    },
+    {
+      "id": "ch-usagi-expr-joy",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 기쁨",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/expr-joy.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "expr-joy"
+      }
+    },
+    {
+      "id": "ch-usagi-expr-cry",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 울음",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/expr-cry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "expr-cry"
+      }
+    },
+    {
+      "id": "ch-usagi-expr-shock",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 놀람",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/expr-shock.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "expr-shock"
+      }
+    },
+    {
+      "id": "ch-usagi-sheet-jump",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 점프 4프레임",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/sheet-jump.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "sheet-jump"
+      }
+    },
+    {
+      "id": "ch-momonga-base",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 기본",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small white chibi flying squirrel with big sparkly eyes, small rounded squirrel ears, a fluffy curled tail and a pale blue-grey gliding membrane, pink blush, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/momonga/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "base"
+      }
+    },
+    {
+      "id": "ch-momonga-body",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 몸 (팔 없음)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the tail and the gliding membrane. Do not move or redraw anything else.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/body.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "body"
+      }
+    },
+    {
+      "id": "ch-momonga-arms",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 팔 (자동 추출)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Derived at import (no image request): base minus the arm-less body (-noarms) = both arms, with shoulder pivots.",
+      "refs": [
+        "ch-momonga-base",
+        "ch-momonga-body"
+      ],
+      "output": "chara/ch/momonga/arms.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "arms"
+      }
+    },
+    {
+      "id": "ch-momonga-eyes-closed",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 눈 감음 (깜빡임)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/eyes-closed.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "eyes-closed"
+      }
+    },
+    {
+      "id": "ch-momonga-mouth-open",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 입 벌림 (말하기)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/mouth-open.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "mouth-open"
+      }
+    },
+    {
+      "id": "ch-momonga-expr-joy",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 기쁨",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/expr-joy.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "expr-joy"
+      }
+    },
+    {
+      "id": "ch-momonga-expr-cry",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 울음",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/expr-cry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "expr-cry"
+      }
+    },
+    {
+      "id": "ch-momonga-expr-shock",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 놀람",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/expr-shock.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "expr-shock"
+      }
+    },
+    {
+      "id": "ch-momonga-sheet-jump",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 점프 4프레임",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/sheet-jump.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "sheet-jump"
+      }
+    },
+    {
+      "id": "ch-kurimanju-base",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 기본",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round chestnut-bun shaped chibi creature with warm brown fur, a darker brown top like a baked chestnut bun, tiny bun-like ears, sleepy content eyes and a small smile, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/kurimanju/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "base"
+      }
+    },
+    {
+      "id": "ch-kurimanju-body",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 몸 (팔 없음)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Do not move or redraw anything else.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/body.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "body"
+      }
+    },
+    {
+      "id": "ch-kurimanju-arms",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 팔 (자동 추출)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Derived at import (no image request): base minus the arm-less body (-noarms) = both arms, with shoulder pivots.",
+      "refs": [
+        "ch-kurimanju-base",
+        "ch-kurimanju-body"
+      ],
+      "output": "chara/ch/kurimanju/arms.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "arms"
+      }
+    },
+    {
+      "id": "ch-kurimanju-eyes-closed",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 눈 감음 (깜빡임)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/eyes-closed.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "eyes-closed"
+      }
+    },
+    {
+      "id": "ch-kurimanju-mouth-open",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 입 벌림 (말하기)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/mouth-open.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "mouth-open"
+      }
+    },
+    {
+      "id": "ch-kurimanju-expr-joy",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 기쁨",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/expr-joy.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "expr-joy"
+      }
+    },
+    {
+      "id": "ch-kurimanju-expr-cry",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 울음",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/expr-cry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "expr-cry"
+      }
+    },
+    {
+      "id": "ch-kurimanju-expr-shock",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 놀람",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/expr-shock.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "expr-shock"
+      }
+    },
+    {
+      "id": "ch-kurimanju-sheet-jump",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 점프 4프레임",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/sheet-jump.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "sheet-jump"
+      }
+    },
+    {
+      "id": "ch-rakko-base",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 기본",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a tall beige chibi sea otter with small round otter ears low on the head, a light muzzle, calm confident eyes, a slightly longer body, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/rakko/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "base"
+      }
+    },
+    {
+      "id": "ch-rakko-body",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 몸 (팔 없음)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the tail. Do not move or redraw anything else.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/body.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "body"
+      }
+    },
+    {
+      "id": "ch-rakko-arms",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 팔 (자동 추출)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Derived at import (no image request): base minus the arm-less body (-noarms) = both arms, with shoulder pivots.",
+      "refs": [
+        "ch-rakko-base",
+        "ch-rakko-body"
+      ],
+      "output": "chara/ch/rakko/arms.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "arms"
+      }
+    },
+    {
+      "id": "ch-rakko-eyes-closed",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 눈 감음 (깜빡임)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/eyes-closed.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "eyes-closed"
+      }
+    },
+    {
+      "id": "ch-rakko-mouth-open",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 입 벌림 (말하기)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/mouth-open.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "mouth-open"
+      }
+    },
+    {
+      "id": "ch-rakko-expr-joy",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 기쁨",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/expr-joy.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "expr-joy"
+      }
+    },
+    {
+      "id": "ch-rakko-expr-cry",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 울음",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/expr-cry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "expr-cry"
+      }
+    },
+    {
+      "id": "ch-rakko-expr-shock",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 놀람",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/expr-shock.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "expr-shock"
+      }
+    },
+    {
+      "id": "ch-rakko-sheet-jump",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 점프 4프레임",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/sheet-jump.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "sheet-jump"
+      }
+    },
+    {
+      "id": "ch-shisa-base",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 기본",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round golden-yellow chibi shisa lion-dog with a fluffy curly orange mane around the face, small rounded ears, cheerful dot eyes and a wide smile, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/shisa/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "base"
+      }
+    },
+    {
+      "id": "ch-shisa-body",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 몸 (팔 없음)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the mane. Do not move or redraw anything else.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/body.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "body"
+      }
+    },
+    {
+      "id": "ch-shisa-arms",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 팔 (자동 추출)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Derived at import (no image request): base minus the arm-less body (-noarms) = both arms, with shoulder pivots.",
+      "refs": [
+        "ch-shisa-base",
+        "ch-shisa-body"
+      ],
+      "output": "chara/ch/shisa/arms.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "arms"
+      }
+    },
+    {
+      "id": "ch-shisa-eyes-closed",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 눈 감음 (깜빡임)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/eyes-closed.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "eyes-closed"
+      }
+    },
+    {
+      "id": "ch-shisa-mouth-open",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 입 벌림 (말하기)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/mouth-open.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "mouth-open"
+      }
+    },
+    {
+      "id": "ch-shisa-expr-joy",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 기쁨",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/expr-joy.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "expr-joy"
+      }
+    },
+    {
+      "id": "ch-shisa-expr-cry",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 울음",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/expr-cry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "expr-cry"
+      }
+    },
+    {
+      "id": "ch-shisa-expr-shock",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 놀람",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/expr-shock.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "expr-shock"
+      }
+    },
+    {
+      "id": "ch-shisa-sheet-jump",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 점프 4프레임",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/sheet-jump.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "sheet-jump"
+      }
+    },
+    {
+      "id": "ch-pochette-base",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 기본",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small lavender chibi creature with soft drooping pouch-shaped ears and a tiny purple pouch bag on a strap, dot eyes, pink blush, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/pochette/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "base"
+      }
+    },
+    {
+      "id": "ch-pochette-body",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 몸 (팔 없음)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the pouch bag and its strap. Do not move or redraw anything else.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/body.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "body"
+      }
+    },
+    {
+      "id": "ch-pochette-arms",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 팔 (자동 추출)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Derived at import (no image request): base minus the arm-less body (-noarms) = both arms, with shoulder pivots.",
+      "refs": [
+        "ch-pochette-base",
+        "ch-pochette-body"
+      ],
+      "output": "chara/ch/pochette/arms.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "arms"
+      }
+    },
+    {
+      "id": "ch-pochette-eyes-closed",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 눈 감음 (깜빡임)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/eyes-closed.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "eyes-closed"
+      }
+    },
+    {
+      "id": "ch-pochette-mouth-open",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 입 벌림 (말하기)",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/mouth-open.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "mouth-open"
+      }
+    },
+    {
+      "id": "ch-pochette-expr-joy",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 기쁨",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/expr-joy.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "expr-joy"
+      }
+    },
+    {
+      "id": "ch-pochette-expr-cry",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 울음",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/expr-cry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "expr-cry"
+      }
+    },
+    {
+      "id": "ch-pochette-expr-shock",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 놀람",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/expr-shock.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "expr-shock"
+      }
+    },
+    {
+      "id": "ch-pochette-sheet-jump",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 점프 4프레임",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump (knees bent, both feet flat on the floor, not sitting), 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell (the head exactly the same size in all four frames) and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/sheet-jump.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "sheet-jump"
+      }
+    },
+    {
+      "id": "npc-penguin-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 펭귄",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga) in the same art style and at the same scale as the attached image: a small chubby baby penguin with a tiny yellow beak and a little red scarf, standing front view, friendly smile, short flippers held slightly away from the body. Portrait 2:3 (1024x1536). ONE character, full body, front view, standing on an invisible floor, centred horizontally, feet at about 85% of the height, the character about 55% of the image height. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/penguin/base.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "npc": "penguin",
+        "part": "base",
+        "res": 0.75,
+        "rect": [
+          140,
+          440,
+          745.3,
+          857.3
+        ],
+        "placement": {
+          "unit": 1625.1534,
+          "cx": 0.0008,
+          "feet": 0.7858
+        },
+        "anchors": {
+          "head": [
+            513.3,
+            444
+          ],
+          "face": [
+            513.3,
+            703.3
+          ],
+          "neck": [
+            513.3,
+            930.7
+          ],
+          "handL": [
+            188.3,
+            988
+          ],
+          "handR": [
+            837.2,
+            989.3
+          ],
+          "back": [
+            513.3,
+            1111.3
+          ]
+        },
+        "eyes": [
+          [
+            401.2,
+            703.4
+          ],
+          [
+            617.2,
+            703.2
+          ]
+        ],
+        "headBox": {
+          "left": 168,
+          "right": 856,
+          "top": 444,
+          "bottom": 930.7,
+          "wideY": 734.7
+        },
+        "headWidth": 688,
+        "bbox": {
+          "x": 144,
+          "y": 444,
+          "w": 738.7,
+          "h": 849.3
+        },
+        "source": [
+          896,
+          1200
+        ]
+      },
+      "accepted": {
+        "file": "chara/npc/penguin/base.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:54:34.252Z",
+        "acceptedAt": "2026-10-16T05:54:34.252Z",
+        "source": "import",
+        "width": 559,
+        "height": 643,
+        "from": "npc-friend-penguin-2.png"
+      }
+    },
+    {
+      "id": "npc-hamster-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 햄스터",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi hamster with golden fur, a white muzzle and belly, tiny round ears and puffy cheeks, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/hamster/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "hamster",
+        "part": "base"
+      }
+    },
+    {
+      "id": "npc-duckling-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 오리",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi yellow duckling with a small orange bill, a little head tuft and tiny wings, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/duckling/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "duckling",
+        "part": "base"
+      }
+    },
+    {
+      "id": "npc-panda-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 판다",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi panda with black round ears, black eye patches and black arms on white fur, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/panda/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "panda",
+        "part": "base"
+      }
+    },
+    {
+      "id": "npc-squirrel-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 다람쥐",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi chipmunk squirrel with orange-brown fur, back stripes, a cream belly and a big bushy tail, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/squirrel/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "squirrel",
+        "part": "base"
+      }
+    },
+    {
+      "id": "npc-lamb-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 아기양",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi lamb with a fluffy cloud-like white fleece, small floppy ears and a beige face, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/lamb/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "lamb",
+        "part": "base"
+      }
+    },
+    {
+      "id": "npc-frog-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 개구리",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi green frog with big round eyes on top of the head and a pale belly, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/frog/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "frog",
+        "part": "base"
+      }
+    },
+    {
+      "id": "npc-bear-cub-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 아기곰",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi brown bear cub with round ears and a light muzzle, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/bear-cub/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "bear_cub",
+        "part": "base"
+      }
+    },
+    {
+      "id": "npc-fox-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 여우",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi orange fox with big pointed ears, a white muzzle and a fluffy white-tipped tail, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/fox/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "fox",
+        "part": "base"
+      }
+    },
+    {
+      "id": "npc-owl-base",
+      "kind": "chara",
+      "label": "단짝 후보 · 부엉이",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi owl with brown feathers, ear tufts, a cream face disc and big round yellow eyes, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/npc/owl/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "npc": "owl",
+        "part": "base"
+      }
+    },
+    {
+      "id": "pet-goldfish-base",
+      "kind": "chara",
+      "label": "반려동물 · 금붕어",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi orange goldfish with a flowing tail fin and big shiny eyes, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/pet/goldfish/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "pet": "goldfish",
+        "part": "base"
+      }
+    },
+    {
+      "id": "pet-chick-base",
+      "kind": "chara",
+      "label": "반려동물 · 병아리",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a tiny round chibi yellow chick with a small orange beak and stubby wings, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/pet/chick/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "pet": "chick",
+        "part": "base"
+      }
+    },
+    {
+      "id": "pet-turtle-base",
+      "kind": "chara",
+      "label": "반려동물 · 거북이",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi green turtle with a patterned shell and a friendly smile, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/pet/turtle/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "pet": "turtle",
+        "part": "base"
+      }
+    },
+    {
+      "id": "pet-hedgehog-base",
+      "kind": "chara",
+      "label": "반려동물 · 고슴도치",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi hedgehog with soft brown spines, a cream face and a tiny black nose, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/pet/hedgehog/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "pet": "hedgehog",
+        "part": "base"
+      }
+    },
+    {
+      "id": "pet-parrot-base",
+      "kind": "chara",
+      "label": "반려동물 · 앵무새",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi green parrot with a yellow face, a red head crest and a curved beak, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/pet/parrot/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "pet": "parrot",
+        "part": "base"
+      }
+    },
+    {
+      "id": "pet-guinea-pig-base",
+      "kind": "chara",
+      "label": "반려동물 · 기니피그",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi guinea pig with tan and white patches, tiny ears and a pink nose, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/pet/guinea-pig/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "pet": "guinea_pig",
+        "part": "base"
+      }
+    },
+    {
+      "id": "pet-puppy-base",
+      "kind": "chara",
+      "label": "반려동물 · 강아지",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi cream puppy with floppy brown ears and a wagging tail, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/pet/puppy/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "pet": "puppy",
+        "part": "base"
+      }
+    },
+    {
+      "id": "pet-snail-base",
+      "kind": "chara",
+      "label": "반려동물 · 달팽이",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi snail with a pink swirl shell, two eye stalks and a sleepy smile, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/pet/snail/base.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "pet": "snail",
+        "part": "base"
+      }
+    },
+    {
+      "id": "prop-ribbon",
+      "kind": "prop",
+      "label": "소품 · 머리 · 리본",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big soft bow ribbon on top of the head, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/ribbon.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "ribbon",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-flower-pin",
+      "kind": "prop",
+      "label": "소품 · 머리 · 꽃핀",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small pink flower hair pin on one side of the head, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/flower-pin.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "flower_pin",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-beanie",
+      "kind": "prop",
+      "label": "소품 · 머리 · 비니",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a snug knitted beanie with a little pompom, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/beanie.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "beanie",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-straw-hat",
+      "kind": "prop",
+      "label": "소품 · 머리 · 밀짚모자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round straw sun hat with a red band, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/straw-hat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "straw_hat",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-crown",
+      "kind": "prop",
+      "label": "소품 · 머리 · 왕관",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a tiny golden crown with three points and jewels, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/crown.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "crown",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-headband",
+      "kind": "prop",
+      "label": "소품 · 머리 · 하트 머리띠",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a headband with a small red heart on a spring, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/headband.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "headband",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-beret",
+      "kind": "prop",
+      "label": "소품 · 머리 · 베레모",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a soft tilted artist beret, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/beret.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "beret",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-party-hat",
+      "kind": "prop",
+      "label": "소품 · 머리 · 고깔모자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a striped cone party hat with a pompom on top, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/party-hat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "party_hat",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-flower-crown",
+      "kind": "prop",
+      "label": "소품 · 머리 · 화관",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a ring of small colourful flowers worn like a crown, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/flower-crown.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "flower_crown",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-round-glasses",
+      "kind": "prop",
+      "label": "소품 · 얼굴 · 동그란 안경",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. round thin-rimmed glasses, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/round-glasses.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "round_glasses",
+        "slot": "face"
+      }
+    },
+    {
+      "id": "prop-sunglasses",
+      "kind": "prop",
+      "label": "소품 · 얼굴 · 선글라스",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. small black sunglasses, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/sunglasses.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "sunglasses",
+        "slot": "face"
+      }
+    },
+    {
+      "id": "prop-star-glasses",
+      "kind": "prop",
+      "label": "소품 · 얼굴 · 별 안경",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. yellow star-shaped party glasses, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/star-glasses.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "star_glasses",
+        "slot": "face"
+      }
+    },
+    {
+      "id": "prop-mask",
+      "kind": "prop",
+      "label": "소품 · 얼굴 · 마스크",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small white face mask over the mouth, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/mask.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "mask",
+        "slot": "face"
+      }
+    },
+    {
+      "id": "prop-heart-sticker",
+      "kind": "prop",
+      "label": "소품 · 얼굴 · 하트 볼스티커",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. two little pink heart stickers on the cheeks, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/heart-sticker.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "heart_sticker",
+        "slot": "face"
+      }
+    },
+    {
+      "id": "prop-bow-tie",
+      "kind": "prop",
+      "label": "소품 · 목 · 나비넥타이",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small red bow tie at the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/bow-tie.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "bow_tie",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-scarf",
+      "kind": "prop",
+      "label": "소품 · 목 · 목도리",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cosy knitted scarf wrapped around the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/scarf.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "scarf",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-bell-collar",
+      "kind": "prop",
+      "label": "소품 · 목 · 방울 목걸이",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a ribbon collar with a little golden bell, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/bell-collar.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "bell_collar",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-bandana",
+      "kind": "prop",
+      "label": "소품 · 목 · 반다나",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a triangle bandana tied around the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/bandana.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "bandana",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-necklace",
+      "kind": "prop",
+      "label": "소품 · 목 · 진주 목걸이",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short pearl necklace, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/necklace.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "necklace",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-balloon",
+      "kind": "prop",
+      "label": "소품 · 손 · 풍선",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round balloon on a string held in one hand, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/balloon.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "balloon",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-flower",
+      "kind": "prop",
+      "label": "소품 · 손 · 꽃 한 송이",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a single tulip held in one hand, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/flower.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "flower",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-lollipop",
+      "kind": "prop",
+      "label": "소품 · 손 · 막대사탕",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big swirl lollipop held in one hand, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/lollipop.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "lollipop",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-wand",
+      "kind": "prop",
+      "label": "소품 · 손 · 요술봉",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a toy magic wand with a star tip, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/wand.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "wand",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-fishing-rod",
+      "kind": "prop",
+      "label": "소품 · 손 · 낚싯대",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small bamboo fishing rod, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/fishing-rod.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "fishing_rod",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-book",
+      "kind": "prop",
+      "label": "소품 · 손 · 책",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small open book held in one hand, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/book.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "book",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-umbrella",
+      "kind": "prop",
+      "label": "소품 · 손 · 우산",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small round umbrella held over the head, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/umbrella.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "umbrella",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-backpack",
+      "kind": "prop",
+      "label": "소품 · 등 · 작은 배낭",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a tiny round backpack on the back, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/backpack.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "backpack",
+        "slot": "back"
+      }
+    },
+    {
+      "id": "prop-cape",
+      "kind": "prop",
+      "label": "소품 · 등 · 망토",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short hero cape flowing behind, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/cape.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "cape",
+        "slot": "back"
+      }
+    },
+    {
+      "id": "prop-wings",
+      "kind": "prop",
+      "label": "소품 · 등 · 천사 날개",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. two small white angel wings on the back, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/wings.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "wings",
+        "slot": "back"
+      }
+    },
+    {
+      "id": "prop-teddy-bag",
+      "kind": "prop",
+      "label": "소품 · 등 · 곰인형 가방",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a teddy-bear shaped backpack, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/teddy-bag.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "teddy_bag",
+        "slot": "back"
+      }
+    },
+    {
+      "id": "prop-bonnet",
+      "kind": "prop",
+      "label": "소품 · 머리 · 아기 보닛",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a frilly baby bonnet tied under the chin, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/bonnet.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "bonnet",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-pacifier",
+      "kind": "prop",
+      "label": "소품 · 얼굴 · 쪽쪽이",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a baby pacifier in the mouth, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/pacifier.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "pacifier",
+        "slot": "face"
+      }
+    },
+    {
+      "id": "prop-yellow-hat",
+      "kind": "prop",
+      "label": "소품 · 머리 · 노란 학교 모자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a yellow elementary-school safety cap, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/yellow-hat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "yellow_hat",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-school-backpack",
+      "kind": "prop",
+      "label": "소품 · 등 · 책가방",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a boxy school backpack (randoseru style), as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/school-backpack.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "school_backpack",
+        "slot": "back"
+      }
+    },
+    {
+      "id": "prop-school-cap",
+      "kind": "prop",
+      "label": "소품 · 머리 · 교모",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a navy school uniform cap with a badge, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/school-cap.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "school_cap",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-knit-cap",
+      "kind": "prop",
+      "label": "소품 · 머리 · 털모자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a warm knitted cap with ear flaps, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/knit-cap.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "knit_cap",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-cane",
+      "kind": "prop",
+      "label": "소품 · 손 · 지팡이",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short wooden walking cane, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/cane.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "cane",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-necktie",
+      "kind": "prop",
+      "label": "소품 · 목 · 넥타이",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a neat office necktie, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/necktie.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "necktie",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-id-card",
+      "kind": "prop",
+      "label": "소품 · 목 · 사원증",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. an ID card on a lanyard around the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/id-card.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "id_card",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-pen",
+      "kind": "prop",
+      "label": "소품 · 손 · 펜",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a drawing pen, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/pen.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "pen",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-sash",
+      "kind": "prop",
+      "label": "소품 · 목 · 어깨띠",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white election sash across the body, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/sash.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "sash",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-baseball-cap",
+      "kind": "prop",
+      "label": "소품 · 머리 · 야구모자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a baseball cap, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/baseball-cap.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "baseball_cap",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-bat",
+      "kind": "prop",
+      "label": "소품 · 손 · 야구방망이",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a wooden baseball bat, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/bat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "bat",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-soccer-ball",
+      "kind": "prop",
+      "label": "소품 · 손 · 축구공",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a soccer ball held in one arm, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/soccer-ball.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "soccer_ball",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-headset",
+      "kind": "prop",
+      "label": "소품 · 머리 · 게이밍 헤드셋",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a gaming headset with a mic, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/headset.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "headset",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-fighter-headband",
+      "kind": "prop",
+      "label": "소품 · 머리 · 필승 머리띠",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white fighting headband with a red circle, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/fighter-headband.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "fighter_headband",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-script",
+      "kind": "prop",
+      "label": "소품 · 손 · 대본",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a rolled film script, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/script.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "script",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-mic",
+      "kind": "prop",
+      "label": "소품 · 손 · 마이크",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a pink idol microphone, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/mic.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "mic",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-camera",
+      "kind": "prop",
+      "label": "소품 · 손 · 카메라",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small video camera, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/camera.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "camera",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-chef-hat",
+      "kind": "prop",
+      "label": "소품 · 머리 · 셰프 모자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small white chef's toque hat, simple cute shape with a thin warm-grey outline, as a game costume prop. Square 1:1 (1024x1024). One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/chef-hat.webp",
+      "postprocess": [],
+      "status": "accepted",
+      "meta": {
+        "prop": "chef_hat",
+        "slot": "head",
+        "anchor": [
+          192,
+          249.5
+        ],
+        "scale": 0.9141
+      },
+      "accepted": {
+        "file": "chara/props/chef-hat.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-16T05:26:51.539Z",
+        "acceptedAt": "2026-10-16T05:26:51.539Z",
+        "source": "import",
+        "width": 384,
+        "height": 297,
+        "from": "prop-hat-chef.png"
+      }
+    },
+    {
+      "id": "prop-head-mirror",
+      "kind": "prop",
+      "label": "소품 · 머리 · 이마 반사경",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a doctor head mirror on a band, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/head-mirror.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "head_mirror",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-stethoscope",
+      "kind": "prop",
+      "label": "소품 · 목 · 청진기",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a stethoscope around the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/stethoscope.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "stethoscope",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "prop-flask",
+      "kind": "prop",
+      "label": "소품 · 손 · 플라스크",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a glass lab flask with green liquid, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/flask.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "flask",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-police-cap",
+      "kind": "prop",
+      "label": "소품 · 머리 · 경찰 모자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a navy police cap with a badge, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/police-cap.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "police_cap",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-key-ring",
+      "kind": "prop",
+      "label": "소품 · 손 · 열쇠 꾸러미",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big ring of building keys, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/key-ring.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "key_ring",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-sparkle-mic",
+      "kind": "prop",
+      "label": "소품 · 손 · 반짝이 마이크",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a glittering gold-and-pink stage microphone, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/sparkle-mic.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "sparkle_mic",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-space-helmet",
+      "kind": "prop",
+      "label": "소품 · 머리 · 우주 헬멧",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round glass astronaut helmet, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/space-helmet.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "space_helmet",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-beard",
+      "kind": "prop",
+      "label": "소품 · 얼굴 · 산신령 수염",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a long fluffy white mountain-spirit beard, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/beard.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "beard",
+        "slot": "face"
+      }
+    },
+    {
+      "id": "prop-golden-mic",
+      "kind": "prop",
+      "label": "소품 · 손 · 황금 마이크",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a shiny golden broadcast microphone, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/golden-mic.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "golden_mic",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-apron",
+      "kind": "prop",
+      "label": "소품 · 목 · 앞치마",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small work apron, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/apron.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "apron",
+        "slot": "neck"
+      }
+    },
+    {
+      "id": "mc-hoya-eyes-closed",
+      "kind": "mc",
+      "label": "MC 호야 · 눈 감음 (깜빡임)",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same dog, same markings, same position, same size, same colours, same accessory, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "mc-hoya-neutral"
+      ],
+      "output": "mc/hoya/eyes-closed.png",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "mc": "hoya",
+        "part": "eyes-closed",
+        "base": "mc-hoya-neutral"
+      }
+    },
+    {
+      "id": "mc-hoya-mouth-open",
+      "kind": "mc",
+      "label": "MC 호야 · 입 벌림 (말하기)",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same dog, same markings, same position, same size, same colours, same accessory, same magenta background, same framing) and ONLY change the mouth to an open mouth, as if talking.",
+      "refs": [
+        "mc-hoya-neutral"
+      ],
+      "output": "mc/hoya/mouth-open.png",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "mc": "hoya",
+        "part": "mouth-open",
+        "base": "mc-hoya-neutral"
+      }
+    },
+    {
+      "id": "mc-bomi-eyes-closed",
+      "kind": "mc",
+      "label": "MC 봄이 · 눈 감음 (깜빡임)",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same dog, same markings, same position, same size, same colours, same accessory, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "refs": [
+        "mc-bomi-neutral"
+      ],
+      "output": "mc/bomi/eyes-closed.png",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "mc": "bomi",
+        "part": "eyes-closed",
+        "base": "mc-bomi-neutral"
+      }
+    },
+    {
+      "id": "mc-bomi-mouth-open",
+      "kind": "mc",
+      "label": "MC 봄이 · 입 벌림 (말하기)",
+      "aspect": "1:1",
+      "size": {
+        "w": 1024,
+        "h": 1024
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same dog, same markings, same position, same size, same colours, same accessory, same magenta background, same framing) and ONLY change the mouth to an open mouth, as if talking.",
+      "refs": [
+        "mc-bomi-neutral"
+      ],
+      "output": "mc/bomi/mouth-open.png",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "mc": "bomi",
+        "part": "mouth-open",
+        "base": "mc-bomi-neutral"
       }
     }
   ]

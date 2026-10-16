@@ -250,16 +250,34 @@ export function partTransform(part = {}, [px, py] = [0, 0]) {
 
 // ---------- sprite sheets ----------
 
-/** Frame index at t for a sheet {frames, fps, loop}; −1 once a non-looping sheet has finished. */
-export function spriteFrame(tMs, { frames = 1, fps = 12, loop = true } = {}) {
+/**
+ * Frame index at t for a sheet {frames, fps, loop} — or a timed sequence {seq: [frame…], frameMs: [ms…]} (CH-2 sheets:
+ * the 2×2 jump plays crouch → take-off → apex → take-off → landing in step with the rig's hop); −1 once a non-looping
+ * sheet has finished.
+ */
+export function spriteFrame(tMs, { frames = 1, fps = 12, loop = true, seq = null, frameMs = null } = {}) {
+  const t = Math.max(0, tMs);
+  if (Array.isArray(seq) && Array.isArray(frameMs) && seq.length && seq.length === frameMs.length) {
+    const total = frameMs.reduce((a, b) => a + Math.max(1, b), 0);
+    if (!loop && t >= total) return -1;
+    let u = loop ? t % total : t;
+    for (let k = 0; k < seq.length; k++) {
+      u -= Math.max(1, frameMs[k]);
+      if (u < 0) return seq[k];
+    }
+    return seq[seq.length - 1];
+  }
   const n = Math.max(1, Math.floor(frames));
-  const i = Math.floor((Math.max(0, tMs) * Math.max(1, fps)) / 1000);
+  const i = Math.floor((t * Math.max(1, fps)) / 1000);
   if (loop) return i % n;
   return i < n ? i : -1;
 }
 
 /** Sheet duration in ms (one pass). */
-export const spriteDuration = ({ frames = 1, fps = 12 } = {}) => Math.round((Math.max(1, frames) * 1000) / Math.max(1, fps));
+export const spriteDuration = ({ frames = 1, fps = 12, seq = null, frameMs = null } = {}) =>
+  Array.isArray(seq) && Array.isArray(frameMs) && seq.length && seq.length === frameMs.length
+    ? frameMs.reduce((a, b) => a + Math.max(1, b), 0)
+    : Math.round((Math.max(1, frames) * 1000) / Math.max(1, fps));
 
 /** background-position (percent) of frame i on a [cols, rows] grid. */
 export function spriteBgPos(i, [cols, rows] = [1, 1]) {
@@ -270,13 +288,29 @@ export function spriteBgPos(i, [cols, rows] = [1, 1]) {
   return { x: c > 1 ? (x / (c - 1)) * 100 : 0, y: r > 1 ? (y / (r - 1)) * 100 : 0 };
 }
 
-/** A usable sheet definition from an /api/assets entry (meta {grid, frames, fps, loop}) or null. */
+/**
+ * A usable sheet definition from an /api/assets entry (meta {grid, frames, fps, loop, seq?, frameMs?, rect?}) or null.
+ * `rect` = [x, y, w, h] where ONE cell sits on the 1024×1536 character canvas (CH-2 sheets: every cell is the same crop
+ * of the canvas) → the player draws inside the figure's SVG; `size` = the sheet image's pixel size.
+ */
 export function sheetDef(info) {
   const m = info?.meta ?? {};
   const grid = Array.isArray(m.grid) && m.grid.length === 2 ? m.grid.map((n) => Math.max(1, Math.floor(Number(n) || 1))) : null;
   if (!info?.url || !grid) return null;
   const frames = Math.max(1, Math.min(grid[0] * grid[1], Math.floor(Number(m.frames) || grid[0] * grid[1])));
-  return { url: info.url, grid, frames, fps: Math.max(1, Math.min(60, Number(m.fps) || 12)), loop: m.loop !== false };
+  const def = { url: info.url, grid, frames, fps: Math.max(1, Math.min(60, Number(m.fps) || 12)), loop: m.loop !== false };
+  const okSeq = Array.isArray(m.seq) && Array.isArray(m.frameMs) && m.seq.length && m.seq.length === m.frameMs.length;
+  if (okSeq && m.seq.every((i) => Number.isInteger(i) && i >= 0 && i < frames) && m.frameMs.every((v) => Number.isFinite(v) && v > 0)) {
+    def.seq = [...m.seq];
+    def.frameMs = [...m.frameMs];
+  }
+  if (Array.isArray(m.rect) && m.rect.length === 4 && m.rect.every(Number.isFinite) && m.rect[2] > 0 && m.rect[3] > 0) {
+    def.rect = [...m.rect];
+    if (Number(info.width) > 0 && Number(info.height) > 0) def.size = [Number(info.width), Number(info.height)];
+  }
+  // per-frame head offset [dx, dy] from the base's head (props follow the head while the sheet plays)
+  if (Array.isArray(m.heads) && m.heads.length === frames && m.heads.every((h) => Array.isArray(h) && h.length === 2 && h.every(Number.isFinite))) def.heads = m.heads.map((h) => [...h]);
+  return def;
 }
 
 // ---------- particles ----------
@@ -409,9 +443,15 @@ export function createRig(svg, { reduced = prefersReducedMotion(), onFace = null
   let lastFace = '';
   let attached = false;
 
-  function apply(pose) {
+  function apply(pose, opts = null) {
     // a held item stays (almost) upright while its arm swings
     pose.propR = { r: -(pose.armR?.r ?? 0) * 0.85 };
+    // `squash` (0..1) scales the root's squash & stretch (a sprite sheet draws its own squash; the hop stays)
+    if (opts?.squash != null && pose.root) {
+      const k = Math.max(0, Math.min(1, opts.squash));
+      pose.root.sx = 1 + ((pose.root.sx ?? 1) - 1) * k;
+      pose.root.sy = 1 + ((pose.root.sy ?? 1) - 1) * k;
+    }
     for (const name of ['root', 'head', 'armL', 'armR', 'earL', 'earR', 'tail', 'shadow', 'propR']) {
       const part = parts[name];
       if (!part) continue;
@@ -448,7 +488,7 @@ export function createRig(svg, { reduced = prefersReducedMotion(), onFace = null
           apply(pose);
           return;
         } else {
-          apply(samplePose(shot.action, t, shot.opts));
+          apply(samplePose(shot.action, t, shot.opts), shot.opts);
           return;
         }
       }
@@ -512,34 +552,68 @@ export function createRig(svg, { reduced = prefersReducedMotion(), onFace = null
 export const activeRigs = () => rigs.size;
 
 /**
- * Sprite-sheet player in `host` (an absolutely positioned layer over the figure).
+ * Sprite-sheet player in `host` (a `.chara` element).
+ * Sheets with `rect` (CH-2: every cell = the same crop of the 1024×1536 character canvas) are drawn INSIDE the figure's
+ * SVG, in the root rig group next to the figure (so the root hop, flip and crop apply; `.chara.sheet-on` hides the
+ * figure); the frame is picked by moving a nested <svg>'s viewBox over the sheet image. `mount` / `after` put it at a
+ * given place in the figure (chara.js: right after the raster figure, under the props); `onFrame(i)` fires per frame
+ * change. Older sheets without `rect` cover the element box as a CSS background (`sheet-div`).
  * @param {HTMLElement} host
- * @param {{url, grid, frames, fps, loop}} sheet  (see sheetDef)
- * @returns {{done: Promise<boolean>, stop(): void, el: HTMLElement}}
+ * @param {{url, grid, frames, fps, loop, seq?, frameMs?, rect?, size?}} sheet  (see sheetDef)
+ * @returns {{done: Promise<boolean>, stop(): void, el: Element}}
  */
-export function createSpritePlayer(host, sheet, { reduced = prefersReducedMotion(), loopMs = null } = {}) {
-  const el = document.createElement('div');
-  el.className = 'ch-sheet';
+export function createSpritePlayer(host, sheet, { reduced = prefersReducedMotion(), loopMs = null, mount = null, after = null, onFrame = null } = {}) {
   const [cols, rows] = sheet.grid;
-  el.style.backgroundImage = `url("${String(sheet.url).replace(/"/g, '%22')}")`;
-  el.style.backgroundSize = `${cols * 100}% ${rows * 100}%`;
-  host.appendChild(el);
+  const root = sheet.rect ? mount ?? host.querySelector?.('svg [data-rig="root"]') : null;
+  let el;
+  let show;
+  if (root) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const [x, y, w, h] = sheet.rect;
+    const [sw, sh] = sheet.size ?? [cols * w, rows * h];
+    const cw = sw / cols;
+    const ch = sh / rows;
+    el = document.createElementNS(NS, 'svg');
+    el.setAttribute('class', 'ch-sheet-svg');
+    for (const [k, v] of Object.entries({ x, y, width: w, height: h, preserveAspectRatio: 'none', overflow: 'hidden' })) el.setAttribute(k, String(v));
+    const im = document.createElementNS(NS, 'image');
+    im.setAttribute('href', sheet.url);
+    im.setAttribute('width', String(sw));
+    im.setAttribute('height', String(sh));
+    el.appendChild(im);
+    if (after && after.parentNode === root) after.after(el);
+    else root.appendChild(el);
+    let last = -1;
+    show = (i) => {
+      el.setAttribute('viewBox', `${(i % cols) * cw} ${(Math.floor(i / cols) % rows) * ch} ${cw} ${ch}`);
+      if (i !== last) onFrame?.(i);
+      last = i;
+    };
+  } else {
+    el = document.createElement('div');
+    el.className = 'ch-sheet';
+    el.style.backgroundImage = `url("${String(sheet.url).replace(/"/g, '%22')}")`;
+    el.style.backgroundSize = `${cols * 100}% ${rows * 100}%`;
+    host.appendChild(el);
+    host.classList?.add('sheet-div');
+    show = (i) => {
+      const pos = spriteBgPos(i, sheet.grid);
+      el.style.backgroundPosition = `${pos.x}% ${pos.y}%`;
+    };
+  }
   let stopped = false;
   let resolveDone;
   const done = new Promise((r) => (resolveDone = r));
   const start = nowMs();
-  const show = (i) => {
-    const pos = spriteBgPos(i, sheet.grid);
-    el.style.backgroundPosition = `${pos.x}% ${pos.y}%`;
-  };
   const finish = (ok) => {
     if (stopped) return;
     stopped = true;
     el.remove();
+    host.classList?.remove('sheet-div');
     resolveDone(ok);
   };
   if (reduced) {
-    show(Math.floor(sheet.frames / 2));
+    show(sheet.seq ? sheet.seq[Math.floor(sheet.seq.length / 2)] : Math.floor(sheet.frames / 2));
     setTimeout(() => finish(true), 400);
   } else {
     const frame = () => {

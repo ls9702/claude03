@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 export const MANIFEST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'manifest.json');
 
-export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part', 'mc', 'card', 'item', 'treasure'];
+export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part', 'mc', 'card', 'item', 'treasure', 'chara', 'prop'];
 export const KIND_LABELS = {
   anchor: '스타일 앵커',
   bg: '컷인 배경',
@@ -24,6 +24,8 @@ export const KIND_LABELS = {
   card: '카드', // Stage 7: card illustrations (meta.card = cards.json id), same white-background pipeline as icons
   item: '아이템', // Stage 7: shop items (meta.item = items.json id)
   treasure: '보물', // Stage 9: treasure icons (meta.treasure = treasures.json id), same pipeline as items
+  chara: '캐릭터 그림', // CH-2: Chiikawa-style raster parts (meta.character | npc | pet + meta.part), hand-delivered → scripts/import-assets.js
+  prop: '소품', // CH-2: prop images (meta.prop = props.json id, meta.slot), white background → alpha, meta.anchor / scale
 };
 export const STATUSES = ['todo', 'candidate', 'accepted'];
 /** Aspect ratios accepted by gemini-2.5-flash-image `imageConfig.aspectRatio`. */
@@ -41,6 +43,11 @@ const OUTPUT_RE = /^[a-z0-9][a-z0-9_\-/]*\.(png|webp)$/;
 export const MC_ITEM_IDS = ['hoya', 'bomi', 'duo'];
 export const MC_ITEM_EXPRESSIONS = ['neutral', 'joy', 'surprise', 'sad', 'angry', 'proud', 'sleepy'];
 export const MC_ITEM_POSES = ['idle', 'wave', 'clap', 'mic'];
+/** CH-2: blink / talk overlays of an MC dog (edits of mc-<dog>-neutral turned into overlays at import; meta.part). */
+export const MC_ITEM_PARTS = ['eyes-closed', 'mouth-open'];
+/** CH-2: raster parts of a character / NPC friend / pet (public/js/ui/chara.js rasterParts). */
+export const CHARA_ITEM_PARTS_RE = /^(base|body|arms|eyes-closed|mouth-open|expr-(joy|cry|shock|angry|love|sweat)|sheet-(jump|wave|cheer|cry|shock|walk|talk))$/;
+export const PROP_ITEM_SLOTS = ['head', 'face', 'neck', 'hand', 'back'];
 /**
  * Local photo references (Stage 5.6): files under DATA_DIR/mc-refs (gitignored, never published), written
  * `data/mc-refs/<file>` or `mc-refs/<file>` in the manifest. Only a plain file name is allowed — no
@@ -172,6 +179,11 @@ export function validateItem(item) {
   if (item.kind === 'card' && !(isObj(item.meta) && typeof item.meta.card === 'string' && item.meta.card)) errs.push(`${at} card에는 meta.card(카드 id)가 필요합니다.`);
   if (item.kind === 'item' && !(isObj(item.meta) && typeof item.meta.item === 'string' && item.meta.item)) errs.push(`${at} item에는 meta.item(아이템 id)가 필요합니다.`);
   if (item.kind === 'treasure' && !(isObj(item.meta) && typeof item.meta.treasure === 'string' && item.meta.treasure)) errs.push(`${at} treasure에는 meta.treasure(보물 id)가 필요합니다.`);
+  if (item.kind === 'chara') errs.push(...validateCharaMeta(item, at));
+  if (item.kind === 'prop') {
+    if (!(isObj(item.meta) && typeof item.meta.prop === 'string' && item.meta.prop)) errs.push(`${at} prop에는 meta.prop(소품 id)가 필요합니다.`);
+    else if (!PROP_ITEM_SLOTS.includes(item.meta.slot)) errs.push(`${at} meta.slot은 ${PROP_ITEM_SLOTS.join('/')} 중 하나여야 합니다.`);
+  }
   if (item.kind === 'part') errs.push(...validatePartMeta(item, at));
   else if (item.postprocess?.some?.((st) => typeof st === 'string' && /^(diffExtract:|alignHead$|mannequin$)/.test(st)))
     errs.push(`${at} diffExtract/alignHead/mannequin 단계는 part에만 쓸 수 있습니다.`);
@@ -186,14 +198,30 @@ function validateMcMeta(item, at) {
   const errs = [];
   if (!MC_ITEM_IDS.includes(m.mc)) errs.push(`${at} meta.mc는 ${MC_ITEM_IDS.join('/')} 중 하나여야 합니다.`);
   if (m.mc === 'duo') {
-    if (m.expression !== undefined || m.pose !== undefined) errs.push(`${at} duo에는 expression/pose를 쓰지 않습니다.`);
+    if (m.expression !== undefined || m.pose !== undefined || m.part !== undefined) errs.push(`${at} duo에는 expression/pose/part를 쓰지 않습니다.`);
   } else {
     const hasE = m.expression !== undefined;
     const hasP = m.pose !== undefined;
-    if (hasE === hasP) errs.push(`${at} mc 항목은 meta.expression 또는 meta.pose 중 하나만 가져야 합니다.`);
+    const hasO = m.part !== undefined;
+    if (hasE + hasP + hasO !== 1) errs.push(`${at} mc 항목은 meta.expression · meta.pose · meta.part 중 하나만 가져야 합니다.`);
     if (hasE && !MC_ITEM_EXPRESSIONS.includes(m.expression)) errs.push(`${at} meta.expression이 올바르지 않습니다: ${m.expression}`);
     if (hasP && !MC_ITEM_POSES.includes(m.pose)) errs.push(`${at} meta.pose가 올바르지 않습니다: ${m.pose}`);
+    if (hasO && !MC_ITEM_PARTS.includes(m.part)) errs.push(`${at} meta.part가 올바르지 않습니다: ${m.part}`);
   }
+  return errs;
+}
+
+function validateCharaMeta(item, at) {
+  const m = item.meta;
+  if (!isObj(m)) return [`${at} chara에는 meta가 필요합니다.`];
+  const errs = [];
+  const owners = ['character', 'npc', 'pet'].filter((k) => m[k] !== undefined);
+  if (owners.length !== 1 || typeof m[owners[0]] !== 'string' || !m[owners[0]]) errs.push(`${at} chara 항목은 meta.character · meta.npc · meta.pet 중 하나(문자열)만 가져야 합니다.`);
+  if (typeof m.part !== 'string' || !CHARA_ITEM_PARTS_RE.test(m.part)) errs.push(`${at} meta.part가 올바르지 않습니다: ${m.part}`);
+  if (m.rect !== undefined && !(Array.isArray(m.rect) && m.rect.length === 4 && m.rect.every((v) => Number.isFinite(v)) && m.rect[2] > 0 && m.rect[3] > 0))
+    errs.push(`${at} meta.rect는 [x, y, w, h] 숫자여야 합니다.`);
+  if (m.part?.startsWith?.('sheet-') && m.grid !== undefined && !(Array.isArray(m.grid) && m.grid.length === 2 && m.grid.every((v) => Number.isInteger(v) && v > 0)))
+    errs.push(`${at} meta.grid는 [열, 행] 정수여야 합니다.`);
   return errs;
 }
 

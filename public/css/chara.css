@@ -17,7 +17,9 @@
 .chara { position: relative; display: inline-block; line-height: 0; }
 .chara > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .chara .ch-sheet { position: absolute; inset: 0; background-repeat: no-repeat; pointer-events: none; }
-.chara.sheet-on > svg [data-rig='root'] { visibility: hidden; }
+.chara.sheet-on.sheet-div > svg [data-rig='root'] { visibility: hidden; }
+/* CH-2 sheets play inside the svg, right after the raster figure: only the figure hides, the props follow the head */
+.chara.sheet-on .ch-raster { visibility: hidden; }
 
 .chara.anim .ch-idle { transform-box: fill-box; transform-origin: 50% 100%; animation: ch-breathe 2.8s ease-in-out infinite; }
 .chara.anim .ch-head-i { transform-box: fill-box; transform-origin: 50% 100%; animation: ch-sway 4.6s ease-in-out infinite; }

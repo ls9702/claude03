@@ -108,7 +108,8 @@ export async function tempManifest(dir, ids) {
     .filter((i) => ids.includes(i.id))
     .map((i) => {
       const { accepted, ...rest } = i;
-      return { ...rest, status: 'todo' };
+      // refs to items left out of the copy are dropped (a slice of the shipped manifest must validate on its own)
+      return { ...rest, refs: (rest.refs ?? []).filter((r) => ids.includes(r)), status: 'todo' };
     });
   const file = path.join(dir, 'manifest.json');
   await mkdir(dir, { recursive: true });

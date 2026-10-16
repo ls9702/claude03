@@ -934,16 +934,23 @@ function rasterProp(id) {
   return a?.url ? a : null;
 }
 
-function propSvg(slot, id, C, k, meta, { front = false } = {}) {
+/** Where a raster prop sits on the canvas: its meta.anchor on the slot anchor, size = image × H/450 × meta.scale. */
+function propBox(slot, r, k) {
+  const w = r.width || 256;
+  const h = r.height || 256;
+  const [ax, ay] = Array.isArray(r.meta?.anchor) ? r.meta.anchor : [w / 2, h / 2];
+  const at = slot === 'head' ? k.head : slot === 'face' ? k.face : slot === 'neck' ? k.neck : slot === 'hand' ? k.handR : k.back;
+  const scale = (k.H / 450) * (Number(r.meta?.scale) || 1);
+  return { x: at[0] - ax * scale, y: at[1] - ay * scale, w: w * scale, h: h * scale };
+}
+
+function propSvg(slot, id, C, k, meta, { front = false, noRaster = false } = {}) {
   if (!id) return '';
   const r = rasterProp(id);
+  if (r && noRaster) return '';
   if (r && !front) {
-    const w = r.width || 256;
-    const h = r.height || 256;
-    const [ax, ay] = Array.isArray(r.meta?.anchor) ? r.meta.anchor : [w / 2, h / 2];
-    const at = slot === 'head' ? k.head : slot === 'face' ? k.face : slot === 'neck' ? k.neck : slot === 'hand' ? k.handR : k.back;
-    const scale = (k.H / 450) * (Number(r.meta?.scale) || 1);
-    return `<image class="ch-prop-img" href="${esc(r.url)}" x="${n1(at[0] - ax * scale)}" y="${n1(at[1] - ay * scale)}" width="${n1(w * scale)}" height="${n1(h * scale)}"/>`;
+    const b = propBox(slot, r, k);
+    return `<image class="ch-prop-img" href="${esc(r.url)}" x="${n1(b.x)}" y="${n1(b.y)}" width="${n1(b.w)}" height="${n1(b.h)}"/>`;
   }
   const info = propInfo(id, meta);
   // props.json colour; `tintable` props wear the character's accent colour (the avatar has no colour field)
@@ -1103,11 +1110,24 @@ export function rasterPrefix(look, meta = null) {
   return `ch-${normalizeLook(look, meta).character}`;
 }
 
-/** Accepted raster parts of a look: {base, body, arms, eyesClosed, mouthOpen, expr: {e: info}, sheets: {action: sheet}} | null. */
+/** Valid anchor set ({head, face, neck, handL, handR, back} of [x, y]) or null. */
+function anchorSet(a) {
+  if (!isObj(a)) return null;
+  const keys = ['head', 'face', 'neck', 'handL', 'handR', 'back'];
+  return keys.every((k) => pt(a[k], null)) ? Object.fromEntries(keys.map((k) => [k, pt(a[k], null)])) : null;
+}
+
+/**
+ * Accepted raster parts of a look: {base, body, arms, eyesClosed, mouthOpen, expr: {e: info}, sheets: {action: sheet},
+ * anchors, eyes, headBox, bbox} | null. CH-2 art carries its measured geometry on the base (meta.anchors / eyes / headBox
+ * / bbox, logical canvas units) → props, crops and particles follow the drawing instead of the roster's SVG anchors.
+ * Ids with `_` (bear_cub, guinea_pig) are also looked up with `-` (manifest ids).
+ */
 export function rasterParts(look, meta = null) {
   const prefix = rasterPrefix(look, meta);
+  const alt = prefix.replace(/_/g, '-');
   const get = (part) => {
-    const a = assetInfo(`${prefix}-${part}`);
+    const a = assetInfo(`${prefix}-${part}`) ?? (alt !== prefix ? assetInfo(`${alt}-${part}`) : null);
     return a?.url ? a : null;
   };
   const parts = Object.fromEntries(RASTER_PARTS.map((p) => [p, get(p)]));
@@ -1122,14 +1142,37 @@ export function rasterParts(look, meta = null) {
     if (s) sheets[action] = s;
   }
   if (!parts.base && !parts.body && !Object.keys(sheets).length) return null;
-  return { base: parts.base, body: parts.body, arms: parts.arms, eyesClosed: parts['eyes-closed'], mouthOpen: parts['mouth-open'], expr, sheets };
+  const art = (parts.base ?? parts.body)?.meta ?? {};
+  const bbox = isObj(art.bbox) && ['x', 'y', 'w', 'h'].every((k) => Number.isFinite(art.bbox[k])) ? art.bbox : null;
+  return {
+    base: parts.base,
+    body: parts.body,
+    arms: parts.arms,
+    eyesClosed: parts['eyes-closed'],
+    mouthOpen: parts['mouth-open'],
+    expr,
+    sheets,
+    anchors: anchorSet(art.anchors),
+    eyes: Array.isArray(art.eyes) && art.eyes.length === 2 && art.eyes.every((e) => pt(e, null)) ? art.eyes : null,
+    headBox: isObj(art.headBox) && Number.isFinite(art.headBox.left) && art.headBox.right > art.headBox.left ? art.headBox : null,
+    bbox,
+  };
 }
 
 let clipSeq = 0;
-const img = (url, cls = '', extra = '') => `<image class="${cls}" href="${esc(url)}" x="0" y="0" width="1024" height="1536"${extra}/>`;
+/** A raster part on the canvas: at its `meta.rect` ([x, y, w, h], logical units; CH-2 crops) else the whole canvas. */
+const imgOf = (info, cls = '', extra = '') => {
+  const r = Array.isArray(info?.meta?.rect) && info.meta.rect.length === 4 && info.meta.rect.every(Number.isFinite) ? info.meta.rect : [0, 0, 1024, 1536];
+  return `<image class="${cls}" href="${esc(info.url)}" x="${n1(r[0])}" y="${n1(r[1])}" width="${n1(r[2])}" height="${n1(r[3])}" preserveAspectRatio="none"${extra}/>`;
+};
 
-/** Raster figure: body (+ arms clipped into left / right halves around their pivots) or the full base. */
-function rasterFigure(r, g, expression) {
+/**
+ * Raster figure: body + face overlays + both arms (one image clipped into left / right halves, rotating around their
+ * pivots), or the full base. `tf(part, pivot)` bakes a key pose into the arm groups (group photo / reduced motion).
+ * Blink (eyes-closed) and talk (mouth-open) overlays only ride on the neutral face; an expression is an overlay
+ * (meta.overlay !== false) or a full swap (meta.overlay === false: arms baked in, no rig arms).
+ */
+function rasterFigure(r, g, expression, tf = () => '', hand = '') {
   const e = EXPR_RASTER.includes(expression) ? expression : null;
   const ex = e ? r.expr[e] : null;
   const swap = ex && ex.meta?.overlay === false ? ex : null;
@@ -1137,21 +1180,64 @@ function rasterFigure(r, g, expression) {
   const pivots = (r.arms ?? r.body ?? r.base)?.meta?.pivots ?? {};
   const pL = pt(pivots.armL, g.shoulderL);
   const pR = pt(pivots.armR, g.shoulderR);
+  const neutral = !ex;
+  const eyesC = r.eyesClosed && neutral ? `<g class="ch-ec" display="none">${imgOf(r.eyesClosed, 'ch-r eyes')}</g>` : '';
+  const mouthO = r.mouthOpen && neutral ? `<g class="ch-mo" display="none">${imgOf(r.mouthOpen, 'ch-r mouth')}</g>` : '';
+  const face = (over ? imgOf(over, 'ch-r expr') : '') + eyesC + mouthO;
   let fig;
   if (r.body && r.arms && !swap) {
     const id = `chc${(++clipSeq).toString(36)}`;
+    const tL = tf('armL', pL);
+    const tR = tf('armR', pR);
     fig =
       `<defs><clipPath id="${id}l"><rect x="0" y="0" width="${CX}" height="1536"/></clipPath><clipPath id="${id}r"><rect x="${CX}" y="0" width="${CX}" height="1536"/></clipPath></defs>` +
-      img(r.body.url, 'ch-r body') +
-      `<g data-rig="armL" data-px="${n1(pL[0])}" data-py="${n1(pL[1])}">${img(r.arms.url, 'ch-r arms', ` clip-path="url(#${id}l)"`)}</g>` +
-      `<g data-rig="armR" data-px="${n1(pR[0])}" data-py="${n1(pR[1])}">${img(r.arms.url, 'ch-r arms', ` clip-path="url(#${id}r)"`)}</g>`;
+      imgOf(r.body, 'ch-r body') +
+      face +
+      `<g data-rig="armL" data-px="${n1(pL[0])}" data-py="${n1(pL[1])}"${tL ? ` transform="${tL}"` : ''}>${imgOf(r.arms, 'ch-r arms', ` clip-path="url(#${id}l)"`)}</g>` +
+      `<g data-rig="armR" data-px="${n1(pR[0])}" data-py="${n1(pR[1])}"${tR ? ` transform="${tR}"` : ''}>${imgOf(r.arms, 'ch-r arms', ` clip-path="url(#${id}r)"`)}${hand}</g>`;
   } else {
-    fig = img((swap ?? r.base ?? r.body).url, 'ch-r base');
+    fig = imgOf(swap ?? r.base ?? r.body, 'ch-r base') + face + hand;
   }
-  const eyesC = r.eyesClosed && !swap ? `<g class="ch-ec" display="none">${img(r.eyesClosed.url, 'ch-r eyes')}</g>` : '';
-  const mouthO = r.mouthOpen && !swap ? `<g class="ch-mo" display="none">${img(r.mouthOpen.url, 'ch-r mouth')}</g>` : '';
-  const overlay = over ? img(over.url, 'ch-r expr') : '';
-  return `<g class="ch-raster${r.eyesClosed ? ' has-ec' : ''}">${fig}${overlay}${eyesC}${mouthO}</g>`;
+  return `<g class="ch-raster${eyesC ? ' has-ec' : ''}">${fig}</g>`;
+}
+
+/** Rig geometry of raster art: chibiGeom of the art's anchors, head width / centre and eye spacing from the drawing. */
+function rasterGeom(raster) {
+  const g = chibiGeom(raster.anchors);
+  const hb = raster.headBox;
+  if (hb) {
+    g.rx = (hb.right - hb.left) / 2;
+    g.cy = (hb.top + hb.bottom) / 2;
+  }
+  if (raster.eyes) {
+    g.ex = Math.abs(raster.eyes[1][0] - raster.eyes[0][0]) / 2;
+    g.ey = g.faceY = (raster.eyes[0][1] + raster.eyes[1][1]) / 2;
+  }
+  g.anchors = { ...raster.anchors };
+  return g;
+}
+
+/** Figure geometry used for a look (raster art with measured anchors wins). */
+function figureGeom(r, raster) {
+  if (r.kind === 'pet') return null;
+  return raster && (raster.base || raster.body) && raster.anchors ? rasterGeom(raster) : chibiGeom(r.anchors);
+}
+
+/** Raster props of a raster-art look with their canvas boxes, in drawing order (back first): [{slot, url, x, y, w, h}]. */
+export function rasterPropBoxes(look, meta = currentMeta) {
+  const r = resolveLook(look, meta);
+  if (r.kind === 'pet') return [];
+  const raster = rasterParts(r.look, meta);
+  const artFig = !!(raster && (raster.base || raster.body));
+  const g = figureGeom(r, raster);
+  const k = propCtx(g, artFig ? raster.anchors ?? r.anchors : g.anchors);
+  const out = [];
+  for (const slot of ['back', 'neck', 'face', 'head', 'hand']) {
+    const id = r.look.props?.[slot];
+    const rp = id ? rasterProp(id) : null;
+    if (rp) out.push({ slot, url: rp.url, ...propBox(slot, rp, k) });
+  }
+  return out;
 }
 
 // ---------- assembly ----------
@@ -1221,15 +1307,17 @@ function cropBox(crop, g, kind, petBox) {
  *   side (sets the outline width so small portraits keep a visible line).
  */
 export function charaSvg(look, opts = {}) {
-  const { size = 96, crop = 'full', expression = 'neutral', pose = null, title = '', flip = false, meta = currentMeta, bg = null, shadow = crop === 'full' || crop === 'fit', cls = '' } = opts;
+  const { size = 96, crop = 'full', expression = 'neutral', pose = null, title = '', flip = false, meta = currentMeta, bg = null, shadow = crop === 'full' || crop === 'fit', cls = '', only = null } = opts;
   const r = resolveLook(look, meta);
   const isPet = r.kind === 'pet';
-  const g = isPet ? null : chibiGeom(r.anchors);
+  const raster = rasterParts(r.look, meta);
+  const artFig = !!(raster && (raster.base || raster.body));
+  const g = figureGeom(r, raster);
   // viewBox first (line width depends on it)
   let pet = null;
   const C0 = colorsFor(r.info, 10);
   if (isPet) pet = petSvg(r.look.pet, C0, r.ft, expression);
-  const vb = cropBox(crop, g, r.kind, pet?.box);
+  const vb = cropBox(crop, g, r.kind, isPet && artFig && raster.bbox ? raster.bbox : pet?.box);
   const px = Math.max(8, Number(size) || 96);
   const lw = clamp((Math.max(vb.w, vb.h) / px) * 1.15, 8, 40);
   const C = colorsFor(r.info, lw);
@@ -1240,17 +1328,26 @@ export function charaSvg(look, opts = {}) {
     const t = tf(name, pivot);
     return `<g data-rig="${name}" data-px="${n1(pivot[0])}" data-py="${n1(pivot[1])}"${t ? ` transform="${t}"` : ''}${extra}>${inner}</g>`;
   };
-  const raster = rasterParts(r.look, meta);
   let figure;
   const props = r.look.props ?? {};
-  const k = isPet ? null : propCtx(g, raster && (raster.base || raster.body) ? r.anchors : g.anchors);
+  const k = isPet ? null : propCtx(g, artFig ? raster.anchors ?? r.anchors : g.anchors);
   if (isPet) {
-    figure = raster?.base ? rasterFigure(raster, { shoulderL: [400, 1000], shoulderR: [624, 1000] }, expression) : pet.svg;
-  } else if (raster && (raster.base || raster.body)) {
-    figure =
-      `<g class="ch-back">${propSvg('back', props.back, C, k, meta)}</g>` +
-      rasterFigure(raster, g, expression) +
-      `<g class="ch-props">${propSvg('back', props.back, C, k, meta, { front: true })}${propSvg('neck', props.neck, C, k, meta)}${propSvg('face', props.face, C, k, meta)}${propSvg('head', props.head, C, k, meta)}${propSvg('hand', props.hand, C, k, meta)}</g>`;
+    figure = only ? '' : artFig ? rasterFigure(raster, { shoulderL: [400, 1000], shoulderR: [624, 1000] }, expression, tf) : pet.svg;
+  } else if (artFig) {
+    const o = { noRaster: !!only }; // canvas compositing draws raster props itself (rasterPropBoxes)
+    const back = `<g class="ch-back">${propSvg('back', props.back, C, k, meta, o)}</g>`;
+    // the hand item rides in the right arm's rig group (held while waving), counter-rotated like the SVG rig's
+    let hand = propSvg('hand', props.hand, C, k, meta, o);
+    if (hand && !hand.startsWith('<g data-rig="propR"')) hand = `<g data-rig="propR" data-px="${n1(k.handR[0])}" data-py="${n1(k.handR[1])}">${hand}</g>`;
+    if (kp && hand) {
+      const t = partTransform({ r: -(kp.armR?.r ?? 0) * 0.85 }, k.handR);
+      if (t) hand = hand.replace('<g data-rig="propR"', `<g transform="${t}" data-rig="propR"`);
+    }
+    const front = (h) => `<g class="ch-props">${propSvg('back', props.back, C, k, meta, { front: true })}${propSvg('neck', props.neck, C, k, meta, o)}${propSvg('face', props.face, C, k, meta, o)}${propSvg('head', props.head, C, k, meta, o)}${h}</g>`;
+    // `only` = one layer of a raster figure for canvas compositing (group photo): its props behind / in front / the
+    // hand item alone (composeRaster rotates it with the arm; no root transform in that layer)
+    const armed = !!(raster.body && raster.arms && !(EXPR_RASTER.includes(expression) && raster.expr[expression]?.meta?.overlay === false));
+    figure = only === 'back' ? back : only === 'front' ? front(armed ? '' : hand) : only === 'hand' ? (armed ? hand : '') : back + rasterFigure(raster, g, expression, tf, hand) + front('');
   } else {
     const ft = r.ft;
     const armFill = ft.darkLimbs ? C.accent : C.body;
@@ -1286,8 +1383,8 @@ export function charaSvg(look, opts = {}) {
       rg('armR', g.shoulderR, armR);
   }
   const shadowW = isPet ? 300 : g.bw * 1.35;
-  const rootT = tf('root', [CX, F]);
-  const shadowSvg = shadow ? rg('shadow', [CX, F], ell(CX, F + 6, shadowW, 26, `fill="#3a2a40" fill-opacity=".14"`)) : '';
+  const rootT = only === 'hand' ? '' : tf('root', [CX, F]);
+  const shadowSvg = shadow && !only ? rg('shadow', [CX, F], ell(CX, F + 6, shadowW, 26, `fill="#3a2a40" fill-opacity=".14"`)) : '';
   const bgSvg = bg ? `<rect x="${n1(vb.x)}" y="${n1(vb.y)}" width="${n1(vb.w)}" height="${n1(vb.h)}" fill="${esc(bg)}"/>` : '';
   const flipT = flip ? ` transform="${MIRROR}"` : '';
   const label = title || (isPet ? r.info.name : r.kind === 'npc' ? r.info.name : r.info.name);
@@ -1346,6 +1443,12 @@ export function renderChara(look, opts = {}) {
   const raster = rasterParts(look, m);
 
   const draw = () => {
+    // a redraw (face change) replaces the svg: a sprite sheet playing in it is over
+    if (sheet) {
+      sheet.stop();
+      sheet = null;
+      el.classList.remove('sheet-on');
+    }
     el.innerHTML = charaSvg(look, { size, crop, expression, title, flip, meta: m, pose: !motion || reduced ? (pose === 'idle' ? null : pose) : null });
     el.dataset.expression = expression;
     el.dataset.pose = pose;
@@ -1369,7 +1472,7 @@ export function renderChara(look, opts = {}) {
       return;
     }
     const r = resolveLook(look, m);
-    const g = r.kind === 'pet' ? null : chibiGeom(r.anchors);
+    const g = figureGeom(r, raster);
     const origins = g ? [[CX - g.ex, g.ey], [CX + g.ex, g.ey]] : [[440, 1000], [584, 1000]];
     const top = g ? [[CX, g.top + g.H * 0.2]] : [[CX, 760]];
     const specs = spawnParticles(kind, { n: kind === 'tear' ? 6 : 4, seed: 7, origins: kind === 'tear' ? origins : top, spread: g ? g.rx : 200 });
@@ -1417,9 +1520,28 @@ export function renderChara(look, opts = {}) {
     if (s) {
       sheet?.stop();
       el.classList.add('sheet-on');
-      sheet = createSpritePlayer(el, s, { reduced });
-      return sheet.done.then((ok) => {
-        el.classList.remove('sheet-on');
+      // drawn where the raster figure is (props stay on top and follow the frame's head)
+      const fig = el.querySelector('svg .ch-raster');
+      const riders = [...el.querySelectorAll('svg .ch-props, svg .ch-back')];
+      const onFrame = (i) => {
+        const d = s.heads?.[i];
+        for (const g of riders) {
+          if (d && (d[0] || d[1])) g.setAttribute('transform', `translate(${d[0]} ${d[1]})`);
+          else g.removeAttribute('transform');
+        }
+      };
+      const player = createSpritePlayer(el, s, { reduced, mount: fig?.parentNode ?? null, after: fig, onFrame });
+      player.done.then(() => riders.forEach((g) => g.removeAttribute('transform')));
+      sheet = player;
+      // canvas sheets (CH-2) draw their own squash; the rig keeps the hop (root translation) going under them
+      const hop = s.rect && rig ? rig.play(action, { squash: 0.2 }) : Promise.resolve(true);
+      const shown = player.done.then((ok) => {
+        if (sheet === player) el.classList.remove('sheet-on');
+        return ok;
+      });
+      return Promise.all([shown, hop]).then(([ok]) => {
+        const a = POSE_ACTION[pose];
+        if (ok && a && !ONE_SHOT.has(a)) rig?.loop(a);
         return ok;
       });
     }
@@ -1470,7 +1592,7 @@ export function renderCutinFigure(subject, { pose = 'idle', emotion = null, name
 export function preloadChara(subject) {
   const { look } = subjectLook(subject);
   const r = rasterParts(look, currentMeta);
-  const urls = r ? [r.base, r.body, r.arms].filter(Boolean).map((a) => a.url) : [];
+  const urls = r ? [r.base, r.body, r.arms, r.eyesClosed, r.mouthOpen, ...Object.values(r.expr ?? {}), ...Object.values(r.sheets ?? {})].filter(Boolean).map((a) => a.url) : [];
   if (!urls.length || typeof Image === 'undefined') return Promise.resolve();
   return Promise.all(urls.map((u) => new Promise((res) => {
     const im = new Image();
@@ -1511,33 +1633,156 @@ export function charaToken(subject, { size = 26, title = '' } = {}) {
 
 // ---------- group photo ----------
 
+const imageCache = new Map();
+function loadImage(src) {
+  if (imageCache.has(src)) return imageCache.get(src);
+  const p = new Promise((resolve) => {
+    const im = new Image();
+    im.decoding = 'async';
+    im.onload = () => resolve(im);
+    im.onerror = () => resolve(null);
+    im.src = src;
+  });
+  imageCache.set(src, p);
+  p.then((im) => {
+    if (!im) imageCache.delete(src);
+  });
+  return p;
+}
+
+/** An SVG string as an image (blob URL; vector only → never taints a canvas). */
+async function svgImage(svg) {
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  try {
+    const im = await new Promise((resolve) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => resolve(null);
+      i.src = url;
+    });
+    return im;
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+}
+
+/**
+ * Raster art composed on a canvas (the FULL_VIEW box, like the SVG path): props behind (SVG layer), body + face overlay
+ * + arms rotated by the pose's key pose (or the base / an expression swap), raster props, props in front (SVG layer).
+ * Same-origin images + vector-only SVG layers → the group photo canvas stays exportable.
+ */
+async function composeRaster(look, r, { expression, pose, height, title }) {
+  const vb = FULL_VIEW;
+  const H = Math.max(64, Math.round(height));
+  const W = Math.round((H * vb.w) / vb.h);
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const e = EXPR_RASTER.includes(expression) ? expression : null;
+  const ex = e ? r.expr[e] : null;
+  const swap = ex && ex.meta?.overlay === false ? ex : null;
+  const over = ex && ex.meta?.overlay !== false ? ex : null;
+  const kp = pose ? keyPose(pose) : null;
+  const rectOf = (info) => (Array.isArray(info?.meta?.rect) && info.meta.rect.length === 4 ? info.meta.rect : [0, 0, 1024, 1536]);
+  const props = rasterPropBoxes(look);
+  const urls = [...[swap ?? null, r.body, r.arms, r.base, over].filter(Boolean).map((a) => a.url), ...props.map((p) => p.url)];
+  const imgs = new Map(await Promise.all(urls.map(async (u) => [u, await loadImage(u)])));
+  const drawProps = (front) => {
+    for (const p of props) {
+      if ((p.slot === 'back') === front) continue;
+      const im = imgs.get(p.url);
+      if (im) ctx.drawImage(im, p.x, p.y, p.w, p.h);
+    }
+  };
+  const layer = async (only) => svgImage(charaSvg(look, { size: H, crop: 'full', expression, pose, title, shadow: false, only }));
+  const armed = !!(r.body && r.arms && !swap);
+  const [backL, frontL, handL] = await Promise.all([layer('back'), layer('front'), armed && look?.props?.hand ? layer('hand') : null]);
+  const k = H / vb.h;
+  const draw = (info, extra) => {
+    const im = imgs.get(info?.url);
+    if (!im) return false;
+    const [x, y, w, h] = rectOf(info);
+    if (extra) extra();
+    ctx.drawImage(im, x, y, w, h);
+    return true;
+  };
+  if (backL) ctx.drawImage(backL, 0, 0, W, H);
+  ctx.save();
+  ctx.scale(k, k);
+  ctx.translate(-vb.x, -vb.y);
+  // the root key pose (hop / lean) about the feet
+  const root = kp?.root;
+  if (root) {
+    ctx.translate(root.x ?? 0, root.y ?? 0);
+    ctx.translate(CX, F);
+    if (root.r) ctx.rotate(((root.r ?? 0) * Math.PI) / 180);
+    ctx.scale(root.sx ?? 1, root.sy ?? 1);
+    ctx.translate(-CX, -F);
+  }
+  drawProps(false);
+  let ok;
+  if (r.body && r.arms && !swap) {
+    ok = draw(r.body);
+    if (over) draw(over);
+    const pivots = r.arms.meta?.pivots ?? r.body.meta?.pivots ?? {};
+    for (const [side, part, x0, x1] of [['armL', 'armL', 0, CX], ['armR', 'armR', CX, 1024]]) {
+      const p = pt(pivots[side], null);
+      ctx.save();
+      if (p && kp?.[part]?.r) {
+        ctx.translate(p[0], p[1]);
+        ctx.rotate((kp[part].r * Math.PI) / 180);
+        ctx.translate(-p[0], -p[1]);
+      }
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x0, 0, x1 - x0, 1536);
+      ctx.clip();
+      draw(r.arms);
+      ctx.restore();
+      // the held item rides with the right arm (its layer carries the upright counter-rotation)
+      if (side === 'armR' && handL) ctx.drawImage(handL, vb.x, vb.y, vb.w, vb.h);
+      ctx.restore();
+    }
+  } else {
+    ok = draw(swap ?? r.base ?? r.body);
+    if (over) draw(over);
+  }
+  ctx.restore();
+  if (!ok) return null;
+  if (frontL) ctx.drawImage(frontL, 0, 0, W, H);
+  // raster props in front (same root pose as the figure)
+  ctx.save();
+  ctx.scale(k, k);
+  ctx.translate(-vb.x, -vb.y);
+  if (root) {
+    ctx.translate(root.x ?? 0, root.y ?? 0);
+    ctx.translate(CX, F);
+    if (root.r) ctx.rotate((root.r * Math.PI) / 180);
+    ctx.scale(root.sx ?? 1, root.sy ?? 1);
+    ctx.translate(-CX, -F);
+  }
+  drawProps(true);
+  ctx.restore();
+  return canvas;
+}
+
 /**
  * The figure as an image for canvas drawing: `{img, feet}` (feet = fraction of the image height where the feet sit).
- * Raster base art is drawn directly; else the SVG (with the pose baked in) as an image.
+ * Raster art is composed on a canvas (pose + expression + props, same box as the SVG); else the SVG (with the pose baked
+ * in) as an image.
  */
 export async function charaImage(subject, { expression = 'joy', pose = null, height = 512 } = {}) {
   const { look, name } = subjectLook(subject);
   const vb = FULL_VIEW;
   const feet = (F - vb.y) / vb.h;
   const r = rasterParts(look, currentMeta);
-  const load = (src) =>
-    new Promise((resolve) => {
-      const im = new Image();
-      im.decoding = 'async';
-      im.onload = () => resolve(im);
-      im.onerror = () => resolve(null);
-      im.src = src;
-    });
-  if (r?.base?.url) {
-    const im = await load(r.base.url);
-    if (im) return { img: im, feet: F / 1536, kind: 'raster' };
+  if (r && (r.base || r.body)) {
+    const c = await composeRaster(look, r, { expression, pose, height, title: name }).catch(() => null);
+    if (c) return { img: c, feet, kind: 'raster' };
   }
   const svg = charaSvg(look, { size: height, crop: 'full', expression, pose, title: name, shadow: false });
-  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-  try {
-    const im = await load(url);
-    return im ? { img: im, feet, kind: 'svg' } : null;
-  } finally {
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  }
+  const im = await svgImage(svg);
+  return im ? { img: im, feet, kind: 'svg' } : null;
 }

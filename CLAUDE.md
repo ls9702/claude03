@@ -1774,7 +1774,7 @@ Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (
   `portraitHtml / renderPortrait / hydratePortraits` (drop-in names; SVG is complete on insert, hydrate is a no-op), `charaToken`
   (2D board / admin), `charaImage(subject, {expression, pose, height})` → `{img, feet}` (group photo), `setCharaMeta(meta)` (app /
   admin install `/api/meta`), `rasterParts / rasterPrefix`, `chibiGeom`, `scaledAnchors`.
-- Raster contract (§3, nothing accepted yet → SVG everywhere): `assetInfo('<ch-id|npc-species|pet-species>-<part>')` — `base` (full
+- Raster contract (§3; first art accepted in CH-2 — the plug-in details as of now are in "Chiikawa art pipeline (CH-2)"): `assetInfo('<ch-id|npc-species|pet-species>-<part>')` — `base` (full
   figure, replaces the SVG body / head / arms; root squash / hop still apply), `body` + `arms` (cut-out: the arms image twice, clipped to
   the left / right half and rotated around `meta.pivots.armL|armR`), `eyes-closed` / `mouth-open` overlays (blink / talk),
   `expr-<joy|cry|shock|angry|love|sweat>` (`meta.overlay` false = swap the figure, else an overlay), `sheet-<action>` (meta `{grid,
@@ -1814,3 +1814,85 @@ Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (
   수입, 단짝 생활비), game2d floats / toasts / result family line, cards.js 단짝운◎, cutinPolicy route desc, houseArt 입양 파티 table,
   admin 「성장 소품」. `client-chara` greps public/ (legacy avatar modules and scene/ excepted) for 결혼 자녀 출산 육아 프러포즈 배우자
   맞벌이 축의금 돌잔치 돌잡이 신랑 신부 남편 아내 아들 남자 여자 임신.
+
+## Chiikawa art pipeline (CH-2)
+Hand-delivered Chiikawa-style art (the user's local Gemini skill; the API stays OFF here) → `node scripts/import-assets.js
+--dir <folder>` → placed / split / keyed parts in the manifest → the chara.js raster plug-in. Requests: `docs/asset-requests/
+chiikawa-full.json|.md` (95 images), `chiikawa-test.json` (the delivered test batch), `chiikawa-mc.json|.md` (25 MC images).
+Tests: `test/chara-pipeline.test.js` (+ the updated `assets-manifest`, `stage7-import`, `client-chara` expectations). E2E: session
+scratchpad `ch2/` (`e2e.cjs` real game 1280 + 390: picker, cut-ins, penguin, chef hat, side list, result, photo; `mc-e2e.cjs`
+synthetic MC overlays; screenshots `ch2-*.png`, animated `ch2-cutin-anim.webp`).
+- Manifest (`node scripts/gen-chara-manifest.js [--dry-run]`, idempotent upsert; reads roster / npcs / pets / props.json and the
+  request JSONs for prompts + refs; keeps status / accepted / output and every importer-measured meta field): kind **`chara`**
+  (meta `{character|npc|pet: data id, part}`; `ch-<roster id>-{base, body, arms, eyes-closed, mouth-open, expr-joy, expr-cry,
+  expr-shock, sheet-jump}` ×8, `npc-<species>-base` ×10, `pet-<species>-base` ×8 → `chara/<ch|npc|pet>/<slug>/<part>.webp`), kind
+  **`prop`** (meta `{prop, slot}`; `prop-<props.json id>` ×60 → `chara/props/<slug>.webp`), and kind `mc` overlays
+  `mc-<dog>-eyes-closed|mouth-open` (meta `{mc, part, base: mc-<dog>-neutral}`, `mc/<dog>/<part>.png`). Ids use `-` for data ids
+  with `_` (`npc-bear-cub-base`, `pet-guinea-pig-base`, `prop-chef-hat`); the renderer looks both spellings up. Validation
+  (`manifest.js`): chara = exactly one owner field + `CHARA_ITEM_PARTS_RE` part (+ `rect` / `grid` shapes), prop = `PROP_ITEM_SLOTS`
+  slot, mc = exactly one of expression / pose / part. `studio.upload` refuses kind chara (placement is import-only); new
+  `studio.publish(id, png, {meta, from})` (accepted `source: 'import'`, meta merged, `bytes`) and `studio.patchMeta(id, patch)`.
+  The existing `bg-*` / `mc-*` ids / outputs stay — new Chiikawa art simply re-accepts them (old anime-style bg / MC / frame art
+  stays live until then).
+- Names (`server/assets/charaIds.js`, pure): `<id>.png` beats `<id>_original.jpg`; `<id>-2.png` = a second take, used only with
+  `--take 2` (all) / `--take <id>=2[,…]` or when take 1 is missing (the `-<n>` suffix splits off only when the rest is a known id).
+  Aliases: `ch-<c>-<joy|cry|shock|…>` → `ch-<c>-expr-<e>`, `ch-<c>-noarms` → `ch-<c>-body`, `ch-<c>-jump` → `ch-<c>-sheet-jump`,
+  `npc-friend-<s>` / `npc-<s>` → `npc-<s>-base`, `pet-<s>` → `pet-<s>-base`, `bg-ch-<scene>` → `bg-<scene>`, `prop-hat-chef` →
+  `prop-chef-hat` (slot word first → last), `_` → `-`; `--only` / `--take` accept delivered names too. After a successful import
+  every file of that id (all takes + originals) leaves the inbox unless `--keep`. Import order = `importRank` (chiikawa base → other
+  bases → bodies → overlays → sheets → MC neutral → MC overlays → props → the rest). The run ends with the bytes added.
+- Image steps (`server/assets/charaPipeline.js`): `keyBackdrop` = corner-sampled backdrop (measured G 26–65, never #FF00FF),
+  distance + magenta-hue ramp, but only on pixels flood-filled from the border (outlined interiors — a purple bow tie, blush — stay
+  opaque); enclosed holes cleared by distance; specks < 30 px dropped (shock lines / tear drops survive). **Placement**: ONE
+  transform per reference family, normalised by the image height (`familyFrom` → `{unit, cx, feet}`): the accepted
+  `ch-chiikawa-base` maps its figure head-top → y 420 … feet → y 1303, feet-band centre → x 512; every image drawn with it as the
+  reference (other bases, npc / pet bases) uses that scale, and a family's edits use their base's applied transform
+  (`meta.placement`). Per image only a translation correction when its own feet / centre deviate > 2 % / 3 % of the image height
+  (logged 「⚠️ 발 위치 보정」; e.g. the test penguin drawn without the reference: −6.6 %, kept 0.81× smaller). Edits are also
+  registered ±4 px (`registerEdit`, logged). Stored at **`CHARA_RES` 0.75** (768×1152 logical canvas ≈ the sources' own figure size;
+  measured decode of an uncropped canvas 8.5 / 14–17 / 26 ms at 0.5 / 0.75 / 1.0) and **cropped to content** with `meta.rect`
+  [x, y, w, h] in logical units (base ≈ 23 KB, eyes overlay 1 KB); the placed base is cached losslessly in `DATA_DIR/chara-src/`
+  for edits delivered later (else the published WebP is used).
+- Derived parts: `-noarms` → `-body` (placed) + **`-arms`** = base − body (alpha / colour > 64, opened, the largest component per
+  side, only pixels OUTSIDE the arm-less body — at rest the body outline shows as a thin crease, raised arms never drag a white
+  junction patch over the outline) with `meta.pivots` (centre of each arm's contact with the body) and `meta.hands` (80 % to the
+  tip; also written into the base's `meta.anchors.handL|R`). Base meta: `anchors {head (head top between the ears), face (eye line),
+  neck (chin), handL, handR, back}`, `eyes`, `headBox`, `headWidth`, `bbox`, `placement`, `source`. **Overlays** (eyes-closed,
+  mouth-open, expr-*): placed + registered edit − base inside the face box (expressions: wider — 240 above the figure for shock
+  lines, down to 45 % of chin→feet for tears), opened, specks dropped, dilated 4, holes filled → the edit's own pixels (they cover
+  the old eyes / mouth), `meta.overlay: true`; an expression that changed more than 2 500 px (at 0.75) or 25 % of its face change
+  outside the box (arms moved) is a full swap (`meta.overlay: false`). Test batch: cry = overlay (16 551 px in the face, 0 outside).
+  **Sheets** (`sheet-<action>`, 2×2): keyed, sliced, ONE scale = base head width ÷ median frame head width (`headSpan`: widest run
+  through the centre column in the top half — the body squashes, the head doesn't), feet on y 1303, feet centre on x 512, every
+  cell the same crop of the canvas → meta `{res: 0.5, rect, grid: [2, 2], frames: 4, loop, seq, frameMs}` (jump: seq 0 1 2 1 3 /
+  180 150 190 100 230 ms = in step with the rig hop) + `heads` (per-frame head offset from the base's head). **Props**: white →
+  alpha (border flood fill), trimmed, ≤ 384 px, `meta.anchor` = slot attach point (head [0.5, 0.84] of the box: a hat sinks into
+  the head; face centre; neck top; hand [0.5, 0.62]; back centre) and `meta.scale` = slot width (H units: head 0.78, face 0.66,
+  neck 0.5, hand 0.36, back 0.72) × 450 ÷ width. **Backgrounds** keep the old path (cover 1920×1080, upscaled from 1376×768).
+  **MC**: keyed the same way and fit into the item size (old PNG paths; the 16:9 `mc-duo` fits into 3:2 with transparent bands);
+  `mc-<dog>-eyes-closed|mouth-open` = overlays of the published neutral (box = top 80 % of the figure) with `meta.rect` in the
+  1024² square + `meta.size`.
+- Renderer plug-in (`public/js/ui/chara.js`, SVG fallback unchanged): `rasterParts` also returns the art's `anchors / eyes / headBox
+  / bbox` and looks ids up with `_` → `-`; `rasterGeom` = chibiGeom of the art anchors with the measured head half-width / centre and
+  eye spacing → props, crops (face / bust / fit / head) and particles follow the drawing; pets crop to `meta.bbox`. `imgOf` places
+  each part at `meta.rect` (`preserveAspectRatio="none"`). Draw order body → expression overlay → blink / talk overlays → arms; blink
+  / talk overlays only on the neutral face. The hand item rides in the right arm's rig group (counter-rotated `propR`, at the art's
+  hand anchor). Sheets with `rect` play INSIDE the svg right after `.ch-raster` (`createSpritePlayer(host, sheet, {mount, after,
+  onFrame})`, a nested `<svg>` whose viewBox walks the cells; `.chara.sheet-on .ch-raster` hidden; head / neck / face / back props
+  follow `heads[i]`, hand items hide) while the rig keeps the root hop (`rig.play(action, {squash: 0.2})` — the drawn frames carry
+  the squash); a redraw stops a playing sheet; `spriteFrame` / `spriteDuration` / `sheetDef` know `seq` / `frameMs` / `rect` /
+  `size` / `heads`. `charaImage` (group photo) composes raster art on a canvas in the FULL_VIEW box (props behind / in front as
+  vector-only SVG layers via `charaSvg({only: 'back'|'front'|'hand'})`, raster props via `rasterPropBoxes`, arms + hand item rotated
+  by the pose's key pose) → the PNG export never taints. `preloadChara` warms every part.
+- MC (`public/js/ui/mc.js`): `mcOverlays(id)` (`findAsset({kind:'mc', mc, part})`), `overlayStyle` (percent box + a transform-origin
+  on the art's bottom centre so overlays breathe with it), `mcTalkMs(line)`; `renderMc` adds `.mc-ov` images only on the neutral
+  art (`can-blink` / `can-talk`), blinks every 2–5 s (`.mc.blink`), `el.talk(ms)` flaps `.mc.mouth-open` with the rig's talk beat,
+  `el.hush()`; `booth.say` flaps for `mcTalkMs(line)` and hushes the other dog; no overlays / reduced motion → the old behaviour.
+- Import a delivered zip: unzip into its own folder (e.g. `assets-inbox/<batch>/`), `node scripts/import-assets.js --dir
+  assets-inbox/<batch> --dry-run` (mapping, takes, replacements), then without `--dry-run` (add `--take <id>=2` for a preferred
+  second take, `--keep` to leave the files). Bases must come first (same run or earlier); an edit without its base fails with
+  「기본 그림(…)을 먼저 가져와야 해요」. Re-importing a base warns that its body / overlays / sheet need re-import too. Then
+  `npm test` and a look in the game (`?debug=1`, cut-ins via `window.__cutin.show(spec)`).
+- Test batch imported (2026-10-16, takes 1 except `ch-chiikawa-sheet-jump` take 2 and `bg-ch-park` take 2): chiikawa base / body /
+  arms / eyes-closed / mouth-open / expr-cry / sheet-jump, hachiware base, npc-penguin-base (take 1, no reference → corrected),
+  prop-chef-hat, bg-park — 305 KiB of art added (10 chara + prop WebPs 183 KiB, bg 122 KiB); the manifest grew by the 154 items.

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { CHIIKAWA_STYLE } from '../server/assets/charaIds.js';
 import {
   KINDS,
   MANIFEST_PATH,
@@ -54,13 +55,17 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
     const p = renderPrompt(i.kind === 'sprite' ? { ...i, vars: { ...i.vars, frame: i.frames[0].prompt } } : i);
     assert.doesNotMatch(p, HANGUL, `${i.id} prompt should be English`);
     assert.doesNotMatch(p, /\{\{/, `${i.id} has unexpanded template vars`);
-    if (i.kind !== 'texture') assert.ok(p.includes(STYLE), `${i.id} uses the style bible`);
+    // CH-2: the Chiikawa items (hand-delivered art) carry the request prompts — the Chiikawa style sentence, or an edit
+    // instruction against their reference image; derived parts (arms) say so
+    const chiikawa = i.kind === 'chara' || i.kind === 'prop' || (i.kind === 'mc' && i.meta?.part);
+    if (chiikawa) assert.ok(p.includes(CHIIKAWA_STYLE) || /^(Edit the attached image|Keep exactly the same|Derived at import)/.test(p), `${i.id} uses the Chiikawa style`);
+    else if (i.kind !== 'texture') assert.ok(p.includes(STYLE), `${i.id} uses the style bible`);
     if (i.kind === 'icon' || i.kind === 'card' || i.kind === 'item' || i.kind === 'treasure') {
       assert.equal(i.aspect, '1:1');
       assert.ok(i.postprocess.includes('whiteToAlpha'));
     }
     if (i.kind === 'charLayer' || i.kind === 'pose') assert.ok(i.postprocess.includes('chromaKey'));
-    if (i.kind !== 'anchor') assert.ok(i.refs.length || ['texture', 'frame'].includes(i.kind), `${i.id} refs`);
+    if (i.kind !== 'anchor') assert.ok(i.refs.length || ['texture', 'frame', 'prop'].includes(i.kind) || i.id === 'ch-chiikawa-base', `${i.id} refs`);
   }
   // The shipped file must be committed with no accepted secrets/paths outside generated/.
   const text = await readFile(MANIFEST_PATH, 'utf8');

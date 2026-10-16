@@ -2,6 +2,8 @@
 //
 //   renderMc('hoya', { expression: 'joy', pose: 'clap', size: 96 })  → <div class="mc"> (generated art when
 //       accepted: findAsset({kind:'mc', mc, pose|expression}), else the SVG chibi dog below); el.setState({...})
+//       CH-2: on the neutral art the dog blinks every 2–5 s (mc-<dog>-eyes-closed overlay) and flaps its mouth while a
+//       line is shown (el.talk(ms) → mc-<dog>-mouth-open overlay); without those overlays nothing changes.
 //   mcSvg('bomi', { expression, pose })  → SVG markup (pure, node-tested)
 //   createMcBooth({ ids, size })          → both dogs + one speech bubble; booth.say(line) / booth.clear()
 //   playMcScript(booth, lines, { gap })   → shows the lines one after another (Promise, cancellable)
@@ -12,6 +14,7 @@
 // black back, black speckles on the white front paws, purple bow tie. Idle motion (tail wag, ear bounce,
 // breathing) is CSS (public/css/mc.css) on the `.mc-tail`, `.mc-ear-*`, `.mc-breath`, `.mc-headbob` groups.
 import { findAsset } from '../assets.js';
+import { BLINK, blinkDelay, mouthOpenAt, prefersReducedMotion } from './rig.js';
 
 export const MC_IDS = ['hoya', 'bomi'];
 export const MC_NAMES = { hoya: '호야', bomi: '봄이' };
@@ -284,9 +287,36 @@ export function mcArt(id, { expression = 'neutral', pose = 'idle' } = {}, find =
   return find({ kind: 'mc', mc: id, expression }) ?? base;
 }
 
+/** CH-2 blink / talk overlays of an MC's neutral art ({eyes, mouth}: accepted `mc-<dog>-eyes-closed|mouth-open` or null). */
+export function mcOverlays(id, find = findAsset) {
+  const pick = (part) => {
+    const a = find({ kind: 'mc', mc: id, part });
+    return a?.url ? a : null;
+  };
+  return { eyes: pick('eyes-closed'), mouth: pick('mouth-open') };
+}
+
+/**
+ * Inline style of an overlay over its square art box: position from meta.rect ([x, y, w, h] in meta.size, default
+ * 1024²) in percent, and a transform-origin on the art's bottom centre so it breathes with the art.
+ */
+export function overlayStyle(a) {
+  const [W, H] = Array.isArray(a?.meta?.size) ? a.meta.size : [1024, 1024];
+  const [x, y, w, h] = Array.isArray(a?.meta?.rect) && a.meta.rect.length === 4 ? a.meta.rect : [0, 0, W, H];
+  const f = (v) => Math.round(v * 1000) / 1000;
+  const left = (x / W) * 100;
+  const top = (y / H) * 100;
+  const width = (w / W) * 100;
+  const height = (h / H) * 100;
+  return `left:${f(left)}%;top:${f(top)}%;width:${f(width)}%;height:${f(height)}%;transform-origin:${f(((50 - left) / width) * 100)}% ${f(((100 - top) / height) * 100)}%`;
+}
+
+/** How long the mouth flaps for a line (ms). */
+export const mcTalkMs = (line = '') => Math.round(Math.min(2600, Math.max(700, String(line ?? '').length * 70)));
+
 /**
  * MC element. `size` = CSS px (square box); null/0 → `--mc-size` inherited from CSS.
- * @returns {HTMLElement & {setState(s: {expression?, pose?}): void, talk(): void}}
+ * @returns {HTMLElement & {setState(s: {expression?, pose?}): void, talk(ms?: number): void, hush(): void}}
  */
 export function renderMc(id, { expression = 'neutral', pose = 'idle', size = 96, find = findAsset } = {}) {
   const el = document.createElement('div');
@@ -295,31 +325,71 @@ export function renderMc(id, { expression = 'neutral', pose = 'idle', size = 96,
   if (size) el.style.setProperty('--mc-size', `${size}px`); // else inherited from the container's CSS
   let state = { expression, pose };
   let broken = false;
+  let ov = {};
+  const reduced = prefersReducedMotion();
   const paint = () => {
     const art = broken ? null : mcArt(id, state, find);
     el.dataset.expression = state.expression;
     el.dataset.pose = state.pose;
     el.dataset.source = art ? 'art' : 'svg';
+    // blink / talk overlays only ride on the neutral art (expressions / poses are whole other drawings)
+    ov = art && art.meta?.expression === 'neutral' && !art.meta?.pose ? mcOverlays(id, find) : {};
     if (art) {
-      el.innerHTML = `<img class="mc-img" src="${art.url}" alt="${MC_NAMES[id] ?? ''}" decoding="async" draggable="false">`;
+      const o = (a, cls) => (a ? `<img class="mc-ov ${cls}" src="${a.url}" alt="" decoding="async" draggable="false" style="${overlayStyle(a)}">` : '');
+      el.innerHTML = `<img class="mc-img" src="${art.url}" alt="${MC_NAMES[id] ?? ''}" decoding="async" draggable="false">${o(ov.eyes, 'mc-ov-eyes')}${o(ov.mouth, 'mc-ov-mouth')}`;
       el.querySelector('img').addEventListener('error', () => {
         broken = true;
         paint();
       });
     } else el.innerHTML = mcSvg(id, state);
+    el.classList.toggle('can-blink', !!ov.eyes);
+    el.classList.toggle('can-talk', !!ov.mouth);
   };
   paint();
+  // blink every 2–5 s while on the page (stops once removed)
+  let attached = false;
+  let blinkTimer = null;
+  const scheduleBlink = () => {
+    clearTimeout(blinkTimer);
+    if (reduced || typeof setTimeout !== 'function') return;
+    blinkTimer = setTimeout(() => {
+      if (el.isConnected) attached = true;
+      else if (attached) return;
+      if (ov.eyes) {
+        el.classList.add('blink');
+        setTimeout(() => el.classList.remove('blink'), BLINK.ms);
+      }
+      scheduleBlink();
+    }, blinkDelay());
+  };
+  scheduleBlink();
+  let flap = null;
+  const hush = () => {
+    clearInterval(flap);
+    flap = null;
+    el.classList.remove('mouth-open');
+  };
   el.setState = (s = {}) => {
     const next = { expression: s.expression ?? state.expression, pose: s.pose ?? state.pose };
     if (next.expression === state.expression && next.pose === state.pose) return;
     state = next;
     paint();
   };
-  el.talk = () => {
+  /** A little bounce; with `ms` and a mouth overlay the mouth flaps that long (the line is on screen). */
+  el.talk = (ms = 0) => {
     el.classList.remove('talking');
     void el.offsetWidth;
     el.classList.add('talking');
+    hush();
+    if (!ms || reduced || !ov.mouth) return;
+    const t0 = Date.now();
+    flap = setInterval(() => {
+      const t = Date.now() - t0;
+      if (t >= ms || !el.isConnected || !ov.mouth) return hush();
+      el.classList.toggle('mouth-open', mouthOpenAt(t));
+    }, 40);
   };
+  el.hush = hush;
   return el;
 }
 
@@ -352,7 +422,8 @@ export function createMcBooth({ ids = MC_IDS, size = 72, className = '' } = {}) 
       const d = dogs[speaker];
       if (!d) return false;
       d.setState({ expression: expression ?? 'neutral', pose: pose ?? 'idle' });
-      d.talk();
+      for (const o of Object.values(dogs)) o.hush?.();
+      d.talk(mcTalkMs(line));
       for (const [k, o] of Object.entries(dogs)) o.classList.toggle('speaking', k === speaker);
       bubble.hidden = false;
       bubble.dataset.speaker = speaker;
@@ -366,7 +437,10 @@ export function createMcBooth({ ids = MC_IDS, size = 72, className = '' } = {}) 
     },
     clear() {
       bubble.hidden = true;
-      for (const o of Object.values(dogs)) o.classList.remove('speaking');
+      for (const o of Object.values(dogs)) {
+        o.classList.remove('speaking');
+        o.hush?.();
+      }
     },
   };
   return booth;

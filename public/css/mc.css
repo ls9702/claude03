@@ -36,6 +36,9 @@
 .mc[data-expression='sleepy'] .mc-tail { animation-duration: 1.6s; }
 .mc.talking { animation: mc-talk 0.42s ease-out; }
 .mc > .mc-img { animation: mc-breathe-img 2.8s ease-in-out infinite; transform-origin: 50% 100%; }
+/* CH-2 blink / talk overlays on the neutral art (positioned + origin inline by mc.js overlayStyle → they breathe with it) */
+.mc > .mc-ov { position: absolute; display: none; pointer-events: none; user-select: none; -webkit-user-drag: none; animation: mc-breathe-img 2.8s ease-in-out infinite; }
+.mc.blink > .mc-ov-eyes, .mc.mouth-open > .mc-ov-mouth { display: block; }
 
 @keyframes mc-wag { from { transform: rotate(-9deg); } to { transform: rotate(11deg); } }
 @keyframes mc-ear-l { 0%, 70%, 100% { transform: rotate(0); } 80% { transform: rotate(-9deg); } 90% { transform: rotate(4deg); } }
