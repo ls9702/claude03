@@ -4,7 +4,9 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const STATUS_LABEL = { todo: '미생성', candidate: '후보 있음', accepted: '채택됨', missing: '없음' };
-const KIND_ORDER = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'texture', 'frame', 'ui', 'part'];
+// Chiikawa art first (chara / prop / mc), then the rest; kinds missing here still show (appended in manifest order).
+const KIND_ORDER = ['chara', 'prop', 'mc', 'bg', 'card', 'item', 'treasure', 'icon', 'frame', 'anchor', 'charLayer', 'pose', 'sprite', 'texture', 'ui', 'part'];
+const kindOrder = (items) => [...KIND_ORDER, ...new Set(items.map((i) => i.kind).filter((k) => !KIND_ORDER.includes(k)))];
 
 const state = { items: [], kind: '', status: '', selected: null, detail: null, job: null, flipTimer: null };
 
@@ -83,7 +85,7 @@ async function refresh() {
 }
 
 function renderFilters() {
-  const kinds = KIND_ORDER.filter((k) => state.items.some((i) => i.kind === k));
+  const kinds = kindOrder(state.items).filter((k) => state.items.some((i) => i.kind === k));
   const label = (k) => state.items.find((i) => i.kind === k)?.kindLabel ?? k;
   $('#kind-filters').innerHTML = [['', '전체'], ...kinds.map((k) => [k, label(k)])]
     .map(([k, l]) => `<button type="button" class="chip-btn ${state.kind === k ? 'sel' : ''}" data-kind="${esc(k)}">${esc(l)}</button>`)
@@ -97,7 +99,7 @@ function thumbHtml(item, size = 48) {
 
 function renderList() {
   const items = state.items.filter((i) => (!state.kind || i.kind === state.kind) && (!state.status || i.status === state.status));
-  const groups = KIND_ORDER.map((k) => [k, items.filter((i) => i.kind === k)]).filter(([, a]) => a.length);
+  const groups = kindOrder(items).map((k) => [k, items.filter((i) => i.kind === k)]).filter(([, a]) => a.length);
   $('#item-list').innerHTML = groups.length
     ? groups
         .map(
