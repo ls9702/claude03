@@ -1,0 +1,1024 @@
+{
+  "batch": "chiikawa-full",
+  "created": "2026-10-16",
+  "note": "ids = output file names (<id>.png). refs = earlier outputs (or the test files) attached as reference images.",
+  "style": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border.",
+  "alreadyDone": [
+    "ch-chiikawa-base",
+    "ch-chiikawa-noarms",
+    "ch-chiikawa-eyes-closed",
+    "ch-chiikawa-mouth-open",
+    "ch-chiikawa-expr-cry",
+    "ch-chiikawa-sheet-jump",
+    "ch-hachiware-base",
+    "npc-penguin-base",
+    "bg-park"
+  ],
+  "refFiles": {
+    "ch-chiikawa-base": "ch-chiikawa-base.png (test, 1st)",
+    "ch-hachiware-base": "ch-hachiware-base.png (test, 1st)",
+    "bg-park": "bg-ch-park-2.png (test, 2nd)"
+  },
+  "batches": [
+    {
+      "n": 1,
+      "items": [
+        {
+          "id": "ch-usagi-base",
+          "kind": "base",
+          "label": "우사기 기본",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cream-yellow chibi rabbit-like creature with two long upright rabbit ears, a round head, wide happy dot eyes, a big open mouth, orange-pink blush, energetic pose, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-momonga-base",
+          "kind": "base",
+          "label": "모몽가 기본",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small white chibi flying squirrel with big sparkly eyes, small rounded squirrel ears, a fluffy curled tail and a pale blue-grey gliding membrane, pink blush, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-kurimanju-base",
+          "kind": "base",
+          "label": "쿠리만쥬 기본",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round chestnut-bun shaped chibi creature with warm brown fur, a darker brown top like a baked chestnut bun, tiny bun-like ears, sleepy content eyes and a small smile, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-rakko-base",
+          "kind": "base",
+          "label": "랏코 기본",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a tall beige chibi sea otter with small round otter ears low on the head, a light muzzle, calm confident eyes, a slightly longer body, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-shisa-base",
+          "kind": "base",
+          "label": "시사 기본",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round golden-yellow chibi shisa lion-dog with a fluffy curly orange mane around the face, small rounded ears, cheerful dot eyes and a wide smile, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-chiikawa-expr-joy",
+          "kind": "edit",
+          "label": "치이카와 기쁨",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-chiikawa-expr-shock",
+          "kind": "edit",
+          "label": "치이카와 놀람",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-hachiware-noarms",
+          "kind": "edit",
+          "label": "하치와레 팔 없음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Do not move or redraw anything else.",
+          "refs": [
+            "ch-hachiware-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-hachiware-eyes-closed",
+          "kind": "edit",
+          "label": "하치와레 눈 감음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+          "refs": [
+            "ch-hachiware-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-hachiware-mouth-open",
+          "kind": "edit",
+          "label": "하치와레 입 벌림",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+          "refs": [
+            "ch-hachiware-base"
+          ],
+          "aspect": "3:4"
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "items": [
+        {
+          "id": "ch-hachiware-expr-cry",
+          "kind": "edit",
+          "label": "하치와레 울음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+          "refs": [
+            "ch-hachiware-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-hachiware-expr-joy",
+          "kind": "edit",
+          "label": "하치와레 기쁨",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+          "refs": [
+            "ch-hachiware-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-hachiware-expr-shock",
+          "kind": "edit",
+          "label": "하치와레 놀람",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+          "refs": [
+            "ch-hachiware-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-hachiware-sheet-jump",
+          "kind": "sheet",
+          "label": "하치와레 점프 4프레임",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+          "refs": [
+            "ch-hachiware-base"
+          ],
+          "aspect": "1:1"
+        },
+        {
+          "id": "ch-usagi-noarms",
+          "kind": "edit",
+          "label": "우사기 팔 없음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Do not move or redraw anything else.",
+          "refs": [
+            "ch-usagi-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-usagi-eyes-closed",
+          "kind": "edit",
+          "label": "우사기 눈 감음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+          "refs": [
+            "ch-usagi-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-usagi-mouth-open",
+          "kind": "edit",
+          "label": "우사기 입 벌림",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+          "refs": [
+            "ch-usagi-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-usagi-expr-cry",
+          "kind": "edit",
+          "label": "우사기 울음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+          "refs": [
+            "ch-usagi-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-usagi-expr-joy",
+          "kind": "edit",
+          "label": "우사기 기쁨",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+          "refs": [
+            "ch-usagi-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-usagi-expr-shock",
+          "kind": "edit",
+          "label": "우사기 놀람",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+          "refs": [
+            "ch-usagi-base"
+          ],
+          "aspect": "3:4"
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "items": [
+        {
+          "id": "ch-usagi-sheet-jump",
+          "kind": "sheet",
+          "label": "우사기 점프 4프레임",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+          "refs": [
+            "ch-usagi-base"
+          ],
+          "aspect": "1:1"
+        },
+        {
+          "id": "ch-momonga-noarms",
+          "kind": "edit",
+          "label": "모몽가 팔 없음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the tail and the gliding membrane. Do not move or redraw anything else.",
+          "refs": [
+            "ch-momonga-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-momonga-eyes-closed",
+          "kind": "edit",
+          "label": "모몽가 눈 감음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+          "refs": [
+            "ch-momonga-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-momonga-mouth-open",
+          "kind": "edit",
+          "label": "모몽가 입 벌림",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+          "refs": [
+            "ch-momonga-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-momonga-expr-cry",
+          "kind": "edit",
+          "label": "모몽가 울음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+          "refs": [
+            "ch-momonga-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-momonga-expr-joy",
+          "kind": "edit",
+          "label": "모몽가 기쁨",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+          "refs": [
+            "ch-momonga-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-momonga-expr-shock",
+          "kind": "edit",
+          "label": "모몽가 놀람",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+          "refs": [
+            "ch-momonga-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-momonga-sheet-jump",
+          "kind": "sheet",
+          "label": "모몽가 점프 4프레임",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+          "refs": [
+            "ch-momonga-base"
+          ],
+          "aspect": "1:1"
+        },
+        {
+          "id": "ch-kurimanju-noarms",
+          "kind": "edit",
+          "label": "쿠리만쥬 팔 없음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Do not move or redraw anything else.",
+          "refs": [
+            "ch-kurimanju-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-kurimanju-eyes-closed",
+          "kind": "edit",
+          "label": "쿠리만쥬 눈 감음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+          "refs": [
+            "ch-kurimanju-base"
+          ],
+          "aspect": "3:4"
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "items": [
+        {
+          "id": "ch-kurimanju-mouth-open",
+          "kind": "edit",
+          "label": "쿠리만쥬 입 벌림",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+          "refs": [
+            "ch-kurimanju-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-kurimanju-expr-cry",
+          "kind": "edit",
+          "label": "쿠리만쥬 울음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+          "refs": [
+            "ch-kurimanju-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-kurimanju-expr-joy",
+          "kind": "edit",
+          "label": "쿠리만쥬 기쁨",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+          "refs": [
+            "ch-kurimanju-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-kurimanju-expr-shock",
+          "kind": "edit",
+          "label": "쿠리만쥬 놀람",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+          "refs": [
+            "ch-kurimanju-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-kurimanju-sheet-jump",
+          "kind": "sheet",
+          "label": "쿠리만쥬 점프 4프레임",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+          "refs": [
+            "ch-kurimanju-base"
+          ],
+          "aspect": "1:1"
+        },
+        {
+          "id": "ch-rakko-noarms",
+          "kind": "edit",
+          "label": "랏코 팔 없음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the tail. Do not move or redraw anything else.",
+          "refs": [
+            "ch-rakko-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-rakko-eyes-closed",
+          "kind": "edit",
+          "label": "랏코 눈 감음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+          "refs": [
+            "ch-rakko-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-rakko-mouth-open",
+          "kind": "edit",
+          "label": "랏코 입 벌림",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+          "refs": [
+            "ch-rakko-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-rakko-expr-cry",
+          "kind": "edit",
+          "label": "랏코 울음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+          "refs": [
+            "ch-rakko-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-rakko-expr-joy",
+          "kind": "edit",
+          "label": "랏코 기쁨",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+          "refs": [
+            "ch-rakko-base"
+          ],
+          "aspect": "3:4"
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "items": [
+        {
+          "id": "ch-rakko-expr-shock",
+          "kind": "edit",
+          "label": "랏코 놀람",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+          "refs": [
+            "ch-rakko-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-rakko-sheet-jump",
+          "kind": "sheet",
+          "label": "랏코 점프 4프레임",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+          "refs": [
+            "ch-rakko-base"
+          ],
+          "aspect": "1:1"
+        },
+        {
+          "id": "ch-shisa-noarms",
+          "kind": "edit",
+          "label": "시사 팔 없음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the mane. Do not move or redraw anything else.",
+          "refs": [
+            "ch-shisa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-shisa-eyes-closed",
+          "kind": "edit",
+          "label": "시사 눈 감음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+          "refs": [
+            "ch-shisa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-shisa-mouth-open",
+          "kind": "edit",
+          "label": "시사 입 벌림",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+          "refs": [
+            "ch-shisa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-shisa-expr-cry",
+          "kind": "edit",
+          "label": "시사 울음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+          "refs": [
+            "ch-shisa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-shisa-expr-joy",
+          "kind": "edit",
+          "label": "시사 기쁨",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+          "refs": [
+            "ch-shisa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-shisa-expr-shock",
+          "kind": "edit",
+          "label": "시사 놀람",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+          "refs": [
+            "ch-shisa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-shisa-sheet-jump",
+          "kind": "sheet",
+          "label": "시사 점프 4프레임",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+          "refs": [
+            "ch-shisa-base"
+          ],
+          "aspect": "1:1"
+        },
+        {
+          "id": "ch-pochette-base",
+          "kind": "base",
+          "label": "포셰트 기본",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small lavender chibi creature with soft drooping pouch-shaped ears and a tiny purple pouch bag on a strap, dot eyes, pink blush, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "items": [
+        {
+          "id": "ch-pochette-noarms",
+          "kind": "edit",
+          "label": "포셰트 팔 없음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the pouch bag and its strap. Do not move or redraw anything else.",
+          "refs": [
+            "ch-pochette-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-pochette-eyes-closed",
+          "kind": "edit",
+          "label": "포셰트 눈 감음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+          "refs": [
+            "ch-pochette-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-pochette-mouth-open",
+          "kind": "edit",
+          "label": "포셰트 입 벌림",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+          "refs": [
+            "ch-pochette-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-pochette-expr-cry",
+          "kind": "edit",
+          "label": "포셰트 울음",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+          "refs": [
+            "ch-pochette-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-pochette-expr-joy",
+          "kind": "edit",
+          "label": "포셰트 기쁨",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+          "refs": [
+            "ch-pochette-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-pochette-expr-shock",
+          "kind": "edit",
+          "label": "포셰트 놀람",
+          "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+          "refs": [
+            "ch-pochette-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "ch-pochette-sheet-jump",
+          "kind": "sheet",
+          "label": "포셰트 점프 4프레임",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A sprite sheet of the attached character (keep its design exactly). Four animation frames of a happy jump, left to right then top to bottom: 1) crouching down ready to jump, 2) springing up with arms raised, 3) at the top of the jump, arms up, very happy, 4) landing, slightly squashed. The character is the SAME size in every cell and stands at the same height position inside each cell. Nothing crosses the cell borders. No text, no numbers. Square 1:1, a 2x2 grid of four equal cells with clear magenta gaps between them; flat solid pure magenta background #FF00FF everywhere.",
+          "refs": [
+            "ch-pochette-base"
+          ],
+          "aspect": "1:1"
+        },
+        {
+          "id": "npc-hamster-base",
+          "kind": "npc",
+          "label": "단짝 후보 햄스터",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi hamster with golden fur, a white muzzle and belly, tiny round ears and puffy cheeks, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "npc-duckling-base",
+          "kind": "npc",
+          "label": "단짝 후보 오리",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi yellow duckling with a small orange bill, a little head tuft and tiny wings, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "npc-panda-base",
+          "kind": "npc",
+          "label": "단짝 후보 판다",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi panda with black round ears, black eye patches and black arms on white fur, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        }
+      ]
+    },
+    {
+      "n": 7,
+      "items": [
+        {
+          "id": "npc-squirrel-base",
+          "kind": "npc",
+          "label": "단짝 후보 다람쥐",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi chipmunk squirrel with orange-brown fur, back stripes, a cream belly and a big bushy tail, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "npc-lamb-base",
+          "kind": "npc",
+          "label": "단짝 후보 아기양",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi lamb with a fluffy cloud-like white fleece, small floppy ears and a beige face, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "npc-frog-base",
+          "kind": "npc",
+          "label": "단짝 후보 개구리",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi green frog with big round eyes on top of the head and a pale belly, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "npc-bear_cub-base",
+          "kind": "npc",
+          "label": "단짝 후보 아기곰",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi brown bear cub with round ears and a light muzzle, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "npc-fox-base",
+          "kind": "npc",
+          "label": "단짝 후보 여우",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi orange fox with big pointed ears, a white muzzle and a fluffy white-tipped tail, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "npc-owl-base",
+          "kind": "npc",
+          "label": "단짝 후보 부엉이",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. An ORIGINAL character (not from the manga): a round chibi owl with brown feathers, ear tufts, a cream face disc and big round yellow eyes, Chiikawa-like simple style, standing front view with a friendly smile, short arms (or flippers / wings) held slightly away from the body. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "pet-goldfish-base",
+          "kind": "pet",
+          "label": "반려동물 금붕어",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi orange goldfish with a flowing tail fin and big shiny eyes, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "pet-chick-base",
+          "kind": "pet",
+          "label": "반려동물 병아리",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a tiny round chibi yellow chick with a small orange beak and stubby wings, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "pet-turtle-base",
+          "kind": "pet",
+          "label": "반려동물 거북이",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi green turtle with a patterned shell and a friendly smile, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "pet-hedgehog-base",
+          "kind": "pet",
+          "label": "반려동물 고슴도치",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi hedgehog with soft brown spines, a cream face and a tiny black nose, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        }
+      ]
+    },
+    {
+      "n": 8,
+      "items": [
+        {
+          "id": "pet-parrot-base",
+          "kind": "pet",
+          "label": "반려동물 앵무새",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi green parrot with a yellow face, a red head crest and a curved beak, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "pet-guinea_pig-base",
+          "kind": "pet",
+          "label": "반려동물 기니피그",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi guinea pig with tan and white patches, tiny ears and a pink nose, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "pet-puppy-base",
+          "kind": "pet",
+          "label": "반려동물 강아지",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi cream puppy with floppy brown ears and a wagging tail, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "pet-snail-base",
+          "kind": "pet",
+          "label": "반려동물 달팽이",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A small cute ORIGINAL pet animal (not from the manga): a round chibi snail with a pink swirl shell, two eye stalks and a sleepy smile, simple cute style, front view, sitting or standing, happy. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). It may be a little shorter than the attached character but stands on the same floor line. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+          "refs": [
+            "ch-chiikawa-base"
+          ],
+          "aspect": "3:4"
+        },
+        {
+          "id": "bg-school",
+          "kind": "bg",
+          "label": "배경 · 학교",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cosy elementary school classroom with small wooden desks, a green chalkboard with doodles, big windows with cherry blossoms outside. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-mountain-trail",
+          "kind": "bg",
+          "label": "배경 · 산길",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a gentle mountain trail with stone steps, round pine trees, wildflowers and soft distant mountains. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-office",
+          "kind": "bg",
+          "label": "배경 · 회사",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cosy small office with desks, computers, potted plants and a big window with a city view. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-hospital",
+          "kind": "bg",
+          "label": "배경 · 병원",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a clean bright hospital ward with a bed, light green curtains, a small reception counter and a green cross sign. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-studio",
+          "kind": "bg",
+          "label": "배경 · 방송국 스튜디오",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cheerful TV variety show studio with a host desk on the left, colourful stage lights, a big screen with stars and a shiny floor. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-stage",
+          "kind": "bg",
+          "label": "배경 · 무대",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a concert stage with spotlights, red curtains, sparkles and empty audience seats. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        }
+      ]
+    },
+    {
+      "n": 9,
+      "items": [
+        {
+          "id": "bg-stadium",
+          "kind": "bg",
+          "label": "배경 · 경기장",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a sports stadium with a green field, white lines, empty stands and a scoreboard. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-gym",
+          "kind": "bg",
+          "label": "배경 · 체육관",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a martial arts gym with soft mats, punching bags, a ring rope and banners. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-army",
+          "kind": "bg",
+          "label": "배경 · 훈련소",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a military training camp ground with a dirt field, green tents, flags and a small watchtower. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-campus",
+          "kind": "bg",
+          "label": "배경 · 대학 졸업식",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a university campus on graduation day with a big gate, blooming trees and graduation caps flying in the sky. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-kitchen",
+          "kind": "bg",
+          "label": "배경 · 식당 주방",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a restaurant kitchen with pots on the stove, hanging ladles, shelves of ingredients and steam. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-police",
+          "kind": "bg",
+          "label": "배경 · 경찰서",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small neighbourhood police station with a counter, a map board and a blue-and-white sign. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-lab",
+          "kind": "bg",
+          "label": "배경 · 연구실",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a research laboratory with colourful flasks, a microscope, a whiteboard with formulas and shelves. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-space",
+          "kind": "bg",
+          "label": "배경 · 우주 발사장",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a rocket launch site at dusk with a white rocket on a gantry, stars appearing in a purple sky. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-shop",
+          "kind": "bg",
+          "label": "배경 · 동네 마트",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small neighbourhood mart with shelves of snacks and drinks, a counter with a cash register and colourful price tags. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-holiday",
+          "kind": "bg",
+          "label": "배경 · 명절 거실",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a Korean living room on a holiday (Seollal / Chuseok) with a low table full of dishes, a folding screen (byeongpung) and floor cushions. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        }
+      ]
+    },
+    {
+      "n": 10,
+      "items": [
+        {
+          "id": "bg-house",
+          "kind": "bg",
+          "label": "배경 · 우리 집(집들이)",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cosy small house living room decorated for a housewarming party, with a sofa, a rug, plants, warm lamps, balloons and a garland. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-hometown",
+          "kind": "bg",
+          "label": "배경 · 고향 시골집",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a peaceful countryside village with a traditional Korean house (hanok roof), a persimmon tree, fields and a stone wall. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-temple",
+          "kind": "bg",
+          "label": "배경 · 산사",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a quiet Korean mountain temple courtyard with a stone pagoda, colourful lanterns and a big bell pavilion. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-jeju",
+          "kind": "bg",
+          "label": "배경 · 제주도",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a Jeju island seaside with dol-hareubang stone statues, yellow canola flowers, a turquoise sea and Hallasan mountain far away. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        },
+        {
+          "id": "bg-casino",
+          "kind": "bg",
+          "label": "배경 · 인생역전섬",
+          "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a playful 'life reversal island' fairground with a toy-like horse race track, colourful flags, a big lottery wheel and lights. Use exactly the same soft pastel crayon-like art style, colours and line quality as the attached background, but draw this completely different place. Landscape 16:9. Scenery only, no characters, no people, no animals, no text. Leave open empty ground in the lower centre for characters to stand.",
+          "refs": [
+            "bg-park"
+          ],
+          "aspect": "16:9"
+        }
+      ]
+    }
+  ]
+}
