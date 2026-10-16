@@ -230,3 +230,75 @@ test('HTTP: admin adds / removes CPUs, host players only with 「CPU 허용」, 
     await tmp.cleanup();
   }
 });
+
+test('HTTP: a CPU personality is picked on add and changed in the lobby (admin + host, same permission rules); /api/meta.cpu', async () => {
+  const tmp = await tempDir();
+  const srv = await boot(tmp.dir, { adminPassword: 'pw', cpuDelayMs: 0 });
+  const call = (m, p, o) => httpCall(srv.url, m, p, o);
+  const pers = (room, id) => room.characters.find((c) => c.id === id)?.cpuPersonality;
+  try {
+    const { cookie } = await login(srv, 'pw');
+    // meta: personalities + the handicap against people (public and admin)
+    const meta = (await call('GET', '/api/meta')).json;
+    assert.deepEqual(meta.cpu.personalities, ['cautious', 'normal', 'bold']);
+    assert.ok(meta.cpu.handicap.startMoneyMult < 1 && meta.cpu.handicap.incomeMult < 1, JSON.stringify(meta.cpu));
+    assert.deepEqual((await call('GET', '/admin/api/meta', { cookie })).json.cpu, meta.cpu);
+
+    // admin: add with a personality, 'random' (seeded), invalid → 400; change → 200; login / unknown / invalid refused
+    const room = (await call('POST', '/admin/api/rooms', { cookie, body: { mode: 'lifetime', eraTurns: SHORT, maxCharacters: 6, allowCpu: true } })).json.room;
+    const a1 = await call('POST', `/admin/api/rooms/${room.id}/cpu`, { cookie, body: { personality: 'bold' } });
+    assert.equal(a1.status, 201, a1.text);
+    const cid = a1.json.characterId;
+    assert.equal(pers(a1.json.room, cid), 'bold');
+    const rnd = await call('POST', `/admin/api/rooms/${room.id}/cpu`, { cookie, body: { personality: 'random' } });
+    assert.equal(rnd.status, 201);
+    assert.ok(['cautious', 'normal', 'bold'].includes(pers(rnd.json.room, rnd.json.characterId)));
+    const bad = await call('POST', `/admin/api/rooms/${room.id}/cpu`, { cookie, body: { personality: 'crazy' } });
+    assert.equal(bad.status, 400);
+    assert.match(bad.json.error, /신중·보통·대담/);
+    const p1 = await call('PATCH', `/admin/api/rooms/${room.id}/cpu/${cid}`, { cookie, body: { personality: 'cautious' } });
+    assert.equal(p1.status, 200, p1.text);
+    assert.equal(pers(p1.json.room, cid), 'cautious');
+    assert.equal((await call('PATCH', `/admin/api/rooms/${room.id}/cpu/${cid}`, { body: { personality: 'bold' } })).status, 401);
+    assert.equal((await call('PATCH', `/admin/api/rooms/${room.id}/cpu/${cid}`, { cookie, body: { personality: 'x' } })).status, 400);
+    assert.equal((await call('PATCH', `/admin/api/rooms/${room.id}/cpu/c99`, { cookie, body: { personality: 'bold' } })).status, 404);
+
+    // host player (「CPU 허용」): add with a personality and change it; a guest / spectator cannot; a human character → 409
+    const A = (await call('POST', '/api/session')).json.token;
+    const B = (await call('POST', '/api/session')).json.token;
+    const W = (await call('POST', '/api/session')).json.token;
+    await call('POST', '/api/rooms/join', { token: A, body: { code: room.code, name: '방장' } });
+    await call('POST', '/api/rooms/join', { token: B, body: { code: room.code, name: '손님' } });
+    await call('POST', '/api/rooms/join', { token: W, body: { code: room.code, name: '구경', spectator: true } });
+    const h = await call('POST', `/api/rooms/${room.id}/cpu`, { token: A, body: { personality: 'normal' } });
+    assert.equal(h.status, 201, h.text);
+    assert.equal(pers(h.json.room, h.json.characterId), 'normal');
+    assert.equal((await call('POST', `/api/rooms/${room.id}/cpu`, { token: A, body: { personality: 'wild' } })).status, 400);
+    const hp = await call('PATCH', `/api/rooms/${room.id}/cpu/${cid}`, { token: A, body: { personality: 'bold' } });
+    assert.equal(hp.status, 200, hp.text);
+    assert.equal(pers(hp.json.room, cid), 'bold');
+    assert.ok(hp.json.room.log.some((l) => /방장 님이 CPU 「.+」의 성향을 🔥 대담으로 바꿨습니다/.test(l.text)));
+    assert.equal((await call('PATCH', `/api/rooms/${room.id}/cpu/${cid}`, { token: B, body: { personality: 'normal' } })).status, 403);
+    assert.equal((await call('PATCH', `/api/rooms/${room.id}/cpu/${cid}`, { token: W, body: { personality: 'normal' } })).status, 403);
+    const mine = await call('POST', `/api/rooms/${room.id}/characters`, { token: A, body: { name: '나' } });
+    assert.ok(mine.status < 300, mine.text);
+    const myId = mine.json.room.characters.find((c) => c.isMe).id;
+    assert.equal((await call('PATCH', `/api/rooms/${room.id}/cpu/${myId}`, { token: A, body: { personality: 'bold' } })).status, 409);
+    // a room without 「CPU 허용」: the host may not change CPUs either
+    const plain = (await call('POST', '/admin/api/rooms', { cookie, body: { mode: 'lifetime', eraTurns: SHORT } })).json.room;
+    await call('POST', '/api/rooms/join', { token: A, body: { code: plain.code, name: '방장' } });
+    const pc = (await call('POST', `/admin/api/rooms/${plain.id}/cpu`, { cookie, body: {} })).json.characterId;
+    assert.equal((await call('PATCH', `/api/rooms/${plain.id}/cpu/${pc}`, { token: A, body: { personality: 'bold' } })).status, 409);
+    // not in the lobby any more → 409; against people the CPUs start with the handicapped money
+    const st = await call('POST', `/admin/api/rooms/${room.id}/start`, { cookie });
+    assert.equal(st.status, 200, st.text);
+    assert.equal((await call('PATCH', `/admin/api/rooms/${room.id}/cpu/${cid}`, { cookie, body: { personality: 'normal' } })).status, 409);
+    const first = st.json.room; // the state at the start (before any CPU acted)
+    const startMoney = first.config.startingMoney;
+    assert.equal(first.characters.find((c) => c.id === myId).money, startMoney);
+    for (const c of first.characters.filter((x) => x.ownerId === 'cpu')) assert.equal(c.money, Math.round((startMoney * meta.cpu.handicap.startMoneyMult) / 10) * 10);
+  } finally {
+    await srv.close();
+    await tmp.cleanup();
+  }
+});

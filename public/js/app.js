@@ -13,7 +13,7 @@ import {
   setSavedName,
   setSavedRoomId,
 } from './api.js';
-import { NAME_MAX, cleanName, josa, nameFits, ownerHtml } from './format.js';
+import { NAME_MAX, cleanName, cpuHandicapText, cpuPersonalityHtml, cpuPersonalityOptions, josa, nameFits, ownerHtml } from './format.js';
 import { bindNameInput } from './ui/nameInput.js';
 import { createGameUI } from './game2d.js';
 // Chiikawa conversion (CH-1): roster characters + props (ui/chara.js renderer, ui/picker.js); the human paper-doll /
@@ -294,7 +294,7 @@ function charCard(c, { mine = false } = {}) {
     <div class="char-card${c.isMe ? ' mine' : ''}${state.seenChars.has(c.id) ? '' : ' pop'}" data-id="${esc(c.id)}">
       <div class="portrait">${portraitHtml(c, { size: 72, crop: 'bust' })}</div>
       <div class="char-name">${esc(c.name)}</div>
-      ${mine ? '' : `<div class="char-owner">${ownerHtml(c)}${c.isMe ? ' (나)' : ''}</div>`}
+      ${mine ? '' : `<div class="char-owner">${ownerHtml(c)}${cpuPersonalityHtml(c) ? ` ${cpuPersonalityHtml(c, { short: true })}` : ''}${c.isMe ? ' (나)' : ''}</div>`}
       ${
         mine
           ? `<div class="char-actions">
@@ -421,7 +421,8 @@ function renderLobby(room) {
   if (state.customizer?.charId && !room.characters.some((c) => c.id === state.customizer.charId)) closeCustomizer();
 }
 
-// Stage 9-C: the host (first joined player) adds / removes CPU characters in rooms created with 「CPU 허용」.
+// Stage 9-C: the host (first joined player) adds / removes CPU characters in rooms created with 「CPU 허용」, picks a
+// personality for a new one (🎲 무작위 / 🐢 신중 / 🙂 보통 / 🔥 대담) and changes it per CPU chip (lobby only).
 function renderCpuTools(room) {
   let box = $('#cpu-tools');
   const host = playersOnly(room)[0];
@@ -440,9 +441,10 @@ function renderCpuTools(room) {
       if (!btn || btn.disabled) return;
       btn.disabled = true;
       try {
+        const personality = box.querySelector('[data-cpu-new]')?.value ?? 'random';
         const res =
           btn.dataset.cpu === 'add'
-            ? await api('POST', `/api/rooms/${state.room.id}/cpu`, {})
+            ? await api('POST', `/api/rooms/${state.room.id}/cpu`, { personality })
             : await api('DELETE', `/api/rooms/${state.room.id}/cpu/${btn.dataset.cpu}`);
         state.room = res.room;
         render();
@@ -451,14 +453,45 @@ function renderCpuTools(room) {
         btn.disabled = false;
       }
     });
+    box.addEventListener('change', async (ev) => {
+      const sel = ev.target.closest('[data-cpu-pers]');
+      if (!sel) return; // the new-CPU picker just keeps its value
+      sel.disabled = true;
+      try {
+        const res = await api('PATCH', `/api/rooms/${state.room.id}/cpu/${sel.dataset.cpuPers}`, { personality: sel.value });
+        state.room = res.room;
+        render();
+      } catch (err) {
+        toast(err.message || 'CPU 성향을 바꾸지 못했어요.', 'error');
+        box.cpuHtml = '';
+        render();
+      }
+    });
   }
   box.hidden = false;
   const cpus = room.characters.filter((c) => c.ownerId === 'cpu');
   const full = room.characters.length >= room.config.maxCharacters;
-  box.innerHTML = `
-    ${cpus.map((c) => `<button class="btn tiny ghost" type="button" data-cpu="${esc(c.id)}" title="CPU 빼기">🤖 ${esc(c.name)} ✕</button>`).join(' ')}
-    <button class="btn tiny" type="button" data-cpu="add" ${full ? 'disabled' : ''}>🤖 CPU 추가</button>
-    <small class="muted">방장만 CPU를 넣고 뺄 수 있어요</small>`;
+  const pick = box.querySelector('[data-cpu-new]')?.value ?? 'random';
+  const handicap = cpuHandicapText(state.meta);
+  const html = `
+    ${cpus.length ? `<div class="cpu-list">${cpus.map(cpuChipHtml).join('')}</div>` : ''}
+    <div class="cpu-add">
+      <select data-cpu-new aria-label="새 CPU 성향" title="새 CPU의 성향">${cpuPersonalityOptions(pick)}</select>
+      <button class="btn tiny" type="button" data-cpu="add" ${full ? 'disabled' : ''}>🤖 CPU 추가</button>
+    </div>
+    <small class="muted cpu-hint">🐢 신중 = 돈을 아끼고 모험을 피해요 · 🙂 보통 · 🔥 대담 = 도박·투자를 좋아해요</small>
+    ${handicap ? `<small class="muted cpu-hint">${esc(handicap)}</small>` : ''}
+    <small class="muted">방장만 CPU를 넣고 빼거나 성향을 바꿀 수 있어요</small>`;
+  // re-render only when something changed (an open picker would close on every lobby update)
+  if (box.cpuHtml !== html) {
+    box.cpuHtml = html;
+    box.innerHTML = html;
+  }
+}
+
+/** A CPU chip of the host tools: name + personality picker + ✕. */
+function cpuChipHtml(c) {
+  return `<span class="cpu-chip"><span class="cpu-chip-n">🤖 ${esc(c.name)}</span><select data-cpu-pers="${esc(c.id)}" aria-label="${esc(c.name)} 성향" title="${esc(c.name)}의 성향">${cpuPersonalityOptions(c.cpuPersonality, { random: false })}</select><button class="btn tiny ghost" type="button" data-cpu="${esc(c.id)}" title="CPU 빼기" aria-label="${esc(c.name)} 빼기">✕</button></span>`;
 }
 
 function closeCustomizer() {

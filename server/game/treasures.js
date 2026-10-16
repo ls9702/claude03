@@ -6,6 +6,7 @@
 //   `treasureValues` only once the room is finished; the fake flags only through `room.result.treasures`.
 // room.nextTreasureSeq (uid `tr<n>`)
 import { addLog, emit, josa } from './effects.js';
+import { treasureValueFor } from './cpuHandicap.js';
 
 export const treasureDefs = (data) => data.treasures?.treasures ?? [];
 export const treasureDef = (data, id) => treasureDefs(data).find((t) => t.id === id) ?? null;
@@ -51,7 +52,7 @@ export function findTreasure(tx, c, source = 'tile') {
   const { value, fake } = appraise(tx.rng, def, tx.data);
   room.nextTreasureSeq += 1;
   const t = { uid: `tr${room.nextTreasureSeq}`, id: def.id };
-  room.treasureValues[t.uid] = value;
+  room.treasureValues[t.uid] = treasureValueFor(room, c, tx.data, value, fake); // CPU handicap (cpuHandicap.js)
   if (fake) room.treasureFakes[t.uid] = true;
   ensureTreasures(c).treasures.push(t);
   emit(tx, 'treasureFound', { charId: c.id, uid: t.uid, treasureId: def.id, source, tone: 'treasure', emotion: 'shock' });

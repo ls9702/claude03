@@ -207,6 +207,7 @@ test('presentation: aim_hit on an exact hit, aim_miss when off by 2, plain spin 
 });
 
 test('CPU: skill target is any number 1..10, prefers the good tile in reach, never consumes the game RNG', () => {
+  const HARD = { level: 'hard' }; // the strong heuristic's aim (the real CPUs mostly aim at a number they like)
   const room = started({ cpu: true });
   const cpuChar = room.characters.find((c) => c.ownerSessionId === 'cpu');
   cpuChar.cpuPersonality = 'cautious'; // aimNoise 0 → deterministic best target
@@ -219,22 +220,29 @@ test('CPU: skill target is any number 1..10, prefers the good tile in reach, nev
   era.tiles[3] = { ...era.tiles[3], type: 'money', amount: 500 }; // 4 steps from the start (index −1)
   cpuChar.position = { eraIndex: 0, route: 'main', index: -1 };
   const before = room.rngState;
-  const scores = cpuAimScores(room, cpuChar.id, data);
+  const scores = cpuAimScores(room, cpuChar.id, data, HARD);
   assert.equal(Object.keys(scores).length, 10);
-  const t = cpuSkillTarget(room, cpuChar.id, data);
+  const t = cpuSkillTarget(room, cpuChar.id, data, HARD);
   assert.equal(t, 4);
-  const act = cpuDecide(room, cpuChar.id, data);
+  const act = cpuDecide(room, cpuChar.id, data, HARD);
   assert.deepEqual(act, { type: 'spin', characterId: cpuChar.id, target: 4, input: 'cpu' });
   assert.equal(room.rngState, before);
   // no deck: the same best number again (a leftover `aimUsed` is ignored)
   cpuChar.aimUsed = [4];
-  assert.equal(cpuSkillTarget(room, cpuChar.id, data), 4);
+  assert.equal(cpuSkillTarget(room, cpuChar.id, data, HARD), 4);
   // any state: always legal
   cpuChar.cpuPersonality = 'bold';
   for (let k = 0; k < 20; k++) {
     room.rngState = k * 99991;
+    const x = cpuSkillTarget(room, cpuChar.id, data, HARD);
+    assert.ok(Number.isInteger(x) && x >= 1 && x <= 10);
+  }
+  // the real CPUs (default level): any number 1..10 too, also without touching the game RNG
+  for (let k = 0; k < 20; k++) {
+    room.rngState = 7 + k * 31337;
     const x = cpuSkillTarget(room, cpuChar.id, data);
     assert.ok(Number.isInteger(x) && x >= 1 && x <= 10);
+    assert.equal(room.rngState, 7 + k * 31337);
   }
   // random rooms: a plain spin
   const rnd = started({ cpu: true, rouletteMode: 'random' });

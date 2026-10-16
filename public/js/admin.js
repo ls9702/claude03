@@ -1,6 +1,6 @@
 // Admin page: login, create room (per-era turns), room list, lobby detail, start/end/delete.
 import { charaToken, setCharaMeta } from './ui/chara.js';
-import { ownerHtml } from './format.js';
+import { cpuHandicapText, cpuPersonalityHtml, cpuPersonalityOptions, ownerHtml } from './format.js';
 import { LONG_GAME_TURNS, SEC_PER_TURN, lapSize, loopConfig } from './shared/loop.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -326,12 +326,17 @@ async function refresh() {
   await renderDetail();
 }
 
+/** The personality picked for the next 「🤖 CPU 추가」 (kept across the 3 s re-renders). */
+let cpuNewPick = 'random';
+
 async function renderDetail() {
   const box = $('#detail');
   if (!selectedId) {
     box.hidden = true;
     return;
   }
+  // a CPU personality picker in use: don't clobber it while polling
+  if (box.contains(document.activeElement) && document.activeElement?.tagName === 'SELECT') return;
   let room;
   try {
     ({ room } = await req('GET', `/admin/api/rooms/${selectedId}`));
@@ -385,22 +390,52 @@ async function renderDetail() {
     </ul>
     <h3>캐릭터 (${room.characters.length}/${room.config.maxCharacters})</h3>
     <div class="detail-chars">
-      ${room.characters.map((c) => `<div class="detail-char">${charaToken(c, { size: 56 })}<div><b>${esc(c.name)}</b></div><small class="muted">${ownerHtml(c)}</small></div>`).join('') || '<p class="muted">없음</p>'}
+      ${room.characters.map((c) => `<div class="detail-char">${charaToken(c, { size: 56 })}<div><b>${esc(c.name)}</b></div><small class="muted">${ownerHtml(c)}${cpuPersonalityHtml(c) ? ` ${cpuPersonalityHtml(c)}` : ''}</small></div>`).join('') || '<p class="muted">없음</p>'}
     </div>
     ${cpuTools(room)}
     <details ${openJson ? 'open' : ''}><summary>상태 JSON</summary><pre class="json">${esc(JSON.stringify(room, null, 2))}</pre></details>`;
 }
 
-/** Stage 9-C: add / remove CPU characters in the lobby (a CPU-only room can be started for demos / TV mode). */
+/**
+ * Stage 9-C: add / remove CPU characters in the lobby (a CPU-only room can be started for demos / TV mode); a new
+ * CPU's personality (🎲 무작위 / 🐢 신중 / 🙂 보통 / 🔥 대담) and a picker per CPU chip to change it.
+ */
 function cpuTools(room) {
   if (room.status !== 'lobby') return '';
   const cpus = room.characters.filter((c) => c.ownerId === 'cpu');
   const full = room.characters.length >= room.config.maxCharacters;
+  const handicap = cpuHandicapText(meta);
+  const chip = (c) =>
+    `<span class="cpu-chip"><span class="cpu-chip-n">🤖 ${esc(c.name)}</span><select data-cpu-pers="${esc(c.id)}" aria-label="${esc(c.name)} 성향" title="${esc(c.name)}의 성향">${cpuPersonalityOptions(c.cpuPersonality, { random: false })}</select><button class="btn tiny ghost" data-cpu-remove="${esc(c.id)}" title="CPU 빼기" aria-label="${esc(c.name)} 빼기">✕</button></span>`;
   return `
     <div class="cpu-tools">
-      ${cpus.map((c) => `<button class="btn tiny ghost" data-cpu-remove="${esc(c.id)}" title="CPU 빼기">🤖 ${esc(c.name)} ✕</button>`).join(' ')}
-      <button class="btn tiny" data-act="addCpu" ${full ? 'disabled' : ''}>🤖 CPU 추가</button>
+      ${cpus.length ? `<div class="cpu-list">${cpus.map(chip).join('')}</div>` : ''}
+      <div class="cpu-add">
+        <select data-cpu-new aria-label="새 CPU 성향" title="새 CPU의 성향">${cpuPersonalityOptions(cpuNewPick)}</select>
+        <button class="btn tiny" data-act="addCpu" ${full ? 'disabled' : ''}>🤖 CPU 추가</button>
+      </div>
+      <small class="muted cpu-hint">🐢 신중 = 돈을 아끼고 모험을 피해요 · 🙂 보통 · 🔥 대담 = 도박·투자를 좋아해요</small>
+      ${handicap ? `<small class="muted cpu-hint">${esc(handicap)}</small>` : ''}
     </div>`;
+}
+
+/** CPU personality pickers: the new-CPU pick is remembered; a CPU chip's picker changes that CPU at once. */
+async function onDetailChange(ev) {
+  if (ev.target.matches?.('[data-cpu-new]')) {
+    cpuNewPick = ev.target.value;
+    return;
+  }
+  const sel = ev.target.closest?.('[data-cpu-pers]');
+  if (!sel || !selectedId) return;
+  sel.disabled = true;
+  try {
+    await req('PATCH', `/admin/api/rooms/${selectedId}/cpu/${sel.dataset.cpuPers}`, { personality: sel.value });
+    toast('CPU 성향을 바꿨어요.');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+  sel.blur();
+  await refresh().catch(() => {});
 }
 
 /** Host tools for a running game: current turn / phase + timeout, spin for, skip turn. */
@@ -492,7 +527,7 @@ async function onDetailClick(ev) {
       selectedId = null;
       toast('방을 삭제했습니다.');
     } else if (act === 'addCpu') {
-      const { room } = await req('POST', `/admin/api/rooms/${selectedId}/cpu`, {});
+      const { room } = await req('POST', `/admin/api/rooms/${selectedId}/cpu`, { personality: cpuNewPick });
       toast(`🤖 ${room.characters.at(-1)?.name ?? 'CPU'} 참가!`);
     } else if (act === 'copy') {
       const code = $('#detail h2').textContent.match(/방 (\w+)/)?.[1];
@@ -534,6 +569,7 @@ $('#room-rows').addEventListener('click', (ev) => {
   renderDetail();
 });
 $('#detail').addEventListener('click', onDetailClick);
+$('#detail').addEventListener('change', onDetailChange);
 
 (async () => {
   try {

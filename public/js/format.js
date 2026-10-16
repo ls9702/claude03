@@ -136,3 +136,39 @@ export const isCpu = (c) => !!c && (c.cpu === true || (c.cpu && typeof c.cpu ===
 export const cpuBadgeHtml = (c) => (isCpu(c) ? '<span class="cpu-badge" title="컴퓨터 플레이어">🤖 CPU</span>' : '');
 /** Owner label markup: the escaped owner name, or only the 「🤖 CPU」 badge for CPU characters (their owner name is 'CPU'). */
 export const ownerHtml = (c) => (isCpu(c) ? cpuBadgeHtml(c) : esc(c?.ownerName ?? ''));
+
+/** CPU personalities (server `cpuPersonality`, public): what each one is like. */
+export const CPU_PERSONALITY_IDS = ['cautious', 'normal', 'bold'];
+export const CPU_PERSONALITY_INFO = {
+  cautious: { id: 'cautious', icon: '🐢', name: '신중', desc: '돈을 아끼고 모험을 피해요' },
+  normal: { id: 'normal', icon: '🙂', name: '보통', desc: '무난하게, 끌리는 대로 골라요' },
+  bold: { id: 'bold', icon: '🔥', name: '대담', desc: '도박·투자를 좋아해요' },
+};
+export const CPU_RANDOM_INFO = { id: 'random', icon: '🎲', name: '무작위', desc: '성향을 무작위로 정해요' };
+export const cpuPersonalityInfo = (id) => CPU_PERSONALITY_INFO[id] ?? null;
+
+/** 「🐢 신중」 chip of a CPU character ('' for people / an unknown personality); `short` = the icon only. */
+export function cpuPersonalityHtml(c, { short = false, desc = false } = {}) {
+  const info = isCpu(c) ? cpuPersonalityInfo(c.cpuPersonality) : null;
+  if (!info) return '';
+  const title = `${info.icon} ${info.name} — ${info.desc}`;
+  return `<span class="cpu-pers p-${info.id}" title="${esc(title)}">${info.icon}${short ? '' : ` ${info.name}`}${desc ? ` <small>${esc(info.desc)}</small>` : ''}</span>`;
+}
+
+/** `<option>`s of a personality picker (🎲 무작위 first when `random`). */
+export function cpuPersonalityOptions(value = 'random', { random = true } = {}) {
+  const list = [...(random ? [CPU_RANDOM_INFO] : []), ...CPU_PERSONALITY_IDS.map((id) => CPU_PERSONALITY_INFO[id])];
+  return list.map((x) => `<option value="${x.id}"${x.id === value ? ' selected' : ''}>${x.icon} ${x.name}</option>`).join('');
+}
+
+/** One line on the CPU handicap against people (`/api/meta.cpu.handicap`), or '' when off. */
+export function cpuHandicapText(meta) {
+  const h = meta?.cpu?.handicap;
+  if (!h) return '';
+  const pct = (x) => `${Math.round(Number(x) * 100)}%`;
+  const parts = [];
+  if (Number.isFinite(h.startMoneyMult) && h.startMoneyMult !== 1) parts.push(`시작 자금 ${pct(h.startMoneyMult)}`);
+  if (Number.isFinite(h.incomeMult) && h.incomeMult !== 1) parts.push(`월급·돈 칸 수입 ${pct(h.incomeMult)}`);
+  if (Number.isFinite(h.treasureMult) && h.treasureMult !== 1) parts.push(`보물 감정가 ${pct(h.treasureMult)}`);
+  return parts.length ? `🤖 CPU 핸디캡(사람이 이기기 쉽게): ${parts.join(' · ')} — CPU끼리만 하는 방은 그대로` : '';
+}

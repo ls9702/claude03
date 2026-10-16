@@ -4,10 +4,11 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { getEras } from '../data/index.js';
+import { getBalance, getEras } from '../data/index.js';
 import { TURN_TIMEOUTS, defaultRoomConfig, finalLengthLimits, loopMeta, minTurnsTable, validateRoomConfig } from '../game/config.js';
 import { adminSummary, adminView } from '../game/view.js';
-import { addCpuCharacter, removeCpuCharacter } from '../game/lobby.js';
+import { addCpuCharacter, removeCpuCharacter, setCpuPersonality } from '../game/lobby.js';
+import { cpuMeta } from '../game/cpuHandicap.js';
 import { clientIp, createRateLimiter, sendFail } from './common.js';
 
 export const ADMIN_COOKIE = 'jinsei_admin';
@@ -143,7 +144,7 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
     const eras = getEras();
     // Form hints: minimum turns per era for each mode (route eras ≥ 3; the final era = goal race, no turn limit) +
     // turn timer choices + loop map sizes (admin estimate) + the final race length limits.
-    res.json({ eras, defaults: defaultRoomConfig(), turnTimeouts: TURN_TIMEOUTS, minTurns: minTurnsTable(), loop: loopMeta(), finalLength: finalLengthLimits() });
+    res.json({ eras, defaults: defaultRoomConfig(), turnTimeouts: TURN_TIMEOUTS, minTurns: minTurnsTable(), loop: loopMeta(), finalLength: finalLengthLimits(), cpu: cpuMeta(getBalance()) });
   });
 
   router.get('/rooms', requireAdmin, (req, res) => {
@@ -217,10 +218,18 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
   // CPU characters (+ spectators) can be started by the admin — demos / TV mode.
   router.post('/rooms/:id/cpu', requireAdmin, withRoom, (req, res) => {
     const body = req.body ?? {};
-    const r = addCpuCharacter(req.room, { name: body.name, avatar: body.avatar }, Date.now());
+    const r = addCpuCharacter(req.room, { name: body.name, avatar: body.avatar, personality: body.personality }, Date.now());
     if (!r.ok) return sendFail(res, r);
     store.commit(r.room, r.logs);
     res.status(201).json({ characterId: r.character.id, room: adminView(r.room) });
+  });
+
+  // CPU personality (cautious / normal / bold, or 'random' = a different seeded one) — lobby only.
+  router.patch('/rooms/:id/cpu/:charId', requireAdmin, withRoom, (req, res) => {
+    const r = setCpuPersonality(req.room, req.params.charId, req.body?.personality, Date.now());
+    if (!r.ok) return sendFail(res, r);
+    if (r.changed) store.commit(r.room, r.logs);
+    res.json({ room: adminView(r.changed ? r.room : req.room) });
   });
 
   router.delete('/rooms/:id/cpu/:charId', requireAdmin, withRoom, (req, res) => {

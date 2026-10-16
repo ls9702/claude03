@@ -326,6 +326,7 @@ test('공적 카드: merit jobs need them for the review (job tile option disabl
 // ---------- CPU ----------
 
 test('CPU: values blue cards for its plans, never plays them, plays 딱 그 칸 / 월급날 직행 when they pay', () => {
+  const HARD = { level: 'hard' }; // the strong heuristic (the real CPUs play red cards by personality chance)
   const room = young();
   const me = ch(room, cur(room));
   me.cards = [];
@@ -337,26 +338,26 @@ test('CPU: values blue cards for its plans, never plays them, plays 딱 그 칸 
   assert.ok(cardValue(data, { ...me, spouse: null }, 'marriage_luck', room) > cardValue(data, { ...me, spouse: { id: 'x' } }, 'marriage_luck', room));
   // blue cards only → nothing to play
   give(me, 'research', 'popular', 'merit', 'salary_charm');
-  assert.equal(cpuCardAction(room, me.id, data), null);
+  assert.equal(cpuCardAction(room, me.id, data, HARD), null);
   // a treasure 4 tiles ahead, losses everywhere else → 딱 그 칸 4
   const main = room.board.eras[4].tiles;
   for (let i = 1; i <= 10; i++) if (i !== 6 && i !== 3) main[i] = { ...main[i], type: 'loss', amount: 80 };
   main[4] = { ...main[4], type: 'treasure' };
   const exact = give(me, 'exact_roll');
-  const a = cpuCardAction(room, me.id, data);
+  const a = cpuCardAction(room, me.id, data, HARD);
   assert.deepEqual([a?.cardUid, a?.value], [exact, 4]);
   const r = applyAction(room, a, { now: 1 });
   assert.ok(r.events.some((e) => e.type === 'cardUsed' && e.value === 4));
   // with only 월급날 직행 (payday 6 ahead) the CPU rushes
   me.cards = me.cards.filter((k) => k.id !== 'exact_roll');
   const rush = give(me, 'payday_rush');
-  assert.equal(cpuCardAction(room, me.id, data)?.cardUid, rush);
+  assert.equal(cpuCardAction(room, me.id, data, HARD)?.cardUid, rush);
   // trades: a wanted requirement card is worth more than its price
   const other = room.characters.find((x) => x.id !== me.id);
   Object.assign(other, { job: null, careerDone: false, education: 'college', stats: { int: 9, str: 2, charm: 2, luck: 2 }, cards: [] });
   const offer = { id: 't1', fromId: me.id, toId: other.id, give: { cardUid: 'kx', cardId: 'research' }, want: { money: 90 } };
   other.money = 500;
-  assert.equal(cpuTradeAccept(room, offer, data), true);
+  assert.equal(cpuTradeAccept(room, offer, data, HARD), true);
 });
 
 test('old saves: an ongoing injury gets its injury card on the next action', () => {

@@ -132,7 +132,9 @@ function runEvent(tx, c, era) {
   let delta = 0;
   if (ev.money) {
     const scale = ev.scale ? (tx.data.balance.eventScale[era.id] ?? 1) : 1;
-    delta = tx.rng.int(ev.money.min, ev.money.max) * scale * effectsFor(tx, c).eventMoneyMult;
+    const eff = effectsFor(tx, c);
+    delta = tx.rng.int(ev.money.min, ev.money.max) * scale * eff.eventMoneyMult;
+    if (delta > 0) delta *= eff.incomeMult ?? 1; // CPU handicap (gains only)
     if (delta > 0 && hasBuff(c, 'moneyX15')) delta *= 1.5; // 💰 행운 주머니 (찬스 광장 buff)
     delta = Math.abs(delta) < 5 ? Math.round(delta) : round5(delta);
   }

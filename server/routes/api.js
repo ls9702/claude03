@@ -10,11 +10,13 @@ import {
   joinRoom,
   removeCharacter,
   removeCpuCharacter,
+  setCpuPersonality,
   setReady,
   spectatorFail,
   updateCharacter,
 } from '../game/lobby.js';
 import { viewFor } from '../game/view.js';
+import { cpuMeta } from '../game/cpuHandicap.js';
 import { finalLengthLimits, loopMeta, minTurnsTable } from '../game/config.js';
 import { validFile, validKey } from '../assets/charArt.js';
 import { clientIp, createRateLimiter, sendFail, sessionMiddleware } from './common.js';
@@ -52,7 +54,7 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, jobs } = getBalance();
+    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, jobs, cpu } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
@@ -73,6 +75,8 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       balance: { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, merit: jobs?.merit ?? null },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
+      // CPU players: personalities (lobby / admin pickers) + the handicap against people (lobby hint)
+      cpu: cpuMeta({ cpu }),
       mc: { ...getMc(), lines: getLines().mc ?? {} }, // Stage 5.6: MC NPC profiles + line pools (lobby greeting, result fallback)
       jobs: getJobs(), // Stage 6: jobs.json (17 regular + 6 hidden + partTime)
       news: getNews(), // Stage 6: news.json (era news flashes; room.news = {eraId: newsId})
@@ -171,10 +175,21 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
     if (!can.ok) return sendFail(res, can);
     const body = req.body ?? {};
     const by = findPlayer(req.room, req.sessionId).name;
-    const r = addCpuCharacter(req.room, { name: body.name, avatar: body.avatar }, Date.now(), { by });
+    const r = addCpuCharacter(req.room, { name: body.name, avatar: body.avatar, personality: body.personality }, Date.now(), { by });
     if (!r.ok) return sendFail(res, r);
     store.commit(r.room, r.logs);
     res.status(201).json({ ok: true, characterId: r.character.id, room: viewFor(r.room, req.sessionId) });
+  });
+
+  // CPU personality (cautious / normal / bold, or 'random' = a different seeded one) — lobby only, same rules.
+  router.patch('/rooms/:id/cpu/:charId', requireSession, withRoom, (req, res) => {
+    const can = canManageCpu(req.room, req.sessionId);
+    if (!can.ok) return sendFail(res, can);
+    const by = findPlayer(req.room, req.sessionId).name;
+    const r = setCpuPersonality(req.room, req.params.charId, req.body?.personality, Date.now(), { by });
+    if (!r.ok) return sendFail(res, r);
+    if (r.changed) store.commit(r.room, r.logs);
+    res.json({ ok: true, room: viewFor(r.changed ? r.room : req.room, req.sessionId) });
   });
 
   router.delete('/rooms/:id/cpu/:charId', requireSession, withRoom, (req, res) => {

@@ -28,8 +28,10 @@
 //
 // Stage 9-C: `--policy cpu` plays every character with the CPU heuristics (server/game/cpu.js `cpuDecide`), `--policy
 // mixed` only the odd-numbered ones (the rest stay random) and prints the 1st-place share per policy. CPU-policy
-// characters never bet, offer trades or gift (they still answer offers). `scripts/cpu-game.js` has the fixed
-// 4 CPU + 4 random comparison.
+// characters never bet, offer trades or gift (they still answer offers). `scripts/cpu-game.js` has the CPU vs human
+// proxy comparisons (`--matrix`). `--cpu-level easy|hard` (default easy = the real CPUs' personality tables; hard = the
+// strong heuristic). These characters are not owned by 'cpu', so the CPU money handicap never applies here. The aim /
+// 찬스 광장 duels and `--bias --aim cpu` always use the strong heuristic (decisions for everyone).
 //
 // 룰렛 실력 모드: `--roulette skill` plays skill-mode rooms (random-policy characters aim at a uniformly random target
 // = an average human, CPU-policy ones use `cpuSkillTarget`; no side bets) and prints the 룰렛 block (hit / ±1 / ±2
@@ -72,6 +74,11 @@ const POLICY = String(arg('policy', 'random')); // random | cpu | mixed (Stage 9
 if (!['random', 'cpu', 'mixed'].includes(POLICY)) throw new Error(`--policy random|cpu|mixed (got ${POLICY})`);
 /** Does this character play by the CPU heuristics? */
 const cpuPolicy = (c) => POLICY === 'cpu' || (POLICY === 'mixed' && (c?.seq ?? 0) % 2 === 1);
+/** CPU decision level for `--policy cpu|mixed`: easy = the real CPUs (personality tables), hard = the strong heuristic. */
+const CPU_OPTS = { level: String(arg('cpu-level', 'easy')) };
+if (!['easy', 'hard'].includes(CPU_OPTS.level)) throw new Error(`--cpu-level easy|hard (got ${CPU_OPTS.level})`);
+/** The duels / `--bias --aim cpu` compare strategies on top of the STRONG heuristic (decisions for everyone). */
+const HARD = { level: 'hard' };
 const ROULETTE = String(arg('roulette', 'random')); // random | skill (룰렛 실력 모드)
 if (!ROULETTE_MODES.includes(ROULETTE)) throw new Error(`--roulette random|skill (got ${ROULETTE})`);
 const AIM = String(arg('aim', 'random')); // --bias --roulette skill: random | cpu target per spin
@@ -526,7 +533,7 @@ function playGame(g) {
         continue;
       }
       const id = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
-      if (cpuPolicy(room.characters.find((c) => c.id === id))) apply(cpuDecide(room, id, data));
+      if (cpuPolicy(room.characters.find((c) => c.id === id))) apply(cpuDecide(room, id, data, CPU_OPTS));
       else apply({ type: 'choose', characterId: id, promptId: p.promptId, optionId: randomOption(meta, p) });
       continue;
     }
@@ -536,10 +543,10 @@ function playGame(g) {
     if (room.status !== 'playing') break;
     if (cpuPolicy(cur)) {
       // Stage 9-C: the CPU heuristics play a card (maybe) and spin
-      let a = cpuDecide(room, cur.id, data);
+      let a = cpuDecide(room, cur.id, data, CPU_OPTS);
       while (a && a.type !== 'spin' && room.status === 'playing') {
         apply(a);
-        a = room.turn.pending ? null : cpuDecide(room, cur.id, data);
+        a = room.turn.pending ? null : cpuDecide(room, cur.id, data, CPU_OPTS);
       }
       if (a) apply(a);
       continue;
@@ -795,7 +802,7 @@ function interactAnswers(live, rng, apply) {
   for (const t of [...(live().trades ?? [])]) {
     if (live().status !== 'playing' || !live().trades.some((x) => x.id === t.id)) continue;
     if (cpuPolicy(live().characters.find((c) => c.id === t.toId))) {
-      apply({ type: 'respondTrade', characterId: t.toId, tradeId: t.id, accept: cpuTradeAccept(live(), t, data) });
+      apply({ type: 'respondTrade', characterId: t.toId, tradeId: t.id, accept: cpuTradeAccept(live(), t, data, CPU_OPTS) });
       continue;
     }
     const x = rng.next();
@@ -835,7 +842,7 @@ export function simulateBias({ games = 500, seed = 1, characters = 8, data: simD
       } else {
         const c = room.characters.find((x) => x.id === room.turn.order[room.turn.currentIndex]);
         action = (cards ? randomCardAction(room, c, meta) : null) ?? { type: 'spin', characterId: c.id };
-        if (action.type === 'spin' && roulette === 'skill') action.target = aim === 'cpu' ? cpuSkillTarget(room, c.id, simData ?? data) : meta.int(1, 10);
+        if (action.type === 'spin' && roulette === 'skill') action.target = aim === 'cpu' ? cpuSkillTarget(room, c.id, simData ?? data, HARD) : meta.int(1, 10);
       }
       room = applyAction(room, action, { now, ...(simData ? { data: simData } : {}) }).room;
       room.log = []; // the engine clones the room per action; the log is irrelevant here (≈10× faster)
@@ -859,7 +866,7 @@ export function simulateBias({ games = 500, seed = 1, characters = 8, data: simD
 
 /** Spin target of an aim strategy (null = no target → a plain random roulette, like a timeout auto spin). */
 export const AIM_STRATEGIES = {
-  cpu: (room, c, rng, d) => cpuSkillTarget(room, c.id, d),
+  cpu: (room, c, rng, d) => cpuSkillTarget(room, c.id, d, HARD),
   random: (room, c, rng) => rng.int(1, 10),
   max: () => 10,
   min: () => 1,
@@ -893,10 +900,10 @@ export function simulateAim({ games = 200, seed = 1, characters = 8, strategies 
       let action;
       if (p) {
         const id = p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x));
-        action = cpuDecide(room, id, simData);
+        action = cpuDecide(room, id, simData, HARD);
       } else {
         const c = room.characters.find((x) => x.id === room.turn.order[room.turn.currentIndex]);
-        action = cpuDecide(room, c.id, simData);
+        action = cpuDecide(room, c.id, simData, HARD);
         if (action?.type === 'spin') {
           const t = AIM_STRATEGIES[strat.get(c.id)](room, c, meta, simData);
           action = { type: 'spin', characterId: c.id, ...(t != null ? { target: t, input: 'cpu' } : {}) };
@@ -932,10 +939,10 @@ export function simulateAim({ games = 200, seed = 1, characters = 8, strategies 
 
 /** 찬스 광장 strategies: the CPU's pick, always 「그냥 지나가기」 (the buff), never (the best other enabled option). */
 export const PASS_STRATEGIES = {
-  cpu: (room, c, p, d) => cpuDecide(room, c.id, d)?.optionId,
+  cpu: (room, c, p, d) => cpuDecide(room, c.id, d, HARD)?.optionId,
   always: () => 'pass',
   never: (room, c, p, d) => {
-    const scores = cpuPassScores(room, c.id, d).filter((x) => x.id !== 'pass');
+    const scores = cpuPassScores(room, c.id, d, HARD).filter((x) => x.id !== 'pass');
     const best = scores.sort((a, b) => b.v - a.v)[0]?.id;
     return best ?? p.options.find((o) => o.id !== 'pass' && !o.disabled)?.id ?? 'pass';
   },
@@ -963,7 +970,7 @@ export function simulatePass({ games = 200, seed = 1, characters = 8, strategies
       now += 1000;
       const p = room.turn.pending;
       const id = p ? p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)) : room.turn.order[room.turn.currentIndex];
-      let action = cpuDecide(room, id, simData);
+      let action = cpuDecide(room, id, simData, HARD);
       if (p?.kind === 'passTile') {
         const c = room.characters.find((x) => x.id === id);
         action = { type: 'choose', characterId: id, promptId: p.promptId, optionId: PASS_STRATEGIES[strat.get(id)](room, c, p, simData) };

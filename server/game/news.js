@@ -2,6 +2,7 @@
 // era of adult mode at game start; never baby) → `room.news[eraId] = newsId` + a `newsFlash` event. Its effects
 // apply to every character while it is in that era.
 import { addLog, addStats, charById, emit } from './effects.js';
+import { cpuHandicap } from './cpuHandicap.js';
 
 /**
  * Neutral effects (no news / unknown keys). Stage 8: `housePriceMult` = house listing prices / values of the era (the
@@ -33,8 +34,17 @@ export function newsEffects(room, eraId, data) {
   return { ...NEWS_DEFAULTS, ...(n?.effects ?? {}) };
 }
 
-/** Effects for a character (the news of its current era). */
-export const effectsFor = (tx, c) => newsEffects(tx.room, c?.era, tx.data);
+/**
+ * Effects for a character (the news of its current era). A CPU playing against people also carries its income
+ * handicap here (cpuHandicap.js `incomeMult`): salary / 용돈 / 단짝 생활비 (`salaryMult`), money tiles (`moneyTileMult`)
+ * and good events (`incomeMult`, applied to gains only) — so amounts are reduced where they are computed and logged.
+ */
+export const effectsFor = (tx, c) => {
+  const e = newsEffects(tx.room, c?.era, tx.data);
+  const h = cpuHandicap(tx.room, c, tx.data);
+  if (!h || h.incomeMult === 1) return e;
+  return { ...e, salaryMult: e.salaryMult * h.incomeMult, moneyTileMult: e.moneyTileMult * h.incomeMult, incomeMult: h.incomeMult };
+};
 
 /** News that can be drawn for an era (`eras` omitted = every era but baby). */
 export function newsPool(data, eraId) {

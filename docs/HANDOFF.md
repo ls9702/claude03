@@ -40,10 +40,11 @@
 
 ## 5. 남은 일 (이 문서 작성 시점)
 
-1. **CPU 약화**: 사람(무작위 정책이 아닌 "평범한 사람" 기준)이 CPU를 상대로 9할 이상 이기도록. 측정 `scripts/cpu-game.js`, `scripts/simulate.js --policy mixed`.
-2. **CPU 성향 선택**: 관리자 `POST /admin/api/rooms/:id/cpu {personality}`, 방장 `POST /api/rooms/:id/cpu {personality}`, 관리자 화면·로비 CPU 도구에 🐢 신중 / 🙂 보통 / 🔥 대담 (+ 무작위).
+1. ~~**CPU 약화**~~ **완료**: 진짜 CPU = 성향별 선호표(`balance.json` `cpu`, 🐢 소심·🔥 무모) + 사람 상대 핸디캡(시작 자금 20 %·월급/돈 칸 수입 45 %·보물 감정가 30 %, CPU끼리만 하는 방은 그대로). `node scripts/cpu-game.js --matrix --games 300` (300판 × seed 1/2): 평범한 사람 1 + CPU 3 사람 1위 15 → 97.0/97.7 %, 무작위 사람 1 + 3 10 → 90.0/88.7 %, 평범 2 + 2 → 99.7/99.0 %, 평범 4 + 4 → 100/99.7 %, 고수(옛 CPU 휴리스틱) 1 + 3 → 99.7/100 %. CPU 셰프 0.1 → 1.7 % (꿈의 직업). 옛 강한 휴리스틱은 `level: 'hard'`로 남김.
+2. ~~**CPU 성향 선택**~~ **완료**: 관리자 `POST|PATCH /admin/api/rooms/:id/cpu[/:charId] {personality}`, 방장 `POST|PATCH /api/rooms/:id/cpu[/:charId]`, 관리자 화면·로비 CPU 도구에 🎲 무작위 / 🐢 신중 / 🙂 보통 / 🔥 대담 선택 + CPU 칩마다 성향 변경, 로비 카드·게임 옆 목록·상세 카드에 성향 표시.
 3. **테스트 시간** 단축(목표 10초 미만).
-4. **3D 개요 카메라**(81칸 순환 맵이 한 화면에 안 들어옴), **시대 전환 렉**, **CPU 셰프 0.1 %**.
+   - ✅ 완료 (2026-10-16): `npm test` = `scripts/run-tests.js` (CPU 코어 수만큼 병렬 샤드, 샤드마다 한 프로세스에서 파일을 이어서 실행) + 엔진 방 복사 `cloneState`(structuredClone 대비 ≈ 5배) + 워터마크 탐색 최적화(결과 동일) + 무거운 LEGACY 픽셀 테스트를 `npm run test:legacy`로 분리. 측정(531개 통과): 한가할 때 6.3 / 6.8 / 8.1 초, 다른 에이전트 부하(load 9–13) 중 10.2 / 10.4 / 11.1 초(같은 부하에서 예전 방식 `node --test` 26 초). CPU 합계 ≈ 45 → 21 초. 파일별 프로세스 방식은 `npm run test:isolated`.
+4. **3D 개요 카메라**(81칸 순환 맵이 한 화면에 안 들어옴), **시대 전환 렉**, ~~CPU 셰프 0.1 %~~ (1.7 %, 위 1번).
 5. **통합 E2E**(Sonnet 4명: 실제 멀티플레이 플레이테스트 / 규칙·안정성 퍼징 / UI 몽키 / 밸런스) — 버그만 찾고 수정은 사용자와 협의.
 6. 관리자 에셋 페이지 종류 필터에 새 kind(chara, prop) 추가.
 7. 10단계: systemd, README(라즈베리파이), 저장 복원 확인, BGM 시대 전환, 치킨 내기 정산표.

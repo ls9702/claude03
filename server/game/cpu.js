@@ -4,11 +4,14 @@
 // (seed, rngState, turn, prompt, character) — the game RNG is never consumed. The side-effect layer
 // (store/gameRunner.js) schedules these actions with a delay; scripts/cpu-game.js plays whole games with it.
 //
-// Heuristics (docs/PLAN.md "CPU"): route by stats / cash (charm → love, int → career, cash → money), jobs that fit
-// the stats (salary × rank-up odds), habits toward the best reachable job, 수능 study vs guess by the odds, promotion
-// exam when the chance is good, shop / house only with money to spare, sabotage against the richest rival, trade
-// offers accepted when what the CPU gets is worth at least what it gives. CPUs never bet, never offer trades and
-// never give gifts. Each CPU has a personality (cautious / normal / bold) that nudges the thresholds.
+// Two levels (`opts.level`): 'hard' = the strong heuristic below (docs/PLAN.md "CPU"): route by stats / cash (charm →
+// love, int → career, cash → money), jobs that fit the stats (salary × rank-up odds), habits toward the best reachable
+// job, 수능 study vs guess by the odds, promotion exam when the chance is good, shop / house only with money to spare,
+// sabotage against the richest rival, trade offers accepted when what the CPU gets is worth at least what it gives —
+// used by the expert human proxy (scripts/cpu-game.js) and the strategy duels of scripts/simulate.js. The default level
+// (the real CPUs in rooms) plays by personality preference tables (see "the real CPUs" below) and is much weaker.
+// CPUs never bet, never offer trades and never give gifts. Each CPU has a personality (cautious / normal / bold),
+// chosen when it is added (lobby `addCpuCharacter {personality}`) or seeded; `opts.personality` overrides it.
 import { gameData } from '../data/index.js';
 import { HALT_TYPES, nextPosition, tileAt } from './board.js';
 import { STAT_KEYS, statCap } from './effects.js';
@@ -53,7 +56,9 @@ export function cpuPersonality(c, room = null) {
   return PERSONALITIES[cpuHash(room?.seed ?? 0, c?.id ?? '') % PERSONALITIES.length];
 }
 
-const knobs = (c, room) => PERSONALITY[cpuPersonality(c, room)];
+/** The personality a decision uses: an explicit override (`opts.personality`, e.g. the expert human proxy), else the CPU's. */
+const personaOf = (c, ctx) => (PERSONALITIES.includes(ctx?.personality) ? ctx.personality : cpuPersonality(c, ctx?.room ?? ctx));
+const knobs = (c, ctx) => PERSONALITY[personaOf(c, ctx)];
 
 /** Sub-RNG for small tie-breaks: identical for identical states, independent of the game RNG. */
 function subRng(room, c, salt = '') {
@@ -65,7 +70,7 @@ function subRng(room, c, salt = '') {
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 /** Read-only context for engine helpers that take a tx (they only read `room` and `data`). */
-const view = (room, data) => ({ room, data, now: 0, events: [], logs: [] });
+const view = (room, data, opts = {}) => ({ room, data, now: 0, events: [], logs: [], level: opts.level === 'hard' ? 'hard' : 'easy', personality: opts.personality ?? null });
 const statOf = (c, k) => c.stats?.[k] ?? 0;
 
 /**
@@ -208,7 +213,7 @@ const ROUTES = ['love', 'career', 'money'];
  * (cautious career, bold money). Cash counts RELATIVE to the room's average (rich rooms are not all money rooms).
  */
 function answerRoute(ctx, c, p) {
-  const k = knobs(c, ctx.room);
+  const k = knobs(c, ctx);
   const regular = c.job && c.job.id !== PART_TIME_ID;
   const P = ctx.data.partners ?? {};
   const proposeAt = P.affection?.proposeAt ?? 60;
@@ -266,7 +271,7 @@ function answerCareer(ctx, c, p) {
   if (ids.includes('retake')) {
     const eff = effectsFor(ctx, c);
     const best = Math.max(...['study', 'guess'].map((ch) => examChances(c, ch, ctx.data, { examBonus: eff.examBonus, retake: true }).college));
-    if (best >= knobs(c, ctx.room).retake) return 'retake';
+    if (best >= knobs(c, ctx).retake) return 'retake';
   }
   return 'job';
 }
@@ -275,7 +280,7 @@ function answerMilitary(ctx, c, p) {
   const ids = enabled(p).map((o) => o.id);
   const strJob = keyStat(ctx, c) === 'str';
   if (ids.includes('later')) return strJob ? 'now' : 'later'; // 전역 체력 +2 before the job offer helps str jobs
-  if (ids.includes('volunteer')) return strJob || cpuPersonality(c, ctx.room) === 'bold' ? 'volunteer' : 'skip';
+  if (ids.includes('volunteer')) return strJob || personaOf(c, ctx) === 'bold' ? 'volunteer' : 'skip';
   return null;
 }
 
@@ -285,7 +290,7 @@ function answerJobOffer(ctx, c, p) {
 }
 
 function answerJobTile(ctx, c, p) {
-  const k = knobs(c, ctx.room);
+  const k = knobs(c, ctx);
   const ids = new Set(enabled(p).map((o) => o.id));
   const cur = jobDef(ctx.data, c.job?.id);
   const change = enabled(p).find((o) => o.id === 'change' && o.jobId);
@@ -302,7 +307,7 @@ function answerJobTile(ctx, c, p) {
     const b = ctx.data.balance.jobs.maxRankBonus ?? { chance: 0.5, luck: 0, salaryShare: 1 };
     const share = ctx.data.balance.jobs.overtime?.salaryShare ?? 0.6;
     const ev = clamp(b.chance + b.luck * statOf(c, 'luck'), 0, 0.95) * (b.salaryShare ?? 1);
-    if (ev >= share || cpuPersonality(c, ctx.room) === 'bold') return 'bonus';
+    if (ev >= share || personaOf(c, ctx) === 'bold') return 'bonus';
   }
   if (ids.has('overtime')) return 'overtime';
   return null;
@@ -355,7 +360,7 @@ function shopWorth(ctx, c, o, leaderGap) {
 }
 
 function answerShop(ctx, c, p) {
-  const k = knobs(c, ctx.room);
+  const k = knobs(c, ctx);
   const tot = totals(ctx.room, ctx.data);
   const mine = tot.get(c.id) ?? 0;
   const rival = Math.max(...ctx.room.characters.filter((x) => x.id !== c.id).map((x) => tot.get(x.id) ?? 0), -Infinity);
@@ -374,7 +379,7 @@ function answerHoliday(ctx, c, p) {
   const opts = enabled(p);
   const stake = (id) => opts.find((o) => o.id === id)?.stake ?? Infinity;
   const cash = c.money ?? 0;
-  const style = knobs(c, ctx.room).stake;
+  const style = knobs(c, ctx).stake;
   const has = (id) => opts.some((o) => o.id === id);
   if (style === 'high') {
     if (has('big') && cash >= 8 * stake('big')) return 'big';
@@ -394,7 +399,7 @@ const priceOf = (o) => num(o.cost ?? o.price);
 
 function affordable(ctx, c, o, reserveShare = 0.5) {
   if (!hasField(o, 'price') && !hasField(o, 'cost')) return true;
-  return (c.money ?? 0) - priceOf(o) >= knobs(c, ctx.room).reserve * reserveShare;
+  return (c.money ?? 0) - priceOf(o) >= knobs(c, ctx).reserve * reserveShare;
 }
 
 /** 새 친구 (meet): the best candidate (★, 단짝 생활비, 찰떡궁합) — a CPU never passes on a friend. */
@@ -418,7 +423,7 @@ function answerPropose(ctx, c, p) {
   const opts = enabled(p);
   const chancy = opts.filter((o) => hasField(o, 'chance'));
   const best = byMax(chancy.filter((o) => num(o.chance) > 0 && affordable(ctx, c, o)), (o) => num(o.chance));
-  if (best && num(best.chance) >= knobs(c, ctx.room).propose) return best.id;
+  if (best && num(best.chance) >= knobs(c, ctx).propose) return best.id;
   const safe = opts.filter((o) => o !== best);
   return (byMax(safe, (o) => -num(o.chance)) ?? null)?.id ?? null;
 }
@@ -429,7 +434,7 @@ function answerPropose(ctx, c, p) {
  * cash reserve; else pass.
  */
 function answerHouse(ctx, c, p) {
-  const k = knobs(c, ctx.room);
+  const k = knobs(c, ctx);
   const opts = enabled(p);
   const drift = ctx.room.housingMarket ? 0 : 0.15;
   const cur = c.house?.value ?? 0;
@@ -462,7 +467,7 @@ function answerHometown(ctx, c, p) {
   const rest = opts.find((o) => o.id === 'rest');
   const visit = opts.find((o) => o.id === 'visit');
   if (!rest || !visit) return null;
-  if (cpuPersonality(c, ctx.room) === 'bold' || nearEnd(ctx.room, c)) return 'visit';
+  if (personaOf(c, ctx) === 'bold' || nearEnd(ctx.room, c)) return 'visit';
   const statGain = (o) => Object.entries(o.stats ?? {}).reduce((s, [k, v]) => s + (v > 0 ? (statUseful(ctx, c, k) ? 60 : 15) * v : 0), 0);
   const restScore = num(rest.money) + statGain(rest) - spinWorth(ctx, c) * num(rest.skipTurns, 1);
   const visitScore = num(visit.money) + statGain(visit);
@@ -474,11 +479,11 @@ function answerHometown(ctx, c, p) {
  * else training a useful stat (not near the goal, not bold); else a wish at ≥ 50 % within the reserve; else leave.
  */
 function answerTemple(ctx, c, p) {
-  const k = knobs(c, ctx.room);
+  const k = knobs(c, ctx);
   const opts = enabled(p);
   const wish = opts.find((o) => o.id === 'wish');
   const wishOk = wish && (c.money ?? 0) - priceOf(wish) >= k.reserve * 0.3;
-  const bold = cpuPersonality(c, ctx.room) === 'bold';
+  const bold = personaOf(c, ctx) === 'bold';
   if (wishOk && ((c.wishes ?? 0) >= 1 || (bold && num(wish.chance) >= 0.4))) return 'wish';
   if (!bold && !nearEnd(ctx.room, c)) {
     const trains = opts.filter((o) => o.id.startsWith('train:') && o.stat && statUseful(ctx, c, o.stat));
@@ -491,11 +496,11 @@ function answerTemple(ctx, c, p) {
 
 /** 제주도: a trip within the reserve (bold: always when affordable; others when 매력 / 운 help or cash is ample). */
 function answerJeju(ctx, c, p) {
-  const k = knobs(c, ctx.room);
+  const k = knobs(c, ctx);
   const trip = enabled(p).find((o) => o.id === 'trip');
   if (!trip) return 'skip';
   const left = (c.money ?? 0) - priceOf(trip);
-  if (cpuPersonality(c, ctx.room) === 'bold' && left >= k.reserve * 0.5) return 'trip';
+  if (personaOf(c, ctx) === 'bold' && left >= k.reserve * 0.5) return 'trip';
   const useful = Object.keys(trip.stats ?? {}).some((st) => statUseful(ctx, c, st));
   if (left >= k.reserve * (useful ? 1 : 2)) return 'trip';
   return 'skip';
@@ -507,10 +512,10 @@ function answerJeju(ctx, c, p) {
  * the lotto.
  */
 function answerReversal(ctx, c, p) {
-  const k = knobs(c, ctx.room);
+  const k = knobs(c, ctx);
   const opts = enabled(p);
   const has = (id) => opts.some((o) => o.id === id);
-  const persona = cpuPersonality(c, ctx.room);
+  const persona = personaOf(c, ctx);
   if (persona === 'cautious') return 'skip';
   const tot = totals(ctx.room, ctx.data);
   const mine = tot.get(c.id) ?? 0;
@@ -562,16 +567,16 @@ function answerPassTile(ctx, c, p) {
 }
 
 /** 찬스 광장 option scores [{id, v}] (enabled options the CPU would consider; see answerPassTile). */
-export function cpuPassScores(room, charId, data = gameData()) {
+export function cpuPassScores(room, charId, data = gameData(), opts = {}) {
   const p = room.turn?.pending;
   const c = room.characters.find((x) => x.id === charId);
   if (!p || p.kind !== 'passTile' || !c) return [];
-  return passScores(view(room, data), c, p);
+  return passScores(view(room, data, opts), c, p);
 }
 
 function passScores(ctx, c, p) {
-  const k = knobs(c, ctx.room);
-  const persona = cpuPersonality(c, ctx.room);
+  const k = knobs(c, ctx);
+  const persona = personaOf(c, ctx);
   const opts = enabled(p);
   const cash = c.money ?? 0;
   const luckWorth = statUseful(ctx, c, 'luck') ? 60 : 20;
@@ -655,25 +660,187 @@ export const CPU_ANSWERS = {
   allIn: answerAllIn,
 };
 
-/** The option a CPU character picks for the pending prompt (always an enabled option id). */
-export function cpuAnswer(room, charId, data = gameData()) {
+/**
+ * The option a CPU character picks for the pending prompt (always an enabled option id). `opts.level`: 'hard' = the
+ * strong heuristic (CPU_ANSWERS) alone; anything else (the real CPUs) = the personality's preference table
+ * (`easyAnswer`, balance.json `cpu`), which may lean on the heuristic's pick through its `best` key.
+ */
+export function cpuAnswer(room, charId, data = gameData(), opts = {}) {
   const p = room.turn?.pending;
   const c = room.characters.find((x) => x.id === charId);
   if (!p || !c) return null;
-  const ctx = view(room, data);
+  const ctx = view(room, data, opts);
+  const hard = () => {
+    try {
+      return CPU_ANSWERS[p.kind]?.(ctx, c, p) ?? null;
+    } catch {
+      return null; // a heuristic must never block the game: fall back to the default
+    }
+  };
   let id = null;
-  try {
-    id = CPU_ANSWERS[p.kind]?.(ctx, c, p) ?? null;
-  } catch {
-    id = null; // a heuristic must never block the game: fall back to the default
+  if (ctx.level === 'hard') id = hard();
+  else {
+    try {
+      id = easyAnswer(ctx, c, p, () => safeOption(p, hard()));
+    } catch {
+      id = null;
+    }
+    id ??= hard();
   }
   return safeOption(p, id);
+}
+
+// ---------- the real CPUs (level 'easy'): personality preference tables ----------
+//
+// The strong heuristic above beats casual human players most of the time (CPU 87–92 % of wins against random
+// players). The real CPUs are deliberately weaker and play by personality (balance.json `cpu`, every number tunable):
+// for each prompt kind the personality's preference table gives every enabled option a weight — exact option ids,
+// prefixes (`"train:"`, `"buy:"`, `"meet:"`, `"date:"`), `"*"` (any option), `"best"` (the strong heuristic's pick),
+// `"default"` (the prompt's default) and `"dream"` (an option that leads to the CPU's seeded dream job) — and the CPU
+// draws one with its hashed sub-RNG. 🐢 cautious = timid (keeps cash idle: no college loans, no houses, overtime over
+// promotion exams, says 「조금 더 친하게」 instead of proposing, rests at home), 🔥 bold = reckless (favourite-horse bets
+// and lotto tickets, shopping, house swaps, job hopping, 모두를 위한 소원 that hands money to everyone else — but never
+// 전 재산 올인 or a 5배 / 10배 long shot: one lucky jackpot would hand a weak CPU the game), 🙂 normal = a mixture with
+// plenty of 「그냥 끌리는 대로」 picks. Every pick is an enabled option of the prompt. Cards: maybe one red card per turn
+// (`cardPlay`; sabotage only by the `sabotage` chance, at a random rival), skill rooms: mostly a number it likes
+// (`aimRandom`). Decisions alone cannot make the CPUs lose often enough in this luck-heavy game, so against people they
+// also carry a money handicap (cpuHandicap.js, `balance.cpu.handicap`).
+
+/** Defaults for `balance.cpu` (used when the data has no `cpu` section or misses a key). */
+const CPU_DEFAULTS = { prefs: { '*': { best: 3, '*': 1 } }, personalities: {} };
+
+/** The CPU difficulty config (`balance.cpu`). */
+export function cpuConfig(data = gameData()) {
+  return data.balance?.cpu ?? CPU_DEFAULTS;
+}
+
+/** A personality's knob (`cpu.personalities.<p>.<key>`), else the shared `cpu.<key>`, else `def`. */
+function easyKnob(ctx, c, key, def) {
+  const cfg = cpuConfig(ctx.data);
+  return cfg.personalities?.[personaOf(c, ctx)]?.[key] ?? cfg[key] ?? def;
+}
+
+/** The preference table of a prompt kind: the personality's, else the shared one, else the shared fallback ('*'). */
+function prefsFor(ctx, c, kind) {
+  const cfg = cpuConfig(ctx.data);
+  const own = cfg.personalities?.[personaOf(c, ctx)]?.prefs ?? {};
+  const shared = cfg.prefs ?? CPU_DEFAULTS.prefs;
+  return own[kind] ?? shared[kind] ?? own['*'] ?? shared['*'] ?? CPU_DEFAULTS.prefs['*'];
+}
+
+/** Weight of option `o` under preference table `prefs` (see the block comment above). */
+export function prefWeight(prefs, o, { best = null, def = null, dream = null } = {}) {
+  let w = 0;
+  for (const [key, v] of Object.entries(prefs ?? {})) {
+    if (key.startsWith('_') || !(v > 0)) continue;
+    if (key === '*') w += v;
+    else if (key === 'best') w += o.id === best ? v : 0;
+    else if (key === 'default') w += o.id === def ? v : 0;
+    else if (key === 'dream') w += dream?.(o) ? v : 0;
+    else if (key.endsWith(':')) w += o.id.startsWith(key) ? v : 0;
+    else w += o.id === key ? v : 0;
+  }
+  return w;
+}
+
+/** The weighted pick of the personality's preference table (null when every weight is 0). */
+function easyAnswer(ctx, c, p, bestFn) {
+  const prefs = prefsFor(ctx, c, p.kind);
+  const opts = enabled(p);
+  if (!opts.length) return null;
+  const best = (prefs.best ?? 0) > 0 ? bestFn() : null;
+  const match = DREAM_MATCH[p.kind];
+  const dream = match && (prefs.dream ?? 0) > 0 ? (o) => match(ctx, c, o) : null;
+  const ws = opts.map((o) => prefWeight(prefs, o, { best, def: p.defaultOptionId, dream }));
+  const total = ws.reduce((a, b) => a + b, 0);
+  if (!(total > 0)) return best;
+  let r = subRng(ctx.room, c, `easy:${p.kind}`).next() * total;
+  for (let i = 0; i < opts.length; i++) {
+    r -= ws[i];
+    if (r < 0) return opts[i].id;
+  }
+  return opts[opts.length - 1].id;
+}
+
+/**
+ * The CPU's dream job: a regular job drawn from its seed (room seed + character id) among `cpu.dreamJobs.<p>` (else
+ * every regular job) — what it trains for (습관 / 동아리), takes when offered and switches to. Spreads the CPUs over
+ * all jobs (the strong heuristic sent most of them to the best-paid ones).
+ */
+export function cpuDreamJob(room, c, data = gameData(), opts = {}) {
+  const ctx = view(room, data, opts);
+  const list = easyKnob(ctx, c, 'dreamJobs', null);
+  const all = regularJobs(data).map((j) => j.id);
+  const pool = Array.isArray(list) && list.some((id) => all.includes(id)) ? list.filter((id) => all.includes(id)) : all;
+  return pool[cpuHash(room.seed ?? 0, c.id, 'dream') % pool.length];
+}
+
+/** Stats (and the requirement card's stat) the dream job still asks for, biggest gap first; else its rank-up stat. */
+function dreamStats(ctx, c) {
+  const def = jobDef(ctx.data, cpuDreamJob(ctx.room, c, ctx.data, ctx));
+  if (!def) return [];
+  const req = jobRequirements(def, effectsFor(ctx, c));
+  const gaps = Object.entries(req)
+    .map(([k, v]) => [k, v - statOf(c, k)])
+    .filter(([, g]) => g > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => k);
+  // a requirement card earned at graduation by the best stat (statCards: luck → 절대미각 …)
+  const statCards = ctx.data.balance.cardSources?.statCards ?? {};
+  for (const id of missingJobCards(c, def)) {
+    const st = Object.keys(statCards).find((k) => statCards[k] === id);
+    if (st && !gaps.includes(st)) gaps.push(st);
+  }
+  if (!gaps.length && def.rankUp?.stat) gaps.push(def.rankUp.stat);
+  return gaps;
+}
+
+/** Does option `o` of a prompt kind lead toward the CPU's dream job? (kind → (ctx, c, o) → bool) */
+const DREAM_MATCH = {
+  jobOffer: (ctx, c, o) => (o.jobId ?? o.id) === cpuDreamJob(ctx.room, c, ctx.data, ctx),
+  jobTile: (ctx, c, o) => o.id === 'change' && o.jobId === cpuDreamJob(ctx.room, c, ctx.data, ctx) && c.job?.id !== o.jobId,
+  passTile: (ctx, c, o) => o.id === 'jobChange' && o.jobId === cpuDreamJob(ctx.room, c, ctx.data, ctx) && c.job?.id !== o.jobId,
+  habit: (ctx, c, o) => !!o.stat && dreamStats(ctx, c)[0] === o.stat,
+  // a dream job that needs a degree → 대학 (or 재수 for a better school)
+  career: (ctx, c, o) => (o.id === 'college' || o.id === 'retake') && !!jobDef(ctx.data, cpuDreamJob(ctx.room, c, ctx.data, ctx))?.requires?.education,
+  club: (ctx, c, o) => {
+    const dream = cpuDreamJob(ctx.room, c, ctx.data, ctx);
+    const def = clubDef(ctx.data, o.id);
+    if ((def?.jobs ?? o.jobs ?? []).includes(dream)) return true;
+    const want = dreamStats(ctx, c)[0];
+    return !!want && [...Object.keys(def?.stats ?? {}), ...(def?.train ?? [])].includes(want);
+  },
+  shop: (ctx, c, o) => {
+    const dream = jobDef(ctx.data, cpuDreamJob(ctx.room, c, ctx.data, ctx));
+    if (o.cardId) return missingJobCards(c, dream ?? {}).includes(o.cardId);
+    return false;
+  },
+};
+
+/** Easy-level card play: maybe one red card (personality `cardPlay` chance), sabotage only by `sabotage` chance. */
+function easyCardAction(ctx, c, hand, use) {
+  const rng = subRng(ctx.room, c, 'easy:card');
+  const reds = hand.filter((x) => cardColor(x.def) === 'red');
+  if (!reds.length) return null;
+  const full = (c.cards?.length ?? 0) >= handLimit(ctx.data);
+  if (!full && !(rng.next() < easyKnob(ctx, c, 'cardPlay', 0.3))) return null;
+  const targets = sabotageTargets(ctx.room, c);
+  const wantSabotage = rng.next() < easyKnob(ctx, c, 'sabotage', 0.3);
+  const pool = reds.filter((x) => (x.def.kind === 'sabotage' ? wantSabotage && targets.length : true));
+  if (!pool.length) return null;
+  const x = pool[rng.int(0, pool.length - 1)];
+  if (x.def.kind === 'sabotage') return use(x, targets[rng.int(0, targets.length - 1)].id);
+  if (x.def.effect?.exact) {
+    const { min, max } = ctx.data.balance.spin;
+    return use(x, null, { value: rng.int(min, max) });
+  }
+  return use(x);
 }
 
 // ---------- trades ----------
 
 /** Accept an offer when what the CPU receives is worth at least what it gives (× personality margin). */
-export function cpuTradeAccept(room, trade, data = gameData()) {
+export function cpuTradeAccept(room, trade, data = gameData(), opts = {}) {
   const to = room.characters.find((x) => x.id === trade.toId);
   if (!to) return false;
   const worth = (side, owner) => (side?.money != null ? side.money : cardValue(data, owner, side?.cardId, room));
@@ -686,7 +853,9 @@ export function cpuTradeAccept(room, trade, data = gameData()) {
     const out = discardIndex(data, to.cards);
     if (out >= 0) give += cardValue(data, to, to.cards[out].id, room);
   }
-  return get > 0 && get >= give * knobs(to, room).tradeMargin;
+  const ctx = view(room, data, opts);
+  const margin = ctx.level === 'hard' ? knobs(to, ctx).tradeMargin : easyKnob(ctx, to, 'tradeMargin', knobs(to, ctx).tradeMargin);
+  return get > 0 && get >= give * margin;
 }
 
 // ---------- cards & spin ----------
@@ -831,11 +1000,11 @@ function progressWorth(ctx, c) {
  * 찬스 광장 passed (losses × the personality's `lossAversion`) + `aimSpeed` × the worth of a tile of progress per tile
  * moved (paydays / 찬스 광장 / the goal come closer; bold CPUs like distance more).
  */
-export function cpuAimScores(room, charId, data = gameData()) {
+export function cpuAimScores(room, charId, data = gameData(), opts = {}) {
   const c = room.characters.find((x) => x.id === charId);
   if (!c || !room.board) return {};
-  const ctx = view(room, data);
-  const k = knobs(c, room);
+  const ctx = view(room, data, opts);
+  const k = knobs(c, ctx);
   const { min, max } = data.balance.spin;
   const speed = progressWorth(ctx, c);
   const worth = {};
@@ -860,14 +1029,20 @@ export function cpuAimScores(room, charId, data = gameData()) {
  * personality's aim error (`balance.roulette.cpu.aimNoise[personality]` = chance of ±1) from a hashed sub-RNG —
  * the game RNG is never consumed.
  */
-export function cpuSkillTarget(room, charId, data = gameData()) {
+export function cpuSkillTarget(room, charId, data = gameData(), opts = {}) {
   const c = room.characters.find((x) => x.id === charId);
   const { min, max } = data.balance.spin;
   if (!c) return Math.round((min + max) / 2);
-  const scores = cpuAimScores(room, charId, data);
+  const ctx = view(room, data, opts);
+  if (ctx.level !== 'hard') {
+    // the real CPUs aim like people: often at a number they just like (uniform), else the best one ± noise
+    const rng = subRng(room, c, 'easy:aim');
+    if (rng.next() < easyKnob(ctx, c, 'aimRandom', 0.6)) return rng.int(min, max);
+  }
+  const scores = cpuAimScores(room, charId, data, opts);
   let best = max;
   for (let t = max; t >= min; t--) if ((scores[t] ?? -Infinity) > (scores[best] ?? -Infinity) + 1e-9) best = t;
-  const noise = data.balance.roulette?.cpu?.aimNoise?.[cpuPersonality(c, room)] ?? 0;
+  const noise = data.balance.roulette?.cpu?.aimNoise?.[personaOf(c, ctx)] ?? 0;
   const rng = subRng(room, c, 'aim');
   if (rng.next() < noise) best = clamp(best + (rng.next() < 0.5 ? -1 : 1), min, max);
   return best;
@@ -901,18 +1076,19 @@ export function sabotageTargets(room, c) {
  * stat that matters, energy / taxi when the expected landing improves or the goal is near. A full hand plays its
  * best card anyway.
  */
-export function cpuCardAction(room, charId, data = gameData()) {
+export function cpuCardAction(room, charId, data = gameData(), opts = {}) {
   const t = room.turn;
   const c = room.characters.find((x) => x.id === charId);
   if (!c || !t || t.cardUsed || t.phase !== 'awaitSpin' || t.pending) return null;
   if (t.order?.[t.currentIndex] !== c.id) return null;
-  const ctx = view(room, data);
+  const ctx = view(room, data, opts);
   const hand = (c.cards ?? []).map((k) => ({ k, def: cardDef(data, k.id) })).filter((x) => x.def && !cardBlockReason(room, c, x.def, data));
   if (!hand.length) return null;
   // a (nearly) full hand of red cards plays anyway (blue cards never leave by play)
   const reds = (c.cards ?? []).filter((k) => cardColor(cardDef(data, k.id)) === 'red').length;
   const full = (c.cards?.length ?? 0) >= handLimit(data) - 1 && reds > 0;
   const use = (x, targetId, extra = {}) => ({ type: 'useCard', characterId: c.id, cardUid: x.k.uid, ...(targetId ? { targetId } : {}), ...extra });
+  if (ctx.level !== 'hard') return easyCardAction(ctx, c, hand, use);
   const find = (id) => hand.find((x) => x.def.id === id);
 
   const pledge = find('pledge');
@@ -928,7 +1104,7 @@ export function cpuCardAction(room, charId, data = gameData()) {
       .sort((a, b) => (tot.get(b.id) ?? 0) - (tot.get(a.id) ?? 0) || (a.seq ?? 0) - (b.seq ?? 0));
     const target = targets[0];
     const mine = tot.get(c.id) ?? 0;
-    if (target && ((tot.get(target.id) ?? 0) >= mine * knobs(c, room).sabotage || full)) {
+    if (target && ((tot.get(target.id) ?? 0) >= mine * knobs(c, ctx).sabotage || full)) {
       const pick =
         (target.money >= 300 && find('tax_audit')) ||
         (target.job && find('complaint')) ||
@@ -967,7 +1143,7 @@ function rollCardChoice(ctx, c, hand, { full, near }) {
   const room = ctx.room;
   const data = ctx.data;
   const { min, max } = data.balance.spin;
-  const k = knobs(c, room);
+  const k = knobs(c, ctx);
   const speed = progressWorth(ctx, c);
   const worthOf = (v) => {
     const { tile, steps, passes } = landingFor(ctx, c, v);
@@ -977,7 +1153,7 @@ function rollCardChoice(ctx, c, hand, { full, near }) {
   const values = [];
   for (let v = min; v <= max; v++) values.push(worthOf(v));
   const mean = (lo, hi) => values.slice(lo - min, hi - min + 1).reduce((a, b) => a + b, 0) / (hi - lo + 1);
-  const aimScores = isSkillRoom(room) ? cpuAimScores(room, c.id, data) : null;
+  const aimScores = isSkillRoom(room) ? cpuAimScores(room, c.id, data, ctx) : null;
   const base = aimScores ? Math.max(...Object.values(aimScores)) : mean(min, max);
   const opts = [];
   for (const x of hand) {
@@ -1010,24 +1186,28 @@ const unanswered = (p, id) => p.forCharacterIds.includes(id) && !Object.hasOwn(p
  * card / spin on its turn. Never bets, never offers trades, never gifts.
  * @returns {object|null} an engine action without `actor`
  */
-export function cpuDecide(room, charId, data = gameData()) {
+export function cpuDecide(room, charId, data = gameData(), opts = {}) {
   if (room?.status !== 'playing' || !room.turn) return null;
   const c = room.characters.find((x) => x.id === charId);
   if (!c) return null;
+  const o = decideOpts(opts);
   const trade = (room.trades ?? []).find((x) => x.toId === c.id);
-  if (trade) return { type: 'respondTrade', characterId: c.id, tradeId: trade.id, accept: cpuTradeAccept(room, trade, data) };
+  if (trade) return { type: 'respondTrade', characterId: c.id, tradeId: trade.id, accept: cpuTradeAccept(room, trade, data, o) };
   const p = room.turn.pending;
   if (p) {
     if (!unanswered(p, c.id)) return null;
-    return { type: 'choose', characterId: c.id, promptId: p.promptId, optionId: cpuAnswer(room, c.id, data) };
+    return { type: 'choose', characterId: c.id, promptId: p.promptId, optionId: cpuAnswer(room, c.id, data, o) };
   }
   if (room.turn.phase !== 'awaitSpin' || room.turn.order?.[room.turn.currentIndex] !== c.id || c.finished) return null;
-  return cpuCardAction(room, c.id, data) ?? cpuSpinAction(room, c.id, data);
+  return cpuCardAction(room, c.id, data, o) ?? cpuSpinAction(room, c.id, data, o);
 }
 
+/** Only the decision options (`level`, `personality`) — callers may pass a bigger object. */
+const decideOpts = (opts = {}) => ({ level: opts.level, personality: opts.personality });
+
 /** The spin itself: a plain spin, or in a skill-mode room the aimed one (`target`, `input: 'cpu'`). */
-export function cpuSpinAction(room, charId, data = gameData()) {
-  return isSkillRoom(room) ? { type: 'spin', characterId: charId, target: cpuSkillTarget(room, charId, data), input: 'cpu' } : { type: 'spin', characterId: charId };
+export function cpuSpinAction(room, charId, data = gameData(), opts = {}) {
+  return isSkillRoom(room) ? { type: 'spin', characterId: charId, target: cpuSkillTarget(room, charId, data, opts), input: 'cpu' } : { type: 'spin', characterId: charId };
 }
 
 /**
@@ -1055,6 +1235,6 @@ export function cpuDue(room, { isCpuChar = isCpu } = {}) {
 export function cpuNextAction(room, data = gameData(), opts = {}) {
   const due = cpuDue(room, opts);
   if (!due) return null;
-  const action = cpuDecide(room, due.charId, data);
+  const action = cpuDecide(room, due.charId, data, opts);
   return action ? { ...due, action } : null;
 }

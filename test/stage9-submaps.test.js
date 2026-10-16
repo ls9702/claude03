@@ -424,7 +424,7 @@ test('CPU: answers every submap prompt with an enabled option the engine accepts
     const id = cur(room);
     Object.assign(ch(room, id), { ownerSessionId: 'cpu', cpuPersonality: personality, money, era: 'senior' });
     openPrompt(createTx(room, { rng: createRng(1), now: 0, data }), 'reversal', ch(room, id));
-    return cpuAnswer(room, id, data);
+    return cpuAnswer(room, id, data, { level: 'hard' }); // the strong heuristic's picks (the real CPUs draw from personality tables)
   };
   assert.equal(pick('cautious'), 'skip');
   assert.match(pick('bold'), /^horse:|^lotto$/);

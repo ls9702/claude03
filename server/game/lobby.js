@@ -1,6 +1,7 @@
 // Lobby rules (pure): each function takes a room and returns a NEW room.
 // Result shape: { ok: true, room, logs: [entry], ...extra } | { ok: false, status, error }
 import { buildTurnOrder } from './order.js';
+import { cloneState } from './clone.js';
 import { randomLook, sanitizeAvatar } from './avatar.js';
 import { josa, particle } from './korean.js';
 
@@ -85,7 +86,7 @@ export const activePlayers = (room) => room.players.filter((p) => !isSpectator(p
 export function joinRoom(room, sessionId, name, now = Date.now(), { spectator = false } = {}) {
   const clean = cleanName(name);
   if (!clean) return fail(400, `이름은 1~${NAME_MAX}자로 입력하세요.`);
-  const next = structuredClone(room);
+  const next = cloneState(room);
   const existing = findPlayer(next, sessionId);
   if (existing) {
     const logs = [];
@@ -131,7 +132,7 @@ export function addCharacter(room, sessionId, { name, avatar } = {}, now = Date.
   }
   const clean = cleanName(name);
   if (!clean) return fail(400, `캐릭터 이름은 1~${NAME_MAX}자로 입력하세요.`);
-  const next = structuredClone(room);
+  const next = cloneState(room);
   next.nextCharSeq = (next.nextCharSeq || 0) + 1;
   const character = {
     id: `c${next.nextCharSeq}`,
@@ -165,7 +166,7 @@ export function updateCharacter(room, sessionId, charId, { name, avatar } = {}, 
     clean = cleanName(name);
     if (!clean) return fail(400, `캐릭터 이름은 1~${NAME_MAX}자로 입력하세요.`);
   }
-  const next = structuredClone(room);
+  const next = cloneState(room);
   const c = next.characters.find((x) => x.id === charId);
   if (clean) c.name = clean;
   if (avatar !== undefined) {
@@ -182,7 +183,7 @@ export function removeCharacter(room, sessionId, charId, now = Date.now()) {
   if (!findPlayer(room, sessionId)) return fail(403, '이 방의 참가자가 아닙니다.');
   const found = ownCharacter(room, sessionId, charId);
   if (found.error) return found.error;
-  const next = structuredClone(room);
+  const next = cloneState(room);
   next.characters = next.characters.filter((x) => x.id !== charId);
   const owner = findPlayer(next, sessionId);
   const logs = [pushLog(next, `${owner.name} 님이 캐릭터 「${found.c.name}」${particle(found.c.name, '을/를')} 지웠습니다.`, now)];
@@ -194,7 +195,7 @@ export function setReady(room, sessionId, ready) {
   if (isSpectator(findPlayer(room, sessionId))) return spectatorFail();
   if (typeof ready !== 'boolean') return fail(400, 'ready 값은 true/false여야 합니다.');
   if (room.status !== 'lobby') return fail(409, '로비에서만 준비 상태를 바꿀 수 있습니다.');
-  const next = structuredClone(room);
+  const next = cloneState(room);
   findPlayer(next, sessionId).ready = ready;
   return { ok: true, room: next, logs: [] };
 }
@@ -204,11 +205,11 @@ export function setConnected(room, sessionId, connected, now = Date.now()) {
   const p = findPlayer(room, sessionId);
   if (!p) return { ok: true, room, logs: [], changed: false };
   if (p.connected === connected) {
-    const next = structuredClone(room);
+    const next = cloneState(room);
     findPlayer(next, sessionId).lastSeen = now;
     return { ok: true, room: next, logs: [], changed: false };
   }
-  const next = structuredClone(room);
+  const next = cloneState(room);
   const np = findPlayer(next, sessionId);
   np.connected = connected;
   np.lastSeen = now;
@@ -219,7 +220,7 @@ export function setConnected(room, sessionId, connected, now = Date.now()) {
 export function startGame(room, now = Date.now()) {
   if (room.status !== 'lobby') return fail(409, '로비 상태의 방만 시작할 수 있습니다.');
   if (room.characters.length < 2) return fail(400, '캐릭터가 2명 이상이어야 시작할 수 있습니다.');
-  const next = structuredClone(room);
+  const next = cloneState(room);
   next.status = 'playing';
   next.startedAt = now;
   next.turn = {
@@ -235,7 +236,7 @@ export function startGame(room, now = Date.now()) {
 /** Admin: force end. */
 export function endGame(room, now = Date.now()) {
   if (room.status === 'finished') return fail(409, '이미 종료된 방입니다.');
-  const next = structuredClone(room);
+  const next = cloneState(room);
   next.status = 'finished';
   next.finishedAt = now;
   const logs = [pushLog(next, '관리자가 게임을 종료했습니다.', now, 'system')];
@@ -278,12 +279,28 @@ export function canManageCpu(room, sessionId) {
   return { ok: true };
 }
 
+/** Korean labels of the CPU personalities (logs; the client has its own copy with descriptions). */
+export const CPU_PERSONALITY_LABELS = { cautious: '🐢 신중', normal: '🙂 보통', bold: '🔥 대담' };
+const PERSONALITY_ERROR = 'CPU 성향은 신중·보통·대담 중 하나여야 해요.';
+
+/**
+ * A requested CPU personality: cautious / normal / bold, or absent / '' / 'random' → null (= the seeded pick).
+ * @returns {{ok: true, personality: string|null} | {ok: false, status, error}}
+ */
+export function parseCpuPersonality(value) {
+  if (value === undefined || value === null || value === '' || value === 'random') return { ok: true, personality: null };
+  if (typeof value === 'string' && CPU_PERSONALITIES.includes(value)) return { ok: true, personality: value };
+  return fail(400, PERSONALITY_ERROR);
+}
+
 /**
  * Add a CPU character (lobby only, max characters respected). `name` optional (else the first unused pool name),
- * `avatar` optional (else a seeded random look); personality cautious / normal / bold seeded per room + seq.
- * `by` = who added it (log text).
+ * `avatar` optional (else a seeded random look), `personality` cautious / normal / bold (absent / 'random' → seeded
+ * per room + seq; anything else → 400). `by` = who added it (log text).
  */
-export function addCpuCharacter(room, { name, avatar } = {}, now = Date.now(), { by = '관리자' } = {}) {
+export function addCpuCharacter(room, { name, avatar, personality } = {}, now = Date.now(), { by = '관리자' } = {}) {
+  const pers = parseCpuPersonality(personality);
+  if (!pers.ok) return pers;
   if (room.status !== 'lobby') return fail(409, '로비에서만 CPU를 넣을 수 있습니다.');
   if (room.characters.length >= room.config.maxCharacters) return fail(409, `캐릭터는 최대 ${room.config.maxCharacters}명까지 만들 수 있습니다.`);
   const seq = (room.nextCharSeq || 0) + 1;
@@ -295,7 +312,7 @@ export function addCpuCharacter(room, { name, avatar } = {}, now = Date.now(), {
     const used = new Set(room.characters.map((c) => c.name));
     clean = CPU_NAMES.find((n) => !used.has(n)) ?? `CPU ${seq}`;
   }
-  const next = structuredClone(room);
+  const next = cloneState(room);
   next.nextCharSeq = seq;
   const character = {
     id: `c${seq}`,
@@ -303,12 +320,37 @@ export function addCpuCharacter(room, { name, avatar } = {}, now = Date.now(), {
     name: clean,
     avatar: avatar && typeof avatar === 'object' ? sanitizeAvatar(avatar) : randomAvatar(`${room.seed ?? 0}:${room.id}:${seq}`),
     ownerSessionId: CPU_OWNER,
-    cpuPersonality: CPU_PERSONALITIES[hash32(room.seed ?? 0, room.id, seq, 'cpu') % CPU_PERSONALITIES.length],
+    cpuPersonality: pers.personality ?? CPU_PERSONALITIES[hash32(room.seed ?? 0, room.id, seq, 'cpu') % CPU_PERSONALITIES.length],
     createdAt: now,
   };
   next.characters.push(character);
   const logs = [pushLog(next, `🤖 ${by} 님이 CPU 캐릭터 「${clean}」${particle(clean, '을/를')} 넣었습니다.`, now)];
   return { ok: true, room: next, logs, character };
+}
+
+/**
+ * Change a CPU character's personality (lobby only): cautious / normal / bold, or 'random' → a new seeded pick that
+ * differs from the current one when possible (a visible re-roll). `by` = who changed it (log text).
+ */
+export function setCpuPersonality(room, charId, personality, now = Date.now(), { by = '관리자' } = {}) {
+  const pers = parseCpuPersonality(personality);
+  if (!pers.ok) return pers;
+  if (personality === undefined || personality === null || personality === '') return fail(400, PERSONALITY_ERROR);
+  const c = room.characters.find((x) => x.id === charId);
+  if (!c) return fail(404, '캐릭터를 찾을 수 없습니다.');
+  if (!isCpuChar(c)) return fail(409, 'CPU 캐릭터만 성향을 바꿀 수 있어요.');
+  if (room.status !== 'lobby') return fail(409, '로비에서만 CPU 성향을 바꿀 수 있어요.');
+  let value = pers.personality;
+  if (!value) {
+    const others = CPU_PERSONALITIES.filter((p) => p !== c.cpuPersonality);
+    value = others[hash32(room.seed ?? 0, room.id, c.seq, 'cpu-reroll', now) % others.length];
+  }
+  if (value === c.cpuPersonality) return { ok: true, room, logs: [], character: c, changed: false };
+  const next = cloneState(room);
+  const nc = next.characters.find((x) => x.id === charId);
+  nc.cpuPersonality = value;
+  const logs = [pushLog(next, `🤖 ${by} 님이 CPU 「${c.name}」의 성향을 ${CPU_PERSONALITY_LABELS[value]}${particle(CPU_PERSONALITY_LABELS[value], '으로/로')} 바꿨습니다.`, now)];
+  return { ok: true, room: next, logs, character: nc, changed: true };
 }
 
 /** Remove a CPU character (lobby only). */
@@ -317,7 +359,7 @@ export function removeCpuCharacter(room, charId, now = Date.now(), { by = '관�
   if (!c) return fail(404, '캐릭터를 찾을 수 없습니다.');
   if (!isCpuChar(c)) return fail(409, 'CPU 캐릭터만 여기서 뺄 수 있어요.');
   if (room.status !== 'lobby') return fail(409, '로비에서만 CPU를 뺄 수 있습니다.');
-  const next = structuredClone(room);
+  const next = cloneState(room);
   next.characters = next.characters.filter((x) => x.id !== charId);
   const logs = [pushLog(next, `🤖 ${by} 님이 CPU 캐릭터 「${c.name}」${particle(c.name, '을/를')} 뺐습니다.`, now)];
   return { ok: true, room: next, logs };

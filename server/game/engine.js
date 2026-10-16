@@ -20,6 +20,8 @@ import {
 import { endGame as lobbyEndGame, startGame as lobbyStartGame } from './lobby.js';
 import { applyResult, castVote, closeVote, emitMvpDecided } from './result.js';
 import { createRng } from './rng.js';
+import { cloneState } from './clone.js';
+import { startMoneyFor } from './cpuHandicap.js';
 import { decorateEvents } from './presentation.js';
 import { promptComplete, resolvePrompt, resolveTile } from './spaces.js';
 import { ensureLife, grantSkillCard, initLife, lifeStep, preSpinStep, spinSteps } from './growth.js';
@@ -93,7 +95,7 @@ export function startGame(room, ctx = {}) {
   const adult = !next.board.eras.some((e) => e.id === EXAM_ERA);
   next.characters = next.characters.map((c) => ({
     ...c,
-    money: next.config.startingMoney ?? 0,
+    money: startMoneyFor(next, c, data), // CPU handicap (cpuHandicap.js): less starting money against people
     debt: 0,
     position: startPosition(0),
     era: firstEra.id,
@@ -328,9 +330,9 @@ function gameOver(tx) {
   // Stage 9: the treasure values are revealed now; awards / titles ride on the event for the result show
   emit(tx, 'gameOver', {
     ranking,
-    awards: structuredClone(res.awards),
-    titles: structuredClone(res.titles),
-    treasures: structuredClone(res.treasures),
+    awards: cloneState(res.awards),
+    titles: cloneState(res.titles),
+    treasures: cloneState(res.treasures),
     mvpClosesAt: res.mvp.closed ? null : res.mvp.closesAt,
     tone: 'result',
   });
@@ -529,7 +531,7 @@ function completeRoute(c, eraId) {
 export function migrateLoopBoard(room, ctx = {}) {
   if (room.status !== 'playing' || !room.board || isLoopBoard(room.board)) return { room, events: [], logs: [], migrated: false };
   const { now, data } = makeCtx(room, ctx);
-  const next = structuredClone(room);
+  const next = cloneState(room);
   const oldEras = next.board.eras.map((e) => e.id);
   next.board = buildBoard(next.config, createRng(next.seed ?? 0), data);
   const eraIds = next.board.eras.map((e) => e.id);
@@ -852,7 +854,7 @@ export function applyAction(room, action, ctx = {}) {
   const c = makeCtx(room, ctx);
   // saves from before the loop maps → the loop board at the most advanced era's start (normally done at boot)
   const mig = isLoopBoard(room.board) ? null : migrateLoopBoard(room, { now: c.now, data: c.data });
-  const next = mig ? mig.room : structuredClone(room);
+  const next = mig ? mig.room : cloneState(room);
   migrateRoomLooks(next, c.data); // CH-1: human avatars / partners / children of old saves → roster / NPC friends / pets
   next.eraIndex ??= 0;
   for (const ch of next.characters) {
@@ -899,7 +901,7 @@ export function applyAction(room, action, ctx = {}) {
 function applyResultAction(room, action, ctx) {
   if (room.status !== 'finished' || !room.result?.mvp) fail(409, '결과 발표 중이 아니에요.');
   const c = makeCtx(room, ctx);
-  const next = structuredClone(room);
+  const next = cloneState(room);
   const tx = createTx(next, c);
   if (action.type === 'vote') castVote(tx, action);
   else closeVote(tx, action);
