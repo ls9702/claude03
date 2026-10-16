@@ -11,7 +11,9 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test test/*.test.js",
+    "test": "node scripts/run-tests.js",
+    "test:isolated": "node --test test/*.test.js",
+    "test:legacy": "node --test test/legacy/*.test.js",
     "postinstall": "node scripts/vendor.js"
   },
   "dependencies": {

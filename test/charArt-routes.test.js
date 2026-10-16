@@ -6,8 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 import { startServer } from '../server/index.js';
-import { ART_STEPS, ART_VERSION, MSG, artKey, placeFigure } from '../server/assets/charArt.js';
-import { chromaKey } from '../server/assets/postprocess.js';
+import { ART_STEPS, ART_VERSION, FIGURE_BOX, MSG, artKey } from '../server/assets/charArt.js';
 import { fakeGeminiFetch, jsonResponse, magentaCharacter, tempManifest } from './assetFixtures.js';
 import { httpCall, sseReader, tempDir } from './helpers.js';
 
@@ -115,13 +114,20 @@ test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per charact
   const until = sseReader(es.body);
   await until((f) => f.event === 'state');
 
-  // Keep the suite fast: an earlier (interrupted) job already made the base and 8 edits, so this job
-  // generates the last 2 steps; progress still reports every step (resumed ones included).
+  // Keep the suite fast: an earlier (interrupted) job already made the base and 9 edits, so this job
+  // generates the last step; progress still reports every step (resumed ones included). (The full 11-step job
+  // runs in test/legacy/charArt-pipeline.test.js.)
   const dir = path.join(tmp.dir, 'on', 'char-art', artKey(AV));
   await mkdir(dir, { recursive: true });
-  const base = await sharp(await placeFigure(await chromaKey(await magentaCharacter()))).webp().toBuffer();
+  // a placed figure like placeFigure's output (opaque on the FIGURE_BOX: top 371, feet on 1303, centred); only its alpha
+  // box matters to the resumed edit step, so it is drawn directly and encoded fast
+  const figH = FIGURE_BOX.bottom - FIGURE_BOX.top + 1;
+  const base = await sharp({ create: { width: 1024, height: 1536, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: { create: { width: 300, height: figH, channels: 4, background: { r: 40, g: 60, b: 160, alpha: 1 } } }, left: FIGURE_BOX.centerX - 150, top: FIGURE_BOX.top }])
+    .webp({ lossless: true, effort: 0 })
+    .toBuffer();
   const steps = {};
-  for (const st of ART_STEPS.slice(0, 9)) {
+  for (const st of ART_STEPS.slice(0, 10)) {
     await writeFile(path.join(dir, `${st.name}.webp`), base);
     steps[st.name] = { file: `${st.name}.webp` };
   }
@@ -163,7 +169,7 @@ test('owner-only; SSE progress 0→11/11 then ready; files served; 1 per charact
   assert.equal(art.files.base, `/api/char-art/${key}/base.webp`);
   assert.equal(art.files.poses.jump, `/api/char-art/${key}/pose-jump.webp`);
   assert.equal(art.files.expressions.angry, `/api/char-art/${key}/expr-angry.webp`);
-  assert.equal(ok.calls.length - calls0, 2, 'only the missing steps were generated');
+  assert.equal(ok.calls.length - calls0, 1, 'only the missing step was generated');
   ac.abort();
 
   const img = await fetch(srv.url + art.files.poses.cheer);

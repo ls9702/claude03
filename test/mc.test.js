@@ -40,7 +40,10 @@ function started({ seed = 5, mode = 'kids', mcFrequency, eraTurns } = {}) {
   return r;
 }
 
-function playAll(opts = {}) {
+const played = new Map(); // finished games are read-only in these tests: the same options replay from the cache
+function playAll(opts = {}, { fresh = false } = {}) {
+  const key = JSON.stringify(opts);
+  if (!fresh && played.has(key)) return played.get(key);
   const r = started(opts);
   let room = r.room;
   const batches = [r.events];
@@ -51,7 +54,9 @@ function playAll(opts = {}) {
     batches.push(res.events);
   }
   assert.equal(room.status, 'finished');
-  return { events: batches.flat(), room };
+  const out = { events: batches.flat(), room };
+  played.set(key, out);
+  return out;
 }
 
 // ---------- data ----------
@@ -157,8 +162,8 @@ test('MC siblings: 호야 = boy, older brother; 봄이 = girl, younger sister �
 
 test('MC attachment is deterministic and never touches the gameplay RNG', () => {
   const strip = (evs) => evs.map((e) => [e.type, e.mcKey ?? null, JSON.stringify(e.mc ?? null)]);
-  const a = playAll({ seed: 11 });
-  const b = playAll({ seed: 11 });
+  const a = playAll({ seed: 11 }, { fresh: true });
+  const b = playAll({ seed: 11 }, { fresh: true });
   assert.deepEqual(strip(a.events), strip(b.events));
   const off = playAll({ seed: 11, mcFrequency: 'off' });
   const many = playAll({ seed: 11, mcFrequency: 'many' });

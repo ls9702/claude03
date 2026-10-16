@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 import { loadManifest } from '../server/assets/manifest.js';
@@ -23,6 +23,16 @@ async function setup(t) {
   return { tmp, dataDir, outputDir, manifestPath, fetchImpl, studio };
 }
 const exists = (p) => stat(p).then(() => true, () => false);
+
+/** The shipped layer / pose definitions on a smaller canvas (the 1024×1536 size itself is checked in the refs test). */
+async function smallLayers(manifestPath, w = 256, h = 384) {
+  const m = JSON.parse(await readFile(manifestPath, 'utf8'));
+  for (const i of m.items.filter((x) => ['char-schoolgirl-base', 'pose-schoolgirl-jump'].includes(x.id))) {
+    i.size = { w, h };
+    i.postprocess = i.postprocess.map((st) => (st.startsWith('resize:') ? `resize:${w}x${h}` : st));
+  }
+  await writeFile(manifestPath, JSON.stringify(m, null, 2));
+}
 
 test('generate → candidates on disk (+ previews) → accept publishes file and updates the manifest', async (t) => {
   const { dataDir, outputDir, manifestPath, fetchImpl, studio } = await setup(t);
@@ -92,7 +102,8 @@ test('refs must be accepted first, then resolve to the accepted files', async (t
 });
 
 test('sprite: per-frame generation → normalized sheet + json + animated WebP on accept', async (t) => {
-  const { outputDir, fetchImpl, studio } = await setup(t);
+  const { outputDir, fetchImpl, studio, manifestPath } = await setup(t);
+  await smallLayers(manifestPath);
   await studio.upload('style-anchor', await scene());
   await studio.generateCandidates('char-schoolgirl-base', { count: 1 });
   await studio.accept('char-schoolgirl-base', 1);
@@ -113,9 +124,9 @@ test('sprite: per-frame generation → normalized sheet + json + animated WebP o
   assert.ok(anim.pages >= 2);
   await assert.rejects(studio.upload('sprite-schoolgirl-jump', await scene()), { status: 400 });
 
-  // Key pose aligned to the accepted base layer.
+  // Key pose aligned to the accepted base layer (its canvas: 256 wide here).
   const pose = await studio.generateCandidates('pose-schoolgirl-jump', { count: 1 });
-  assert.equal(pose.candidates[0].width, 1024);
+  assert.equal(pose.candidates[0].width, 256);
 
   const idx = await studio.publicIndex();
   assert.equal(idx.assets['sprite-schoolgirl-jump'].kind, 'sprite');

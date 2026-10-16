@@ -39,19 +39,6 @@ export function predictWatermark(w, h, rule = WATERMARK_RULE) {
   return { s, cx: w - rule.margin * s, cy: h - rule.margin * s };
 }
 
-function sampleT(t, u, v) {
-  const S = t.size;
-  if (u < 0 || v < 0 || u > S - 1 || v > S - 1) return 0;
-  const x0 = Math.floor(u);
-  const y0 = Math.floor(v);
-  const x1 = Math.min(S - 1, x0 + 1);
-  const y1 = Math.min(S - 1, y0 + 1);
-  const fx = u - x0;
-  const fy = v - y0;
-  const a = t.a;
-  return (a[y0 * S + x0] * (1 - fx) + a[y0 * S + x1] * fx) * (1 - fy) + (a[y1 * S + x0] * (1 - fx) + a[y1 * S + x1] * fx) * fy;
-}
-
 /**
  * Alpha raster of a sparkle at scale `s`, centre (cx, cy), over the box [bx, bx + bw) × [by, by + bh); a downscaled
  * sparkle averages 3×3 samples over the extra pixel footprint (anti-aliased, not point-sampled).
@@ -62,16 +49,35 @@ export function watermarkAlpha(t, { s, cx, cy }, bx, by, bw, bh, rule = WATERMAR
   // (1/s − 1 template px) is averaged; upscaled sparkles are sampled bilinearly
   const spread = Math.max(0, 1 / s - 1);
   const k = spread > 0.05 ? 3 : 1;
+  // every sample lies within ±spread/3 of (u0, v0) and a sample outside [0, S − 1] is 0: pixels whose footprint misses
+  // the template keep their 0 without sampling (same result, ~2–3× faster: the search box is wider than the sparkle)
+  const half = k > 1 ? spread / 2 : 0;
+  const hi = t.size - 1 + half;
+  const offs = Array.from({ length: k }, (_, i) => (k > 1 ? ((i + 0.5) / k - 0.5) * spread : 0)); // footprint sample offsets
+  const S = t.size;
+  const A = t.a;
   for (let y = 0; y < bh; y++) {
+    const v0 = (by + y - cy) / s + rule.center;
+    if (v0 < -half || v0 > hi) continue;
     for (let x = 0; x < bw; x++) {
-      let sum = 0;
       const u0 = (bx + x - cx) / s + rule.center;
-      const v0 = (by + y - cy) / s + rule.center;
+      if (u0 < -half || u0 > hi) continue;
+      let sum = 0;
       for (let j = 0; j < k; j++) {
+        // bilinear template samples at (u0 + offs[i], v); a sample outside the template is 0 (skipped)
+        const v = v0 + offs[j];
+        if (v < 0 || v > S - 1) continue;
+        const y0 = Math.floor(v);
+        const r0 = y0 * S;
+        const r1 = Math.min(S - 1, y0 + 1) * S;
+        const fy = v - y0;
         for (let i = 0; i < k; i++) {
-          const du = k > 1 ? ((i + 0.5) / k - 0.5) * spread : 0;
-          const dv = k > 1 ? ((j + 0.5) / k - 0.5) * spread : 0;
-          sum += sampleT(t, u0 + du, v0 + dv);
+          const u = u0 + offs[i];
+          if (u < 0 || u > S - 1) continue;
+          const x0 = Math.floor(u);
+          const x1 = Math.min(S - 1, x0 + 1);
+          const fx = u - x0;
+          sum += (A[r0 + x0] * (1 - fx) + A[r0 + x1] * fx) * (1 - fy) + (A[r1 + x0] * (1 - fx) + A[r1 + x1] * fx) * fy;
         }
       }
       out[y * bw + x] = sum / (k * k);
@@ -89,9 +95,14 @@ const lum = (d, i) => d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
  * overlay could add (line art crossing the sparkle) are skipped, and `minQuadrant` = the lowest k of the four arms.
  * @returns {gain: k, minQuadrant, snr, matched, energy}
  */
-function scoreCandidate(data, w, h, ch, alpha, bx, by, bw, bh, cx, cy) {
+/** Luminance of the search box (shared by every candidate of one search). */
+function boxLuma(data, w, ch, bx, by, bw, bh) {
   const obs = new Float32Array(bw * bh);
   for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) obs[y * bw + x] = lum(data, ((by + y) * w + bx + x) * ch);
+  return obs;
+}
+
+function scoreCandidate(obs, alpha, bx, by, bw, bh, cx, cy) {
   const pred = [];
   for (let y = 0; y < bh - 1; y++) {
     for (let x = 0; x < bw - 1; x++) {
@@ -147,7 +158,8 @@ export function findWatermark(data, w, h, ch, t, { minGain = 0.65, maxGain = 2.5
   const bw = Math.min(w, Math.round(p.cx) + R) - bx;
   const bh = Math.min(h, Math.round(p.cy) + R) - by;
   if (bw < 8 || bh < 8) return null;
-  const tryAt = (s, cx, cy) => ({ s, cx, cy, ...scoreCandidate(data, w, h, ch, watermarkAlpha(t, { s, cx, cy }, bx, by, bw, bh, rule), bx, by, bw, bh, cx, cy) });
+  const obs = boxLuma(data, w, ch, bx, by, bw, bh);
+  const tryAt = (s, cx, cy) => ({ s, cx, cy, ...scoreCandidate(obs, watermarkAlpha(t, { s, cx, cy }, bx, by, bw, bh, rule), bx, by, bw, bh, cx, cy) });
   // rank by how well the whole shape fits (overall gain + worst arm, each capped): robust to line art crossing one arm
   const rank = (c) => Math.min(c.gain, 1.3) + Math.min(c.minQuadrant, 1.3);
   const better = (c, b) => !b || rank(c) > rank(b);
