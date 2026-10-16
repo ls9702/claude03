@@ -4,12 +4,13 @@
 // (seed, rngState, turn, prompt, character) — the game RNG is never consumed. The side-effect layer
 // (store/gameRunner.js) schedules these actions with a delay; scripts/cpu-game.js plays whole games with it.
 //
-// Two levels (`opts.level`): 'hard' = the strong heuristic below (docs/PLAN.md "CPU"): route by stats / cash (charm →
+// Three levels (`opts.level`, else the room's CPU 난이도 `config.cpuLevel`, else 'easy'): 'hard' = the strong heuristic below (docs/PLAN.md "CPU"): route by stats / cash (charm →
 // love, int → career, cash → money), jobs that fit the stats (salary × rank-up odds), habits toward the best reachable
 // job, 수능 study vs guess by the odds, promotion exam when the chance is good, shop / house only with money to spare,
 // sabotage against the richest rival, trade offers accepted when what the CPU gets is worth at least what it gives —
-// used by the expert human proxy (scripts/cpu-game.js) and the strategy duels of scripts/simulate.js. The default level
-// (the real CPUs in rooms) plays by personality preference tables (see "the real CPUs" below) and is much weaker.
+// used by the expert human proxy (scripts/cpu-game.js) and the strategy duels of scripts/simulate.js. 'easy' (the default
+// real CPUs in rooms) plays by personality preference tables (see "the real CPUs" below) and is much weaker; 'normal' mixes
+// the two per decision (`balance.cpu.levels.normal`) — about a casual person's strength.
 // CPUs never bet, never offer trades and never give gifts. Each CPU has a personality (cautious / normal / bold),
 // chosen when it is added (lobby `addCpuCharacter {personality}`) or seeded; `opts.personality` overrides it.
 import { roomData } from './world.js';
@@ -24,6 +25,8 @@ import { cardBlockReason, cardColor, cardDef, discardIndex, handLimit, itemDef, 
 import { computeRanking } from './result.js';
 import { createRng } from './rng.js';
 import { isSkillRoom, skillDistribution } from './roulette.js';
+import { CPU_LEVELS, cpuLevelOf } from './config.js';
+import { hammerEv, itemAuctionBase, seniorShopWorth, seniorUseWorth, tilesAhead, treasureGuess } from './senior.js'; // 노년 역전
 
 export const CPU_OWNER = 'cpu';
 export const PERSONALITIES = ['cautious', 'normal', 'bold'];
@@ -70,7 +73,10 @@ function subRng(room, c, salt = '') {
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 /** Read-only context for engine helpers that take a tx (they only read `room` and `data`). */
-const view = (room, data, opts = {}) => ({ room, data, now: 0, events: [], logs: [], level: opts.level === 'hard' ? 'hard' : 'easy', personality: opts.personality ?? null });
+const view = (room, data, opts = {}) => ({ room, data, now: 0, events: [], logs: [], level: cpuLevelFor(room, opts), personality: opts.personality ?? null });
+
+/** The decision level: an explicit `opts.level` (easy / normal / hard — scripts, tests, the expert proxy), else the room's CPU 난이도. */
+export const cpuLevelFor = (room, opts = {}) => (CPU_LEVELS.includes(opts?.level) ? opts.level : cpuLevelOf(room));
 const statOf = (c, k) => c.stats?.[k] ?? 0;
 
 /**
@@ -326,6 +332,7 @@ function shopWorth(ctx, c, o, leaderGap) {
     const e = def.effect ?? {};
     if (e.salaryBonus && (!e.jobs || e.jobs.includes(c.job?.id))) v += e.salaryBonus * salaryAmount(ctx, c) * 5;
     if (e.huntBonus || e.huntArmor) v += huntsAhead(ctx) * (e.huntArmor ? 25 : 20); // 세계 설정: 사스마타 / 갑옷
+    v += seniorShopWorth(ctx.data, ctx.room, c, o.itemId); // 노년 역전: the item's 노년 활용 + a 골동품 경매 gain
     return v;
   }
   const def = cardDef(ctx.data, o.cardId);
@@ -697,6 +704,76 @@ function answerGroupGift(ctx, c, p) {
   return num(t.chance) * 60 > priceOf(o) * 1.5 ? 'gift' : null;
 }
 
+// ---------- 노년 역전 (senior.js): 🏝️ 한방역전섬 / 🏆 노년 대회 / 🔨 골동품 경매 ----------
+
+/** Expected share of `rivals` (totals) a total beats, smoothed over ± `spread` (the race still ahead), 0..1. */
+function beatShare(rivals, total, spread) {
+  if (!rivals.length) return 1;
+  return rivals.reduce((s, x) => s + 1 / (1 + Math.exp(-(total - x) / spread)), 0) / rivals.length;
+}
+
+/**
+ * 한방역전섬: the option with the best expected standing — every outcome's total against the rivals' visible totals
+ * (smoothed by the race still ahead); a bust also loses the race ahead, 조기 은퇴 locks the total + the prize but gives the
+ * race ahead up. So a trailing CPU gambles (half stakes first; all-in only when nothing else can close the gap), a leader
+ * passes or retires. Cautious CPUs want a margin before betting, bold ones less.
+ */
+function answerIsland(ctx, c, p) {
+  const opts = enabled(p);
+  const persona = personaOf(c, ctx);
+  const tot = totals(ctx.room, ctx.data);
+  const mine = tot.get(c.id) ?? 0;
+  const rivals = ctx.room.characters.filter((x) => x.id !== c.id).map((x) => tot.get(x.id) ?? 0);
+  const future = tilesAhead(ctx.room, c).length * 12; // ~70 per landing, a landing every ~5.5 tiles
+  const spread = 120 + future * 0.6;
+  const cash = Math.max(0, c.money ?? 0);
+  const betBias = persona === 'cautious' ? -0.04 : persona === 'bold' ? 0.02 : 0;
+  const score = (o) => {
+    if (o.id === 'pass') return beatShare(rivals, mine, spread);
+    if (o.id === 'retire') return beatShare(rivals, mine + num(o.prize) - future, spread * 0.8) - 0.01;
+    if (!o.tier) return -1;
+    const stake = num(o.stake);
+    const win = beatShare(rivals, mine + stake * (num(o.mult) - 1), spread);
+    const lose = o.bust ? beatShare(rivals, mine - cash - future, spread) : beatShare(rivals, mine - stake, spread);
+    return num(o.chance) * win + (1 - num(o.chance)) * lose + betBias;
+  };
+  return byMax(opts, score)?.id ?? null;
+}
+
+/** 행운의 숫자: any first number is as good as another (a plain random roll) — a stable pick from the sub-RNG. */
+function answerIslandPick(ctx, c, p) {
+  const opts = enabled(p);
+  return opts.length ? opts[subRng(ctx.room, c, 'islandPick').int(0, opts.length - 1)].id : null;
+}
+
+/** 노년 대회: the entry tier with the best expected prize (server `ev`) above the personality's margin, else 구경. */
+function answerContest(ctx, c, p) {
+  const persona = personaOf(c, ctx);
+  const k = knobs(c, ctx);
+  const cash = c.money ?? 0;
+  const margin = persona === 'cautious' ? 10 : persona === 'bold' ? -15 : 0;
+  const tiers = enabled(p).filter((o) => o.tier && cash - num(o.fee) >= k.reserve * 0.1);
+  const best = byMax(tiers, (o) => num(o.ev) + (persona === 'bold' ? num(o.prize) * 0.05 : 0));
+  return best && num(best.ev) > margin ? best.id : enabled(p).some((o) => o.id === 'watch') ? 'watch' : null;
+}
+
+/**
+ * 골동품 경매: sell what gains the most — an item when its expected hammer price beats its ranking value + the 노년 활용
+ * still ahead, a treasure by its expected appraisal (hidden), else the 잡동사니 (free money).
+ */
+function answerAuction(ctx, c, p) {
+  const ev = hammerEv(ctx.data);
+  const careful = personaOf(c, ctx) === 'cautious' ? 15 : 0;
+  const gain = (o) => {
+    if (o.kind === 'item') return num(o.ev) - itemAuctionBase(ctx.data, o.itemId) - seniorUseWorth(ctx.data, ctx.room, c, o.itemId) - careful;
+    if (o.kind === 'treasure') return treasureGuess(ctx.data, o.treasureId) * (ev - 1) - careful;
+    if (o.kind === 'junk') return num(o.ev);
+    return 0;
+  };
+  const best = byMax(enabled(p), gain);
+  return best && gain(best) > 0 ? best.id : enabled(p).some((o) => o.id === 'leave') ? 'leave' : null;
+}
+
 /** kind → (ctx, c, pending) → optionId | null (null = the prompt's default). Unknown kinds use the default. */
 export const CPU_ANSWERS = {
   routeChoice: answerRoute,
@@ -726,12 +803,18 @@ export const CPU_ANSWERS = {
   // 세계 설정 (치이카와 모드)
   hunt: answerHunt,
   weed: answerWeed,
+  // 노년 역전
+  island: answerIsland,
+  islandPick: answerIslandPick,
+  contest: answerContest,
+  auction: answerAuction,
 };
 
 /**
- * The option a CPU character picks for the pending prompt (always an enabled option id). `opts.level`: 'hard' = the
- * strong heuristic (CPU_ANSWERS) alone; anything else (the real CPUs) = the personality's preference table
- * (`easyAnswer`, balance.json `cpu`), which may lean on the heuristic's pick through its `best` key.
+ * The option a CPU character picks for the pending prompt (always an enabled option id). Level (`opts.level`, else the
+ * room's CPU 난이도): 'hard' = the strong heuristic (CPU_ANSWERS) alone; 'easy' (the default real CPUs) = the
+ * personality's preference table (`easyAnswer`, balance.json `cpu`), which may lean on the heuristic's pick through its
+ * `best` key; 'normal' = the heuristic with chance `cpu.levels.normal.hardShare`, else the table.
  */
 export function cpuAnswer(room, charId, data = null, opts = {}) {
   data = roomData(room, data); // the room's world (jobs, items, cards …)
@@ -747,7 +830,7 @@ export function cpuAnswer(room, charId, data = null, opts = {}) {
     }
   };
   let id = null;
-  if (ctx.level === 'hard') id = hard();
+  if (ctx.level === 'hard' || (ctx.level === 'normal' && levelRoll(ctx, c, 'hardShare', `answer:${p.kind}`))) id = hard();
   else {
     try {
       id = easyAnswer(ctx, c, p, () => safeOption(p, hard()));
@@ -776,7 +859,20 @@ export function cpuAnswer(room, charId, data = null, opts = {}) {
 // also carry a money handicap (cpuHandicap.js, `balance.cpu.handicap`).
 
 /** Defaults for `balance.cpu` (used when the data has no `cpu` section or misses a key). */
-const CPU_DEFAULTS = { prefs: { '*': { best: 3, '*': 1 } }, personalities: {} };
+const CPU_DEFAULTS = { prefs: { '*': { best: 3, '*': 1 } }, personalities: {}, levels: { normal: { hardShare: 0.1, cardHardShare: 0.1, aimRandom: 0.5 } } };
+
+/**
+ * CPU 난이도 'normal' (`balance.cpu.levels.normal`): each decision follows the strong heuristic with chance `hardShare`
+ * (prompts) / `cardHardShare` (the card before the spin), else the personality table; in skill rooms it aims at a liked
+ * (uniformly random) number with chance `aimRandom`, else at the best one ± noise. No money handicap at this level.
+ */
+function levelKnob(ctx, key) {
+  const v = cpuConfig(ctx.data).levels?.[ctx.level]?.[key];
+  return Number.isFinite(v) ? v : (CPU_DEFAULTS.levels[ctx.level]?.[key] ?? 0);
+}
+
+/** A hashed coin flip of the level knob `key` (sub-RNG: the game RNG is never consumed). */
+const levelRoll = (ctx, c, key, salt) => subRng(ctx.room, c, `${ctx.level}:${salt}`).next() < levelKnob(ctx, key);
 
 /** The CPU difficulty config (`balance.cpu`). */
 export function cpuConfig(data = null) {
@@ -928,7 +1024,7 @@ export function cpuTradeAccept(room, trade, data = null, opts = {}) {
     if (out >= 0) give += cardValue(data, to, to.cards[out].id, room);
   }
   const ctx = view(room, data, opts);
-  const margin = ctx.level === 'hard' ? knobs(to, ctx).tradeMargin : easyKnob(ctx, to, 'tradeMargin', knobs(to, ctx).tradeMargin);
+  const margin = ctx.level !== 'easy' ? knobs(to, ctx).tradeMargin : easyKnob(ctx, to, 'tradeMargin', knobs(to, ctx).tradeMargin);
   return get > 0 && get >= give * margin;
 }
 
@@ -944,6 +1040,8 @@ function paydayWorth(ctx, c) {
 
 /** Rough worth of a 찬스 광장 visit (a choice: at worst a buff). */
 const PASS_WORTH = 35;
+/** 노년 역전: the worth of one more landing in the final race (its tiles pay: contests, auctions, money ×1.5). */
+const FINAL_LANDING = 8;
 
 /** Rough worth of landing on a tile (for the energy / taxi decision). */
 function tileWorth(ctx, c, tile) {
@@ -969,6 +1067,12 @@ function tileWorth(ctx, c, tile) {
     case 'hunt': // 세계 설정: 토벌 (a fight or a free escape)
       return 40;
     case 'weed': // 풀뽑기 work pay or a 검정
+      return 20;
+    case 'contest': // 노년 역전: 노년 대회 (an entry or a free watch), 골동품 경매 (at least the 잡동사니), 한방역전섬
+      return 35;
+    case 'auction':
+      return 25 + (c.items?.length ?? 0) * 25 + (c.treasures?.length ?? 0) * 15;
+    case 'island':
       return 20;
     case 'goal':
       return (ctx.data.balance.goalPrizes?.[nextPlace(ctx.room) - 1] ?? 0) + 60;
@@ -1069,8 +1173,11 @@ function landingFor(ctx, c, value) {
  */
 function progressWorth(ctx, c) {
   const era = ctx.room.board?.eras?.[c.position?.eraIndex ?? 0];
-  const loop = paydayWorth(ctx, c) / 21.5 + (era?.final ? 0 : PASS_WORTH / 27);
-  return era?.final ? loop + 60 / Math.max(10, stepsToGoal(ctx.room, c)) : loop;
+  // 노년 역전: the final race has no clock — its paydays halt everyone (collected at any speed) and every spin lands on a
+  // paying tile (노년 대회 / 경매 / 돈 칸 ×1.5), so a tile of progress only brings the goal prize closer and costs a share of
+  // the landings left (FINAL_LANDING per landing over ~5.5 tiles per spin)
+  if (era?.final) return 60 / Math.max(10, stepsToGoal(ctx.room, c)) - FINAL_LANDING / 5.5;
+  return paydayWorth(ctx, c) / 21.5 + PASS_WORTH / 27;
 }
 
 /**
@@ -1092,11 +1199,12 @@ export function cpuAimScores(room, charId, data = null, opts = {}) {
     const w = aimTileWorth(ctx, c, tile) + passes * PASS_WORTH;
     worth[v] = (w < 0 ? w * (k.lossAversion ?? 1) : w) + (k.aimSpeed ?? 0) * speed * steps;
   }
-  const jitter = data.balance.roulette?.skill?.jitter;
+  const skill = data.balance.roulette?.skill ?? {};
   const scores = {};
   for (let t = min; t <= max; t++) {
     let s = 0;
-    for (const [v, p] of Object.entries(skillDistribution(t, { jitter, min, max }))) s += p * worth[v];
+    // 「빠를수록 위험」: each target's own spread (jitterByTarget)
+    for (const [v, p] of Object.entries(skillDistribution(t, { jitter: skill.jitter, jitterByTarget: skill.jitterByTarget, min, max }))) s += p * worth[v];
     scores[t] = s;
   }
   return scores;
@@ -1116,8 +1224,10 @@ export function cpuSkillTarget(room, charId, data = null, opts = {}) {
   const ctx = view(room, data, opts);
   if (ctx.level !== 'hard') {
     // the real CPUs aim like people: often at a number they just like (uniform), else the best one ± noise
+    // (normal level: `cpu.levels.normal.aimRandom`)
     const rng = subRng(room, c, 'easy:aim');
-    if (rng.next() < easyKnob(ctx, c, 'aimRandom', 0.6)) return rng.int(min, max);
+    const share = ctx.level === 'normal' ? levelKnob(ctx, 'aimRandom') : easyKnob(ctx, c, 'aimRandom', 0.6);
+    if (rng.next() < share) return rng.int(min, max);
   }
   const scores = cpuAimScores(room, charId, data, opts);
   let best = max;
@@ -1169,7 +1279,7 @@ export function cpuCardAction(room, charId, data = null, opts = {}) {
   const reds = (c.cards ?? []).filter((k) => cardColor(cardDef(data, k.id)) === 'red').length;
   const full = (c.cards?.length ?? 0) >= handLimit(data) - 1 && reds > 0;
   const use = (x, targetId, extra = {}) => ({ type: 'useCard', characterId: c.id, cardUid: x.k.uid, ...(targetId ? { targetId } : {}), ...extra });
-  if (ctx.level !== 'hard') return easyCardAction(ctx, c, hand, use);
+  if (ctx.level === 'easy' || (ctx.level === 'normal' && !levelRoll(ctx, c, 'cardHardShare', 'card'))) return easyCardAction(ctx, c, hand, use);
   const find = (id) => hand.find((x) => x.def.id === id);
 
   const pledge = find('pledge');

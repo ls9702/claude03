@@ -154,9 +154,12 @@
     "bookstore": {"label": "고서점", "bg": "bg-bookstore"},
     "cafe": {"label": "카페", "bg": "bg-cafe"},
     "kuji": {"label": "쿠지 가게", "bg": "bg-kuji"},
+    "island": {"label": "한방역전섬", "bg": "bg-island"},
+    "farm": {"label": "빈곤 농장", "bg": "bg-farm"},
+    "auction": {"label": "경매장", "bg": "bg-auction"},
     "none": {"label": "", "bg": null}
   },
-  "_sceneFallbacksComment": "Stage 7: scenes whose bg asset is not accepted yet are drawn with the fallback scene's bg (client resolves; chains end at the 5 original scenes). 세계 설정: sento → house → office is a 2-step chain (house has no art yet either).",
+  "_sceneFallbacksComment": "Stage 7: scenes whose bg asset is not accepted yet are drawn with the fallback scene's bg (client resolves; chains end at the 5 original scenes). 세계 설정: sento → house → office is a 2-step chain (house has no art yet either). 노년 역전: island → jeju, farm → hometown, auction → shop (2-step chains; the client draws its own SVG for these first).",
   "sceneFallbacks": {
     "stage": "wedding-hall",
     "stadium": "mountain-trail",
@@ -182,7 +185,10 @@
     "sento": "house",
     "bookstore": "office",
     "cafe": "kitchen",
-    "kuji": "shop"
+    "kuji": "shop",
+    "island": "jeju",
+    "farm": "hometown",
+    "auction": "shop"
   },
   "eraScenes": {
     "baby": "hospital",
@@ -281,7 +287,23 @@
     "weed": "weed-field",
     "weed_work": "weed-field",
     "weed_pass": "weed-field",
-    "weed_fail": "weed-field"
+    "weed_fail": "weed-field",
+    "island": "island",
+    "island_pick": "island",
+    "island_jackpot": "island",
+    "island_win": "island",
+    "island_lose": "island",
+    "island_bust": "farm",
+    "island_pass": "island",
+    "contest": "stage",
+    "contest_win": "stage",
+    "contest_second": "stage",
+    "contest_lose": "stage",
+    "auction": "auction",
+    "auction_big": "auction",
+    "auction_sold": "auction",
+    "auction_cheap": "auction",
+    "auction_fake": "auction"
   },
   "eventScenes": {"rain": "mountain-trail", "phone": "school", "lucky": "mountain-trail", "found_money": "school"},
   "cutinTiles": [
@@ -319,6 +341,9 @@
     "reversal": "treasure",
     "hunt": "career",
     "weed": "good",
+    "island": "treasure",
+    "contest": "result",
+    "auction": "treasure",
     "pass": "good",
     "start": "neutral",
     "goal": "result"
@@ -386,6 +411,13 @@
     "huntLose": "thud",
     "weedResult": "pop",
     "weedPass": "fanfare",
-    "kuji": "fanfare"
+    "kuji": "fanfare",
+    "islandResult": "whoosh",
+    "islandJackpot": "fanfare",
+    "islandBust": "tears",
+    "contestResult": "pop",
+    "contestWin": "fanfare",
+    "auctionResult": "coin",
+    "seniorItem": "pop"
   }
 }

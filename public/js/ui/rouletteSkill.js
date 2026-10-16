@@ -1,9 +1,12 @@
 // 룰렛 실력 모드 — pure client helpers (node-tested in test/client-roulette.test.js; no DOM at import time).
 // The input picks a target number 1..10 that goes out with the spin (`spin {characterId, target, input}`); the
-// server lands on it 50 % of the time (±1 40 %, ±2 10 %). Any number 1..10 can be aimed at every turn.
+// server lands near it — 「빠를수록 위험」: small numbers are precise, big ones miss wider (`balance.roulette.skill.
+// jitterByTarget`, shared/roulette.js `aimRisk` / `skillDistribution`). Any number 1..10 can be aimed at every turn.
 //   shake: DeviceMotionEvent (secure context; iOS needs DeviceMotionEvent.requestPermission() from a tap) →
 //          smoothed acceleration minus gravity → peak/average → `accelToTarget` (weak → small, strong → big)
 //   gauge: a needle sweeping over a 1..10 bar, 「멈춰!」 (or Space / Enter) → `gaugeTarget(position)`
+import { aimRisk, skillDistribution } from '../shared/roulette.js';
+
 export const INPUT_KEY = 'jinsei.rouletteInput';
 export const SKILL_INPUTS = ['shake', 'gauge'];
 
@@ -189,11 +192,15 @@ export function gaugeTarget(pos, n = 10) {
 /** First roll of a spun event / lastSpin (a taxi / noise second roll is random and shown by spinNote). */
 const firstRoll = (s) => (Array.isArray(s?.rolls) ? s.rolls[0] : s?.value);
 
-/** 「🎯 목표 7 → 결과 8」 / 「🎯 목표 7 → 결과 7 명중!」 for a skill spin (spun event or `turn.lastSpin`), else null. */
+/**
+ * 「🎯 목표 7 → 결과 8」 / 「🎯 목표 7 → 결과 7 명중!」 / 「🎯 목표 10 → 결과 7 (3칸 빗나감)」 for a skill spin (spun event or
+ * `turn.lastSpin`), else null.
+ */
 export function aimText(s) {
   if (!s?.skill || !Number.isInteger(s.target)) return null;
   const v = firstRoll(s);
-  return `🎯 목표 ${s.target} → 결과 ${v}${v === s.target ? ' 명중!' : ''}`;
+  const miss = Math.abs(v - s.target);
+  return `🎯 목표 ${s.target} → 결과 ${v}${miss === 0 ? ' 명중!' : miss >= 2 ? ` (${miss}칸 빗나감)` : ''}`;
 }
 
 /** Short float for the side list: 「🎯7→8」 / 「🎯7 명중!」. */
@@ -210,14 +217,49 @@ export function aimGrade(s) {
   return d === 0 ? 'hit' : d === 1 ? 'near' : 'miss';
 }
 
-/** Jitter shares for the panel hint (「정확히 50% · ±1 40% · ±2 10%」) from `/api/meta.balance.roulette`. */
-export function jitterHint(meta = null) {
-  const j = meta?.balance?.roulette?.skill?.jitter ?? { 0: 0.5, 1: 0.4, 2: 0.1 };
-  const total = Object.values(j).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
-  return Object.entries(j)
-    .map(([k, w]) => [Number(k), Math.round((100 * (Number(w) || 0)) / total)])
-    .filter(([, p]) => p > 0)
-    .sort((a, b) => a[0] - b[0])
-    .map(([k, p]) => (k === 0 ? `정확히 ${p}%` : `±${k} ${p}%`))
-    .join(' · ');
+/** The skill config of `/api/meta.balance.roulette` ({jitter, jitterByTarget}) or {}. */
+const skillCfg = (meta) => meta?.balance?.roulette?.skill ?? {};
+const pct = (p) => `${Math.round(100 * p)}%`;
+/** Does the miss differ between targets (`jitterByTarget`)? */
+const perTarget = (meta) => {
+  const cfg = skillCfg(meta);
+  if (!cfg.jitterByTarget) return false;
+  const key = (t) => JSON.stringify(aimRisk(t, cfg).shares);
+  return Array.from({ length: 10 }, (_, i) => key(i + 1)).some((k, _, a) => k !== a[0]);
+};
+
+/**
+ * The panel's odds line from `/api/meta.balance.roulette.skill`. A target → its own odds 「🎯 10 → 명중 25% · ±1 35% ·
+ * ±2 22% · ±3 12% · ±4 6%」 (shares by distance; a miss past 1 / 10 bounces back). No target: one table for every
+ * number → 「정확히 50% · ±1 40% · ±2 10%」; per-target tables → 「작은 숫자일수록 정확해요 · 🎯1 명중 60% … 🎯10 명중 25%
+ * (±4칸까지)」.
+ */
+export function jitterHint(meta = null, target = null) {
+  const cfg = skillCfg(meta);
+  const t = Number.isInteger(target) && target >= 1 && target <= 10 ? target : null;
+  const shares = (r) => r.shares.filter((x) => x.p > 0.004).map((x) => (x.offset === 0 ? null : `±${x.offset} ${pct(x.p)}`)).filter(Boolean);
+  if (t != null) {
+    const r = aimRisk(t, cfg);
+    return [`🎯 ${t} → 명중 ${pct(r.hit)}`, ...shares(r)].join(' · ');
+  }
+  if (!perTarget(meta)) {
+    const r = aimRisk(5, cfg);
+    return r.shares.filter((x) => x.p > 0.004).map((x) => (x.offset === 0 ? `정확히 ${pct(x.p)}` : `±${x.offset} ${pct(x.p)}`)).join(' · ');
+  }
+  const lo = aimRisk(1, cfg);
+  const hi = aimRisk(10, cfg);
+  return `작은 숫자일수록 정확해요 · 🎯1 명중 ${pct(lo.hit)} … 🎯10 명중 ${pct(hi.hit)} (±${hi.spread}칸까지)`;
+}
+
+/** 「🎯 10: 명중 25% · ±4칸까지 빗나갈 수 있어요」 (「…: 명중 60% · ±2칸까지」 for precise small numbers). */
+export function aimRiskText(meta, target) {
+  if (!Number.isInteger(target)) return '';
+  const r = aimRisk(target, skillCfg(meta));
+  return r.spread >= 3 ? `🎯 ${target}: 명중 ${pct(r.hit)} · ±${r.spread}칸까지 빗나갈 수 있어요` : `🎯 ${target}: 명중 ${pct(r.hit)} · ±${r.spread}칸까지`;
+}
+
+/** Where aiming at `target` can land: [{v, p}] for the 1..10 cells (p = 0 for unreachable numbers) — panel shading. */
+export function aimCells(meta, target) {
+  const d = Number.isInteger(target) ? skillDistribution(target, { ...skillCfg(meta), min: 1, max: 10 }) : {};
+  return Array.from({ length: 10 }, (_, i) => ({ v: i + 1, p: d[i + 1] ?? 0 }));
 }

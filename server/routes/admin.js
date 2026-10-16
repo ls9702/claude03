@@ -8,7 +8,7 @@ import { getBalance, getEras } from '../data/index.js';
 import { WORLD_INFO } from '../game/world.js';
 import { TURN_TIMEOUTS, defaultRoomConfig, finalLengthLimits, loopMeta, minTurnsTable, validateRoomConfig } from '../game/config.js';
 import { adminSummary, adminView } from '../game/view.js';
-import { addCpuCharacter, removeCpuCharacter, setCpuPersonality } from '../game/lobby.js';
+import { addCpuCharacter, removeCpuCharacter, setCpuLevel, setCpuPersonality } from '../game/lobby.js';
 import { cpuMeta } from '../game/cpuHandicap.js';
 import { clientIp, createRateLimiter, sendFail } from './common.js';
 
@@ -229,6 +229,14 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
   // CPU personality (cautious / normal / bold, or 'random' = a different seeded one) — lobby only.
   router.patch('/rooms/:id/cpu/:charId', requireAdmin, withRoom, (req, res) => {
     const r = setCpuPersonality(req.room, req.params.charId, req.body?.personality, Date.now());
+    if (!r.ok) return sendFail(res, r);
+    if (r.changed) store.commit(r.room, r.logs);
+    res.json({ room: adminView(r.changed ? r.room : req.room) });
+  });
+
+  // CPU 난이도 (easy / normal / hard) — lobby only.
+  router.patch('/rooms/:id/cpu-level', requireAdmin, withRoom, (req, res) => {
+    const r = setCpuLevel(req.room, req.body?.level, Date.now());
     if (!r.ok) return sendFail(res, r);
     if (r.changed) store.commit(r.room, r.logs);
     res.json({ room: adminView(r.changed ? r.room : req.room) });

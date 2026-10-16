@@ -14,7 +14,7 @@ import {
   setSavedName,
   setSavedRoomId,
 } from './api.js';
-import { NAME_MAX, cleanName, cpuHandicapText, cpuPersonalityHtml, cpuPersonalityOptions, josa, nameFits, ownerHtml } from './format.js';
+import { NAME_MAX, cleanName, cpuHandicapText, cpuLevelOf, cpuLevelOptions, cpuPersonalityHtml, cpuPersonalityOptions, josa, nameFits, ownerHtml } from './format.js';
 import { bindNameInput } from './ui/nameInput.js';
 import { worldInfo, worldMeta, worldOf } from './shared/world.js';
 import { modeSummary, scrollCue } from './ui/lobbyText.js';
@@ -462,7 +462,8 @@ function renderLobby(room) {
 }
 
 // Stage 9-C: the host (first joined player) adds / removes CPU characters in rooms created with 「CPU 허용」, picks a
-// personality for a new one (🎲 무작위 / 🐢 신중 / 🙂 보통 / 🔥 대담) and changes it per CPU chip (lobby only).
+// personality for a new one (🎲 무작위 / 🐢 신중 / 🙂 보통 / 🔥 대담) and changes it per CPU chip (lobby only); the room's
+// CPU 난이도 (😊 쉬움 / 🙂 보통 / 😈 어려움) has its own picker (PATCH /api/rooms/:id/cpu-level).
 function renderCpuTools(room) {
   let box = $('#cpu-tools');
   const host = playersOnly(room)[0];
@@ -494,6 +495,20 @@ function renderCpuTools(room) {
       }
     });
     box.addEventListener('change', async (ev) => {
+      const lv = ev.target.closest('[data-cpu-level]');
+      if (lv) {
+        lv.disabled = true;
+        try {
+          const res = await api('PATCH', `/api/rooms/${state.room.id}/cpu-level`, { level: lv.value });
+          state.room = res.room;
+          render();
+        } catch (err) {
+          toast(err.message || 'CPU 난이도를 바꾸지 못했어요.', 'error');
+          box.cpuHtml = '';
+          render();
+        }
+        return;
+      }
       const sel = ev.target.closest('[data-cpu-pers]');
       if (!sel) return; // the new-CPU picker just keeps its value
       sel.disabled = true;
@@ -512,8 +527,10 @@ function renderCpuTools(room) {
   const cpus = room.characters.filter((c) => c.ownerId === 'cpu');
   const full = room.characters.length >= room.config.maxCharacters;
   const pick = box.querySelector('[data-cpu-new]')?.value ?? 'random';
-  const handicap = cpuHandicapText(state.meta);
+  const level = cpuLevelOf(room);
+  const handicap = level === 'easy' ? cpuHandicapText(state.meta) : ''; // the handicap exists only at 쉬움
   const html = `
+    <label class="cpu-level"><span>CPU 난이도</span><select data-cpu-level aria-label="CPU 난이도">${cpuLevelOptions(level, state.meta)}</select></label>
     ${cpus.length ? `<div class="cpu-list">${cpus.map(cpuChipHtml).join('')}</div>` : ''}
     <div class="cpu-add">
       <select data-cpu-new aria-label="새 CPU 성향" title="새 CPU의 성향">${cpuPersonalityOptions(pick)}</select>
@@ -521,7 +538,7 @@ function renderCpuTools(room) {
     </div>
     <small class="muted cpu-hint">🐢 신중 = 돈을 아끼고 모험을 피해요 · 🙂 보통 · 🔥 대담 = 도박·투자를 좋아해요</small>
     ${handicap ? `<small class="muted cpu-hint">${esc(handicap)}</small>` : ''}
-    <small class="muted">방장만 CPU를 넣고 빼거나 성향을 바꿀 수 있어요</small>`;
+    <small class="muted">방장만 CPU를 넣고 빼거나 성향·난이도를 바꿀 수 있어요</small>`;
   // re-render only when something changed (an open picker would close on every lobby update)
   if (box.cpuHtml !== html) {
     box.cpuHtml = html;

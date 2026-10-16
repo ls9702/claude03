@@ -10,6 +10,8 @@ import { addCharacter, addCpuCharacter, joinRoom } from '../server/game/lobby.js
 import { cpuAimScores, cpuDecide, cpuSkillTarget } from '../server/game/cpu.js';
 import { createRng } from '../server/game/rng.js';
 import {
+  aimRisk,
+  jitterFor,
   jitterTable,
   parseTarget,
   reflect,
@@ -22,6 +24,8 @@ import { httpCall, makeRoom, tempDir } from './helpers.js';
 
 const data = gameData();
 const JITTER = data.balance.roulette.skill.jitter;
+/** 「빠를수록 위험」: the per-target tables (balance.roulette.skill.jitterByTarget) + the fallback `jitter`. */
+const SKILL = data.balance.roulette.skill;
 
 function lobby({ rouletteMode = 'skill', cpu = false, seed = 7, mode = 'lifetime' } = {}) {
   let room = makeRoom({ seed });
@@ -88,6 +92,66 @@ test('jitter: seeded samples ≈ 50 / 40 / 10 (middle and edge targets)', () => 
   }
 });
 
+test('빠를수록 위험: per-target tables — small numbers precise, big ones miss wider; exact distributions, reflection, lookup', () => {
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  assert.ok(SKILL.jitterByTarget, 'balance.roulette.skill.jitterByTarget');
+  const risks = Array.from({ length: 10 }, (_, i) => aimRisk(i + 1, SKILL));
+  for (let t = 1; t <= 10; t++) {
+    const d = skillDistribution(t, SKILL);
+    assert.ok(near(Object.values(d).reduce((a, b) => a + b, 0), 1), `t=${t} sums to 1`);
+    for (const v of Object.keys(d).map(Number)) assert.ok(v >= 1 && v <= 10 && Math.abs(v - t) <= risks[t - 1].spread, `t=${t} → ${v}`);
+    const shares = risks[t - 1].shares.reduce((a, x) => a + x.p, 0);
+    assert.ok(near(shares, 1));
+  }
+  // the miss grows with the number: share of exact non-increasing, spread non-decreasing, 10 the widest
+  for (let t = 2; t <= 10; t++) {
+    assert.ok(risks[t - 1].spread >= risks[t - 2].spread, `spread ${t}`);
+    assert.ok(jitterTable(jitterFor(t, SKILL))[0].p <= jitterTable(jitterFor(t - 1, SKILL))[0].p + 1e-12, `exact share ${t}`);
+  }
+  assert.ok(risks[0].spread <= 2 && risks[9].spread >= 4, `1: ±${risks[0].spread}, 10: ±${risks[9].spread}`);
+  assert.ok(risks[9].hit < risks[4].hit && risks[4].hit < risks[0].hit + 1e-12);
+  // aiming 10 never goes past 10 — misses fall short (reflection), so its average roll is below aiming 9's peak … ≈ 8
+  assert.equal(risks[9].high, 10);
+  assert.ok(risks[9].mean < 9 && risks[9].mean > 7.5, `mean of 10: ${risks[9].mean}`);
+  // lookup: exact key, range key, fallback to `jitter`, then the default
+  const cfg = { jitter: { 0: 0.5, 1: 0.5 }, jitterByTarget: { '1-3': { 0: 1 }, 2: { 0: 0.2, 1: 0.8 }, '9-10': { 0: 0 } } };
+  assert.deepEqual(jitterFor(2, cfg), { 0: 0.2, 1: 0.8 }, 'an exact key wins over a range');
+  assert.deepEqual(jitterFor(3, cfg), { 0: 1 });
+  assert.deepEqual(jitterFor(5, cfg), cfg.jitter, 'no entry → jitter');
+  assert.deepEqual(jitterFor(10, cfg), cfg.jitter, 'an empty / invalid entry → jitter');
+  assert.deepEqual(jitterFor(5, {}), { 0: 0.5, 1: 0.4, 2: 0.1 }, 'nothing → the default');
+  assert.deepEqual(skillDistribution(3, cfg), { 3: 1 });
+  // r walks target 10's table in order: exact, −1, +1 (11 → 9), −2, +2 (12 → 8), …
+  const ten = jitterTable(jitterFor(10, SKILL));
+  let acc = 0;
+  for (const { offset, p } of ten) {
+    assert.equal(skillValueFor(10, acc + p / 2, SKILL), reflect(10 + offset, 1, 10));
+    acc += p;
+  }
+});
+
+test('빠를수록 위험: seeded samples follow each target\'s table (targets 1, 7, 10)', () => {
+  const rng = createRng(4242);
+  const N = 12000;
+  for (const t of [1, 7, 10]) {
+    const want = skillDistribution(t, SKILL);
+    const got = {};
+    for (let i = 0; i < N; i++) {
+      const v = skillValue(rng, t, SKILL);
+      got[v] = (got[v] ?? 0) + 1;
+    }
+    for (const v of Object.keys({ ...want, ...got })) assert.ok(Math.abs((got[v] ?? 0) / N - (want[v] ?? 0)) < 0.015, `t=${t} v=${v}: ${(got[v] ?? 0) / N} vs ${want[v] ?? 0}`);
+  }
+  // exactly one draw per skill spin, whatever the target's table
+  for (const t of [1, 6, 10]) {
+    const a = createRng(99);
+    const b = createRng(99);
+    skillValue(a, t, SKILL);
+    b.next();
+    assert.equal(a.state, b.state, `t=${t}`);
+  }
+});
+
 test('targets: parse (1..10 integers only); no number-deck helpers are exported any more', async () => {
   assert.deepEqual([parseTarget(7), parseTarget('3'), parseTarget(0), parseTarget(11), parseTarget(2.5), parseTarget('x'), parseTarget(null)], [7, 3, null, null, null, null, null]);
   const mod = await import('../server/game/roulette.js');
@@ -104,7 +168,7 @@ test('engine: skill spin lands near the target; spun + lastSpin + log carry it; 
   assert.equal(sp.skill, true);
   assert.equal(sp.target, 7);
   assert.equal(sp.input, 'gauge');
-  assert.ok(Math.abs(sp.value - 7) <= 2);
+  assert.ok(Math.abs(sp.value - 7) <= aimRisk(7, SKILL).spread);
   assert.equal(r.room.turn.lastSpin.target, 7);
   assert.equal(r.room.turn.lastSpin.skill, true);
   assert.equal(r.room.characters.find((x) => x.id === c).aimUsed, undefined, 'no used-number tracking');
@@ -139,6 +203,22 @@ test('engine: skill spins through applyAction follow the jitter (seeded samples)
   assert.ok(off[0] / N > 0.4 && off[0] / N < 0.6, `exact ${off[0] / N}`);
   assert.ok(off[1] / N > 0.3 && off[1] / N < 0.5, `±1 ${off[1] / N}`);
   assert.ok(off[2] / N > 0.03 && off[2] / N < 0.18, `±2 ${off[2] / N}`);
+});
+
+test('engine: aiming 10 uses its own wide table (seeded applyAction samples)', () => {
+  const room = started();
+  const c = cur(room);
+  const want = skillDistribution(10, SKILL);
+  const got = {};
+  const N = 200;
+  for (let i = 0; i < N; i++) {
+    const sp = spinOf(applyAction(room, { type: 'spin', characterId: c, target: 10 }, { rng: createRng(5000 + i * 104729), now: 1 }));
+    const v = sp.rolls?.[0] ?? sp.value;
+    got[v] = (got[v] ?? 0) + 1;
+  }
+  for (const v of Object.keys(got)) assert.ok(want[v] > 0, `10 → ${v} is in the table`);
+  assert.ok(Math.abs((got[10] ?? 0) / N - want[10]) < 0.09, `exact ${(got[10] ?? 0) / N} vs ${want[10]}`);
+  assert.ok(((got[9] ?? 0) + (got[8] ?? 0) + (got[7] ?? 0)) / N > 0.45, 'mostly short of 10');
 });
 
 test('engine: invalid / missing target → a plain random spin; random rooms ignore the target', () => {
@@ -259,6 +339,7 @@ test('HTTP: spin {target, input} reaches the engine; /api/meta carries balance.r
   try {
     const meta = (await call('GET', '/api/meta')).json;
     assert.deepEqual(meta.balance.roulette.skill.jitter, JITTER);
+    assert.deepEqual(meta.balance.roulette.skill.jitterByTarget, SKILL.jitterByTarget, 'the client hint reads the per-target tables');
     const login = await call('POST', '/admin/api/login', { body: { password: 'pw' } });
     const cookie = login.headers.get('set-cookie').split(';')[0];
     const bad = await call('POST', '/admin/api/rooms', { cookie, body: { rouletteMode: 'x' } });

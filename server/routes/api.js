@@ -11,6 +11,7 @@ import {
   joinRoom,
   removeCharacter,
   removeCpuCharacter,
+  setCpuLevel,
   setCpuPersonality,
   setReady,
   spectatorFail,
@@ -55,7 +56,7 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, lottoMode, kuji, weed, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, jobs, cpu } = getBalance();
+    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, lottoMode, kuji, weed, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, jobs, cpu, senior } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
@@ -74,7 +75,8 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       // roulette: 실력 모드 jitter; loop maps: salary (용돈), passTile (찬스 광장), chanceBuffs, clubs; final race goalPrizes
       // blue / red cards: cardSources (graduation stat → requirement card), merit (🏅 공적 카드 chances of balance.jobs)
       // 세계 설정: lottoMode (numbers = 전국 로또 | kuji = 쿠지 뽑기, the Chiikawa overlay), kuji (prizes), weed (풀뽑기 검정)
-      balance: { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, lottoMode: lottoMode ?? 'numbers', kuji: kuji ?? null, weed: weed ?? null, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, merit: jobs?.merit ?? null },
+      // 노년 역전: senior (한방역전섬 tiers, 노년 대회 themes / tiers, 경매 hammer — the Chiikawa overlay renames the themes)
+      balance: { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, lottoMode: lottoMode ?? 'numbers', kuji: kuji ?? null, weed: weed ?? null, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, merit: jobs?.merit ?? null, senior: senior ?? null },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
       // CPU players: personalities (lobby / admin pickers) + the handicap against people (lobby hint)
@@ -194,6 +196,17 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
     if (!can.ok) return sendFail(res, can);
     const by = findPlayer(req.room, req.sessionId).name;
     const r = setCpuPersonality(req.room, req.params.charId, req.body?.personality, Date.now(), { by });
+    if (!r.ok) return sendFail(res, r);
+    if (r.changed) store.commit(r.room, r.logs);
+    res.json({ ok: true, room: viewFor(r.changed ? r.room : req.room, req.sessionId) });
+  });
+
+  // CPU 난이도 of the room (easy / normal / hard) — the host, lobby only, rooms with 「CPU 허용」 (same rules).
+  router.patch('/rooms/:id/cpu-level', requireSession, withRoom, (req, res) => {
+    const can = canManageCpu(req.room, req.sessionId);
+    if (!can.ok) return sendFail(res, can);
+    const by = findPlayer(req.room, req.sessionId).name;
+    const r = setCpuLevel(req.room, req.body?.level, Date.now(), { by });
     if (!r.ok) return sendFail(res, r);
     if (r.changed) store.commit(r.room, r.logs);
     res.json({ ok: true, room: viewFor(r.changed ? r.room : req.room, req.sessionId) });

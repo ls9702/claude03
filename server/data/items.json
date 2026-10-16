@@ -1,11 +1,11 @@
 {
-  "_comment": "Stage 7 아이템(상점). 캐릭터당 종류별 1개. price(만원), resale = 최종 정산 때 price × resale을 순자산에 더함, stats = 살 때 한 번 오르는 능력치. effect: carMin(룰렛 1 → 2), salaryBonus(해당 직업 급여 +%), noSeniorStrLoss(노년 이벤트의 체력 감소 무효).",
+  "_comment": "Stage 7 아이템(상점). 캐릭터당 종류별 1개. price(만원), resale = 최종 정산 때 price × resale을 순자산에 더함, stats = 살 때 한 번 오르는 능력치. effect: carMin(룰렛 1 → 2), salaryBonus(해당 직업 급여 +%), noSeniorStrLoss(노년 이벤트의 체력 감소 무효). senior = 노년 활용(노년 골인 경주, server/game/senior.js): use dodge(지출 칸에 멈추면 한 칸 더 가서 피함) · royalty(골인·조기 은퇴 때 지력 × perInt 자서전 인세) · health(지출 칸 손해 × lossMult) · premium(골동품 경매에 이 아이템을 내놓으면 낙찰가 × auctionMult) · lucky(한방역전섬에서 맞히는 숫자 +numbers) · pension(노년 월급날마다 amount + 부상 회복) · guard(지출 칸 손해를 한 번 막음) · busking(노년 월급날마다 매력 × perCharm), theme = 그 아이템이 유리한 노년 대회 종목(balance.senior.contest.themes id, 우승 확률 +itemBonus). seniorDesc = 상점·상세 카드의 「👴 노년 활용」 문구.",
   "items": [
-    { "id": "car", "name": "경차", "icon": "🚗", "desc": "룰렛 1이 나오면 2칸 이동", "price": 300, "resale": 0.5, "effect": { "carMin": 2 } },
-    { "id": "laptop", "name": "노트북", "icon": "💻", "desc": "지력 +1 · 웹툰 작가·유튜버·e스포츠 선수 급여 +10%", "price": 200, "resale": 0.4, "stats": { "int": 1 }, "effect": { "salaryBonus": 0.1, "jobs": ["webtoonist", "youtuber", "esports"] } },
-    { "id": "gym_pass", "name": "헬스 회원권", "icon": "🏋️", "desc": "체력 +1", "price": 150, "resale": 0.2, "stats": { "str": 1 }, "effect": {} },
-    { "id": "designer_bag", "name": "명품 가방", "icon": "👜", "desc": "매력 +1 · 되팔 때 값이 거의 그대로", "price": 400, "resale": 0.9, "stats": { "charm": 1 }, "effect": {} },
-    { "id": "lucky_cat", "name": "복고양이", "icon": "🐱", "desc": "운 +1", "price": 150, "resale": 0.6, "stats": { "luck": 1 }, "effect": {} },
-    { "id": "massage_chair", "name": "안마의자", "icon": "💺", "desc": "노년 이벤트에서 체력이 줄지 않는다", "price": 350, "resale": 0.5, "effect": { "noSeniorStrLoss": true } }
+    { "id": "car", "name": "경차", "icon": "🚗", "desc": "룰렛 1이 나오면 2칸 이동", "seniorDesc": "지출 칸에 멈추면 한 칸 더 달려서 피해요 · 🚗 드라이브 랠리 유리", "price": 300, "resale": 0.5, "effect": { "carMin": 2 }, "senior": { "use": "dodge", "theme": "rally" } },
+    { "id": "laptop", "name": "노트북", "icon": "💻", "desc": "지력 +1 · 웹툰 작가·유튜버·e스포츠 선수 급여 +10%", "seniorDesc": "골인하면 자서전 인세 (지력 × 15만원) · ♟️ 바둑 대회 유리", "price": 200, "resale": 0.4, "stats": { "int": 1 }, "effect": { "salaryBonus": 0.1, "jobs": ["webtoonist", "youtuber", "esports"] }, "senior": { "use": "royalty", "perInt": 15, "theme": "baduk" } },
+    { "id": "gym_pass", "name": "헬스 회원권", "icon": "🏋️", "desc": "체력 +1", "seniorDesc": "지출 칸 손해 절반 · 🏑 게이트볼 대회 유리", "price": 150, "resale": 0.2, "stats": { "str": 1 }, "effect": {}, "senior": { "use": "health", "lossMult": 0.5, "theme": "gateball" } },
+    { "id": "designer_bag", "name": "명품 가방", "icon": "👜", "desc": "매력 +1 · 되팔 때 값이 거의 그대로", "seniorDesc": "골동품 경매에 내놓으면 명품 프리미엄 ×1.5 · 🎤 노래자랑 유리", "price": 400, "resale": 0.9, "stats": { "charm": 1 }, "effect": {}, "senior": { "use": "premium", "auctionMult": 1.5, "theme": "sing" } },
+    { "id": "lucky_cat", "name": "복고양이", "icon": "🐱", "desc": "운 +1", "seniorDesc": "한방역전섬에서 행운의 숫자 +1개 · 🎁 경품 추첨 유리", "price": 150, "resale": 0.6, "stats": { "luck": 1 }, "effect": {}, "senior": { "use": "lucky", "numbers": 1, "theme": "raffle" } },
+    { "id": "massage_chair", "name": "안마의자", "icon": "💺", "desc": "노년 이벤트에서 체력이 줄지 않는다", "seniorDesc": "노년 월급날마다 건강 보너스 +40만원 · 부상 회복 · 🏑 게이트볼 대회 유리", "price": 350, "resale": 0.5, "effect": { "noSeniorStrLoss": true }, "senior": { "use": "pension", "amount": 40, "heal": true, "theme": "gateball" } }
   ]
 }

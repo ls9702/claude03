@@ -183,14 +183,14 @@ function withPrompt(room, kind, charId) {
   return next.turn.pending?.forCharacterIds.includes(charId) ? next : null;
 }
 
-test('cpuDecide answers every registered prompt kind with an enabled option the engine accepts (both levels, every personality)', (t) => {
+test('cpuDecide answers every registered prompt kind with an enabled option the engine accepts (every level, every personality)', (t) => {
   const room = started({ cpus: 3 });
   const core = ['routeChoice', 'groupGift', 'habit', 'exam', 'career', 'military', 'jobOffer', 'jobTile', 'hiddenJobOffer', 'shop', 'holiday'];
   for (const kind of core) assert.ok(PROMPTS[kind], `${kind} registered`);
   const noFixture = new Set();
   for (const kind of Object.keys(PROMPTS)) {
     for (const personality of PERSONALITIES) {
-      for (const opts of [{}, HARD]) {
+      for (const opts of [{}, { level: 'normal' }, HARD]) {
         const charId = 'c1';
         const tag = `${kind}/${personality}/${opts.level ?? 'easy'}`;
         ch(room, charId).cpuPersonality = personality;
@@ -507,7 +507,10 @@ test('CPU handicap: against people a CPU starts with less money, earns less (sal
   off.balance.cpu.handicap.enabled = false;
   assert.equal(cpuHandicap(room, cpu, off), null);
   assert.equal(cpuMeta(off.balance).handicap, null);
-  assert.deepEqual(cpuMeta(data.balance), { personalities: PERSONALITIES, handicap: { startMoneyMult: h.startMoneyMult, incomeMult: h.incomeMult, treasureMult: h.treasureMult } });
+  const m = cpuMeta(data.balance);
+  assert.deepEqual(m.personalities, PERSONALITIES);
+  assert.deepEqual(m.handicap, { startMoneyMult: h.startMoneyMult, incomeMult: h.incomeMult, treasureMult: h.treasureMult });
+  assert.deepEqual(m.levels.map((x) => x.id), ['easy', 'normal', 'hard'], 'CPU 난이도 (test/cpu-level.test.js)');
   // treasures: a CPU's real treasure is appraised × treasureMult (fakes untouched); people / CPU-only rooms unchanged
   assert.equal(treasureValueFor(room, cpu, data, 1000, false), Math.max(5, Math.round((1000 * h.treasureMult) / 5) * 5));
   assert.equal(treasureValueFor(room, cpu, data, 3, true), 3);

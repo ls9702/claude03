@@ -117,3 +117,14 @@ pre.json { max-width: 100%; }
   .rooms td .btn { min-width: 48px; }
 }
 @media (max-width: 400px) { .era-row { grid-template-columns: minmax(0, 1fr) 72px; } }
+
+/* CPU 난이도 picker (host tools / admin room detail): label + select on one line; the option text is long → the select
+   may shrink (min-width 0) instead of widening a 320 px page */
+.cpu-level { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; flex-basis: 100%; min-width: 0; font-size: 0.85rem; font-weight: 700; }
+.cpu-level > span { flex: none; }
+.cpu-level select { flex: 1 1 13em; }
+.cpu-level select, .cpu-level-sel {
+  font: inherit; font-size: 0.85rem; font-weight: 600; min-width: 0; max-width: min(100%, 20em); min-height: 30px; height: 30px;
+  padding: 0 6px; border: 1px solid #cbd5e1; border-radius: 999px; background: #f8fafc; color: inherit; line-height: 1;
+}
+@media (pointer: coarse) { .cpu-level select, .cpu-level-sel { min-height: 40px; height: 40px; font-size: 16px; } }

@@ -97,8 +97,11 @@ test('data: cards.json / items.json / holidays.json schemas, fixed ids, manifest
   for (const j of data.jobs.jobs) assert.equal(byId.get(`icon-job-${j.id.replaceAll('_', '-')}`)?.meta.job, j.id);
   // board: card / shop tiles are live (no placeholder text any more)
   assert.ok(!('card' in data.board.placeholders) && !('shop' in data.board.placeholders));
-  // loop maps: shop tiles are folded into the 찬스 광장 (「구입」 → the shop prompt); no pool draws them any more
-  const pools = [...Object.values(data.board.eras).map((e) => e.pool), ...Object.values(data.board.routePools).map((r) => r.pool), data.board.finalTrack.pool];
+  // loop maps: shop tiles are folded into the 찬스 광장 (「구입」 → the shop prompt); 노년 역전 brought shop tiles back to
+  // the adult loop eras only (청년 / 중년 main pools: items to collect for old age) — never kids eras, routes, the final race
+  const shopPools = Object.entries(data.board.eras).filter(([, e]) => e.pool.some((t) => t.type === 'shop')).map(([id]) => id);
+  assert.deepEqual(shopPools, ['young', 'middle_age']);
+  const pools = [...Object.values(data.board.routePools).map((r) => r.pool), data.board.finalTrack.pool];
   assert.ok(pools.every((p) => !p.some((t) => t.type === 'shop')));
   assert.equal(data.board.tileTypes.pass.name, '찬스 광장');
 });
@@ -317,7 +320,7 @@ test('hand limit 6: the oldest red card is discarded; card tile draws one (sourc
 
 // ---------- shop + items ----------
 
-test('shop: 2 cards + 1 item, buy / leave / coupon / not enough cash / one item of each; item stats + resale', () => {
+test('shop: 1 card + 2 items, buy / leave / coupon / not enough cash / one item of each; item stats + resale', () => {
   const room = youngRoom();
   const c = ch(room, cur(room));
   c.money = 5000;
@@ -325,12 +328,13 @@ test('shop: 2 cards + 1 item, buy / leave / coupon / not enough cash / one item 
   const tx = createTx(room, { rng: fixedRng(), now: 0, data });
   const p = openPrompt(tx, 'shop', c);
   assert.deepEqual(p.options.map((o) => o.id), ['buy:0', 'buy:1', 'buy:2', 'leave']);
-  assert.deepEqual(p.context.offers.map((o) => o.kind), ['card', 'card', 'item']);
+  assert.deepEqual(p.context.offers.map((o) => o.kind), ['card', 'item', 'item']); // 노년 역전: balance.shop {cards 1, items 2}
   assert.equal(p.defaultOptionId, 'leave');
-  // weighted() → first entries: study + insider, item car
-  assert.deepEqual(p.options.slice(0, 3).map((o) => o.cardId ?? o.itemId), ['study', 'insider', 'car']);
+  // weighted() → first entries: study, items car + laptop
+  assert.deepEqual(p.options.slice(0, 3).map((o) => o.cardId ?? o.itemId), ['study', 'car', 'laptop']);
+  assert.match(p.options[1].desc, /👴 노년: 지출 칸/); // 노년 역전: the item's old-age use is on the shop card
   // buy the item
-  let r = act(room, { type: 'choose', characterId: c.id, promptId: p.promptId, optionId: 'buy:2' });
+  let r = act(room, { type: 'choose', characterId: c.id, promptId: p.promptId, optionId: 'buy:1' });
   const bought = r.events.find((e) => e.type === 'itemBought');
   assert.deepEqual([bought.itemId, bought.price, bought.cutin], ['car', 300, true]);
   assert.ok(!r.events.some((e) => e.type === 'promptResolved'), 'itemBought is the anchor');
@@ -341,9 +345,9 @@ test('shop: 2 cards + 1 item, buy / leave / coupon / not enough cash / one item 
   room2.turn.phase = 'awaitSpin';
   const tx2 = createTx(room2, { rng: fixedRng(), now: 0, data });
   const p2 = openPrompt(tx2, 'shop', ch(room2, c.id));
-  assert.equal(p2.options[2].itemId, 'laptop');
+  assert.deepEqual([p2.options[1].itemId, p2.options[2].itemId], ['laptop', 'gym_pass']);
   // laptop: int +1
-  const r2 = act(room2, { type: 'choose', characterId: c.id, promptId: p2.promptId, optionId: 'buy:2' });
+  const r2 = act(room2, { type: 'choose', characterId: c.id, promptId: p2.promptId, optionId: 'buy:1' });
   assert.equal(ch(r2.room, c.id).stats.int, 4);
   // buy a card → cardGained (shop) + promptResolved {result: 'card'}
   const room3 = structuredClone(room2);
@@ -361,8 +365,8 @@ test('shop: 2 cards + 1 item, buy / leave / coupon / not enough cash / one item 
   assert.equal(shopPrice(createTx(room5, { rng: fixedRng(), now: 0, data }), c5, 300), 150);
   const tx5 = createTx(room5, { rng: fixedRng(), now: 0, data });
   const p5 = openPrompt(tx5, 'shop', c5);
-  assert.deepEqual([p5.options[2].price, p5.options[2].basePrice], [150, 300]);
-  const r5 = act(room5, { type: 'choose', characterId: c5.id, promptId: p5.promptId, optionId: 'buy:2' });
+  assert.deepEqual([p5.options[1].price, p5.options[1].basePrice], [150, 300]);
+  const r5 = act(room5, { type: 'choose', characterId: c5.id, promptId: p5.promptId, optionId: 'buy:1' });
   assert.equal(ch(r5.room, c5.id).money, 850);
   assert.ok(!ch(r5.room, c5.id).cards.some((k) => k.id === 'coupon'));
   // not enough cash → disabled option, choosing it is refused

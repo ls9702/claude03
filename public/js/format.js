@@ -188,7 +188,35 @@ export function cpuPersonalityOptions(value = 'random', { random = true } = {}) 
   return list.map((x) => `<option value="${x.id}"${x.id === value ? ' selected' : ''}>${x.icon} ${x.name}</option>`).join('');
 }
 
-/** One line on the CPU handicap against people (`/api/meta.cpu.handicap`), or '' when off. */
+/** CPU 난이도 (room config `cpuLevel`; `/api/meta.cpu.levels` wins): easy = handicap, normal, hard = the old strong CPUs. */
+export const CPU_LEVEL_IDS = ['easy', 'normal', 'hard'];
+export const CPU_LEVEL_INFO = {
+  easy: { id: 'easy', icon: '😊', name: '쉬움', desc: '사람이 거의 이겨요' },
+  normal: { id: 'normal', icon: '🙂', name: '보통', desc: '비슷한 실력' },
+  hard: { id: 'hard', icon: '😈', name: '어려움', desc: '예전의 강한 CPU' },
+};
+/** The room's CPU 난이도 id (missing / unknown → easy, like the server). */
+export const cpuLevelOf = (room) => (CPU_LEVEL_IDS.includes(room?.config?.cpuLevel) ? room.config.cpuLevel : 'easy');
+/** {id, icon, name, desc} of a level (server meta first, else the fallback). */
+export function cpuLevelInfo(id, meta = null) {
+  const own = (meta?.cpu?.levels ?? []).find((x) => x?.id === id);
+  return own ? { ...CPU_LEVEL_INFO[id], ...own } : (CPU_LEVEL_INFO[id] ?? CPU_LEVEL_INFO.easy);
+}
+/** `<option>`s of a CPU 난이도 picker: 「😊 쉬움 (사람이 거의 이겨요)」 … */
+export function cpuLevelOptions(value = 'easy', meta = null) {
+  const ids = (meta?.cpu?.levels ?? []).map((x) => x?.id).filter((id) => CPU_LEVEL_IDS.includes(id));
+  return (ids.length ? ids : CPU_LEVEL_IDS)
+    .map((id) => cpuLevelInfo(id, meta))
+    .map((x) => `<option value="${x.id}"${x.id === value ? ' selected' : ''}>${x.icon} ${esc(x.name)} (${esc(x.desc)})</option>`)
+    .join('');
+}
+/** 「🤖 CPU 😊 쉬움」 (short) / 「😊 쉬움 (사람이 거의 이겨요)」 for a room. */
+export function cpuLevelText(room, meta = null, { short = false } = {}) {
+  const x = cpuLevelInfo(cpuLevelOf(room), meta);
+  return short ? `🤖 CPU ${x.icon} ${x.name}` : `${x.icon} ${x.name} (${x.desc})`;
+}
+
+/** One line on the CPU handicap against people (`/api/meta.cpu.handicap`), or '' when off. Only the easy level has it. */
 export function cpuHandicapText(meta) {
   const h = meta?.cpu?.handicap;
   if (!h) return '';

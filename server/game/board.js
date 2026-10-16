@@ -13,7 +13,9 @@
 // The mode's final era (eras.json `modes.<mode>.finalEra`, senior in lifetime / adult) is NOT a loop: a linear track of
 // `config.finalLength` tiles (start … goal) with no turn limit — the goal race. Mostly good tiles (board.json
 // `finalTrack.pool`, good events only), paydays every payday.min–max tiles, trouble (loss) only at 3 fixed spots (just
-// before / 5 tiles after the last payday, just before the goal), 2–3 인생역전 tiles, no 찬스 광장 / shop.
+// before / 5 tiles after the last payday, just before the goal), one 🏝️ 한방역전섬 (`island`, ~60 % of the way; passing
+// it pauses the move for its prompt like a 찬스 광장 — 노년 역전, senior.js), 1–2 인생역전 tiles, 🏆 노년 대회 / 🔨 골동품
+// 경매 decision tiles in the pool, no 찬스 광장 / shop.
 // Position: { eraIndex, route: 'main'|'love'|'career'|'money', index } — { route: 'main', index: 0 } = the era start.
 // Tile ids are stable: `${eraId}:${route|main}:${index}`.
 import { erasForMode, gameData } from '../data/index.js';
@@ -178,8 +180,15 @@ function buildFinalTrack(era, eraDef, L, bd, cfg, rng) {
   const trouble = [last - 1, last + (ft.troubleAfterPayday ?? 5), goal - 1];
   for (const t of trouble) if (t > 0 && t < goal && !special.has(t)) special.set(t, 'loss');
   const nearPay = (i) => paydays.some((p) => Math.abs(p - i) <= 1);
+  // 노년 역전: one 🏝️ 한방역전섬 near `island.at` of the track (a free tile not next to a payday / trouble spot)
+  if (ft.island) {
+    const want = Math.round(goal * (ft.island.at ?? 0.6));
+    const ok = (i) => i > 1 && i < goal - 1 && !special.has(i) && !nearPay(i) && !special.has(i - 1) && !special.has(i + 1);
+    const cands = [...Array(L).keys()].filter(ok).sort((a, b) => Math.abs(a - want) - Math.abs(b - want) || a - b);
+    if (cands.length) special.set(cands[0], 'island');
+  }
   const rev = Math.max(ft.reversal?.min ?? 2, Math.min(ft.reversal?.max ?? 3, Math.round(L / (ft.reversal?.every ?? 16))));
-  const free = [...Array(L).keys()].filter((i) => i > 1 && !special.has(i) && !nearPay(i));
+  const free = [...Array(L).keys()].filter((i) => i > 1 && !special.has(i) && !nearPay(i) && special.get(i - 1) !== 'island' && special.get(i + 1) !== 'island');
   for (let k = 0; k < rev && free.length; k++) {
     const i = free.splice(rng.int(0, free.length - 1), 1)[0];
     special.set(i, 'reversal');

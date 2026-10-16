@@ -71,7 +71,7 @@
             <option value="skill">실력 모드 (흔들기·타이밍)</option>
           </select>
         </label>
-        <p class="small muted growth-hint">실력 모드: 노린 숫자 50% · ±1 40% · ±2 10%. 매 턴 1~10 중 아무 숫자나 노릴 수 있고, 훈수 베팅은 없어요. 흔들기는 HTTPS 주소에서만 돼요.</p>
+        <p class="small muted growth-hint">실력 모드: 빠를수록 위험! 작은 숫자는 정확하고 큰 숫자일수록 크게 빗나가요 (🎯 1~5 명중 50% · ±2칸까지 … 🎯 10 명중 20% · ±5칸까지). 매 턴 1~10 중 아무 숫자나 노릴 수 있고, 훈수 베팅은 없어요. 흔들기는 HTTPS 주소에서만 돼요.</p>
         <label class="field"><span>MC 등장 빈도 <small class="muted">(🐶 호야 &amp; 봄이)</small></span>
           <select name="mcFrequency">
             <option value="many">많이</option>
@@ -86,6 +86,14 @@
         <p class="small muted growth-hint">켜면 중학생·중년 시대가 열릴 때 설날/추석 미니게임(세뱃돈·잔소리·고스톱)이 한 번씩 열려요.</p>
         <label class="check"><input type="checkbox" name="allowCpu"> CPU 허용</label>
         <p class="small muted growth-hint">켜면 방장(처음 들어온 플레이어)도 로비에서 🤖 CPU 캐릭터를 넣고 뺄 수 있어요. 관리자는 언제나 넣을 수 있고, CPU만 있는 방도 시작할 수 있어요 (TV 데모).</p>
+        <label class="field"><span>CPU 난이도</span>
+          <select name="cpuLevel">
+            <option value="easy" selected>😊 쉬움 (사람이 거의 이겨요)</option>
+            <option value="normal">🙂 보통 (비슷한 실력)</option>
+            <option value="hard">😈 어려움 (예전의 강한 CPU)</option>
+          </select>
+        </label>
+        <p class="small muted growth-hint">쉬움: CPU가 성향대로 엉뚱하게 고르고 돈 핸디캡(시작 자금·수입·보물 감정가 ↓)도 있어요. 보통: 핸디캡 없이 평범한 사람만큼. 어려움: 핸디캡 없이 늘 계산해서 골라요. 로비에서 바꿀 수 있고, CPU끼리만 하는 방엔 핸디캡이 없어요.</p>
         <p class="form-error" role="alert"></p>
         <button class="btn primary block" type="submit">방 만들기</button>
       </form>

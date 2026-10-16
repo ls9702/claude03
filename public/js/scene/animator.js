@@ -27,6 +27,8 @@ export const ANIMATED_EVENTS = new Set([
   'submapEntered', 'submapResult', 'treasureFound',
   // 세계 설정 (🐹 치이카와 모드): 토벌 / 풀뽑기 results (pops over the pawn; their cut-in follows the step)
   'huntResult', 'weedResult',
+  // 노년 역전: 한방역전섬 / 노년 대회 / 경매 results + items' 노년 활용 (pops over the pawn; anchors open their cut-in after the step)
+  'islandResult', 'contestResult', 'auctionResult', 'seniorItem',
 ]);
 
 /**

@@ -2,6 +2,7 @@
 //   modeSummary(room, meta) → {title, extras[], eras[]}  the lobby's mode line: 「인생 전체 · 초기 자금 1,000만원 · 🎯 룰렛 실력 모드」
 //                                                         + the era list 「아기 3턴 · … · 노년 🏁 40칸」 (the world has its own line)
 //   scrollCue({scrollLeft, scrollWidth, clientWidth}) → '' | 'left' | 'right' | 'both'  (which side of a scroller hides more)
+import { cpuLevelText } from '../format.js';
 
 /**
  * @param {object} room  lobby room view (config.mode / eraTurns / finalLength / startingMoney / rouletteMode)
@@ -14,6 +15,8 @@ export function modeSummary(room, meta) {
   const extras = [];
   if (Number.isFinite(cfg.startingMoney)) extras.push(`초기 자금 ${cfg.startingMoney.toLocaleString('ko-KR')}만원`);
   if (cfg.rouletteMode === 'skill') extras.push('🎯 룰렛 실력 모드');
+  // CPU 난이도 — when CPUs may join (「CPU 허용」) or already did
+  if (cfg.allowCpu || room?.characters?.some((c) => c?.ownerId === 'cpu')) extras.push(cpuLevelText(room, meta, { short: true }));
   if (!mode) return { title: String(cfg.mode ?? ''), extras, eras: [] };
   // loop maps: turns per era; the final 노년 era of lifetime / adult mode is a goal race of `finalLength` tiles
   const list = mode.eras.map((id, i) => {

@@ -232,6 +232,11 @@
       "priority": 88,
       "when": {"fact": "bust", "min": 1}
     },
+    {"id": "comeback_king", "name": "노년 대역전극", "icon": "🔥", "desc": "노년 골인 경주를 하위권에서 시작해 1등으로 끝냈다", "priority": 97, "when": {"fact": "comeback", "min": 1}},
+    {"id": "island_jackpot", "name": "인생역전 대박", "icon": "💥", "desc": "한방역전섬에서 인생 한 방을 터뜨렸다", "priority": 92, "when": {"fact": "islandJackpot", "min": 1}},
+    {"id": "jjokbak_master", "name": "쪽박 장인", "icon": "🥔", "desc": "한 방을 노리다 번번이 쪽박을 찼다", "priority": 54, "when": {"fact": "gambleLosses", "min": 2}},
+    {"id": "contest_star", "name": "노인정 스타", "icon": "🏆", "desc": "노년 대회에서 두 번 이상 우승했다", "priority": 44, "when": {"fact": "contestWins", "min": 2}},
+    {"id": "antique_dealer", "name": "골동품 큰손", "icon": "🔨", "desc": "경매로 노후 자금을 두둑이 마련했다", "priority": 43, "when": {"fact": "auctionTotal", "min": 500}},
     {"id": "ordinary", "name": "평범한 인생", "icon": "🙂", "desc": "별일 없이 무난하게 살았다", "priority": 0, "fallback": true}
   ]
 }

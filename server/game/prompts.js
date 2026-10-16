@@ -30,6 +30,8 @@ export const ANCHOR_TYPES = new Set([
   'submapResult', 'treasureFound', 'mvpDecided',
   // 세계 설정 (치이카와 모드): 토벌 / 풀뽑기 검정 results
   'huntResult', 'weedResult',
+  // 노년 역전: 한방역전섬 / 노년 대회 / 골동품 경매 results
+  'islandResult', 'contestResult', 'auctionResult',
 ]);
 
 /** Open a prompt → turn.pending, phase awaitDecision (CPU characters answer via the runner: cpu.js). */

@@ -14,13 +14,14 @@
 // Nobody bets, offers trades or gives gifts (CPUs never do; the proxies don't either). Humans and CPUs are spread
 // over the seats and the seats ROTATE from game to game (turn order `index`), so nobody keeps the better seat.
 // `--cpu-personality cautious|normal|bold|mix|random` (default random = the seeded pick of a real room; mix =
-// cautious / normal / bold rotated over the CPU slots), `--cpu-level easy|hard` (default easy = the real CPUs),
+// cautious / normal / bold rotated over the CPU slots), `--cpu-level easy|normal|hard` = the room's CPU 난이도 (config
+// `cpuLevel`; default easy = the real CPUs + the money handicap, normal / hard = no handicap),
 // `--roulette skill`, `--mode lifetime|adult|kids`, `--workers N` (worker threads; same results as 1),
 // `--world real|chiikawa` (세계 설정; default real so the older numbers stay comparable).
 // Prints ≤ 5 games in detail (or with --verbose) and a summary: human 1st-place share, CPU 1st-place share by
 // personality, average rank / total per side, CPU jobs / routes / education.
 // Importable: `playCpuGame(opts)`, `cpuVsHumans(opts)`, `cpuVsRandom(opts)` (legacy), `targetMatrix(opts)`,
-// `humanAction(policy, room, charId, rng, data)`, `HUMAN_POLICIES`, `TARGETS`.
+// `humanAction(policy, room, charId, rng, data)`, `HUMAN_POLICIES`, `TARGETS`, `levelTargets(level)`. `--matrix --only casual1,random1,expert1` = only those rows.
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { getRoster } from '../server/data/index.js';
@@ -101,7 +102,8 @@ export function seatPlan(n, humans, shift = 0) {
 }
 
 /**
- * One headless game. CPU characters (owner 'cpu') use `cpuDecide` (`cpuLevel`, default the real CPUs); `humans`
+ * One headless game. CPU characters (owner 'cpu') use `cpuDecide` at the room's CPU 난이도 (`cpuLevel` → room config
+ * `cpuLevel`, default easy = the real CPUs + handicap); `humans`
  * characters (sessions h1…) play `humanPolicy`. `randoms` (legacy) = extra random-policy humans. `seat` rotates the
  * seats (default 0: humans first). `cpuPersonality`: a personality for every CPU, 'mix' (rotated over the CPU
  * slots and `seat`) or undefined / 'random' (the lobby's seeded pick).
@@ -116,7 +118,7 @@ export function playCpuGame({ cpus = 4, humans = 0, humanPolicy = 'random', rand
   if (!HUMAN_POLICIES.includes(humanPolicy)) throw new Error(`--human-policy ${HUMAN_POLICIES.join('|')} (got ${humanPolicy})`);
   const meta = createRng(seed * 2654435761);
   const n = cpus + humans;
-  const v = validateRoomConfig({ mode, maxCharacters: Math.min(8, Math.max(2, n)), turnOrder: 'index', holidays, rouletteMode: roulette, world, ...(eraTurns ? { eraTurns } : {}) });
+  const v = validateRoomConfig({ mode, maxCharacters: Math.min(8, Math.max(2, n)), turnOrder: 'index', holidays, rouletteMode: roulette, world, ...(cpuLevel ? { cpuLevel } : {}), ...(eraTurns ? { eraTurns } : {}) });
   if (!v.ok) throw new Error(v.errors.join(' '));
   let room = { id: `cpu${seed}`, code: 'CPUCPU', status: 'lobby', config: { ...v.config, allowCpu: true }, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
   // legacy layout (seat null, random humans): CPU and human alternate, CPU first — as before
@@ -143,14 +145,13 @@ export function playCpuGame({ cpus = 4, humans = 0, humanPolicy = 'random', rand
   const started = startGame(room, { now, data });
   if (!started.ok) throw new Error(started.error);
   room = started.room;
-  const level = cpuLevel ? { level: cpuLevel } : {};
   let actions = 0;
   while (room.status === 'playing') {
     if (++actions > MAX_ACTIONS) throw new Error(`cpu game ${seed} stuck after ${actions} actions`);
     const p = room.turn.pending;
     const id = p ? p.forCharacterIds.find((x) => !Object.hasOwn(p.answers, x)) : room.turn.order[room.turn.currentIndex];
     const c = room.characters.find((x) => x.id === id);
-    const action = isCpu(c) ? cpuDecide(room, id, data, level) : humanAction(humanPolicy, room, id, meta, data);
+    const action = isCpu(c) ? cpuDecide(room, id, data) : humanAction(humanPolicy, room, id, meta, data); // the room's CPU 난이도
     if (!action) throw new Error(`no action for ${id} (game ${seed})`);
     now += 1000;
     room = applyAction(room, action, { now, data }).room;
@@ -304,7 +305,7 @@ export function cpuVsRandom({ games = 100, seed = 1, cpus = 4, randoms = 4, mode
   return { games, cpuWinShare: s.cpuWins / games, avgRank: { cpu: s.avgRank.cpu, random: s.avgRank.human }, avgTotal: { cpu: s.avgTotal.cpu, random: s.avgTotal.human } };
 }
 
-/** The CPU-strength targets (docs/HANDOFF.md 5-1): human 1st-place share ≥ `min`. */
+/** The CPU-strength targets of the easy level (docs/HANDOFF.md 5-1): human 1st-place share ≥ `min`. */
 export const TARGETS = [
   { key: 'casual1', label: '평범한 사람 1 + CPU 3', humans: 1, cpus: 3, humanPolicy: 'casual', min: 0.9 },
   { key: 'random1', label: '무작위 사람 1 + CPU 3', humans: 1, cpus: 3, humanPolicy: 'random', min: 0.75 },
@@ -314,19 +315,32 @@ export const TARGETS = [
 ];
 
 /**
- * Every target in lifetime mode, the casual 1 + 3 case in adult / kids / skill-roulette rooms and against each CPU
- * personality alone. @returns [{label, mode, roulette, personality, min?, summary}]
+ * The targets of a CPU 난이도: easy = TARGETS (people win ≥ 90 % …); normal = 「비슷한 실력」: a casual person 1 + 3 CPUs
+ * wins 25–45 % (fair 25 %), the rest are reported without a target; hard = no target (the old strong CPUs: people lose
+ * most games).
  */
-export async function targetMatrix({ games = 300, seed = 1, workers = 1, cpuLevel, extra = true, world = 'real' } = {}) {
+export function levelTargets(level = 'easy') {
+  if (level === 'normal') return TARGETS.map((t) => (t.key === 'casual1' ? { ...t, min: 0.25, max: 0.45 } : { ...t, min: undefined }));
+  if (level === 'hard') return TARGETS.map((t) => ({ ...t, min: undefined }));
+  return TARGETS;
+}
+
+/**
+ * Every target in lifetime mode, the casual 1 + 3 case in adult / kids / skill-roulette rooms and against each CPU
+ * personality alone (`only` = target keys → just those lifetime rows, no extras). @returns [{label, mode, roulette,
+ * personality, min?, max?, summary}]
+ */
+export async function targetMatrix({ games = 300, seed = 1, workers = 1, cpuLevel, extra = true, world = 'real', only = null } = {}) {
   const rows = [];
+  const targets = levelTargets(cpuLevel ?? 'easy');
   const run = async (row) => rows.push({ ...row, summary: await cpuVsHumans({ games, seed, workers, cpuLevel, world, ...row }) });
-  for (const t of TARGETS) await run({ ...t, mode: 'lifetime', roulette: 'random' });
-  if (extra) {
-    const casual = TARGETS[0];
+  for (const t of targets) if (!only || only.includes(t.key)) await run({ ...t, mode: 'lifetime', roulette: 'random' });
+  if (extra && !only) {
+    const casual = targets[0];
     for (const mode of ['adult', 'kids']) await run({ ...casual, mode, roulette: 'random' });
     await run({ ...casual, mode: 'lifetime', roulette: 'skill' });
-    await run({ ...TARGETS[1], mode: 'lifetime', roulette: 'skill' });
-    for (const p of PERSONALITIES) await run({ ...casual, mode: 'lifetime', roulette: 'random', cpuPersonality: p, min: undefined });
+    await run({ ...targets[1], mode: 'lifetime', roulette: 'skill' });
+    for (const p of PERSONALITIES) await run({ ...casual, mode: 'lifetime', roulette: 'random', cpuPersonality: p, min: undefined, max: undefined });
   }
   return rows;
 }
@@ -372,13 +386,14 @@ async function main() {
   const cpuLevel = arg('cpu-level', undefined);
   if (arg('matrix', false)) {
     const t0 = performance.now();
-    const rows = await targetMatrix({ games: Number(arg('games', 300)), seed, workers, cpuLevel, world });
+    const only = typeof arg('only', null) === 'string' ? String(arg('only')).split(',') : null; // e.g. --only casual1,random1,expert1
+    const rows = await targetMatrix({ games: Number(arg('games', 300)), seed, workers, cpuLevel, world, only });
     console.log(`\n=== CPU 세기 목표 (${Number(arg('games', 300))}판 × seed ${seed} · 세계 ${world}${cpuLevel ? ` · CPU ${cpuLevel}` : ''} · ${((performance.now() - t0) / 1000).toFixed(0)}초) ===`);
     for (const r of rows) {
       const s = r.summary;
-      const ok = r.min == null ? '  ' : s.humanWinShare >= r.min ? '✅' : '❌';
+      const ok = r.min == null ? '  ' : s.humanWinShare >= r.min && (r.max == null || s.humanWinShare <= r.max) ? '✅' : '❌';
       const tag = `${r.label} · ${r.mode}${r.roulette === 'skill' ? ' · 실력 룰렛' : ''}${r.cpuPersonality ? ` · CPU 전원 ${PERS_KO[r.cpuPersonality]}` : ''}`;
-      console.log(`${ok} ${tag.padEnd(44)} 사람 1위 ${pct(s.humanWinShare).padStart(6)}${r.min != null ? ` (목표 ≥ ${pct(r.min)})` : ''} · 평균 순위 사람 ${s.avgRank.human.toFixed(2)} / CPU ${s.avgRank.cpu.toFixed(2)} · 총자산 사람 ${s.avgTotal.human.toFixed(0)} / CPU ${s.avgTotal.cpu.toFixed(0)}`);
+      console.log(`${ok} ${tag.padEnd(44)} 사람 1위 ${pct(s.humanWinShare).padStart(6)}${r.min != null ? ` (목표 ${r.max != null ? `${pct(r.min)}~${pct(r.max)}` : `≥ ${pct(r.min)}`})` : ''} · 평균 순위 사람 ${s.avgRank.human.toFixed(2)} / CPU ${s.avgRank.cpu.toFixed(2)} · 총자산 사람 ${s.avgTotal.human.toFixed(0)} / CPU ${s.avgTotal.cpu.toFixed(0)}`);
     }
     return;
   }

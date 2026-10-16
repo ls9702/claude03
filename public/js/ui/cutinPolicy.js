@@ -21,6 +21,7 @@
 import { isCardAnchor, isHuntRunEvent } from './cutinMap.js';
 import { isSubmapBig, isSubmapPass } from '../shared/submaps.js';
 import { isHuntBig, isKujiBig, isKujiDraw, isWeedBig, isWeedWork } from '../shared/worldPlay.js';
+import { isAuctionBig, isContestBig, isIslandBig, isSeniorPass } from '../shared/seniorPlay.js';
 
 /** 「관전 컷인」 setting: full cut-ins for everything / small banners for other players' minor events / none. */
 export const CUTIN_MODES = ['full', 'compact', 'off'];
@@ -94,7 +95,7 @@ export function isWeedWorkGroup(g) {
 /** 찬스 광장: 「그냥 지나가기」 / 나가기 results. */
 export const isPassSkip = (a) => a?.type === 'promptResolved' && a.kind === 'passTile' && ['passed', 'left', 'pass', 'skip'].includes(String(a.result ?? ''));
 /** Always a small banner (also for my own characters): 전역 (Stage 6); card gained / plain card use / gift / trade (Stage 7). */
-export const BANNER_TYPES = ['militaryEnd', 'cardGained', 'cardLost', 'gift', 'tradeResolved', 'chanceBuff'];
+export const BANNER_TYPES = ['militaryEnd', 'cardGained', 'cardLost', 'gift', 'tradeResolved', 'chanceBuff', 'seniorItem'];
 /** Stage 7: global shows that wait until my pending prompt is answered instead of shrinking to a banner. */
 export const DEFER_TYPES = ['lottoDraw', 'holidayResult'];
 
@@ -105,6 +106,7 @@ export function isBannerGroup(g) {
   if (isHuntRunEvent(a)) return true; // 세계 설정: ran away from a 토벌
   if (isSubmapPass(a)) return true; // Stage 9: 지나가기 / 그냥 나가기 at a submap
   if (isPassSkip(a)) return true; // loop maps: 찬스 광장 그냥 지나가기
+  if (isSeniorPass(a)) return true; // 노년 역전: 한방역전섬 「욕심 버리기」, 노년 대회 / 경매 구경
   if (a.type === 'cardUsed') return !isCardAnchor(a);
   return BANNER_TYPES.includes(a.type);
 }
@@ -127,6 +129,10 @@ export function isBigGroup(g) {
   // 세계 설정: 데카츠요 토벌 / 풀뽑기 1급 / 쿠지 1등
   if (a.type === 'huntResult') return isHuntBig(a);
   if (a.type === 'weedResult') return isWeedBig(a);
+  // 노년 역전: 한방역전섬 대박 / 쪽박, a 본선 우승, a ×2.2+ hammer
+  if (a.type === 'islandResult') return isIslandBig(a);
+  if (a.type === 'contestResult') return isContestBig(a);
+  if (a.type === 'auctionResult') return isAuctionBig(a);
   if (a.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType)) return true;
   if (a.type === 'landed' && MINOR_TILE_TYPES.includes(a.tileType)) return false;
   if (BIG_TAG.test(String(a.mcKey ?? '')) || BIG_TAG.test(String(a.lineTag ?? ''))) return true;
@@ -263,6 +269,8 @@ const ANCHOR_RANK = {
   submapResult: 6, treasureFound: 5,
   // 세계 설정
   huntResult: 6, weedResult: 4,
+  // 노년 역전
+  islandResult: 8, contestResult: 5, auctionResult: 4, seniorItem: 0,
 };
 const rankOf = (a) => (a?.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType) ? 4 : ANCHOR_RANK[a?.type] ?? 0);
 

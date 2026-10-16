@@ -8,7 +8,9 @@ import {
   INPUT_KEY,
   SHAKE,
   accelToTarget,
+  aimCells,
   aimGrade,
+  aimRiskText,
   aimShort,
   aimText,
   createShakeMeter,
@@ -24,6 +26,31 @@ import {
   shakeSupport,
   sweepDuration,
 } from '../public/js/ui/rouletteSkill.js';
+
+test('빠를수록 위험: per-target odds for the panel (the server meta tables), landing cells, risk line', () => {
+  const balance = JSON.parse(readFileSync(new URL('../server/data/balance.json', import.meta.url)));
+  const meta = { balance: { roulette: balance.roulette } };
+  const skill = balance.roulette.skill;
+  // no aimed number yet: the general line (small precise … 10 wide)
+  assert.match(jitterHint(meta), /^작은 숫자일수록 정확해요 · 🎯1 명중 \d+% … 🎯10 명중 \d+% \(±\d칸까지\)$/);
+  // an aimed number: its own shares by distance
+  const ten = jitterHint(meta, 10);
+  assert.match(ten, /^🎯 10 → 명중 \d+% · ±1 \d+% · ±2 \d+% · ±3 \d+%/);
+  const pct = (x) => Math.round(100 * x);
+  assert.ok(ten.includes(`±1 ${pct(skill.jitterByTarget['10']['1'])}%`), ten);
+  const one = jitterHint(meta, 1);
+  assert.ok(!one.includes('±3'), `small numbers stay within ±2: ${one}`);
+  assert.match(aimRiskText(meta, 10), /^🎯 10: 명중 \d+% · ±[4-9]칸까지 빗나갈 수 있어요$/);
+  assert.match(aimRiskText(meta, 2), /^🎯 2: 명중 \d+% · ±2칸까지$/);
+  assert.equal(aimRiskText(meta, null), '');
+  // landing cells: 10 numbers, chances sum to 1, never above 10, 10 reaches further down than 5
+  const cells = aimCells(meta, 10);
+  assert.deepEqual(cells.map((c) => c.v), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.ok(Math.abs(cells.reduce((a, c) => a + c.p, 0) - 1) < 1e-9);
+  const low = (t) => aimCells(meta, t).find((c) => c.p > 0).v;
+  assert.ok(10 - low(10) > 5 - low(5), 'a wider miss for 10');
+  assert.ok(aimCells(meta, null).every((c) => c.p === 0));
+});
 
 test('shake availability: secure context + DeviceMotionEvent (+ iOS permission) — reasons in Korean', () => {
   function DME() {}
@@ -131,6 +158,7 @@ test('display + preference helpers (no number deck)', async () => {
   for (const k of ['deckInfo', 'availableTargets', 'snapTarget']) assert.equal(mod[k], undefined, `${k} removed with the number deck`);
   assert.equal(jitterHint(null), '정확히 50% · ±1 40% · ±2 10%');
   assert.equal(jitterHint({ balance: { roulette: { skill: { jitter: { 0: 0.4, 1: 0.4, 2: 0.2 } } } } }), '정확히 40% · ±1 40% · ±2 20%');
+  assert.equal(aimText({ skill: true, target: 10, value: 7 }), '🎯 목표 10 → 결과 7 (3칸 빗나감)', 'a miss of 2+ says how far');
   const mem = new Map();
   const store = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
   assert.equal(loadInputPref(store), null);

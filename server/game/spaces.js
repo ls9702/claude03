@@ -15,6 +15,7 @@ import { SUBMAPS, resolveSubmapTile } from './submaps.js';
 import { resolveTreasureTile } from './treasures.js';
 import { resolvePassTile } from './passTile.js';
 import { resolveHuntTile, resolveWeedTile } from './hunt.js'; // 세계 설정: 토벌 / 풀뽑기 검정 (치이카와 모드 pools)
+import { resolveSeniorTile, seniorLoss, seniorPayday } from './senior.js'; // 노년 역전: 한방역전섬 / 노년 대회 / 골동품 경매 + item uses
 
 export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
@@ -199,7 +200,10 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       return null;
     }
     case 'loss': {
-      const { amount, debt: newDebt } = applyLoss(tx, c, round5(tile.amount * effectsFor(tx, c).lossMult), 'tile', { tileId: tile.id, emotion: 'cry', tone: 'bad' });
+      // 노년 역전: the final race's 지출 — 🛡️ guard / 💪 health items (senior.js) cut it before the insurance card
+      const due = seniorLoss(tx, c, round5(tile.amount * effectsFor(tx, c).lossMult));
+      if (!(due > 0)) return null;
+      const { amount, debt: newDebt } = applyLoss(tx, c, due, 'tile', { tileId: tile.id, emotion: 'cry', tone: 'bad' });
       c.badEvents = (c.badEvents ?? 0) + 1;
       addLog(tx, `💸 ${c.name}: ${tile.label}… -${won(amount)}${newDebt > 0 ? ` (빚 ${won(newDebt)} 발생)` : ''}`, {
         tone: 'bad',
@@ -215,6 +219,7 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
       return 'prompt';
     case 'salary': // loop maps: 월급날 (a forced stop)
       payday(tx, c);
+      seniorPayday(tx, c); // 노년 역전: ♨️ 건강 보너스 / 🎸 버스킹 in the final race
       return null;
     case 'pass': // loop maps: 찬스 광장
       return resolvePassTile(tx, c, tile) ? 'prompt' : null;
@@ -238,6 +243,10 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
     case 'jeju':
     case 'reversal':
       return resolveSubmapTile(tx, c, tile) ? 'prompt' : null;
+    case 'island': // 노년 역전: 🏝️ 한방역전섬 (passing it is handled by the engine's walk, like 찬스 광장)
+    case 'contest': // 🏆 노년 대회
+    case 'auction': // 🔨 골동품 경매
+      return resolveSeniorTile(tx, c, tile) ? 'prompt' : null;
     case 'hunt': // 세계 설정 (치이카와 모드): 토벌 — ⚔️ 싸운다 / 🏃 도망친다
       return resolveHuntTile(tx, c) ? 'prompt' : null;
     case 'weed': // 세계 설정 (치이카와 모드): 풀뽑기 검정소 — 🌿 일하기 / 📝 검정 응시

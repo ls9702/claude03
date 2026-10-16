@@ -19815,6 +19815,75 @@
       }
     },
     {
+      "id": "bg-island",
+      "kind": "bg",
+      "label": "컷인 배경 · 한방역전섬",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a small tropical gamble island at sunset: palm trees, a giant colorful roulette wheel standing on the beach, a wooden pier with a little boat, sparkling sea, lanterns and confetti in the air. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/island.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "island"
+      }
+    },
+    {
+      "id": "bg-farm",
+      "kind": "bg",
+      "label": "컷인 배경 · 빈곤 농장",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a humble but cozy poverty farm: a small wooden shack, a muddy potato field with a few sprouts, a scarecrow, a rusty watering can and a gray drizzly sky, slightly funny and sad. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/farm.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "farm"
+      }
+    },
+    {
+      "id": "bg-auction",
+      "kind": "bg",
+      "label": "컷인 배경 · 경매장",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a warm antique auction hall: a wooden podium with a gavel, velvet curtains, rows of chairs, display stands with old vases, clocks and paintings, soft spotlights. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/auction.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "auction"
+      }
+    },
+    {
       "id": "monster-small-chimera",
       "kind": "item",
       "label": "토벌 키메라 · 꼬마 키메라",

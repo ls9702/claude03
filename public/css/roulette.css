@@ -35,6 +35,13 @@
 .sk-cells.gauge .sk-cell.hot { background: #ffd166; transform: translateY(-2px); }
 .sk-cells.meter .sk-cell.lit { background: linear-gradient(180deg, #ff9a4a, #ff6a2f); color: #fff; }
 .sk-cell.pick { background: var(--ok) !important; color: #fff !important; transform: scale(1.12); }
+/* 「빠를수록 위험」: where the aimed number can land — a bar under each reachable cell, height = chance (--p) */
+.sk-cell { position: relative; }
+.sk-cell.reach::after {
+  content: ''; position: absolute; left: 18%; right: 18%; bottom: 2px;
+  height: calc(2px + var(--p, 0) * 14px); border-radius: 2px;
+  background: #ff8a3d; opacity: 0.85; pointer-events: none;
+}
 .sk-gauge { position: relative; padding-top: 14px; }
 .sk-needle {
   position: absolute; top: 0; bottom: -6px; width: 0; left: 0;
@@ -49,6 +56,7 @@
 .sk-status { text-align: center; font-weight: 700; margin: 0; }
 .sk-status.sk-na { color: var(--danger); }
 .sk-tip, .sk-odds { text-align: center; margin: 4px 0 0; }
+.sk-odds { min-height: 2.7em; } /* the odds of the number under the needle: 1–2 lines → no height jump while aiming */
 .sk-result { text-align: center; font-size: 1.3rem; font-weight: 900; margin: 6px 0 0; color: var(--ok); }
 .sk-warn {
   margin: 6px 0 0; padding: 6px 8px; border-radius: 8px; text-align: center; font-weight: 800;

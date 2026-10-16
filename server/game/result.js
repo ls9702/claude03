@@ -5,7 +5,7 @@ import { EngineError, emit, netWorth } from './effects.js';
 import { itemsValue } from './cards.js';
 import { houseValue } from './houses.js';
 import { revealTreasures, treasureValue } from './treasures.js';
-import { awardBonusByChar, computeAwards, computeTitles } from './awards.js';
+import { awardBonusByChar, comebackOf, computeAwards, computeTitles } from './awards.js';
 import { topHighlights } from './highlights.js';
 
 /**
@@ -74,6 +74,14 @@ export function applyResult(room, now, { forced = false, data = null } = {}) {
   }
   // award rows carry the recipients' names for the result screen
   const titles = computeTitles(room, data, { ranking });
+  // 노년 역전: a winner from the bottom half of the final race's starting standing → a highlight + the result show's comeback duo
+  const comeback = comebackOf(room, ranking);
+  if (comeback) {
+    const c = room.characters.find((x) => x.id === comeback.charId);
+    const list = ((room.highlights ??= {})[comeback.charId] ??= []);
+    const seq = (room.highlightSeq = (room.highlightSeq ?? 0) + 1);
+    list.push({ seq, turnNo: room.turn?.turnNo ?? 0, type: 'comeback', text: `🔥 노년 시작 ${comeback.from}위에서 대역전 1위!`, tone: 'result', scene: 'stage', emotion: 'joy', era: c?.era ?? null, score: 9.5, eventRef: { type: 'comeback', charId: comeback.charId, from: comeback.from, n: comeback.n } });
+  }
   const voteMs = data.balance.result?.mvpVoteMs ?? 60000;
   room.status = 'finished';
   room.finishedAt = now;
@@ -86,6 +94,7 @@ export function applyResult(room, now, { forced = false, data = null } = {}) {
     mvp: { votes: {}, winner: null, closesAt: now + voteMs, closed: false },
     finishedAt: now,
     forced,
+    comeback,
   };
   if (!mvpVoters(room).length) decideMvp(room, now, { note: 'noVoters' });
   if (room.turn) {

@@ -29,6 +29,8 @@ import { raceGateHtml, raceHtml, submapOptionsHtml, submapSceneBody, treasureArt
 import { buffText, eraClock, eraClockText, passOptionExtras } from '../shared/loop.js';
 import { huntOutcome, isKujiDraw, kujiRows, kujiSummary, monsterInfo, weedGrade, weedOutcome, weedPrompt } from '../shared/worldPlay.js';
 import { gradeBadgeHtml, kujiBoxSvg, kujiPlushHtml, kujiTicketHtml, monsterArtHtml, passStampHtml, powerStars, worldOptionsHtml, worldSceneBody } from './worldArt.js';
+import { auctionOutcome, contestOutcome, islandOutcome, islandPickPrompt, seniorItemText } from '../shared/seniorPlay.js';
+import { hammerBoardHtml, islandWheelHtml, seniorOptionsHtml, seniorSceneBody, trophyHtml } from './seniorArt.js';
 
 const REASON_ICON = {
   tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', passTile: '🎪', wish: '🙏', habit: '📚', tuition: '🎓', military: '🪖',
@@ -39,6 +41,8 @@ const REASON_ICON = {
   wedding: '🎉', weddingGift: '💌', dolGift: '🎂', date: '💑', house: '🏠', houseSold: '🔁', allowance: '💌', school: '🎒', childExam: '🏆', spouse: '🏠', birth: '🐣', birthBonus: '🐾', family: '🐾',
   // 세계 설정 (🐹 치이카와 모드): 토벌 보수 / 손해, 풀뽑기 보수 / 검정 응시료, 쿠지 상금
   hunt: '⚔️', weed: '🌿', weedFee: '📝', kuji: '🎟️',
+  // 노년 역전: 한방역전섬 판돈 / 대박, 노년 대회 참가비 / 상금, 경매 낙찰가, 아이템 노년 활용 수입
+  island: '🏝️', contest: '🏆', auction: '🔨', seniorItem: '👴',
 };
 /** Stage 6 anchors → presentation defaults (the server's tone / scene / emotion win when set). */
 const STAGE6_LOOK = {
@@ -177,6 +181,34 @@ function worldLook(a) {
 }
 
 /**
+ * 노년 역전 anchors → presentation defaults (server tone / scene / emotion win): 한방역전섬 대박 (jump + gold) / 적중 (cheer) / 꽝
+ * (sweat) / 쪽박 (cry, 빈곤 농장) / 조기 은퇴 (wave), 노년 대회 우승 (cheer + 🏆) / 입상 / 탈락, 경매 낙찰 (big hammer = jump) / 가짜.
+ */
+function seniorLook(a) {
+  if (a?.type === 'islandResult') {
+    const o = islandOutcome(a);
+    if (o.retire) return { tone: 'result', scene: 'island', pose: 'wave', emotion: 'joy', sfx: 'fanfare', glyph: '🏖️' };
+    if (o.jackpot) return { tone: 'treasure', scene: 'island', pose: 'jump', emotion: 'shock', sfx: 'fanfare', glyph: '💥', bigWin: true, fx: 'gold' };
+    if (o.bust) return { tone: 'bad', scene: 'farm', pose: 'cry', emotion: 'cry', sfx: 'tears', glyph: '🌾' };
+    return o.win ? { tone: 'treasure', scene: 'island', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🎯' } : { tone: 'bad', scene: 'island', pose: 'cry', emotion: 'sweat', sfx: 'thud', glyph: '💸' };
+  }
+  if (a?.type === 'contestResult') {
+    return a.place === 1
+      ? { tone: 'result', scene: 'stage', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '🏆', bigWin: a.tier === 'big' }
+      : a.place === 2
+        ? { tone: 'good', scene: 'stage', pose: 'wave', emotion: 'joy', sfx: 'pop', glyph: '🥈' }
+        : { tone: 'neutral', scene: 'stage', pose: 'cry', emotion: 'sweat', sfx: 'thud', glyph: null };
+  }
+  if (a?.type === 'auctionResult') {
+    const o = auctionOutcome(a);
+    if (o.fake) return { tone: 'neutral', scene: 'auction', pose: 'shock', emotion: 'shock', sfx: 'thud', glyph: '💥' };
+    return o.big ? { tone: 'treasure', scene: 'auction', pose: 'jump', emotion: 'joy', sfx: 'fanfare', glyph: '🔨', bigWin: true } : { tone: o.cheap ? 'neutral' : 'good', scene: 'auction', pose: o.cheap ? 'idle' : 'cheer', emotion: o.cheap ? 'sweat' : 'joy', sfx: 'coin', glyph: '🔨' };
+  }
+  if (a?.type === 'seniorItem') return { tone: 'good', scene: null, pose: 'cheer', emotion: 'joy', sfx: 'pop', glyph: '👴' };
+  return null;
+}
+
+/**
  * Horizontal slot centres (%) for a cast: the classic 1–3 slots for full-size figures, else spread by figure width
  * (children are narrower) between 13 % and 87 %.
  */
@@ -257,7 +289,7 @@ function sceneSvg(scene, tone) {
       break;
     }
     default:
-      body = submapSceneBody(scene) ?? worldSceneBody(scene) ?? `<g fill="#fff" opacity=".7"><ellipse cx="300" cy="180" rx="140" ry="44"/><ellipse cx="1200" cy="140" rx="120" ry="38"/></g><rect y="700" width="1600" height="200" fill="#8ccf7e"/>`;
+      body = submapSceneBody(scene) ?? worldSceneBody(scene) ?? seniorSceneBody(scene) ?? `<g fill="#fff" opacity=".7"><ellipse cx="300" cy="180" rx="140" ry="44"/><ellipse cx="1200" cy="140" rx="120" ry="38"/></g><rect y="700" width="1600" height="200" fill="#8ccf7e"/>`;
   }
   return `<svg class="ci-bg-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${base}${body}</svg>`;
 }
@@ -330,7 +362,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (a.type === 'newsFlash') return newsSpec(g, { characters });
     if (a.type === 'lottoDraw') return isKujiDraw(a) ? kujiSpec(g, { characters }) : lottoSpec(g, { characters });
     if (a.type === 'houseValueChanged') return marketSpec(g, { characters });
-    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? stage8Look(a) ?? stage9Look(a) ?? worldLook(a) ?? null;
+    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? stage8Look(a) ?? stage9Look(a) ?? worldLook(a) ?? seniorLook(a) ?? null;
     const meta = getMeta();
     const main = characters.find((c) => c.id === g.charId) ?? null;
     const name = main?.name ?? '';
@@ -353,6 +385,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       if (salaryHidden.has(k)) return;
       if (giftReasons?.has(m.reason)) return;
       if (schoolChip && m.reason === 'school') return;
+      if (m.reason === 'seniorItem') return; // 노년 역전: the 👴 item chip names the amount
       const who = m.charId !== g.charId ? `${nameOf(characters, m.charId)} ` : '';
       chips.push({ text: `${REASON_ICON[m.reason] ?? '💰'} ${who}${m.delta > 0 ? '+' : ''}${won(m.delta)}`, kind: m.delta > 0 ? 'plus' : 'minus' });
     });
@@ -390,7 +423,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     }
     if (a.type === 'cardBlocked') chips.unshift({ text: `🛡️ ${nameOf(characters, a.targetId)} 방어 성공`, kind: 'plus' });
     if (a.type === 'holidayStarted') chips.push({ text: '🧧 세배 룰렛', kind: '' }, { text: '🗣️ 잔소리 룰렛', kind: '' }, { text: '🎴 고스톱 한 판', kind: '' });
-    if (a.type === 'finished') chips.unshift({ text: a.retired === 'early' ? '🏖️ 조기 은퇴' : a.retired === 'bust' ? '🌾 빈곤 농장' : `🏁 ${a.place}등 골인`, kind: 'plus' });
+    if (a.type === 'finished') chips.unshift({ text: a.retired === 'early' ? '🏖️ 조기 은퇴' : a.retired === 'late' ? `⏰ 노년 마감 · ${a.place}등` : a.retired === 'bust' ? '🌾 빈곤 농장' : `🏁 ${a.place}등 골인`, kind: 'plus' });
     // loop maps: 찬스 버프 chips; the era transition names its length and map size
     for (const b of g.buffs ?? []) {
       const who = b.charId && b.charId !== g.charId ? `${nameOf(characters, b.charId)} ` : '';
@@ -406,6 +439,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const fam = stage8Extras(g, { characters, chips, meta });
     const s9 = stage9Extras(g, { chips, meta });
     const wx = worldExtras(g, { chips, meta });
+    const sx = seniorExtras(g, { chips, meta, characters });
     const badge = jobBadgeFor(a) ?? stage7Badge(a, meta) ?? stage8Badge(a, g, { characters, meta }) ?? s9.badge ?? wx.badge;
     if (a.type === 'educationChanged' && educationLabel(a.education)) chips.unshift({ text: `🎓 ${educationLabel(a.education)}`, kind: 'plus' });
     if (a.type === 'militaryStart' && a.turns) chips.unshift({ text: `🪖 복무 ${a.turns}턴`, kind: '' });
@@ -467,8 +501,10 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (s9.race) autoMs = Math.max(autoMs, s9.race.durationMs + 2600);
     if (s9.treasure) autoMs = Math.max(autoMs, 4600);
     if (wx.hunt || wx.weed?.action === 'exam') autoMs = Math.max(autoMs, owner ? 5200 : 3400); // 토벌 / 검정 animations
+    if (sx.island && !sx.island.retire) autoMs = Math.max(autoMs, (owner ? 6200 : 4600) + (sx.island.jackpot ? 1500 : 0)); // 노년 역전: the wheel
+    if (sx.auction || sx.contest) autoMs = Math.max(autoMs, owner ? 4800 : 3200);
     // other players' plain event cut-ins: ≤ 3 s even with MC lines (post-simulation waiting-time fix); shows keep theirs
-    const capMs = !owner && !holiday && !s9.race && !s9.treasure && !wx.big ? Math.min(autoMs, wx.hunt ? 3400 : OTHERS_AUTO_MS) : null;
+    const capMs = !owner && !holiday && !s9.race && !s9.treasure && !wx.big && !sx.big && !sx.island ? Math.min(autoMs, wx.hunt || sx.auction || sx.contest ? 3400 : OTHERS_AUTO_MS) : null;
     if (capMs) autoMs = capMs;
     const texts = g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)];
     // sabotage: the victim's reaction line (server `targetLine`, pool `sabotaged`)
@@ -515,6 +551,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       submap: a.type === 'submapResult' ? submapOf(a) : null,
       hunt: wx.hunt, // 세계 설정: 토벌 — the chimera in the window (poof / gloat)
       weed: wx.weed, // 풀뽑기 검정 — stamp + grade badge / work basket
+      island: sx.island, // 노년 역전: 한방역전섬 — the number wheel (대박 / 쪽박)
+      contest: sx.contest, // 노년 대회 — trophy / medal
+      auction: sx.auction, // 골동품 경매 — hammer board
       characters,
       mc: g.mc ?? null, // Stage 5.6: small MC corner lines
     };
@@ -725,6 +764,45 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       if (w.action === 'exam') {
         chips.unshift(w.pass ? { text: `📝 풀뽑기 ${w.grade} 합격!${w.payday ? ' (일하면서)' : ''}`, kind: 'plus' } : { text: `📝 ${weedGrade(w.target)} 불합격…`, kind: 'minus' });
       } else if (w.amount && !g.money.some((x) => x.charId === g.charId)) chips.push({ text: `🌿 +${won(w.amount)}`, kind: 'plus' });
+    }
+    return out;
+  }
+
+  /**
+   * 노년 역전 chips / panels (mutates `chips`): items' 노년 활용 (follow-ups or a lone seniorItem), 한방역전섬 (대박 ×n / 쪽박 /
+   * 꽝, the numbers vs the roll, 🍀), 노년 대회 (theme · 우승 / 입상 / 탈락, the helping item), 경매 (lot · ×hammer, 💎 명품, 가짜).
+   * → {island, contest, auction, big}
+   */
+  function seniorExtras(g, { chips, meta, characters = [] }) {
+    const a = g.anchor;
+    const out = { island: null, contest: null, auction: null, big: false };
+    for (const s of [...(a.type === 'seniorItem' ? [a] : []), ...(g.senior ?? [])]) {
+      const t = seniorItemText(s, { meta, won });
+      const who = s.charId && s.charId !== g.charId ? `${nameOf(characters, s.charId)} ` : '';
+      chips.push({ text: who ? `${who}${t.text}` : t.text, kind: 'plus senior' });
+    }
+    if (a.type === 'islandResult') {
+      const o = islandOutcome(a);
+      out.island = o;
+      out.big = o.big;
+      if (o.retire) chips.unshift({ text: `🏖️ 조기 은퇴 · ${o.place ?? ''}등${o.prize ? ` · 상금 ${won(o.prize)}` : ''}`, kind: 'plus' });
+      else {
+        chips.unshift(o.jackpot ? { text: `💥 대박 ×${o.mult}!`, kind: 'plus' } : o.win ? { text: `🎯 적중 ×${o.mult}`, kind: 'plus' } : o.bust ? { text: '🌾 쪽박 · 빈곤 농장행', kind: 'minus' } : { text: '💸 꽝 · 판돈만 잃었어요', kind: 'minus' });
+        if (o.covers.length && o.roll != null) chips.push({ text: `🎯 ${o.covers.join('·')} → ${o.roll}`, kind: '' });
+        if (o.lucky) chips.push({ text: '🍀 행운의 숫자', kind: 'plus' });
+      }
+    } else if (a.type === 'contestResult') {
+      const o = contestOutcome(a, { meta });
+      out.contest = o;
+      out.big = o.big;
+      chips.unshift({ text: `${o.icon} ${o.theme.name} ${o.label}`, kind: o.place ? 'plus' : 'minus' });
+      if (o.item) chips.push({ text: `${o.item.icon} ${o.item.name} 효과`, kind: 'plus senior' });
+    } else if (a.type === 'auctionResult') {
+      const o = auctionOutcome(a, { meta });
+      out.auction = { ...o, hammer: meta?.balance?.senior?.auction?.hammer ?? [] };
+      out.big = o.big;
+      chips.unshift(o.fake ? { text: `💥 ${o.name} 가짜!`, kind: 'minus' } : { text: `🔨 ${o.icon} ${o.name} 낙찰 ×${o.mult}`, kind: o.cheap ? '' : 'plus' });
+      if (o.premium) chips.push({ text: `💎 명품 프리미엄 ×${o.premium}`, kind: 'plus senior' });
     }
     return out;
   }
@@ -1294,6 +1372,75 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (spec.kuji) renderKuji(item);
   }
 
+  // ---------- 노년 역전: 한방역전섬 wheel, 노년 대회 trophy, 경매 hammer board ----------
+  function renderSenior(item) {
+    const { spec } = item;
+    const pk = spec.prompt?.kind;
+    overlay.dataset.senior = spec.island
+      ? `island-${spec.island.result}`
+      : spec.contest
+        ? `contest-${spec.contest.place ?? 'out'}`
+        : spec.auction
+          ? `auction-${spec.auction.fake ? 'fake' : spec.auction.big ? 'big' : spec.auction.cheap ? 'cheap' : 'sold'}`
+          : ['island', 'islandPick', 'contest', 'auction'].includes(pk)
+            ? `${pk}-prompt`
+            : '';
+    const later = (fn, ms) => item.timers.push(setTimeout(() => cur === item && fn(), isReduced() ? 0 : ms));
+    const burst = (cls, glyphs, n = 14) => {
+      const fx = document.createElement('div');
+      fx.className = `ci-wishfx ${cls}`;
+      fx.innerHTML = Array.from({ length: n }, (_, i) => `<i style="--i:${i};--x:${(i * 53) % 100}%">${glyphs[i % glyphs.length]}</i>`).join('');
+      $.fx.appendChild(fx);
+    };
+    // the 행운의 숫자 pad: the wheel waits in the window (no number lit yet)
+    if (pk === 'islandPick') {
+      const v = islandPickPrompt(spec.prompt);
+      const panel = document.createElement('div');
+      panel.className = 'ci-island idle';
+      panel.innerHTML = `${islandWheelHtml({ covers: [], roll: 1 })}<b class="ci-island-bet">${esc(v.icon)} ×${esc(v.mult)}</b>`;
+      $.fx.appendChild(panel);
+    }
+    if (spec.island && !spec.island.retire) {
+      const o = spec.island;
+      const panel = document.createElement('div');
+      panel.className = `ci-island ${o.win ? 'win' : 'lose'}${o.jackpot ? ' jackpot' : ''}${o.bust ? ' bust' : ''}`;
+      panel.innerHTML = islandWheelHtml(o);
+      $.fx.appendChild(panel);
+      const wheel = panel.querySelector('.isl-wheel');
+      if (isReduced()) wheel?.classList.add('spin', 'instant');
+      else requestAnimationFrame(() => requestAnimationFrame(() => wheel?.classList.add('spin')));
+      later(() => {
+        panel.classList.add('done');
+        if (o.jackpot) {
+          burst('wish', ['💰', '💥', '✨', '🎉'], 18);
+          screenShake($.win, { amp: 9, ms: 420 });
+        } else if (o.win) burst('wish', ['💰', '✨'], 10);
+        else if (o.bust) burst('wishfail rain', ['💧', '🌾', '🥔'], 16);
+      }, 2400);
+    }
+    if (spec.contest) {
+      const c = spec.contest;
+      const panel = document.createElement('div');
+      panel.className = `ci-contest p-${c.place ?? 0}`;
+      panel.innerHTML = `${trophyHtml(c.place)}<b class="ct-label">${esc(c.theme.icon)} ${esc(c.theme.name)} · ${esc(c.label)}</b>`;
+      $.fx.appendChild(panel);
+      later(() => {
+        panel.classList.add('shown');
+        if (c.place === 1) burst('wish', ['🎉', '✨', '🏆'], 12);
+      }, 600);
+    }
+    if (spec.auction) {
+      const panel = document.createElement('div');
+      panel.className = 'ci-auction';
+      panel.innerHTML = hammerBoardHtml(spec.auction, spec.auction.hammer);
+      $.fx.appendChild(panel);
+      later(() => {
+        panel.classList.add('struck');
+        if (spec.auction.big) burst('wish', ['💰', '✨', '🔨'], 12);
+      }, 1200);
+    }
+  }
+
   /** 쿠지 box in the window: one ticket per holder peeled in turn; rows (rank, prize chips, line) in the box; 1등 → plush + confetti. */
   function renderKuji(item) {
     const { rows, jackpot } = item.spec.kuji;
@@ -1608,6 +1755,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     renderStage8(item);
     renderStage9(item);
     renderWorld(item);
+    renderSenior(item);
     if (spec.kind === 'mc') renderStudio(item);
     else if (spec.mc?.length) renderSmallMc(item);
     audio?.play(spec.sfx ?? pres().tones?.[spec.tone]?.sfx ?? 'pop');
@@ -1701,6 +1849,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const who = p.forMe[0];
     const sm = submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt', won }); // Stage 9 submaps
     if (sm != null) return sm;
+    // 노년 역전: 한방역전섬 stake cards / 행운의 숫자 pad, 노년 대회 entry card, 경매 lots
+    const so = seniorOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt', won, artFor });
+    if (so != null) return so;
     // 세계 설정: 토벌 battle card (the chimera itself stands in the window) / 풀뽑기 field card
     const wo = worldOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt', won, art: false, artFor });
     if (wo != null) return wo;
@@ -1901,6 +2052,11 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         // 세계 설정 (치이카와 모드)
         hunt: { tone: 'career', scene: 'hunt-forest' },
         weed: { tone: 'good', scene: 'weed-field' },
+        // 노년 역전
+        island: { tone: 'treasure', scene: 'island' },
+        islandPick: { tone: 'treasure', scene: 'island' },
+        contest: { tone: 'result', scene: 'stage' },
+        auction: { tone: 'treasure', scene: 'auction' },
       }[p.kind] ?? null;
     // Stage 8: the partner (date / propose) or the candidates (meet) stand next to the character
     if (subject && cast.length && ['meet', 'date', 'propose'].includes(p.kind)) {

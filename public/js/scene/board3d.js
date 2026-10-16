@@ -51,14 +51,14 @@ const TILE_TOP = 0.27;
 const NARROW_TAGS_PX = 700; // canvas CSS width below which only current / mine / moving pawns show name tags
 /** Asset-studio icon ids (manifest meta.tile) per tile type. */
 const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal', habit: 'school', salary: 'money', pass: 'shop' };
-const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '갈림길', merge: '합류', goal: '골', habit: '습관', salary: '월급날', pass: '광장', hometown: '고향', temple: '산사', jeju: '제주', reversal: '역전', hunt: '토벌', weed: '풀' };
-const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#2f9e57', pass: '#ff8a3d', hometown: '#7cb342', temple: '#8d6e63', jeju: '#26a69a', reversal: '#d4a017', hunt: '#c0392b', weed: '#6ab04c' };
+const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '갈림길', merge: '합류', goal: '골', habit: '습관', salary: '월급날', pass: '광장', hometown: '고향', temple: '산사', jeju: '제주', reversal: '역전', hunt: '토벌', weed: '풀', island: '역전섬', contest: '대회', auction: '경매' };
+const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#2f9e57', pass: '#ff8a3d', hometown: '#7cb342', temple: '#8d6e63', jeju: '#26a69a', reversal: '#d4a017', hunt: '#c0392b', weed: '#6ab04c', island: '#ff6b3d', contest: '#e6a817', auction: '#8e6b4a' };
 /** Stage 6 tile glyphs before board.json knows the type (meta icon wins). Loop maps: 💵 월급날, 🎪 찬스 광장. */
-const DEFAULT_TILE_GLYPH = { start: '🚩', habit: '📚', salary: '💵', pass: '🎪', job: '💼', card: '🃏', shop: '🛍️', hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', treasure: '💎', hunt: '⚔️', weed: '🌿' };
+const DEFAULT_TILE_GLYPH = { start: '🚩', habit: '📚', salary: '💵', pass: '🎪', job: '💼', card: '🃏', shop: '🛍️', hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', treasure: '💎', hunt: '⚔️', weed: '🌿', island: '🏝️', contest: '🏆', auction: '🔨' };
 /** Ribbon text drawn under the icon of these tile types (atlas). */
 const RIBBON = { salary: '월급날', pass: '찬스 광장' };
 /** Loop maps: tiles that stand out (bigger tile + marker): forced-stop paydays, pass tiles, the fork. */
-const BIG_TILE = { salary: 1.2, pass: 1.14, stop: 1.12, start: 1.1, goal: 1.3 };
+const BIG_TILE = { salary: 1.2, pass: 1.14, stop: 1.12, start: 1.1, goal: 1.3, island: 1.2 };
 /** Stage 9 board reactions: submap arrival / outcome, treasure find. */
 const SUBMAP_POP = { hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', casino: '🎰' };
 /** Stage 6 board reactions over the pawn (the cut-in follows). */
@@ -601,6 +601,30 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
           marks.push(colored(new THREE.ConeGeometry(0.11, h, 4), col, mat4(px + dx, h / 2, pz + (i % 2 ? 0.12 : -0.1), (i % 2 ? 0.15 : -0.15), 0, -dx * 0.8)));
         });
         marks.push(colored(new THREE.CylinderGeometry(0.3, 0.22, 0.32, 7), '#c8a165', mat4(px - nz * 0.75, 0.16, pz + nx * 0.75)));
+      } else if (t.type === 'island') {
+        // 🏝️ 한방역전섬 (노년 역전): a sand islet with a palm and a red-gold roulette disc on a post
+        const px = lt.x + nx * 1.6;
+        const pz = lt.z + nz * 1.6;
+        marks.push(colored(new THREE.CylinderGeometry(0.75, 0.9, 0.18, 9), '#f4d58d', mat4(px, 0.09, pz)));
+        marks.push(colored(new THREE.CylinderGeometry(0.06, 0.09, 1.3, 5), '#8a5a3c', mat4(px - 0.3, 0.75, pz, 0, 0, 0.12)));
+        for (let k = 0; k < 4; k++) marks.push(colored(new THREE.ConeGeometry(0.16, 0.7, 4), '#2fa35a', mat4(px - 0.38 + Math.cos(k * 1.57) * 0.25, 1.38, pz + Math.sin(k * 1.57) * 0.25, Math.sin(k * 1.57) * 1.2, 0, -Math.cos(k * 1.57) * 1.2)));
+        marks.push(colored(new THREE.CylinderGeometry(0.04, 0.04, 1.0, 4), '#5a3f28', mat4(px + 0.35, 0.6, pz)));
+        marks.push(colored(new THREE.CylinderGeometry(0.42, 0.42, 0.08, 10), '#ffd23f', mat4(px + 0.35, 1.18, pz, Math.PI / 2, lt.yaw, 0)));
+        marks.push(colored(new THREE.CylinderGeometry(0.25, 0.25, 0.1, 10), '#e2504c', mat4(px + 0.35, 1.18, pz, Math.PI / 2, lt.yaw, 0)));
+      } else if (t.type === 'contest') {
+        // 🏆 노년 대회: a little gold cup on a pedestal
+        const px = lt.x + nx * 1.4;
+        const pz = lt.z + nz * 1.4;
+        marks.push(colored(new THREE.BoxGeometry(0.42, 0.36, 0.42), '#e9e2d0', mat4(px, 0.18, pz)));
+        marks.push(colored(new THREE.CylinderGeometry(0.05, 0.08, 0.26, 5), '#e6a817', mat4(px, 0.49, pz)));
+        marks.push(colored(new THREE.CylinderGeometry(0.24, 0.1, 0.32, 7), '#ffd23f', mat4(px, 0.78, pz)));
+      } else if (t.type === 'auction') {
+        // 🔨 골동품 경매: a wooden block with a gavel lying on it
+        const px = lt.x + nx * 1.4;
+        const pz = lt.z + nz * 1.4;
+        marks.push(colored(new THREE.CylinderGeometry(0.3, 0.34, 0.2, 7), '#8e6b4a', mat4(px, 0.1, pz)));
+        marks.push(colored(new THREE.CylinderGeometry(0.04, 0.04, 0.7, 4), '#c69c6d', mat4(px, 0.3, pz, 0, lt.yaw, Math.PI / 2)));
+        marks.push(colored(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 6), '#5a3f28', mat4(px + Math.sin(lt.yaw) * 0.32, 0.3, pz + Math.cos(lt.yaw) * 0.32, Math.PI / 2, lt.yaw, 0)));
       } else if (t.type === 'start') {
         marks.push(colored(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5), '#6b6f76', mat4(lt.x - nx * 1.2, 0.8, lt.z - nz * 1.2)));
         marks.push(colored(new THREE.BoxGeometry(0.6, 0.38, 0.04), '#e2504c', mat4(lt.x - nx * 1.2 + 0.3, 1.4, lt.z - nz * 1.2)));
@@ -1175,8 +1199,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       const note = haltNote(e);
       if (!note || !e.halted) return;
       emotion.pop(e.charId, note.icon, { dur: 1.6 });
-      banner(e.halted === 'salary' ? (e.rush ? '💨 월급날 직행! 도착' : '💵 월급날! 여기서 멈춰요') : e.halted === 'pass' ? '🎪 찬스 광장! 잠깐 멈춤' : '🔀 인생 갈림길!', 1500);
-      await ctx.sleep(e.halted === 'pass' ? 450 : 300);
+      banner(e.halted === 'salary' ? (e.rush ? '💨 월급날 직행! 도착' : '💵 월급날! 여기서 멈춰요') : e.halted === 'pass' ? '🎪 찬스 광장! 잠깐 멈춤' : e.halted === 'island' ? '🏝️ 한방역전섬! 인생 한 방?' : '🔀 인생 갈림길!', 1500);
+      await ctx.sleep(e.halted === 'pass' || e.halted === 'island' ? 450 : 300);
     },
     // Loop maps: the whole table moves to the next era's map together (one transition per era)
     eraTransition: async (e, ctx) => {
@@ -1234,7 +1258,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       hooks.onStep?.(e);
       const name = S.chars.find((c) => c.id === e.charId)?.name ?? '';
       // final era (노년 골인 경쟁): goal order is back; 빈곤 농장 / 조기 은퇴 finish without the goal
-      banner(e.retired === 'early' ? `🏖️ ${name} 조기 은퇴!` : e.retired === 'bust' ? `🌾 ${name} 빈곤 농장행…` : `🏁 ${name} ${e.place}등 골인!`, 2000);
+      banner(e.retired === 'early' ? `🏖️ ${name} 조기 은퇴!` : e.retired === 'late' ? `⏰ 노년 마감 — ${name} ${e.place}등` : e.retired === 'bust' ? `🌾 ${name} 빈곤 농장행…` : `🏁 ${name} ${e.place}등 골인!`, 2000);
       if (ctx.instant) return;
       const P = S.pawns.get(e.charId);
       if (P && preset.particles > 0) {
@@ -1371,6 +1395,51 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         particles.burst('coin', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, 30), { up: 4, spread: 1.6, life: 1 });
       }
       await ctx.sleep(420);
+    },
+    // ---------- 노년 역전 ----------
+    islandResult: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      const amt = Number(e.amount) || 0;
+      const r = String(e.result ?? '');
+      emotion.pop(e.charId, r === 'jackpot' ? `💥 대박! +${won(amt)}` : r === 'bust' ? '🌾 쪽박…' : r === 'retire' ? '🏖️ 은퇴' : e.win ? `🎯 +${won(amt)}` : `💸 ${won(amt)}`, { dur: r === 'jackpot' ? 2.4 : 1.8 });
+      if (r === 'jackpot') banner(`💥 한방역전섬 대박!!! ×${Number(e.mult) || 1}`, 1800);
+      else if (r === 'bust') banner('🌾 쪽박… 빈곤 농장으로', 1600);
+      const P = S.pawns.get(e.charId);
+      if (P && preset.particles > 0 && (e.win || r === 'bust')) {
+        const p = P.pawn.group.position;
+        particles.burst(r === 'bust' ? 'star' : r === 'jackpot' ? 'confetti' : 'coin', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, r === 'jackpot' ? 60 : 24), { up: 4, spread: 1.6, life: 1.1, size: r === 'jackpot' ? 0.3 : undefined });
+      }
+      await ctx.sleep(r === 'jackpot' ? 650 : 420);
+    },
+    contestResult: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      emotion.pop(e.charId, e.place === 1 ? `🏆 우승! +${won(Number(e.prize) || 0)}` : e.place === 2 ? `🥈 +${won(Number(e.prize) || 0)}` : '😅 탈락', { dur: 1.6 });
+      const P = S.pawns.get(e.charId);
+      if (P && e.place === 1 && preset.particles > 0) {
+        const p = P.pawn.group.position;
+        particles.burst('confetti', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, 28), { up: 4, spread: 1.6, life: 1, size: 0.3 });
+      }
+      await ctx.sleep(380);
+    },
+    auctionResult: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      emotion.pop(e.charId, e.fake ? '💥 가짜!' : `🔨 ×${Number(e.mult) || 1} +${won(Number(e.amount) || 0)}`, { dur: 1.6 });
+      const P = S.pawns.get(e.charId);
+      if (P && !e.fake && Number(e.mult) >= 2 && preset.particles > 0) {
+        const p = P.pawn.group.position;
+        particles.burst('coin', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, 26), { up: 4, spread: 1.6, life: 1 });
+      }
+      await ctx.sleep(360);
+    },
+    seniorItem: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      const icon = { dodge: '🚗', health: '💪', guard: '🛡️', pension: '♨️', busking: '🎸', royalty: '📖' }[e.use] ?? '👴';
+      emotion.pop(e.charId, Number(e.amount) > 0 ? `${icon} +${won(Number(e.amount))}` : `${icon} 👴`, { dur: 1.4 });
+      await ctx.sleep(260);
     },
     // ---------- 세계 설정 (🐹 치이카와 모드) ----------
     huntResult: async (e, ctx) => {

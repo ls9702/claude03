@@ -56,6 +56,7 @@ import { migrateRoomLooks } from './avatar.js';
 import { ensureWorldFields } from './hunt.js'; // 세계 설정: registers the hunt / weed prompts; 토벌 / 풀뽑기 fields
 import './submaps.js'; // Stage 9: registers the hometown / temple / jeju / reversal prompts
 import { enterPassTile } from './passTile.js'; // loop maps: 찬스 광장
+import { enterIsland, recordSeniorStart, seniorDodge, startRaceClock, tickRaceClock } from './senior.js'; // 노년 역전: 한방역전섬 pause, 🚗 dodge, the standing at the final race
 import { finishCharacter } from './finish.js'; // final era: goal order / 조기 은퇴 / 올인 파산
 
 export { finishCharacter };
@@ -208,7 +209,7 @@ function announceTurn(tx) {
   turn.spun = false;
   turn.move = null;
   dropTrades(tx, (t) => t.fromId === c.id, 'expired'); // an offer lasts until the offerer's next turn
-  emit(tx, 'turnStarted', { charId: c.id, turnNo: turn.turnNo, round: turn.round, eraRound: turn.eraRound, eraTurns: turn.eraTurns, eraIndex: room.eraIndex });
+  emit(tx, 'turnStarted', { charId: c.id, turnNo: turn.turnNo, round: turn.round, eraRound: turn.eraRound, eraTurns: turn.eraTurns, eraIndex: room.eraIndex, ...(Number.isInteger(turn.raceRounds) ? { raceRound: turn.raceRound, raceRounds: turn.raceRounds } : {}) });
 }
 
 /** Back to the roulette after pre-spin decisions (a fresh turn-timer deadline when a prompt interrupted it). */
@@ -277,6 +278,10 @@ function eraTransition(tx) {
     growChildrenOnEra(tx, c);
   }
   queueEraOpening(tx, to.id); // Stage 7: lotto draw + holiday, run by the turn loop before the first turn
+  if (to.final) {
+    recordSeniorStart(tx); // 노년 역전: the standing at the start of the goal race (comebacks, result.js)
+    startRaceClock(tx); // ⏰ 노년 마감: the race lasts at most turn.raceRounds rounds
+  }
 }
 
 /**
@@ -373,6 +378,7 @@ function gameOver(tx) {
     titles: cloneState(res.titles),
     treasures: cloneState(res.treasures),
     mvpClosesAt: res.mvp.closed ? null : res.mvp.closesAt,
+    comeback: res.comeback ? { ...res.comeback } : null, // 노년 역전: the result show's comeback duo
     tone: 'result',
   });
   addLog(tx, `🏆 게임 종료! 1등은 ${ranking[0]?.name} (${won(ranking[0]?.total ?? 0)})`, { tone: 'result' });
@@ -404,6 +410,7 @@ function endTurn(tx) {
     turn.currentIndex = (turn.currentIndex + 1) % n;
     if (turn.currentIndex === 0) {
       turn.round += 1;
+      if (inFinalEra(room) && tickRaceClock(tx)) return gameOver(tx); // ⏰ 노년 마감: the race's last round is over
       if (!inFinalEra(room)) {
         const eraTurns = turn.eraTurns ?? room.board.eras[room.eraIndex ?? 0]?.turns ?? 1;
         if ((turn.eraRound ?? 1) >= eraTurns) {
@@ -487,7 +494,7 @@ function continueTurn(tx) {
  * move; a pass tile (찬스 광장) passed with steps left pauses it (`turn.move = {charId, remaining}`) behind its prompt — the turn loop resumes it
  * (`resumed: true`) once the prompt (and a chained shop) resolved. Wrapping past the start counts a lap.
  */
-function walk(tx, c, steps, { resumed = false, rush = false } = {}) {
+function walk(tx, c, steps, { resumed = false, rush = false, dodge = false } = {}) {
   const room = tx.room;
   const board = room.board;
   let pos = c.position;
@@ -512,8 +519,10 @@ function walk(tx, c, steps, { resumed = false, rush = false } = {}) {
       halted = t.type;
       break;
     }
-    if (t.type === 'pass' && s < steps - 1 && !rush) { // 월급날 직행 goes straight past 찬스 광장
-      halted = 'pass';
+    // 찬스 광장 (월급날 직행 goes straight past it) / 노년 역전 🏝️ 한방역전섬 (everyone stops there, even rushing):
+    // passing one with steps left pauses the move behind its prompt
+    if (((t.type === 'pass' && !rush) || t.type === 'island') && s < steps - 1) {
+      halted = t.type;
       remaining = steps - 1 - s;
       pass = t;
       break;
@@ -526,19 +535,26 @@ function walk(tx, c, steps, { resumed = false, rush = false } = {}) {
     path,
     steps: path.length,
     halted,
-    ...(halted === 'pass' ? { remaining } : {}),
+    ...(pass ? { remaining } : {}),
     ...(resumed ? { resumed: true } : {}),
     ...(rush ? { rush: true } : {}),
+    ...(dodge ? { dodge: true } : {}),
     ...(wrapped ? { wrapped: true, laps: wrapped } : {}),
   });
   if (wrapped) addLog(tx, `🔁 ${josa(c.name, '이/가')} 출발점을 지나 한 바퀴를 돌았다! (${c.laps}바퀴째)`, { tone: 'info', charId: c.id });
   if (!resumed) growChildrenOnSpin(tx, c); // Stage 8: children also grow every few parent spins
   if (pass) {
     room.turn.move = { charId: c.id, remaining, tileId: pass.id };
-    enterPassTile(tx, c, pass);
+    if (pass.type === 'island') enterIsland(tx, c, pass);
+    else enterPassTile(tx, c, pass);
     return;
   }
   const tile = tileAt(board, pos);
+  // 노년 역전: a stop on a 지출 tile of the final race with a 🚗 dodge item drives one tile on (a second `moved`, dodge)
+  if (tile && seniorDodge(tx, c, tile)) {
+    walk(tx, c, 1, { resumed: true, dodge: true });
+    return;
+  }
   if (tile) {
     emit(tx, 'landed', { charId: c.id, tileId: tile.id, tileType: tile.type, route: tile.route ?? null });
     resolveTile(tx, c, tile, { onGoal: (ch) => finishCharacter(tx, ch) });
@@ -550,7 +566,7 @@ function resumeMove(tx) {
   const m = tx.room.turn.move;
   tx.room.turn.move = null;
   const c = charById(tx.room, m.charId);
-  if (!c || !(m.remaining > 0)) return;
+  if (!c || c.finished || !(m.remaining > 0)) return; // 한방역전섬: a bust / an early retirement ends the move
   walk(tx, c, m.remaining, { resumed: true });
 }
 
@@ -731,7 +747,8 @@ function doSpin(tx, action) {
   const actor = action.actor;
   if (action.auto && actor?.system && (turn.spinDeadlineAt == null || tx.now < turn.spinDeadlineAt)) fail(409, '아직 시간이 남았어요.');
   const { min, max } = tx.data.balance.spin;
-  // 룰렛 실력 모드: the player's target (shake / gauge / CPU) → t 50 %, t±1 40 %, t±2 10 % (balance.roulette.skill).
+  // 룰렛 실력 모드: the player's target (shake / gauge / CPU) → near t, the bigger t the wider the miss (「빠를수록 위험」:
+  // balance.roulette.skill.jitterByTarget, shared/roulette.js).
   // The turn-timer auto spin and the admin's forceSpin stay random; a missing / invalid target = a random spin.
   const skillCfg = tx.data.balance.roulette?.skill ?? {};
   // Any number 1–10 every turn (the old per-character number deck was removed by user decision; a leftover
@@ -745,7 +762,7 @@ function doSpin(tx, action) {
   const aimed = canAim ? parseTarget(action.target, { min, max }) : null;
   let first;
   if (plan.exact) first = Math.max(min, Math.min(max, plan.exact.value));
-  else if (aimed != null) first = Math.max(lo, Math.min(hi, skillValue(tx.rng, aimed, { jitter: skillCfg.jitter, min, max })));
+  else if (aimed != null) first = Math.max(lo, Math.min(hi, skillValue(tx.rng, aimed, { jitter: skillCfg.jitter, jitterByTarget: skillCfg.jitterByTarget, min, max })));
   else first = tx.rng.int(lo, hi);
   const input = aimed != null && ROULETTE_INPUTS.includes(action.input) ? action.input : null;
   // Stage 7: pending spin modifiers (택시 / 층간소음 second roll, 에너지 +2, 새치기 −3, 경차 1 → 2)

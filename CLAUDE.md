@@ -1026,6 +1026,23 @@
 ## Stage 9 — CPU players (9-C)
 - Owner id `'cpu'` (`lobby.CPU_OWNER`, `cpu.CPU_OWNER`): `viewFor` shows `ownerId 'cpu'`, `ownerName 'CPU'`; order.js puts
   CPUs after the players' characters (family order). CPU characters carry `cpuPersonality` cautious|normal|bold (public).
+- **CPU 난이도 (room setting `config.cpuLevel`, user decision)**: `config.js` `CPU_LEVELS` easy | normal | hard, `DEFAULT_CPU_LEVEL`
+  easy (new rooms; a room without one — old saves — is easy too: `cpuLevelOf(room)`), 400 「CPU 난이도는 쉬움(easy)·보통(normal)·
+  어려움(hard) 중 하나여야 해요.」, `CPU_LEVEL_INFO` 😊 쉬움 「사람이 거의 이겨요」 / 🙂 보통 「비슷한 실력」 / 😈 어려움 「예전의 강한 CPU」
+  (`/api/meta.cpu.levels` + `defaultLevel`). easy = the weak personality tables + the money handicap (below; `handicapActive` needs
+  level easy); normal = no handicap, `balance.cpu.levels.normal` `{hardShare 0.1, cardHardShare 0.1, aimRandom 1}`: each prompt
+  answer is the strong heuristic with chance `hardShare` (hashed sub-RNG `normal:answer:<kind>`), else the personality table; the card
+  before the spin likewise (`cardHardShare`); skill rooms aim at a liked (uniform) number with chance `aimRandom` (0.5 → 1 after the senior race rework: casual 1 + 3 in skill rooms 16.5 / 20.5 % (real, seeds 1 / 2) and 24.0 / 22.0 / 22.0 % (🐹, seeds 1–3) → 28.0 / 27.5 and 26.5 / 27.5 / 28.0 %), else the best ± noise;
+  trades use the strong margin; hard = the strong heuristic alone (`level: 'hard'`), no handicap. `cpu.js` `cpuLevelFor(room, opts)` =
+  a valid `opts.level` (scripts / tests / the expert proxy) else the room's — the runner calls `cpuDecide(live, id)` without opts.
+  Lobby `setCpuLevel(room, level, now, {by})` (lobby only 409 「로비에서만 CPU 난이도를 바꿀 수 있어요.」, invalid 400, the same effective
+  level → `{changed: false}`, log 「🤖 ○○ 님이 CPU 난이도를 😈 어려움으로 바꿨습니다.」); routes `PATCH /api/rooms/:id/cpu-level {level}`
+  (host, `canManageCpu`: 「CPU 허용」 rooms only) and `PATCH /admin/api/rooms/:id/cpu-level {level}`. UI: admin create form 「CPU 난이도」
+  select (always sent) + hint; admin room detail row 「CPU 난이도」 = `select.cpu-level-sel[data-cpu-level]` in the lobby (PATCH at once)
+  else text; lobby host CPU tools: first row `label.cpu-level` + `select[data-cpu-level]` (wraps under the label on narrow screens, ≤ 20em),
+  the handicap line only at easy; lobby mode line 「🤖 CPU 😊 쉬움」 when 「CPU 허용」 is on or CPUs joined (`lobbyText.modeSummary`);
+  `format.js` `CPU_LEVEL_IDS / CPU_LEVEL_INFO / cpuLevelOf / cpuLevelInfo(id, meta) / cpuLevelOptions / cpuLevelText(room, meta,
+  {short})`. Tests `test/cpu-level.test.js`. Measured: see "Measured (CPU 난이도)" below.
 - Lobby (pure, `server/game/lobby.js`): `addCpuCharacter(room, {name?, avatar?, personality?}, now, {by})` (lobby only, max
   characters, name = first unused `CPU_NAMES` entry unless given, look = `randomAvatar(seed)` (CH-1: `avatar.randomLook` = roster
   character + 0–2 props) seeded by room seed + id + seq, personality cautious|normal|bold, absent / '' / 'random' → seeded the
@@ -1039,7 +1056,7 @@
   a lobby), `PATCH /admin/api/rooms/:id/cpu/:charId {personality}` → `{room}`, `DELETE /admin/api/rooms/:id/cpu/:charId`; host
   player `POST /api/rooms/:id/cpu {personality?}` → 201 / `PATCH /api/rooms/:id/cpu/:charId {personality}` / `DELETE
   /api/rooms/:id/cpu/:charId` (only with 「CPU 허용」, `canManageCpu`). `/api/meta.cpu` and `/admin/api/meta.cpu` =
-  `cpuHandicap.cpuMeta` `{personalities, handicap: {startMoneyMult, incomeMult, treasureMult} | null}`. Client (`format.js`):
+  `cpuHandicap.cpuMeta` `{personalities, levels, defaultLevel, handicap: {startMoneyMult, incomeMult, treasureMult} | null}`. Client (`format.js`):
   `CPU_PERSONALITY_INFO` 🐢 신중 「돈을 아끼고 모험을 피해요」 / 🙂 보통 / 🔥 대담 「도박·투자를 좋아해요」 + `CPU_RANDOM_INFO` 🎲 무작위,
   `cpuPersonalityHtml(c, {short, desc})` (`.cpu-pers.p-<id>` chip), `cpuPersonalityOptions(value, {random})`,
   `cpuHandicapText(meta)`. Admin page: 「CPU 허용」 create checkbox (sent only when on); room detail: a `.cpu-chip` per CPU
@@ -1049,9 +1066,10 @@
   (re-rendered only when the markup changes); lobby cards 「🤖 CPU 🐢」 (icon chip, 390 px); in game the side row 「🤖 CPU 🔥」 and
   the detail card row 「CPU 성향 🔥 대담 도박·투자를 좋아해요」. E2E: session scratchpad `cpu2/ui.cjs` (`cpu2-*.png`).
 - `server/game/cpu.js` (pure; never consumes the game RNG — ties use a sub-RNG hashed from seed/rngState/turn/prompt/char):
-  every entry point takes `opts = {level, personality}` (last argument): `level: 'hard'` = the strong heuristic below (the expert
-  human proxy, the aim / 찬스 광장 duels and `--bias --aim cpu` of simulate.js), anything else = the REAL CPUs (see "Weak CPUs"
-  below); `personality` overrides the character's. `cpuDecide(room, charId, data, opts) → action | null` (order: answer a trade
+  every entry point takes `opts = {level, personality}` (last argument; `level` easy | normal | hard, else the room's CPU 난이도):
+  `level: 'hard'` = the strong heuristic below (the expert human proxy, the aim / 찬스 광장 duels and `--bias --aim cpu` of simulate.js,
+  hard rooms), 'easy' = the weak real CPUs (see "Weak CPUs" below), 'normal' = the mix (CPU 난이도 above); `personality` overrides the
+  character's. `cpuDecide(room, charId, data, opts) → action | null` (order: answer a trade
   offer made to it → answer the pending prompt →
   on its awaitSpin turn `cpuCardAction` or `spin`); `cpuDue(room) → {kind: trade|prompt|spin, charId, key}` (what the
   room waits on from a CPU; the key changes per step, e.g. `s:<turnNo>:<cardUsed>`); `cpuNextAction` (both, headless);
@@ -1094,8 +1112,8 @@
   `cardPlay` chance (🐢 0.2 / 🙂 0.35 / 🔥 0.5; always with a full hand), sabotage only with `sabotage` chance (0 / 0.3 / 0.5) at a
   RANDOM eligible rival, 딱 그 칸 a random number. Skill rooms: `aimRandom` 1 (a uniformly random target like an average person).
   Trades: accept when value got ≥ value given × `tradeMargin` (1 / 0.85 / 0.7).
-- **CPU handicap against people** (`server/game/cpuHandicap.js`, `balance.cpu.handicap`, only in rooms with at least one
-  non-CPU character — CPU-only demo rooms play as before): `startMoneyMult` 0.2 (engine `startGame` → `startMoneyFor`, rounded to
+- **CPU handicap against people** (`server/game/cpuHandicap.js`, `balance.cpu.handicap`, only at CPU 난이도 easy and only in rooms with
+  at least one non-CPU character — CPU-only demo rooms play as before): `startMoneyMult` 0.2 (engine `startGame` → `startMoneyFor`, rounded to
   10만원), `incomeMult` 0.45 (folded into `news.effectsFor` for CPUs: `salaryMult` (salary, 용돈, 단짝 생활비, 알바) and
   `moneyTileMult` × it, plus `incomeMult` that spaces.js applies to POSITIVE event money — amounts are reduced where they are
   computed, before logging, so every number on screen matches), `treasureMult` 0.3 (`treasures.findTreasure` →
@@ -1114,16 +1132,18 @@
 - Engine edits: `prompts.js` `openPrompt` no longer pre-answers CPU characters with the default (the runner answers);
   `cards.js` `offerTrade` accepts CPU targets (the runner answers). A system actor may already act for any character.
 - Scripts: `node scripts/cpu-game.js --cpus M --humans N --human-policy casual|random|expert [--mode lifetime|adult|kids]
-  [--roulette skill] [--cpu-personality cautious|normal|bold|mix|random] [--cpu-level easy|hard] [--games G --seed S]
-  [--workers W] [--verbose]` — human proxies: `random` = a random enabled option + a playable card half the time (worst case),
+  [--roulette skill] [--cpu-personality cautious|normal|bold|mix|random] [--cpu-level easy|normal|hard] [--games G --seed S]
+  [--workers W] [--verbose]` (`--cpu-level` = the room's CPU 난이도 `config.cpuLevel`: easy with the handicap, normal / hard without) —
+  human proxies: `random` = a random enabled option + a playable card half the time (worst case),
   `casual` = the prompt default 70 % / a random enabled option 30 % (a random route at forks), a red card ~30 % of its turns
   (random target / number), skill rooms a uniformly random target; `expert` = the strong heuristic (`level: 'hard'`, normal);
   nobody bets / trades / gifts; seats rotate per game (`seatPlan`, turn order `index`); summary = human 1st-place share, CPU 1st
   by personality + a style line (대학 / 단짝 / 집 shares, 소원 / 도박 / 야근 / 승진 / 뒤통수 / 아이템 per CPU), jobs, routes.
   `--matrix` = `TARGETS` (casual1 ≥ 90 %, random1 ≥ 75 %, casual2 / casual4 ≥ 97 %, expert1 ≥ 95 %) in lifetime + casual1 in
-  adult / kids / skill + random1 skill + casual1 vs each personality. `--random R` still works (= R random humans). Exports
-  `playCpuGame`, `cpuVsHumans` (async; `workers` threads), `cpuVsRandom` (legacy), `targetMatrix`, `humanAction`, `seatPlan`,
-  `summarize`, `TARGETS`, `HUMAN_POLICIES`. `scripts/simulate.js --policy random|cpu|mixed [--cpu-level easy|hard]` (its
+  adult / kids / skill + random1 skill + casual1 vs each personality; per level (`levelTargets(level)`): normal = casual1 25–45 % only,
+  hard = no target; `--only casual1,random1,expert1` = just those lifetime rows. `--random R` still works (= R random humans). Exports
+  `playCpuGame`, `cpuVsHumans` (async; `workers` threads), `cpuVsRandom` (legacy), `targetMatrix`, `levelTargets`, `humanAction`,
+  `seatPlan`, `summarize`, `TARGETS`, `HUMAN_POLICIES`. `scripts/simulate.js --policy random|cpu|mixed [--cpu-level easy|normal|hard]` (its
   characters are not owned by 'cpu' → no handicap; mixed prints the 1st-place share per policy).
 - Measured (300 games each, seeds 1 / 2, lifetime default config unless noted; before = the old heuristic, `--cpu-level hard`,
   200 games × seed 1): casual 1 + 3 CPU human 1st 15.0 % → 97.0 / 97.7 %; random 1 + 3 10.0 → 90.0 / 88.7 %; casual 2 + 2 28.5 →
@@ -1138,8 +1158,16 @@
   0.9 % (국회의원), 알바 0 %; CPU-only harness chef 2.6 %, top 트로트 스타 18.8 %, every regular job ≥ 1.7 %. `simulate --policy
   mixed` (easy decisions, no handicap): CPU-policy characters 64.3 % of 1st places with 54.3 % of the characters (the easy
   tables still beat RANDOM play; the handicap does the rest).
+- **Measured (CPU 난이도)** — `cpu-game.js --matrix --only casual1,random1,expert1 --games 200 --cpu-level <level>`, seeds 1 / 2 ×
+  real / 치이카와 (human 1st place, 1 human + 3 CPUs, fair 25 %), on a code snapshot taken while the senior-race redesign (G2) was in
+  progress — re-check after it lands: easy casual 96.0 / 93.5 · 94.0 / 94.5 %, random 82.5 / 84.0 · 79.5 / 83.0 %, expert 100 / 99.5 ·
+  99.5 / 100 %; **normal** (hardShare 0.1) casual 34.0 / 29.0 · 26.0 / 29.5 %, random 15.5 / 16.0 · 17.0 / 15.5 %, expert 70.0 / 65.5 ·
+  63.0 / 64.0 % (hardShare 0.15 → casual 25.5–29.5 %, 0.25 → 19.5–24.5 %); **hard** casual 7.5 / 7.5 · 6.5 / 5.0 %, random 5.5 / 3.5 · 7.0
+  / 4.0 %, expert 18.0 / 27.5 · 22.0 / 28.0 % (≈ fair: the expert proxy IS the hard heuristic). On the code before the senior-race work
+  (real, seed 1): hard casual 16.0 % / random 2.0 % / expert 30.5 %, normal at hardShare 0.25 casual 30.0 %, at 0 (= easy tables without
+  the handicap) 36.5 %.
 - Tests: `test/cpu.test.js` (lobby rules incl. personality add / change, every registered prompt kind answered with an
-  enabled option the engine accepts for both levels × every personality without touching the game RNG — kinds without a
+  enabled option the engine accepts for every level (easy / normal / hard) × every personality without touching the game RNG — kinds without a
   fixture get a synthetic prompt, strong heuristics (`level: 'hard'`), Stage 8 option fields, sabotage targeting, card legality
   (hard + the real CPUs' red-card play), `prefWeight`, personality styles, dream jobs, the handicap (start money, effect
   multipliers, a money tile's log = its delta, treasure appraisal, CPU-only rooms untouched, off switch, `cpuMeta`), trade
@@ -1446,14 +1474,30 @@ the data files) and the MC sibling test in `test/mc.test.js`.
 - Room config `rouletteMode: 'random' | 'skill'` (`ROULETTE_MODES`, default random, 400 "룰렛 방식은 완전 랜덤(random) 또는 실력 모드(skill)
   중 하나여야 합니다."); admin form 「룰렛: 완전 랜덤 / 실력 모드 (흔들기·타이밍)」 (sent only when skill) + room detail line; lobby
   mode line (`ui/lobbyText.js` `modeSummary`) shows 「🎯 룰렛 실력 모드」. `/api/meta.balance.roulette` = `balance.json.roulette` {`skill.jitter`,
-  `cpu.aimNoise`}.
+  `skill.jitterByTarget`, `cpu.aimNoise`}.
 - Pure rules `public/js/shared/roulette.js` (no imports; `server/game/roulette.js` = `export *` re-export): `isSkillRoom`, `parseTarget`
-  (int 1..10 or digit string, else null), `jitterTable(jitter)` (`{"<|offset|>": share}` → signed offsets 0, −1, +1, −2, +2 with ± halves,
-  normalized; invalid → `DEFAULT_JITTER` 50/40/10), `reflect` (0 → 2, 11 → 9), `skillValueFor(t, r)` / `skillValue(rng, t)` (ONE
-  `rng.next()`), `skillDistribution(t)` (exact, CPU + tests).
+  (int 1..10 or digit string, else null), `jitterFor(t, {jitter, jitterByTarget})` (the target's table: an exact key "7" > a range key
+  "1-5" > `jitter` > `DEFAULT_JITTER`), `jitterTable(jitter)` (`{"<|offset|>": share}` → signed offsets 0, −1, +1, −2, +2 … with ± halves,
+  normalized; invalid → `DEFAULT_JITTER` 50/40/10), `reflect` (0 → 2, 11 → 9, 12 → 8), `skillValueFor(t, r, skill)` / `skillValue(rng, t,
+  skill)` (ONE `rng.next()` whatever the table), `skillDistribution(t, skill)` (exact, CPU + tests + client), `aimRisk(t, skill)` →
+  `{hit, spread, shares [{offset, p}] (by |result − t|, bounces included), low, high, mean}` (client hint).
+- **「빠를수록 위험」 (user decision: 큰 숫자를 노릴수록 더 크게 빗나가게)**: `balance.roulette.skill.jitterByTarget` — 1–5 = 50 / 40 / 10
+  (±2, as before), 6 = 45 / 40 / 15, 7 = 40 / 40 / 15 / 5 (±3), 8 = 30 / 40 / 20 / 10, 9 = 25 / 35 / 20 / 12 / 8 (±4), 10 = 20 / 30 / 20 /
+  15 / 10 / 5 (±5); misses past 10 bounce back, so aiming 10 never goes past 10 and falls short instead (mean roll: 10 → 8.2, 9 → 8.3,
+  8 → 7.9; was 10 → 9.4). `jitter` (50 / 40 / 10) stays the fallback for a target without an entry.
+- **Measured (빠를수록 위험)** — `simulate.js --aim-duel` (8-character lifetime, the hard heuristic decides everything, only the aim
+  differs, strategies rotate over the seats, fair 12.5 %), 300 games × seeds 1 / 2 × real / 치이카와, means of the 4 runs, before (one
+  50 / 40 / 10 table) → after, same code snapshot (senior-race redesign in progress): cpu 18.9 → 15.4 %, random 11.1 → 11.9, always-10
+  12.8 → 11.0, always-8 10.2 → 9.8, always-6 10.2 → 11.3, always-1 12.8 → 16.0, no target 11.7 → 12.1; the hard CPU's aims 10 / 9 / 8 =
+  64 / 16 / 5 % → 34 / 39 / 10 %, its mean move 8.42 → 7.48 (always-10 9.29 → 8.13). Every fixed aim stays ≤ fair + 5; always-1 edges
+  past the CPU because the in-progress final race pays a slow character more race turns (the CPU's final-race aim still chases the goal —
+  `progressWorth`; re-check `--aim-duel` once the senior race lands). The loop eras alone (lifetime without the final race, a data
+  override, isolates the rule): cpu 30.8 → 25.1, always-10 22.1 → 19.5, always-8 13.1 → 15.9, always-6 8.3 → 10.9, always-1 1.0 → 0.8,
+  none 6.2 → 8.3, random 6.0 → 7.1. On the code before the senior-race work (200 × seeds 1 / 2, before only): cpu 24.6, always-10
+  19.5 (16.6–21.4), random 7.2 %. Harness: session scratchpad `g1/` (`aim.mjs` / `snap-aim.mjs` (`LOOPONLY=1`), `summ.mjs`, `avg.mjs`).
 - Engine `doSpin`: `spin {characterId, target, input}` — in a skill room, unless the actor is admin (forceSpin) or the system auto spin
   (turn timer), a valid target (ANY number 1..10, every turn) →
-  `skillValue` for the first roll; spin mods / 경차 / military halving apply after it (a taxi / noise SECOND roll stays random; the bonus spin
+  `skillValue` with that target's table (`jitterByTarget`) for the first roll; spin mods / 경차 / military halving apply after it (a taxi / noise SECOND roll stays random; the bonus spin
   after the goal is random). Missing / invalid target = a plain random spin (old clients), random rooms ignore it (same RNG draw).
   `spun` + `turn.lastSpin` gain `{target, input? ('shake'|'gauge'|'cpu', `ROULETTE_INPUTS`), skill: true}`; log
   「🎡 ○○의 룰렛: 🎯 목표 7 → 결과 8[ 명중!]」 (first roll). `placeBet` → 409 "실력 모드에서는 훈수 베팅이 없어요." before anything else.
@@ -1469,10 +1513,10 @@ the data files) and the MC sibling test in `test/mc.test.js`.
   goal place 7.6 — the game drags for them), CPU aim 5.5 / 7.7 %, random aim 1.1 / 0.3 %, always-10 0.0 / 0.2 % (reaches the goal first,
   1.4th, but poor), no target (plain roulette) 0.8 / 0.6 %. Hit rate 50–52 %. Jitter cannot fix it (it doesn't change the mean); the old
   deck brought always-1 down to ~9 % and CPU aim to ~25 %. The CPU heuristic (expected worth + `aimSpeed`) does not exploit this.
-  Jitter stays 50/40/10 (`balance.roulette.skill.jitter`).
+  (The loop maps then made big numbers the strong pick — the hard CPU aimed 10 on 64 % of its spins — hence 「빠를수록 위험」 above.)
 - CPU (`cpu.js`): `cpuSpinAction` (skill rooms → `{target: cpuSkillTarget, input: 'cpu'}`; the real CPUs aim at a uniformly random number with
   `cpu.personalities.<p>.aimRandom` (1), the rest below = `level: 'hard'`), `cpuAimScores(room, charId)` = expected worth per
-  target under the jitter: `landingFor` mirrors the engine (plus / minus mods, 경차, military halving, stops / goal halt) × `aimTileWorth`
+  target under that target's own table (`skillDistribution(t, skill)`): `landingFor` mirrors the engine (plus / minus mods, 경차, military halving, stops / goal halt) × `aimTileWorth`
   (tileWorth + heart / house / shop / jeju / reversal / merge) with losses × `lossAversion` + `aimSpeed` per tile moved (PERSONALITY:
   cautious 1 / 1.5, normal 2 / 1.2, bold 4 / 0.8); best of all ten numbers (ties → bigger), then `balance.roulette.cpu.aimNoise[personality]`
   (cautious 0, normal 0.25, bold 0.5) chance of ±1 from the hashed sub-RNG (`subRng(…, 'aim')`) — the game RNG is never consumed.
@@ -1483,13 +1527,19 @@ the data files) and the MC sibling test in `test/mc.test.js`.
   unless chosen), `motionMagnitude(ev)` (`acceleration`, else |accelerationIncludingGravity| − g), `accelToTarget(a)` (`SHAKE` aMin 3 → 1,
   aMax 28 → 10, gamma 0.8), `createShakeMeter()` (EMA α 0.35, starts at 3 m/s², score = 0.6 peak + 0.4 avg, done after 300 ms still or
   1.5 s), `gaugePosition(ms)` (ping-pong, 1100 ms per sweep, ×0.9 per sweep from the 4th, ≥ 650 ms), `gaugeTarget(pos)`, `aimText` (「🎯 목표 7 →
-  결과 8」/「… 명중!」, first roll), `aimShort`, `aimGrade`, `jitterHint`, `load/saveInputPref`, `DEADLINE_WARN_MS` 5000.
+  결과 8」/「… 명중!」/「🎯 목표 10 → 결과 7 (3칸 빗나감)」 for a miss ≥ 2, first roll), `aimShort`, `aimGrade`, `jitterHint(meta, target?)`
+  (a target → 「🎯 10 → 명중 20% · ±1 30% · ±2 20% · ±3 15% · ±4 10% · ±5 5%」; none → 「작은 숫자일수록 정확해요 · 🎯1 명중 50% … 🎯10 명중
+  20% (±5칸까지)」, or the old 「정확히 50% · ±1 40% · ±2 10%」 when every target shares one table), `aimRiskText(meta, t)` (「🎯 10: 명중 20% ·
+  ±5칸까지 빗나갈 수 있어요」), `aimCells(meta, t)` ([{v, p}] for the 10 cells), `load/saveInputPref`, `DEADLINE_WARN_MS` 5000.
 - `public/js/ui/skillPanel.js` `createSkillPanel(host, {onAim, getMeta, now})` → `open({charId, name, deadlineAt})`, `close`,
   `update`, `isOpen`, `charId`, `input`: fixed sheet `.skill-panel` (z 23, above cut-ins, under inbox / reaction bar / toasts), tabs 📱 흔들기 /
   👆 버튼으로 (saved), gauge (rAF needle over 10 cells, all always enabled, 「✋ 멈춰!」, Space / Enter via a capture keydown listener
   — not the 700 ms prompt guard), shake (「📱 흔들기 켜기」 once when iOS needs permission, live 1..10 meter, tutorial line, "no sensor"
   hint after 1.5 s without samples), result flash 「🎯 7!」, ⏰ warning under 5 s of the turn timer, Escape /
-  ✕ closes. `body.skill-open` hides the floating spin button. `?debug=1` → `window.__skill`.
+  ✕ closes. 「빠를수록 위험」: `showRisk(t)` — the odds line `[data-sk="odds"]` (min-height 2 lines) shows `jitterHint(meta, t)` of the cell
+  under the needle / the live shake level / the pick (general line before), and every reachable cell gets `.reach` + `--p` (a bar under
+  it, height = chance); the 💡 line says 「…자주 만나지만, 더 크게 빗나가요 (빠를수록 위험!)」. Admin form hint: 「실력 모드: 빠를수록
+  위험! … (🎯 1~5 명중 50% · ±2칸까지 … 🎯 10 명중 20% · ±5칸까지)」. `body.skill-open` hides the floating spin button. `?debug=1` → `window.__skill`.
 - game2d: `spinNow()` (dock button, floating button, 3D roulette tap) opens the panel in skill rooms (else the plain spin); the panel closes
   when it's no longer my roulette, `update` keeps the deadline fresh; dock text 「🎯 ○○ 룰렛 돌리기」 + hint 「🎯 흔들기나 버튼으로 목표 숫자를
   정해요」 / 「…룰렛을 🎯 조준하는 중…」; bet card never opens in skill rooms; last-spin line shows `aimText`; `spun` feedback: side float
@@ -1498,13 +1548,16 @@ the data files) and the MC sibling test in `test/mc.test.js`.
   wheel stopped (or at once when the step is instant) → game2d toasts my own 🎯 result (my prompt cut-in usually covers the board by then). CSS `public/css/roulette.css`.
 - Scripts: `simulate.js --roulette skill` (random-policy characters aim at a uniform random number = an average human, CPU policy aims;
   no bets; prints hit / ±1 / ±2 shares + landings per policy), `--bias --roulette skill [--aim random|cpu]` (`simulateBias({roulette,
-  aim})`), `--aim-duel --games N --seed S` (`simulateAim({games, seed, strategies: cpu|random|max|min|none, data})`), `cpu-game.js
+  aim})`), `--aim-duel --games N --seed S [--strategies cpu,random,…]` (`simulateAim({games, seed, strategies: cpu|random|max 10|high 8|mid 6|
+  min 1|none, data})`; prints the mean move per strategy and the CPU's aim histogram), `cpu-game.js
   --roulette skill` (`playCpuGame({roulette})`). Measured (with the former number deck): bias 2000 × seed 1 random aim 12.0–13.1 % (spread −0.06), 1000 × seed 1 CPU aim
   11.4–13.7 % (spread 0.12); `cpu-game` 4 CPU + 4 random × 300 (seed 1): CPU wins 67.7 % random mode → 82.0 % skill mode (random-aiming
   humans; avg total 1651 → 2068 vs 1439 → 1475); `simulate --games 300 --seed 11` random vs skill: route 1st-place shares stay fair
   (young 21.1 / 20.8 / 18.4 → 19.7 / 21.6 / 18.4 %, fair ≈ 20), raw route gaps young 3.3 → 5.7 %, middle_age 12.0 → 10.9 %; lifetime
   78.0 → 78.9 spins. (The `같은 판 평균 대비` relative line is dominated by games whose mean total is near 0 — use the raw gaps / shares.)
-- Tests: `test/roulette-skill.test.js` (config, jitter table + reflection + seeded 12k samples per target, no deck helpers / field, engine spins incl.
+- Tests: `test/roulette-skill.test.js` (config, jitter table + reflection + seeded 12k samples per target, 빠를수록 위험 (per-target tables:
+  sums, spread / exact share monotone, 10 never past 10, lookup order, seeded samples for 1 / 7 / 10, one draw per spin, 200 engine spins at
+  10), no deck helpers / field, engine spins incl.
   the same target twice in a row / leftover `aimUsed` ignored / log / lastSpin, 160 seeded spins through applyAction, invalid / random / auto / admin, bets 409, presentation tags, CPU target on a
   crafted board + legality + RNG untouched, HTTP spin + meta + admin), `test/client-roulette.test.js`. E2E: session scratchpad
   `skill/e2e.cjs` (screenshots `skill-*.png`); deck removal check `nodeck/e2e.cjs` (2D desktop, 3 own turns: all 10 cells enabled, the same target kept, 0 console errors).
@@ -1529,7 +1582,8 @@ Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A, which wins); devi
   `config.finalLength` tiles (20–80, default 40, `/api/meta.finalLength`), start → goal, paydays from the start every 18–25 (the last
   ≥ `paydayTail` 7 before the goal), trouble (`loss` × `troubleScale` 1.5) only at 3 spots (before the last payday, 5 after it, just
   before the goal), 2–3 `reversal` (인생역전섬), events filtered to good ones, no pass / shop. Goal order, `goalPrizes`, bonus spins
-  only here; `turn.eraRound/eraTurns` null; the game ends when everyone finished. Without a race (kids) places = final ranking
+  only here; `turn.eraRound/eraTurns` null; the game ends when everyone finished (since the senior rework: or at ⏰ 노년 마감, and the
+  pool / island / reversal counts changed — see "Senior race comeback (노년 역전)"). Without a race (kids) places = final ranking
   (`result.hasGoalRace`, awards / titles skip goal-place facts).
 - Turn loop (`continueTurn`): pending prompt → resume a paused move (`turn.move`) → era openings (lotto / 명절) → `announceTurn`
   (`turnStarted {eraRound, eraTurns, eraIndex}`) → `preSpinStep` (중학생 `club` on the first middle turn, 고교 첫 만남 `meet` on the
@@ -2412,3 +2466,119 @@ board / dock / hand / sheets / inbox; `hudprobe.cjs` 3D spectator HUD lag; `fu.c
   (로또 복권 / 쿠지 응모권 spent in a draw): `cardLostInfo` → 「🎱 복권 사용」/「🎟️ 응모권 사용」 `quiet` — folded into its lottoDraw group
   (never a lone banner, no float / 3D pop); 생일 파티 답례 `statChanged {reason: 'thanks'}` → chip 「🎁 답례 · 이름 ✨ 매력 +1」, float 「🎁 답례
   ✨매력 +1」, 3D 🎁 float (the gift option's server `desc` shows in the cut-in / 2D list).
+
+## Senior race comeback (노년 역전)
+User request: 「노년기때 앞선 시대에서 아이템을 잘 구비해왔으면 역전이 가능한 시나리오가 나오게. 또한 원작의 한방역전섬 같은 것으로 대박
+혹은 쪽박이 나올수 있게」. Tests: `test/senior-race.test.js` (server), `test/client-senior.test.js` (client pure parts) + updated board /
+loop-board / stage7-cards / stage9-submaps / presentation / assets-manifest expectations. Roadmap row 15 in `docs/PLAN.md`. E2E: session
+scratchpad `g2/` (`scen.mjs` real engine prompts / events → `scen-<world>.json`, `inject.cjs` injected into a real room: 1280 3D, 390 2D,
+390 `?cutins=off` sheet, TV spectator, fit sweep 320×568 … 1920×1080 + 844×390; screenshots `g2-*.png`).
+- Server module `server/game/senior.js` (pure; registers prompts island / islandPick / contest / auction and a `FINISH_HOOKS` entry):
+  `SENIOR_TILE_TYPES`, `SENIOR_USES`, `seniorCfg`, `inFinalRace`, `seniorItems / itemWithUse / luckyNumbers`, `standing(room, data, c)`
+  (visible ranking: `computeRanking(reveal: false)` → {ranks, totals, n, rank, gap}), `recordSeniorStart` (`room.seniorStart {ranks, totals,
+  n, turnNo}` at the transition into the final race), `seniorDodge / seniorLoss / seniorPayday`, `islandTiers / tierStake / coverSet /
+  retireOffer / islandOptions / enterIsland`, `contestThemes / themeItem / contestChance`, `hammerTable / hammerEv / itemAuctionBase`,
+  `resolveSeniorTile`, the race clock `raceRoundsFor / startRaceClock / tickRaceClock`, CPU worth helpers `tilesAhead / seniorUseWorth /
+  itemAuctionEv / treasureGuess / seniorShopWorth`. Data `balance.json` `senior {race, island, contest, auction}` (+ chiikawa overlay
+  renames), `/api/meta.balance.senior`.
+- **Final race board** (`board.js` `buildFinalTrack`, `board.json.finalTrack`): pool contest 5 · auction 3 · money 3 (×1.5) · event 2 ·
+  treasure / house / temple / hometown / heart / job / card 1 (jeju gone), ONE `island` 🏝️ at ≈ 60 % (`finalTrack.island.at`, the free
+  tile nearest, never next to specials / paydays), 1–2 `reversal` (`reversal {every 30, min 1, max 2}`, not next to the island); new tile
+  types island 🏝️ #ff6b3d / contest 🏆 #e6a817 / auction 🔨 #8e6b4a. `submaps.js`: the final-race 인생역전 prompt offers `allIn` only when
+  the era has no island (old saves); title 「🎰 인생역전」.
+- **🏝️ 한방역전섬** (engine `walk`: passing it with steps left pauses the move like a 찬스 광장 → `moved {halted: 'island', remaining}`;
+  landing opens it too): prompt `island` (resultCutin 'auto'; text names the rank; context {cash, lucky, rank, n, gap}) — options
+  `bet:all|half|little {tier, stake, numbers, mult, chance, ev, win, bust, desc, disabled?}` (stake = cash × share, 5-unit, ≥ min /
+  `minStake` 10; numbers + 🍀 lucky items), `retire {place, prize}` (조기 은퇴 at the next free place, prize × retirePrizeMult) and `pass`
+  (default; promptResolved `{result: 'pass'}`, cutin false → a banner). Tiers: 💥 인생 한 방 all-in share 1 · 1 number · ×8 · bust (EV 0.8),
+  🔥 반반 승부 share 0.5 · 3 numbers · ×3 (0.9), 🪙 소소한 재미 share 0.1 · 5 numbers · ×1.8 (0.9); each 🍀 item adds a number (EV of the
+  all-in with one = 1.6 — the preparation reward). A tier → prompt `islandPick` (10 options `'1'..'10'` `{number, covers}`; the covered
+  numbers run from the pick, 10 wraps to 1; default by turnNo) → ALWAYS a plain random roll (skill rooms too) → `islandResult {charId,
+  tier, stake, pick, covers, numbers, lucky, roll, mult, win, amount, result: jackpot|win|lose|bust}` (+ moneyChanged `island`); 쪽박 = cash
+  0 + `finished {retired: 'bust'}` (빈곤 농장, last free place, no prize); 은퇴 = `islandResult {result: 'retire', place, prize}` + finished
+  `retired: 'early'`. Only the all-in can 쪽박.
+- **🏆 노년 대회** (tile contest): prompt `contest` — the theme drawn with the game RNG (themes of the character's items weigh
+  `ownThemeWeight` 2): sing 노래자랑 charm / baduk 바둑 int / gateball 게이트볼 str / raffle 경품 추첨 luck / rally 실버 드라이브 랠리 luck
+  (🐹: 하치와레 노래자랑 · 고서점 퀴즈 · 토벌대 체력 대회 · 행운 쿠지 추첨 · 씽씽 킥보드 경주); win chance = 0.08 + 0.05 × stat (+0.25 with the
+  theme's item) ∈ [0.05, 0.85], 입상 = (1 − chance) × 0.35. Options `join:small {fee 20, prize 90, second 20, chance, secondChance, ev, themeId,
+  stat, itemId?}` / `join:big {60, 270, 60}` / `watch` (default = the cheapest affordable tier with EV ≥ 0, else watch; prizes × CPU income
+  handicap). → `contestResult {charId, themeId, tier, stat, statValue, itemId, chance, place (1 | 2 | null), fee, prize, amount}` +
+  moneyChanged `contest`.
+- **🔨 골동품 경매** (tile auction; 🐹 「🔨 벼룩시장 경매」): prompt `auction` — `sell:item:<id> {base = price × resale (× 1.5 명품 premium),
+  low, high, ev}`, `sell:treasure:<uid>` (the hidden appraisal is the base; fakes ≈ 0), `sell:junk {base 20}` (default), `leave`; the
+  hammer roulette `hammer [0.5, 0.7, 1, 1, 1.2, 1.2, 1.5, 1.8, 2.2, 3]` (EV ≈ 1.41) → `auctionResult {charId, kind, itemId | treasureId,
+  uid, fake, base, premium?, roll, mult, amount}` + moneyChanged `auction`; the sold item / treasure leaves the character (and
+  `treasureValues / treasureFakes`).
+- **아이템 노년 활용** (items.json `senior` + `seniorDesc`, both worlds; the shop desc ends 「· 👴 노년: …」, shop options carry
+  `seniorDesc`): car 경차 / 🛴 킥보드 `dodge` (a stop on a 지출 tile drives one tile on: `moved {dodge: true}`), laptop 노트북 / 고서점 책
+  `royalty` (지력 × 15 at the goal or early retirement, never on a bust), gym_pass 헬스 / 사스마타 `health` (지출 × 0.5), designer_bag 명품
+  가방 / 포셰트 `premium` (auction × 1.5), lucky_cat 복고양이 / 네잎클로버 `lucky` (+1 island number), massage_chair 안마의자 / 목욕탕 회수권
+  `pension` (+40 every final-race payday + heals an injury), 🐹 armor 갑옷 `guard` (blocks one 지출, once: `c.seniorUsed.guard`), 🐹 guitar
+  기타 `busking` (매력 × 6 every final-race payday); every item also has a contest `theme`. → `seniorItem {charId, itemId, use, amount?,
+  saved?, tileId?, healed?}` (+ moneyChanged `seniorItem`). Shops: `balance.shop {cards 1, items 2}`; young / middle_age main pools
+  card 4 → card 2 + shop 2 (both worlds).
+- **⏰ 노년 마감** (round cap, `balance.senior.race {perTile 0.3, min 8, max 30}` → 40 tiles = 12 rounds; a normal character needs ~7–8):
+  the transition into the final era sets `turn.raceRound` 1 / `turn.raceRounds` (also on `turnStarted`); `endTurn` ticks it when the order
+  wraps; past the last round everyone still on the track retires (`finished {retired: 'late'}`, the next free places by progress, prize ×
+  retirePrizeMult, log 「⏰ 노년 마감! …」, tag `retire_late`) → game over. An older save in the race starts a clock at its next full round.
+  Why: the race tiles pay, so crawling (skill roulette aimed at 1) bought ~17 extra landings and won 13.8–21.3 % of 8-way aim duels
+  (fair 12.5); with the cap 1.9–5.0 %.
+- Comebacks: `awards.comebackOf(room, ranking)` → `{charId, from, n}` when the winner's `seniorStart` rank was in the bottom half (n ≥ 3)
+  → `room.result.comeback`, `gameOver.comeback`, a highlight 「🔥 노년 시작 n위에서 대역전 1위!」 (score 9.5), the winner part of the MC
+  show = situation `resultComeback` (duo). Titles: comeback_king 「노년 대역전극」, island_jackpot 「인생역전 대박」, jjokbak_master 「쪽박
+  장인」 (gambleLosses ≥ 2), contest_star 「노인정 스타」 (🐹 동네 대회 스타; contestWins ≥ 2), antique_dealer 「골동품 큰손」 (🐹 벼룩시장 큰손;
+  auctionTotal ≥ 500). Records: islandJackpot, gambleLosses, contestWins, auctions, auctionTotal (+ island money in gambleNet / luckWin).
+- Presentation: `EVENT_TYPES` + islandResult contestResult auctionResult seniorItem; `CUTIN_TYPES` / `BOUNDARY` / prompts `ANCHOR_TYPES` +
+  the 3 results; scenes island / farm / auction (tones.json, `sceneFallbacks` → jeju / hometown / shop; manifest `bg-island bg-farm
+  bg-auction` todo); tags island island_pick island_jackpot island_win island_lose island_bust island_pass contest contest_win contest_second
+  contest_lose auction auction_big auction_sold auction_cheap auction_fake senior_item retire_late (+ placeholder `{contest}`); MC situations
+  islandJackpot (big duo) / islandBust (big) / islandWin / contestWin / auctionBig / resultComeback (big duo); sfx islandResult /
+  islandJackpot / islandBust / contestResult / contestWin / auctionResult / seniorItem.
+- CPU (`cpu.js`, additive): `CPU_ANSWERS.island` (hard: an expected-standing utility — the trailing gamble, the leader passes / retires),
+  `islandPick` (sub-RNG), `contest` (best EV over a personality margin), `auction` (gain-based; the 명품 premium sells); easy tables
+  `balance.cpu.prefs.island|islandPick|contest|auction` + personality rows (never `bet:all`; 🔥 mostly `bet:little`); `tileWorth` contest 35 /
+  auction 25 + 25 per item + 15 per treasure / island 20; `shopWorth` + `seniorShopWorth`; `progressWorth` in the final race = the goal
+  share − `FINAL_LANDING` 8 / 5.5 per tile (paydays halt there anyway; before: the payday share made the hard CPU rush past paying tiles).
+- Client pure `public/js/shared/seniorPlay.js` (`ISLAND_TIERS`, `ISLAND_RESULTS`, `DEFAULT_THEMES`, `DEFAULT_ITEM_SENIOR`, `itemSenior /
+  seniorDescOf / seniorItemsOf`, `islandPrompt / standingText / islandPickPrompt / islandOutcome / isIslandBig`, `contestPrompt /
+  contestOutcome / isContestBig`, `auctionPrompt / auctionOutcome / isAuctionBig`, `seniorItemText`, `isSeniorPass`), `ui/seniorArt.js`
+  (`islandOptionsHtml` stake cards: name + 🔥 risk, 판돈 / 맞히면 ×n = …, 숫자 n개 dots + chance meter, 쪽박 note; side buttons 🏖️ 조기
+  은퇴 · n등 / 🍵 욕심 버리기 — `islandPickHtml` 5 × 2 pad with covered numbers, `contestOptionsHtml`, `auctionOptionsHtml` lots + mini hammer
+  row, `seniorOptionsHtml` dispatcher (cut-in prompt and the 2D sheet `.senior-choices`), `islandWheelHtml` (`--rot`), `hammerBoardHtml`,
+  `trophyHtml`, `seniorSceneBody` island (beach roulette `.sb-wheel`, hidden while the window shows its own wheel) / farm / auction),
+  `css/senior.css`. cutinMap `SENIOR_ANCHORS` + `g.senior[]` chips, lone seniorItem / pass groups, tags; cutinPolicy big = jackpot / bust /
+  win ≥ 500 / contest win / auction ×2.2+, banners = seniorItem + passes; cutin2d `seniorLook / seniorExtras / renderSenior` (wheel spin +
+  confetti / rain + screen shake on 대박, trophy, hammer board at the right of the window; the moneyChanged `seniorItem` chip is dropped —
+  the 👴 chip names the amount); `.ci-chips:not(.row):not(:empty) + .ci-text { display: flow-root }` (cutin.css: the live text never runs
+  under ≤ 3 floated chips). game2d: 2D sheet, floats / toasts, side tag 👴 n in the final race, detail facts 「👴 노년 활용」, item titles
+  with the senior use; HUD chip 「🏁 골인 경쟁 ⏰ 5/12」 + 「노년 마감 턴!」 (`loop.js` eraClock race → `turn.raceRound/raceRounds`,
+  `eraClockText` 「노년 · 골인 경쟁 5/12턴」, `lastTurnHint` 「⏰ 노년 마감 턴! …」), finished late 「⏰ 노년 마감」 everywhere (side list, chip,
+  fallback text, 3D banner, toast). 3D: tile colours / glyphs, markers (islet + palm + roulette disc, contest cup, auction gavel) in the merged
+  marker mesh, pops for the 4 events; animator `ANIMATED_EVENTS` + them; `loop.haltNote` 🏝️ 한방역전섬 (남은 n칸) / 🚗 쌩— 지출 칸 통과!;
+  shop cards 「👴 노년: …」 (`cardArt.shopOptionsHtml`).
+- Scripts: `node scripts/senior-race.js [--games N --seed S --policy casual|random|expert --cpus M --chars C --world real|chiikawa --mode]`
+  (decision-turn share, item-effect turns, decisions per character, longest run without a decision, goal prize / bonus spin shares,
+  comebacks, items bought / shop visits per era, island / contest / auction / reversal outcomes, prompt kinds) and `--duel cpu,<strategy>…`
+  (`DUEL_STRATEGIES` island:pass|all|half|little|retire, contest:watch|small|big, auction:leave|junk|sell, shop:noItems|items; 4 hard
+  CPUs, one seat fixed).
+- Measured (before = the senior race before this rework, 20 games; after = `senior-race.js` 100 games × seed 1, real / 🐹): decision turns
+  in the final race casual 27.8 → 52.3 / 51.6 %, expert 30.7 → 52.2 / 51.0, random 32.4 → 55.4 / 55.5, casual + 3 CPU 31.3 → 53.3 / 51.7;
+  decisions per character casual 2.45 → 4.78 / 4.72 (expert 5.30 / 5.18); longest run without a decision (casual) median 13 / max 25 →
+  5 / 14–16; final-race spins per character 8.07 → 7.83 / 7.75 (random 6.8–6.9: more retire / bust); goal prizes 1.7 → 1.6 % of totals;
+  comebacks (expert seats) bottom half at the start → 1st 0 → 22 / 30 %, last → top 2 0 → 11 / 11 %, the leader stays 1st 55 → 43 / 40 %
+  (casual: 65 → 58 / 63 %); items held at the end casual 0.04 → 0.15 / 0.13 (expert 1.31 / 1.41); ⏰ late retirements 5–11 of 800
+  characters. Duels (`--duel`, 200 × seed 1, 4 hard CPUs, fair 25 %): island pass / all / half / little / retire 18.0 / 12.5 / 26.5 /
+  18.5 / 14.5 (real), 17.0 / 15.0 / 22.0 / 18.0 (🐹); contest watch / small / big 20.5 / 19.5 / 23.0, auction leave / junk / sell 18.5 /
+  17.5 / 19.5, shop noItems / items 15.0 / 23.0 (🐹) — no dominant option, buying items pays. `simulate --aim-duel --games 140` (8 hard CPUs,
+  fair 12.5 %), before (cap off, the rushing final-race aim) real cpu 20.0 · min 13.8 %, 🐹 cpu 12.5 · min 16.9 · mid 17.5 % → after seeds
+  1 / 2: real cpu 23.1 / 27.5 · random 11.3 / 13.8 · max 9.4 / 10.6 · high 12.5 / 8.1 · mid 15.0 / 13.1 · min 5.0 / 2.5 · none 11.3 / 11.9;
+  🐹 cpu 28.8 / 23.1 · random 7.5 / 14.4 · max 15.6 / 15.0 · high 8.1 / 11.3 · mid 13.8 / 10.6 · min 3.8 / 1.9 · none 10.0 / 11.3.
+  `cpu-game --matrix --games 200 --seed 1` (easy) real / 🐹: casual 1 + 3 95.5 / 93.5 %, random 1 + 3 83.0 / 83.0, casual 2 + 2 99.5 / 99.5,
+  casual 4 + 4 100 / 100, expert 100 / 100, adult 94.5 / 94.0, kids 100 / 100, skill casual 93.0 / 95.5, skill random 81.5 / 79.5 (all ✅;
+  E2E-4 reference before the rework 96.5 / 98.5, 87 / 90.5, skill 97.5 / 96, 87.5 / 91 — the island also gives trailing CPUs a chance);
+  `--cpu-level normal`: casual 1 + 3 32.0 / 24.5 % (🐹 seeds 2 / 3: 30.0 / 33.5), adult 26.0 / 29.5, kids 33.5 / 35.5, skill 28.0 / 26.5
+  (with aimRandom 1; seeds 2 / 3: 27.5 / 27.5, 28.0). `--bias --games 400 --seed 1`: real 10.0–14.5 % (rank spread 0.09), 🐹 9.5–14.0 %
+  (0.33). `simulate --games 300 --seed 11` route 1st-place shares vs fair: real young 19.3 / 16.7 / 21.1 (19.5 / 18.8 / 18.9), middle_age
+  20.2 / 18.5 / 20.0 (19.3 / 18.5 / 19.5); 🐹 young 20.8 / 18.6 / 17.9 (18.0 / 19.0 / 20.4), middle_age 21.8 / 19.8 / 17.2 (19.5 / 18.8 /
+  19.0); lifetime total composition real cash 60.2 · house 23.0 · items 5.0 · treasures 3.4 · awards 8.4 %, 🐹 71.1 · 16.5 · 3.4 · 2.6 · 6.4;
+  lifetime spins per character 48.3 / 48.5 (unchanged).

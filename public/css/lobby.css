@@ -378,3 +378,14 @@ body:not([data-screen='game']) .reaction-bar[data-more='both'] { -webkit-mask-im
 .conn.gone { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; font-weight: 800; }
 @media (max-width: 430px) { .conn.gone { width: auto; } }
 @media (pointer: coarse) { .conn.gone { display: inline-flex; align-items: center; min-height: 40px; } }
+
+/* CPU 난이도 picker (host tools / admin room detail): label + select on one line; the option text is long → the select
+   may shrink (min-width 0) instead of widening a 320 px page */
+.cpu-level { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; flex-basis: 100%; min-width: 0; font-size: 0.85rem; font-weight: 700; }
+.cpu-level > span { flex: none; }
+.cpu-level select { flex: 1 1 13em; }
+.cpu-level select, .cpu-level-sel {
+  font: inherit; font-size: 0.85rem; font-weight: 600; min-width: 0; max-width: min(100%, 20em); min-height: 30px; height: 30px;
+  padding: 0 6px; border: 1px solid #cbd5e1; border-radius: 999px; background: #f8fafc; color: inherit; line-height: 1;
+}
+@media (pointer: coarse) { .cpu-level select, .cpu-level-sel { min-height: 40px; height: 40px; font-size: 16px; } }

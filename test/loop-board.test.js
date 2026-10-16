@@ -309,7 +309,7 @@ test('transition openings run once, in order: eraTransition → eraChanged ×n �
 
 // ---------- final race ----------
 
-test('인생역전섬 (final race): 조기 은퇴 = next place with half the prize, no bonus spins; 전 재산 올인 hit ×7 / miss → 빈곤 농장 (last place)', () => {
+test('인생역전 (final race, a board without a 🏝️ 한방역전섬 = an old save): 조기 은퇴 = next place with half the prize, no bonus spins; 전 재산 올인 hit ×7 / miss → 빈곤 농장 (last place)', () => {
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2'], ['B', 'B2']] });
   const last = room.board.eras.length - 1;
   toEra(room, last);
@@ -320,7 +320,7 @@ test('인생역전섬 (final race): 조기 은퇴 = next place with half the pri
   let r = act(room, { type: 'spin', characterId: id }, { ints: [1] });
   const p = r.room.turn.pending;
   assert.equal(p.kind, 'reversal');
-  assert.equal(p.title, '🏝️ 인생역전섬');
+  assert.equal(p.title, '🎰 인생역전');
   const ids = p.options.map((o) => o.id);
   assert.ok(ids.includes('allIn') && ids.includes('retire'));
   const prizes = data.balance.goalPrizes;

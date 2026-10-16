@@ -6,6 +6,8 @@
 //   layerPlan(avail, want)        → which generated image of a layer set to show (job/era costumes, Stage 6)
 //   resolveCharacterArt(char, want) → AI art (Stage 5.5-D) > paper-doll layers (Stage 5.5-C) for a character
 
+import { isSeniorPass } from '../shared/seniorPlay.js';
+
 export const TONES = ['love', 'career', 'treasure', 'good', 'bad', 'holiday', 'result', 'neutral'];
 export const POSES = ['idle', 'wave', 'jump', 'cheer', 'cry', 'shock'];
 export const EMOTION_GLYPH = { joy: '😆', cry: '😭', angry: '😡', sweat: '😅', love: '😍', shock: '😱' };
@@ -113,17 +115,22 @@ export const STAGE9_ANCHORS = new Set(['submapResult', 'treasureFound']);
  */
 export const WORLD_ANCHORS = new Set(['huntResult', 'weedResult']);
 export const isHuntRunEvent = (e) => e?.type === 'promptResolved' && e.kind === 'hunt' && String(e.result ?? '') === 'run';
+/**
+ * 노년 역전 anchors (always anchors + boundaries): 한방역전섬 (대박 / 쪽박 / 적중 / 꽝 / 조기 은퇴), 노년 대회, 골동품 경매.
+ * `seniorItem` (an item's 노년 활용) is a follow-up chip, alone a banner; 「욕심 버리기」 / 구경 (`isSeniorPass`) are lone banners.
+ */
+export const SENIOR_ANCHORS = new Set(['islandResult', 'contestResult', 'auctionResult']);
 const NEVER_ANCHOR = new Set(['prompt', 'submapEntered', 'mvpDecided']);
 /** Loop maps: the shared era transition is always an anchor (the batch's per-character eraChanged fold into it). */
 export const TRANSITION = 'eraTransition';
 const isAnchor = (e) =>
-  !!e && !NEVER_ANCHOR.has(e.type) && (e.cutin || e.type === TRANSITION || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || STAGE9_ANCHORS.has(e.type) || WORLD_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind)) && !isHuntRunEvent(e);
+  !!e && !NEVER_ANCHOR.has(e.type) && (e.cutin || e.type === TRANSITION || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || STAGE9_ANCHORS.has(e.type) || WORLD_ANCHORS.has(e.type) || SENIOR_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind)) && !isHuntRunEvent(e);
 
 /** Follow-ups stop at these (they start their own step / group). */
 const BOUNDARY = new Set([
   'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'eraTransition', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
   'promptResolved', 'gameOver', 'betPlaced', ...STAGE6_ANCHORS, ...STAGE7_ANCHORS, 'tradeOffered', 'tradeResolved',
-  ...STAGE8_ANCHORS, ...STAGE9_ANCHORS, 'submapEntered', ...WORLD_ANCHORS,
+  ...STAGE8_ANCHORS, ...STAGE9_ANCHORS, 'submapEntered', ...WORLD_ANCHORS, ...SENIOR_ANCHORS,
 ]);
 /** Stage 8: childGrew dol / exam / job are boundaries (their own cut-in); 입학 is a chip of the anchor before it. */
 const isBoundary = (e) => BOUNDARY.has(e?.type) || (e?.type === 'childGrew' && CHILD_GROW_ANCHORS.has(e.kind));
@@ -166,6 +173,8 @@ export function planCutins(events = []) {
     // loop maps (ADDENDUM A1): 찬스 광장 buffs gained / expired → chips
     const buffs = follow.filter((e) => e.type === 'chanceBuff').map((e) => ({ charId: e.charId, buff: e.buff ?? null, action: e.action ?? 'gained' }));
     const gifts = follow.filter((e) => e.type === 'gift').map((e) => ({ fromId: e.fromId, toId: e.toId, money: e.money ?? null, cardId: e.cardId ?? null }));
+    // 노년 역전: items' 노년 활용 (🚗 위기 탈출 · ♨️ 건강 보너스 · 🎸 버스킹 · 📖 자서전 인세 …) → chips
+    const senior = follow.filter((e) => e.type === 'seniorItem').map((e) => ({ charId: e.charId, itemId: e.itemId, use: e.use, amount: e.amount ?? null, saved: e.saved ?? null, healed: !!e.healed }));
     // Stage 8 follow-ups → chips: 펫 광고 수입 (allowance), 집 보상판매 (houseSold), 펫 훈련 학교 (childGrew school), 단짝 생활비 (salary.spouseAmount)
     const family = follow
       .filter((e) => e.type === 'allowance' || e.type === 'houseSold' || e.type === 'childGrew')
@@ -190,7 +199,7 @@ export function planCutins(events = []) {
     const mcEvents = [a.mc?.length ? a : null, mcFollow ?? null].filter(Boolean);
     const studio = a.mcStudio && a.mc?.length ? a.mc : null;
     const targetId = a.targetId ?? a.toId ?? null;
-    return { anchor: a, charId, targetId, texts, money, delta, involved: involved.slice(0, 3), mc, studio, mcEvents, stats, salary, discharged, cards, gifts, family, buffs, _i: i };
+    return { anchor: a, charId, targetId, texts, money, delta, involved: involved.slice(0, 3), mc, studio, mcEvents, stats, salary, discharged, cards, gifts, family, buffs, senior, _i: i };
   };
   for (let i = 0; i < events.length; i++) {
     const a = events[i];
@@ -202,7 +211,7 @@ export function planCutins(events = []) {
     if (covered.has(i) || isAnchor(e)) return;
     // a 로또 복권 / 쿠지 응모권 spent in a draw (cardLost used) belongs to its lottoDraw → never a lone banner
     if (e?.type === 'cardLost' && e.reason === 'used') return;
-    if (e?.type === 'militaryEnd' || STAGE7_LONE.has(e?.type) || isHuntRunEvent(e)) groups.push(build(i, e));
+    if (e?.type === 'militaryEnd' || STAGE7_LONE.has(e?.type) || isHuntRunEvent(e) || e?.type === 'seniorItem' || isSeniorPass(e)) groups.push(build(i, e));
   });
   groups.sort((x, y) => x._i - y._i);
   foldEraEntries(groups, events);
@@ -307,7 +316,7 @@ export function fallbackText(anchor, name = '') {
     case 'routeChosen':
       return `${name}의 새 루트!`;
     case 'finished':
-      return anchor.retired === 'early' ? `${name} 조기 은퇴! 🏖️` : anchor.retired === 'bust' ? `${name}, 빈곤 농장으로… 🌾` : `${name} ${anchor.place}등으로 골인!`;
+      return anchor.retired === 'early' ? `${name} 조기 은퇴! 🏖️` : anchor.retired === 'late' ? `⏰ 노년 마감 — ${name} ${anchor.place}등으로 은퇴` : anchor.retired === 'bust' ? `${name}, 빈곤 농장으로… 🌾` : `${name} ${anchor.place}등으로 골인!`;
     case 'gameOver':
       return '게임 종료! 결과 발표';
     case 'rankUp':
@@ -379,8 +388,28 @@ export function fallbackText(anchor, name = '') {
       return anchor.success ? `${name}, 키메라 토벌 성공! ⚔️` : `${name}, 키메라에게 졌어요… 💥`;
     case 'weedResult':
       return anchor.action === 'exam' ? (anchor.success ? `${name}, 풀뽑기 ${anchor.grade ?? ''} 검정 합격! 📝` : `${name}, 풀뽑기 검정 불합격… 다음엔 꼭!`) : `${name}, 풀을 쏙쏙 뽑았어요! 🌿`;
+    // 노년 역전
+    case 'islandResult':
+      return anchor.result === 'jackpot'
+        ? `${name}, 한방역전섬 대박!!! ${anchor.roll} 적중 💥`
+        : anchor.result === 'bust'
+          ? `${name}, 쪽박… 전 재산을 잃고 빈곤 농장으로 🌾`
+          : anchor.result === 'retire'
+            ? `${name} 조기 은퇴! 여유로운 노후 🏖️`
+            : anchor.win
+              ? `${name}, 한 방 적중! 🎯`
+              : `${name}, 숫자가 빗나갔어요… 💸`;
+    case 'contestResult':
+      return anchor.place === 1 ? `${name}, 노년 대회 우승! 🏆` : anchor.place === 2 ? `${name}, 노년 대회 입상! 🥈` : `${name}, 예선 탈락… 다음엔 꼭!`;
+    case 'auctionResult':
+      return anchor.fake ? `${name}의 보물… 가짜였어요! 💥` : `${name}의 물건이 낙찰됐어요! 🔨 ×${anchor.mult}`;
+    case 'seniorItem':
+      return `${name}, 젊을 때 사 둔 아이템 덕을 봤어요! 👴`;
     case 'promptResolved':
       if (isHuntRunEvent(anchor)) return `${name}, 키메라에게서 후다닥 도망쳤어요! 🏃`;
+      if (anchor.kind === 'island') return `${name}, 욕심을 버리고 한방역전섬을 지나갔어요 🍵`;
+      if (anchor.kind === 'contest') return `${name}, 노년 대회를 구경했어요 👀`;
+      if (anchor.kind === 'auction') return `${name}, 경매장을 구경만 했어요 🚶`;
       return anchor?.line ?? '';
     default:
       return anchor?.line ?? '';
@@ -399,12 +428,14 @@ export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {
   else if ((anchor?.type === 'gameOver' || anchor?.type === 'result') && anchor?.tone !== 'result') place = '결과 발표';
   else if (anchor?.type === 'prompt') return promptTag(anchor, tone);
   else if (isHuntRunEvent(anchor)) return '🏃 토벌 · 도망';
+  else if (isSeniorPass(anchor)) return { island: '🍵 한방역전섬 · 지나가기', contest: '👀 노년 대회 · 구경', auction: '🚶 경매 · 구경' }[anchor.kind];
   else if (anchor?.type === 'promptResolved') place = { hunt: '토벌', weed: '풀뽑기 검정소', exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '새 친구', date: '같이 놀기', propose: '「같이 살자!」', house: '부동산', hometown: '고향 시골집', temple: '산사', jeju: '제주도', reversal: '인생역전', passTile: '찬스 광장' }[anchor.kind] ?? '결과';
   else if (STAGE6_TAGS[anchor?.type]) return STAGE6_TAGS[anchor.type](anchor);
   else if (STAGE7_TAGS[anchor?.type]) return STAGE7_TAGS[anchor.type](anchor);
   else if (STAGE8_TAGS[anchor?.type]) return STAGE8_TAGS[anchor.type](anchor);
   else if (STAGE9_TAGS[anchor?.type]) return STAGE9_TAGS[anchor.type](anchor);
   else if (WORLD_TAGS[anchor?.type]) return WORLD_TAGS[anchor.type](anchor);
+  else if (SENIOR_TAGS[anchor?.type]) return SENIOR_TAGS[anchor.type](anchor);
   // the tone label repeats the route name for routes ("💕 단짝·반려 · 단짝·반려 루트") → keep just the place
   if (place && tone.label && place.startsWith(tone.label)) return `${tone.icon ?? ''} ${place}`.trim();
   return `${tone.icon ?? ''} ${tone.label ?? ''}${place ? ` · ${place}` : ''}`.trim();
@@ -467,6 +498,14 @@ const STAGE9_TAGS = {
 const WORLD_TAGS = {
   huntResult: (a) => `⚔️ 토벌 · ${a.success ? '승리' : '패배'}`,
   weedResult: (a) => (a.action === 'exam' ? `🌿 풀뽑기 검정 · ${a.success ? '합격' : '불합격'}` : '🌿 풀뽑기 일하기'),
+};
+
+/** 노년 역전 anchors / lone groups: own tag. */
+const SENIOR_TAGS = {
+  islandResult: (a) => `🏝️ 한방역전섬 · ${{ jackpot: '대박!', win: '적중', lose: '꽝', bust: '쪽박', retire: '조기 은퇴' }[a.result] ?? '결과'}`,
+  contestResult: (a) => `🏆 노년 대회 · ${a.place === 1 ? '우승' : a.place === 2 ? '입상' : '탈락'}`,
+  auctionResult: (a) => (a.fake ? '🔨 경매 · 가짜!' : `🔨 경매 · 낙찰 ×${a.mult}`),
+  seniorItem: () => '👴 노년 활용',
 };
 
 /** Dialogue fallback of a submap result (the server's log line wins). */
@@ -601,7 +640,7 @@ export function resolveSceneBg(scene, { presentation = {}, assetUrl = () => null
  * Stage 9 submap scenes: their own SVG (시골집 · 산사 · 제주도 · 경마장) beats a fallback chain's generic background; 세계 설정:
  * 풀밭 · 토벌 숲 · 라멘 가게 「郎」 · 쿠지 가게 too (ui/worldArt.js).
  */
-export const PREFER_SVG_SCENES = new Set(['hometown', 'temple', 'jeju', 'casino', 'weed-field', 'hunt-forest', 'ramen-shop', 'kuji']);
+export const PREFER_SVG_SCENES = new Set(['hometown', 'temple', 'jeju', 'casino', 'weed-field', 'hunt-forest', 'ramen-shop', 'kuji', 'island', 'farm', 'auction']);
 /** Contract default of tones.json `sceneFallbacks` (used when the server doesn't send it). */
 export const DEFAULT_SCENE_FALLBACKS = Object.freeze({
   stage: 'wedding-hall', stadium: 'mountain-trail', gym: 'mountain-trail', army: 'mountain-trail', space: 'mountain-trail',
@@ -611,6 +650,8 @@ export const DEFAULT_SCENE_FALLBACKS = Object.freeze({
   // 세계 설정 (치이카와 모드 scenes; weed-field / hunt-forest / ramen-shop / kuji are drawn as SVG here)
   'weed-field': 'park', 'hunt-forest': 'mountain-trail', 'ramen-shop': 'kitchen', workshop: 'office', sento: 'house', bookstore: 'office', cafe: 'kitchen', kuji: 'shop',
   park: 'mountain-trail', house: 'office',
+  // 노년 역전 (한방역전섬 · 빈곤 농장 · 경매장 are drawn as SVG here: ui/seniorArt.js)
+  island: 'jeju', farm: 'hometown', auction: 'shop',
 });
 /** Scenes the cut-in can draw as SVG without a generated background. */
-export const SVG_SCENES = new Set(['school', 'office', 'hospital', 'wedding-hall', 'mountain-trail', 'studio', 'shop', 'holiday', 'hometown', 'temple', 'jeju', 'casino', 'weed-field', 'hunt-forest', 'ramen-shop', 'kuji']);
+export const SVG_SCENES = new Set(['school', 'office', 'hospital', 'wedding-hall', 'mountain-trail', 'studio', 'shop', 'holiday', 'hometown', 'temple', 'jeju', 'casino', 'weed-field', 'hunt-forest', 'ramen-shop', 'kuji', 'island', 'farm', 'auction']);

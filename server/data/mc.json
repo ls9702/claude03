@@ -521,6 +521,54 @@
       "vars": ["name", "grade"],
       "hoya": {"expression": "joy", "pose": "clap"},
       "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "islandJackpot": {
+      "weight": "big",
+      "lead": "hoya",
+      "duo": true,
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "surprise", "pose": "mic"}
+    },
+    "islandBust": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": "chance",
+      "vars": ["name"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "islandWin": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "contestWin": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "contest", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "auctionBig": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "item", "amount"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "resultComeback": {
+      "weight": "big",
+      "lead": "bomi",
+      "duo": true,
+      "vars": ["name", "amount", "place"],
+      "hoya": {"expression": "surprise", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
     }
   },
   "eraSituations": {

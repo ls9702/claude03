@@ -17,6 +17,9 @@
     "temple": {"name": "사찰", "icon": "🛕", "color": "#b07cc6"},
     "jeju": {"name": "제주도", "icon": "🏝️", "color": "#3fb8c9"},
     "reversal": {"name": "인생역전", "icon": "🎰", "color": "#e0527a"},
+    "island": {"name": "한방역전섬", "icon": "🏝️", "color": "#ff6b3d"},
+    "contest": {"name": "노년 대회", "icon": "🏆", "color": "#e6a817"},
+    "auction": {"name": "골동품 경매", "icon": "🔨", "color": "#8e6b4a"},
     "hunt": {"name": "토벌", "icon": "⚔️", "color": "#c0392b"},
     "weed": {"name": "풀뽑기", "icon": "🌿", "color": "#6ab04c"},
     "stop": {"name": "정지", "icon": "🛑", "color": "#e2504c"},
@@ -42,23 +45,25 @@
     "forkAt": 0.3
   },
   "finalTrack": {
-    "_comment": "마지막 시대(노년) 골인 경주: 턴 제한 없는 일직선 finalLength칸(방 설정, 20~80, 기본 40). 대부분 좋은 칸(pool, 이벤트는 좋은 일만), 월급날(강제 정지)은 loop.payday 간격(마지막 월급날은 골에서 paydayTail칸 이상 앞), 지출(트러블)은 3곳 고정: 마지막 월급날 바로 앞 / 그 뒤 troubleAfterPayday칸 / 골 바로 앞 (금액 × troubleScale). 인생역전섬(reversal) round(길이 / reversal.every)개(min~max). 찬스 광장·상점 없음.",
+    "_comment": "마지막 시대(노년) 골인 경주: 일직선 finalLength칸(방 설정, 20~80, 기본 40). 시대 턴 제한 대신 ⏰ 노년 마감(balance.json senior.race: 40칸 → 최대 12턴, 지나면 남은 캐릭터는 진행 순서대로 은퇴). 월급날(강제 정지)은 loop.payday 간격(마지막 월급날은 골에서 paydayTail칸 이상 앞), 지출(트러블)은 3곳 고정: 마지막 월급날 바로 앞 / 그 뒤 troubleAfterPayday칸 / 골 바로 앞 (금액 × troubleScale). 노년 역전: 🏝️ 한방역전섬(island) 1개를 길이 × island.at 근처에 — 찬스 광장처럼 지나가기만 해도 멈춰서 결정(판돈 걸기 / 조기 은퇴 / 지나가기)하고 남은 칸을 마저 간다(경주가 길어지지 않음). 🎰 인생역전(reversal: 로또·경마·조기 은퇴) round(길이 / reversal.every)개(min~max). 나머지 칸은 pool: 🏆 노년 대회(contest)·🔨 골동품 경매(auction)가 결정 칸, 이벤트는 좋은 일만. 찬스 광장·상점 없음.",
     "pool": [
-      {"type": "money", "weight": 6, "scale": 1.5},
-      {"type": "event", "weight": 4},
+      {"type": "contest", "weight": 5},
+      {"type": "auction", "weight": 3},
+      {"type": "money", "weight": 3, "scale": 1.5},
+      {"type": "event", "weight": 2},
       {"type": "treasure", "weight": 1},
       {"type": "house", "weight": 1},
       {"type": "temple", "weight": 1},
       {"type": "hometown", "weight": 1},
       {"type": "heart", "weight": 1},
       {"type": "job", "weight": 1},
-      {"type": "card", "weight": 2},
-      {"type": "jeju", "weight": 1}
+      {"type": "card", "weight": 1}
     ],
     "paydayTail": 7,
     "troubleAfterPayday": 5,
     "troubleScale": 1.5,
-    "reversal": {"every": 16, "min": 2, "max": 3}
+    "island": {"at": 0.6},
+    "reversal": {"every": 30, "min": 1, "max": 2}
   },
   "eras": {
     "baby": {
@@ -115,7 +120,8 @@
         {"type": "money", "weight": 8},
         {"type": "loss", "weight": 5},
         {"type": "event", "weight": 8},
-        {"type": "card", "weight": 4},
+        {"type": "card", "weight": 2},
+        {"type": "shop", "weight": 2},
         {"type": "job", "weight": 4},
         {"type": "heart", "weight": 2},
         {"type": "house", "weight": 1},
@@ -130,7 +136,8 @@
         {"type": "money", "weight": 8},
         {"type": "loss", "weight": 5},
         {"type": "event", "weight": 8},
-        {"type": "card", "weight": 4},
+        {"type": "card", "weight": 2},
+        {"type": "shop", "weight": 2},
         {"type": "job", "weight": 4},
         {"type": "heart", "weight": 2},
         {"type": "house", "weight": 2},

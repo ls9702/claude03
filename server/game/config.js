@@ -6,6 +6,22 @@ import { DEFAULT_WORLD, WORLDS } from './world.js';
 export { ROULETTE_MODES, WORLDS, DEFAULT_WORLD };
 
 export const TURN_ORDERS = ['family', 'index'];
+/**
+ * CPU 난이도 (room setting, user decision): easy = the real weak CPUs (personality tables) + the money handicap against
+ * people (cpuHandicap.js); normal = no handicap, a mix of the strong heuristic and the personality tables (about a casual
+ * person's strength); hard = the strong heuristic (`level: 'hard'`, the old CPUs), no handicap. A room without one (old
+ * saves) = easy.
+ */
+export const CPU_LEVELS = ['easy', 'normal', 'hard'];
+export const DEFAULT_CPU_LEVEL = 'easy';
+export const CPU_LEVEL_INFO = {
+  easy: { id: 'easy', icon: '😊', name: '쉬움', desc: '사람이 거의 이겨요' },
+  normal: { id: 'normal', icon: '🙂', name: '보통', desc: '비슷한 실력' },
+  hard: { id: 'hard', icon: '😈', name: '어려움', desc: '예전의 강한 CPU' },
+};
+/** The room's CPU difficulty (missing / unknown → easy). */
+export const cpuLevelOf = (room) => (CPU_LEVELS.includes(room?.config?.cpuLevel) ? room.config.cpuLevel : DEFAULT_CPU_LEVEL);
+export const CPU_LEVEL_ERROR = 'CPU 난이도는 쉬움(easy)·보통(normal)·어려움(hard) 중 하나여야 해요.';
 /** MC NPC (호야 & 봄이) appearance frequency (Stage 5.6). */
 export const MC_FREQUENCIES = ['many', 'normal', 'few', 'off'];
 export const MAX_CHARACTERS_LIMIT = 8;
@@ -56,6 +72,7 @@ export function defaultRoomConfig() {
     maxCharacters: 8,
     startingMoney: 1000,
     allowCpu: false,
+    cpuLevel: DEFAULT_CPU_LEVEL, // CPU 난이도: easy (handicap) | normal | hard (the old strong CPUs)
     turnOrder: 'family',
     mcFrequency: 'normal',
     turnTimeoutSec: 0,
@@ -121,6 +138,11 @@ export function validateRoomConfig(input = {}) {
   if (input.allowCpu !== undefined) {
     if (typeof input.allowCpu !== 'boolean') errors.push('CPU 허용 값은 true/false여야 합니다.');
     else cfg.allowCpu = input.allowCpu;
+  }
+
+  if (input.cpuLevel !== undefined) {
+    if (!CPU_LEVELS.includes(input.cpuLevel)) errors.push(CPU_LEVEL_ERROR);
+    else cfg.cpuLevel = input.cpuLevel;
   }
 
   if (input.turnOrder !== undefined) {

@@ -30,6 +30,11 @@ test('modeSummary: bold mode name, extras, era list with the final goal race', (
   assert.ok(kids.eras.some((e) => e.endsWith('-턴')), 'an era without a turn count shows 「-턴」');
   // unknown mode / no meta → the raw id, no eras
   assert.deepEqual(modeSummary({ config: { mode: 'weird', startingMoney: 0 } }, null), { title: 'weird', extras: ['초기 자금 0만원'], eras: [] });
+  // CPU 난이도: shown when 「CPU 허용」 is on or CPUs joined (missing = 쉬움); meta.cpu.levels names win
+  assert.deepEqual(modeSummary({ config: { mode: 'kids', startingMoney: 500, allowCpu: true, cpuLevel: 'hard' } }, { eras }).extras, ['초기 자금 500만원', '🤖 CPU 😈 어려움']);
+  assert.deepEqual(modeSummary({ config: { mode: 'kids', startingMoney: 500 }, characters: [{ ownerId: 'cpu' }] }, { eras }).extras, ['초기 자금 500만원', '🤖 CPU 😊 쉬움']);
+  const named = { eras, cpu: { levels: [{ id: 'normal', icon: '🙂', name: '보통', desc: '비슷한 실력' }] } };
+  assert.deepEqual(modeSummary({ config: { mode: 'kids', startingMoney: 1, allowCpu: true, cpuLevel: 'normal' } }, named).extras.at(-1), '🤖 CPU 🙂 보통');
 });
 
 test('scrollCue: which edge of a horizontal scroller hides content', () => {

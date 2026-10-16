@@ -1,11 +1,14 @@
 // 룰렛 실력 모드 — the aim panel (DOM). Opens instead of a direct spin for my current character in a skill-mode
 // room (spin dock button, floating spin button, 3D roulette tap): 📱 흔들기 (DeviceMotion) or 👆 버튼으로 (a sweeping
 // gauge + 「멈춰!」 / Space / Enter) → a target 1..10 → `onAim(target, input)` sends the spin. The chosen input is
-// remembered (localStorage `jinsei.rouletteInput`). Pure helpers live in rouletteSkill.js.
+// remembered (localStorage `jinsei.rouletteInput`). 「빠를수록 위험」: while aiming, the odds line shows the number under the
+// needle / the live shake meter (「🎯 10 → 명중 25% · ±1 35% · …」) and bars under the cells show where it can land.
+// Pure helpers live in rouletteSkill.js.
 import {
   DEADLINE_WARN_MS,
   SHAKE,
   accelToTarget,
+  aimCells,
   createShakeMeter,
   defaultInput,
   detectShakeEnv,
@@ -107,16 +110,39 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
         <div class="sk-body" data-sk="body">${body}</div>
         <p class="sk-result" data-sk="result" aria-live="assertive" hidden></p>
         <p class="sk-lim" data-sk="lim"${S.limit ? '' : ' hidden'}>${esc(S.limit?.text ?? '')}</p>
-        <p class="small muted sk-odds">목표 숫자 → ${esc(jitterHint(getMeta()))}</p>
-        <p class="small muted sk-loop">💡 큰 숫자일수록 멀리 가서 💵 월급날·🎪 찬스 광장을 더 자주 만나요.</p>
+        <p class="small muted sk-odds" data-sk="odds" aria-live="off">${esc(jitterHint(getMeta()))}</p>
+        <p class="small muted sk-loop">💡 큰 숫자일수록 멀리 가서 💵 월급날·🎪 찬스 광장을 자주 만나지만, 더 크게 빗나가요 (빠를수록 위험!)</p>
         <p class="sk-warn" data-sk="warn" hidden>⏰ 곧 자동으로 돌아가요! 서둘러요</p>
       </div>`;
     applyLimit();
+    riskShown = undefined;
+    showRisk(null);
     if (S.input === 'gauge') startGauge();
     else stopGauge();
     if (S.input === 'shake' && sup.ok && !sup.needsPermission) listen(true);
     else listen(false);
     tickWarn();
+  }
+
+  /**
+   * 「빠를수록 위험」: the odds of the number being aimed at (needle cell / live shake level / the pick) in the odds line
+   * and a bar under every cell it can land on (height = chance). null → the general hint, no bars.
+   */
+  let riskShown = null;
+  function showRisk(t) {
+    if (t === riskShown) return;
+    riskShown = t;
+    const odds = el.querySelector('[data-sk="odds"]');
+    if (odds) odds.textContent = jitterHint(getMeta(), t);
+    const cells = aimCells(getMeta(), t);
+    el.querySelectorAll('.sk-cells').forEach((row) => {
+      row.querySelectorAll('.sk-cell').forEach((c) => {
+        const p = cells[Number(c.dataset.v) - 1]?.p ?? 0;
+        c.classList.toggle('reach', t != null && p > 0);
+        if (t != null && p > 0) c.style.setProperty('--p', p.toFixed(3));
+        else c.style.removeProperty('--p');
+      });
+    });
   }
 
   /** Shade the numbers a 큰 수 / 작은 수 card rules out (the aim still works: the result is clamped into the range). */
@@ -151,6 +177,7 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
         cells[lastCell - 1]?.classList.remove('hot');
         cells[v - 1]?.classList.add('hot');
         lastCell = v;
+        showRisk(v);
       }
       S.raf = requestAnimationFrame(frame);
     };
@@ -181,6 +208,7 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
     const meterCells = el.querySelectorAll('.sk-cells.meter .sk-cell');
     const live = st.phase === 'wait' ? accelToTarget(st.level) : st.target;
     meterCells.forEach((c, i) => c.classList.toggle('lit', i < live));
+    showRisk(st.phase === 'wait' ? null : live);
     const status = el.querySelector('[data-sk="status"]');
     if (status && st.phase === 'shaking') status.textContent = `🔥 ${st.target}! 멈추면 결정돼요`;
     if (st.phase === 'done') submit(st.target, 'shake');
@@ -222,6 +250,7 @@ export function createSkillPanel(host, { onAim, getMeta = () => null, now = () =
       res.hidden = false;
       res.innerHTML = `🎯 <b>${t}</b>!`;
     }
+    showRisk(t);
     el.querySelector(`.sk-cells .sk-cell[data-v="${t}"]`)?.classList.add('pick');
     el.classList.add('picked');
     await new Promise((r) => setTimeout(r, 450));

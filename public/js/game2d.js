@@ -31,6 +31,8 @@ import { clockOffset } from './api.js';
 import { worldMeta, worldOf } from './shared/world.js';
 import { WORLD_TILE_TYPES, huntOutcome, isKujiDraw, kujiRows, weedGrade, weedLevelOf, weedOutcome, worldTags, WEED_MAX } from './shared/worldPlay.js';
 import { worldOptionsHtml } from './ui/worldArt.js';
+import { SENIOR_TILE_TYPES, auctionOutcome, contestOutcome, islandOutcome, seniorItemText, seniorItemsOf } from './shared/seniorPlay.js';
+import { seniorOptionsHtml } from './ui/seniorArt.js';
 import {
   CARD_KINDS,
   TRADE_STATUS,
@@ -85,6 +87,7 @@ import {
   eraClockText,
   haltNote,
   isLoopBoard,
+  isRaceEra,
   lapsOf,
   lastTurnHint,
   passOptionExtras,
@@ -129,9 +132,11 @@ const STAGE8_CUTIN_TYPES = ['met', 'dated', 'proposed', 'married', 'schoolMeet',
 const STAGE9_CUTIN_TYPES = ['submapResult', 'treasureFound'];
 /** 세계 설정 (🐹 치이카와 모드) cut-in anchors: 토벌 / 풀뽑기 결과 (3D: shown after their board step). */
 const WORLD_CUTIN_TYPES = ['huntResult', 'weedResult'];
-const CUTIN_TYPES = ['landed', 'eraChanged', 'eraTransition', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, ...STAGE9_CUTIN_TYPES, ...WORLD_CUTIN_TYPES];
+/** 노년 역전 cut-in anchors / lone banners: 한방역전섬 · 노년 대회 · 경매 결과, 아이템 노년 활용 (3D: shown after their board step). */
+const SENIOR_CUTIN_TYPES = ['islandResult', 'contestResult', 'auctionResult', 'seniorItem'];
+const CUTIN_TYPES = ['landed', 'eraChanged', 'eraTransition', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, ...STAGE9_CUTIN_TYPES, ...WORLD_CUTIN_TYPES, ...SENIOR_CUTIN_TYPES];
 /** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
-const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'eraTransition', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold', ...STAGE9_CUTIN_TYPES, 'submapEntered', ...WORLD_CUTIN_TYPES];
+const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'eraTransition', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold', ...STAGE9_CUTIN_TYPES, 'submapEntered', ...WORLD_CUTIN_TYPES, ...SENIOR_CUTIN_TYPES];
 /** Stage 6 tile types the server may send before board.json knows them (meta wins). */
 const CLIENT_TILE_TYPES = {
   start: { name: '출발', icon: '🚩', color: '#9aa5b1' },
@@ -144,6 +149,7 @@ const CLIENT_TILE_TYPES = {
   shop: { name: '상점', icon: '🛍️', color: '#f39a3d' },
   ...SUBMAP_TILE_TYPES, // Stage 9: 고향 · 산사 · 제주도 · 인생역전 · 보물
   ...WORLD_TILE_TYPES, // 세계 설정 (🐹 치이카와 모드): ⚔️ 토벌 · 🌿 풀뽑기
+  ...SENIOR_TILE_TYPES, // 노년 역전: 🏝️ 한방역전섬 · 🏆 노년 대회 · 🔨 골동품 경매
 };
 const FALLBACK_KEY = 'jinsei.board3dFallback'; // sessionStorage: auto-fallback happened this session
 const FPS_MIN = 15;
@@ -597,7 +603,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     const hint = lastTurnHint(clock);
     el.turninfo.innerHTML =
       clock.round != null || clock.race
-        ? `<span class="era-clock${clock.last ? ' last' : ''}${clock.race ? ' race' : ''}">${esc(clock.race ? '🏁 골인 경쟁' : `⏳ ${Math.min(clock.round, clock.turns)}/${clock.turns}턴`)}</span>${hint ? ` <span class="era-last">${esc(clock.final ? '마지막 턴! 끝나면 결과 발표' : '이번 시대 마지막 턴!')}</span>` : ''}`
+        ? `<span class="era-clock${clock.last ? ' last' : ''}${clock.race ? ' race' : ''}">${esc(clock.race ? `🏁 골인 경쟁${clock.round != null ? ` ⏰ ${Math.min(clock.round, clock.turns)}/${clock.turns}` : ''}` : `⏳ ${Math.min(clock.round, clock.turns)}/${clock.turns}턴`)}</span>${hint ? ` <span class="era-last">${esc(clock.race ? '노년 마감 턴!' : clock.final ? '마지막 턴! 끝나면 결과 발표' : '이번 시대 마지막 턴!')}</span>` : ''}`
         : esc(`턴 ${room.turn.turnNo} · ${room.turn.round}라운드`);
     el.turninfo.title = clock.round != null ? `${eraClockText(clock)} · 전체 ${room.turn.round}라운드` : '';
     renderNews(room, era?.id);
@@ -1272,7 +1278,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     for (const c of order) {
       const r = c.route ? routes()[c.route] : null;
       // loop maps: everyone shares the era → the row shows laps on this map (+ the lap's route); the final race: goal order
-      const done = c.finished ? (c.retired === 'early' ? `🏖️ 조기 은퇴${c.place ? ` (${c.place}등)` : ''}` : c.retired === 'bust' ? '🌾 빈곤 농장' : c.place ? `🏁 ${c.place}등 골인` : '🏁 완주') : '';
+      const done = c.finished ? (c.retired === 'early' ? `🏖️ 조기 은퇴${c.place ? ` (${c.place}등)` : ''}` : c.retired === 'late' ? `⏰ 노년 마감${c.place ? ` (${c.place}등)` : ''}` : c.retired === 'bust' ? '🌾 빈곤 농장' : c.place ? `🏁 ${c.place}등 골인` : '🏁 완주') : '';
       const where = loop ? (race ? '🏁 골인 경쟁 중' : lapsOf(c) ? `🔁 ${lapsOf(c)}바퀴` : '🚶 첫 바퀴') : esc(eraName(c));
       const status = done || `${where}${r ? ` · ${esc(r.icon)} ${esc(r.name)}` : ''}`;
       const open = ui.openChar === c.id;
@@ -1379,9 +1385,14 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     for (const b of spinModBadges(c.spinMods)) out.push(`<span class="gc-tag mod ${b.kind}" title="${esc(b.title)}">${esc(b.text)}</span>`);
     if (Array.isArray(c.cards)) out.push(`<span class="gc-tag hand-n" title="손패 ${c.cards.length}장">🃏 ${c.cards.length}</span>`);
     const items = itemsOf(c, getMeta());
+    // 노년 역전: in the final race, the items that still work (👴 노년 활용) get a tag
+    const senior = seniorItemsOf(c, getMeta());
+    if (senior.length && isRaceEra(ui.room?.board?.eras?.[currentEraIndex(ui.room)])) {
+      out.push(`<span class="gc-tag senior" title="${esc(`노년 활용: ${senior.map((x) => `${x.icon} ${x.name} — ${x.senior.desc}`).join(' / ')}`)}">👴 ${senior.length}</span>`);
+    }
     if (items.length) {
       out.push(
-        `<span class="gc-items" title="${esc(items.map((i) => i.info.name).join(', '))}">${items
+        `<span class="gc-items" title="${esc(items.map((i) => `${i.info.name}${i.info.seniorDesc ? ` (👴 ${i.info.seniorDesc})` : ''}`).join(', '))}">${items
           .slice(0, 4)
           .map((i) => itemIconHtml(i.id, { art: artFor('item', i.id), meta: getMeta() }))
           .join('')}${items.length > 4 ? `<small>+${items.length - 4}</small>` : ''}</span>`,
@@ -1478,6 +1489,15 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
           .map((i) => `<span class="gd-item">${itemIconHtml(i.id, { art: artFor('item', i.id), meta })} ${esc(i.info.name)}</span>`)
           .join('')}</span></div>`,
       );
+      // 노년 역전: what each item does in the final race
+      const senior = seniorItemsOf(c, meta);
+      if (senior.length) {
+        facts.push(
+          `<div class="gd-fact"><span class="gd-k">👴 노년 활용</span><span class="gd-v gd-senior">${senior
+            .map((x) => `<span class="gd-sen"><b>${esc(x.icon)} ${esc(x.name)}</b> ${esc(x.senior.desc)}</span>`)
+            .join('')}</span></div>`,
+        );
+      }
     }
     // Stage 9: treasures (감정 전 ??? until the result appraisal)
     const trs = treasuresOf(c, meta);
@@ -1624,7 +1644,9 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
         <p>${esc(p.text ?? '')}</p>
         ${subject && subject.id !== who.id ? `<p class="small muted">대상: ${esc(subject.name)}</p>` : ''}
         ${
-          worldOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won, artFor }) != null
+          seniorOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won, artFor }) != null
+            ? `<div class="choice-list senior-choices">${seniorOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won, artFor })}</div>`
+            : worldOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won, artFor }) != null
             ? `<div class="choice-list world-choices">${worldOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won, artFor })}</div>`
             : submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won }) != null
             ? `<div class="choice-list sm-choices">${submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won })}</div>`
@@ -2574,7 +2596,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
           break;
         }
         case 'finished':
-          if (!in3d && !cutinsOn()) toast(`🏁 ${c?.name ?? ''} ${e.place}등 골인!`);
+          if (!in3d && !cutinsOn()) toast(e.retired === 'late' ? `⏰ 노년 마감 — ${c?.name ?? ''} ${e.place}등으로 은퇴` : e.retired === 'early' ? `🏖️ ${c?.name ?? ''} 조기 은퇴 (${e.place}등)` : e.retired === 'bust' ? `🌾 ${c?.name ?? ''} 빈곤 농장행…` : `🏁 ${c?.name ?? ''} ${e.place}등 골인!`);
           break;
         case 'betResolved':
           for (const r of e.results) {
@@ -2731,7 +2753,35 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
         // ---------- 세계 설정 (🐹 치이카와 모드) ----------
         case 'promptResolved':
           if (e.kind === 'hunt' && e.result === 'run') floatOn(e.charId, '🏃 도망!', 'info');
+          if (e.kind === 'island' && e.result === 'pass') floatOn(e.charId, '🍵 욕심 버리기', 'info');
+          if (e.kind === 'contest' && e.result === 'watch') floatOn(e.charId, '👀 대회 구경', 'info');
+          if (e.kind === 'auction' && e.result === 'leave') floatOn(e.charId, '🚶 경매 구경', 'info');
           break;
+        // ---------- 노년 역전 ----------
+        case 'islandResult': {
+          const o = islandOutcome(e);
+          floatOn(e.charId, o.retire ? `🏖️ 조기 은퇴 ${o.place ?? ''}등` : o.jackpot ? `💥 대박! +${won(o.amount)}` : o.bust ? '🌾 쪽박…' : o.win ? `🎯 적중 +${won(o.amount)}` : `💸 꽝 ${won(o.amount)}`, o.win || o.retire ? 'plus' : 'minus');
+          if (c?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(o.retire ? `🏖️ ${c.name}: 조기 은퇴! ${o.place ?? ''}등` : o.jackpot ? `💥 ${c.name}: 한방역전섬 대박!!! ${o.roll} 적중 → +${won(o.amount)}` : o.bust ? `🌾 ${c.name}: 쪽박… 전 재산을 잃고 빈곤 농장으로` : o.win ? `🎯 ${c.name}: 적중! +${won(o.amount)}` : `💸 ${c.name}: ${o.covers.join('·')}을 골랐지만 ${o.roll}… ${won(o.amount)}`, o.win || o.retire ? 'info' : 'error');
+          break;
+        }
+        case 'contestResult': {
+          const o = contestOutcome(e, { meta: getMeta() });
+          floatOn(e.charId, `${o.icon} ${o.theme.name} ${o.label}${o.prize ? ` +${won(o.prize)}` : ''}`, o.place ? 'plus' : 'info');
+          if (c?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(`${o.icon} ${c.name}: 「${o.theme.name}」 ${o.label}${o.prize ? `! 상금 +${won(o.prize)}` : '…'}`);
+          break;
+        }
+        case 'auctionResult': {
+          const o = auctionOutcome(e, { meta: getMeta() });
+          floatOn(e.charId, o.fake ? `💥 ${o.name} 가짜!` : `🔨 ×${o.mult} +${won(o.amount)}`, o.cheap ? 'info' : 'plus');
+          if (c?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(o.fake ? `💥 ${c.name}: ${o.name}… 가짜였어요!` : `🔨 ${c.name}: ${o.icon} ${o.name} 낙찰 ×${o.mult} → +${won(o.amount)}`);
+          break;
+        }
+        case 'seniorItem': {
+          const t = seniorItemText(e, { meta: getMeta(), won });
+          floatOn(e.charId, t.text, t.kind);
+          if (c?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(`👴 ${c.name}: ${t.text}`);
+          break;
+        }
         case 'huntResult': {
           const h = huntOutcome(e, { meta: getMeta() });
           floatOn(e.charId, h.win ? `⚔️ ${h.monster.name} 토벌!` : `💥 ${h.monster.name}에게 패배`, h.win ? 'plus' : 'minus');

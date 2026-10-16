@@ -32,6 +32,12 @@ export function initRecord(c) {
     huntPrompts: 0,
     huntRuns: 0,
     huntLosses: 0,
+    // 노년 역전: 한방역전섬 대박 / 잃은 한 방 (인생역전 + 한방역전섬), 노년 대회 우승, 골동품 경매 (횟수 / 낙찰가 합계)
+    islandJackpot: 0,
+    gambleLosses: 0,
+    contestWins: 0,
+    auctions: 0,
+    auctionTotal: 0,
   };
 }
 
@@ -80,7 +86,7 @@ export function trackRecords(room, events, from = 0) {
         } else if (debt <= 0) r.inDebt = false;
         r.maxDebt = Math.max(r.maxDebt, debt);
         if ((ev.reason === 'lotto' || ev.reason === 'kuji') && ev.delta > 0) r.luckWin += ev.delta;
-        if (ev.reason === 'reversal') {
+        if (ev.reason === 'reversal' || ev.reason === 'island') {
           r.gambleNet += ev.delta;
           if (ev.delta > 0) r.luckWin += ev.delta;
         }
@@ -90,6 +96,21 @@ export function trackRecords(room, events, from = 0) {
         if (!c) break;
         if (!['leave', 'skip'].includes(ev.result)) c.record.submaps[ev.submap] = (c.record.submaps[ev.submap] ?? 0) + 1;
         if (ev.submap === 'reversal' && ev.result !== 'skip') c.record.gambles += 1;
+        if (ev.submap === 'reversal' && ['lottoLose', 'horseLose', 'allInLose'].includes(ev.result)) c.record.gambleLosses += 1;
+        break;
+      case 'islandResult': // 노년 역전: 한방역전섬
+        if (!c || ev.result === 'retire') break;
+        c.record.gambles += 1;
+        if (ev.result === 'jackpot') c.record.islandJackpot += 1;
+        if (!ev.win) c.record.gambleLosses += 1;
+        break;
+      case 'contestResult':
+        if (c && ev.place === 1) c.record.contestWins += 1;
+        break;
+      case 'auctionResult':
+        if (!c) break;
+        c.record.auctions += 1;
+        c.record.auctionTotal += ev.amount ?? 0;
         break;
       case 'cardUsed':
         if (c && ev.cardKind === 'sabotage' && !ev.auto) {
@@ -216,6 +237,22 @@ export function highlightsOf(ev, { room, data, events, index }) {
     case 'houseBought':
       add(ev.charId, ev.lucky ? 7 : 5, `🏠 ${houseName(data, ev.houseId)} ${ev.swap ? '갈아타기' : '내 집 마련'}`, -(ev.price ?? 0));
       break;
+    // 노년 역전: 한방역전섬 대박 / 쪽박, 노년 대회 우승, 경매 대박 / 가짜
+    case 'islandResult': {
+      const amt = ev.amount ?? 0;
+      if (ev.result === 'jackpot') add(ev.charId, 10 + amt / 500, `💥 한방역전섬 대박! ${ev.roll} 적중 ×${ev.mult} +${won(amt)}`, amt);
+      else if (ev.result === 'win') add(ev.charId, 4 + amt / 300, `🏝️ 한방역전섬 적중 +${won(amt)}`, amt);
+      else if (ev.result === 'bust') add(ev.charId, 8 + -amt / 500, `🌾 한방역전섬 쪽박… 전 재산 ${won(-amt)}을 잃고 빈곤 농장으로`, amt);
+      else if (ev.result === 'lose' && -amt >= big / 2) add(ev.charId, 2 + -amt / 300, `🏝️ 한방역전섬에서 ${won(-amt)} 날림`, amt);
+      break;
+    }
+    case 'contestResult':
+      if (ev.place === 1) add(ev.charId, 3 + (ev.prize ?? 0) / 150, `🏆 노년 대회 「${contestThemeName(data, ev.themeId)}」 우승! +${won(ev.prize ?? 0)}`, ev.prize ?? 0);
+      break;
+    case 'auctionResult':
+      if (ev.fake) add(ev.charId, 3, `🔨 경매에 내놓은 보물이 가짜였다…`, ev.amount ?? 0);
+      else if ((ev.mult ?? 1) >= 2.2 && (ev.amount ?? 0) >= 100) add(ev.charId, 3 + (ev.amount ?? 0) / 300, `🔨 경매 대박 ×${ev.mult} +${won(ev.amount ?? 0)}`, ev.amount ?? 0);
+      break;
     case 'houseValueChanged':
       for (const ch of ev.changes ?? []) {
         const d = (ch.after ?? 0) - (ch.before ?? 0);
@@ -288,7 +325,7 @@ export function highlightsOf(ev, { room, data, events, index }) {
 }
 
 /** moneyChanged reasons whose own event already makes the highlight (house purchase, lotto, gambling, goal…). */
-const OWN_HIGHLIGHT_REASONS = new Set(['house', 'lotto', 'kuji', 'hunt', 'reversal', 'goalPrize', 'bonusSpin', 'gostop']);
+const OWN_HIGHLIGHT_REASONS = new Set(['house', 'lotto', 'kuji', 'hunt', 'reversal', 'goalPrize', 'bonusSpin', 'gostop', 'island', 'contest', 'auction']);
 
 function jobDefOf(data, id) {
   if (!id) return null;
@@ -300,6 +337,7 @@ const treasureName = (data, id) => data?.treasures?.treasures?.find((t) => t.id 
 const houseName = (data, id) => data?.houses?.houses?.find((h) => h.id === id)?.name ?? '집';
 const cardName = (data, id) => data?.cards?.cards?.find((k) => k.id === id)?.name ?? '카드';
 const monsterDefOf = (data, id) => data?.hunts?.monsters?.find((m) => m.id === id) ?? null;
+const contestThemeName = (data, id) => data?.balance?.senior?.contest?.themes?.find((t) => t.id === id)?.name ?? '노년 대회';
 
 /**
  * Record the batch's highlights into `room.highlights` (after the presentation pass, so tone / scene / line are

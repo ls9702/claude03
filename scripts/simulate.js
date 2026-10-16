@@ -29,16 +29,17 @@
 // Stage 9-C: `--policy cpu` plays every character with the CPU heuristics (server/game/cpu.js `cpuDecide`), `--policy
 // mixed` only the odd-numbered ones (the rest stay random) and prints the 1st-place share per policy. CPU-policy
 // characters never bet, offer trades or gift (they still answer offers). `scripts/cpu-game.js` has the CPU vs human
-// proxy comparisons (`--matrix`). `--cpu-level easy|hard` (default easy = the real CPUs' personality tables; hard = the
-// strong heuristic). These characters are not owned by 'cpu', so the CPU money handicap never applies here. The aim /
+// proxy comparisons (`--matrix`). `--cpu-level easy|normal|hard` (default easy = the real CPUs' personality tables; normal =
+// the 보통 mix; hard = the strong heuristic). These characters are not owned by 'cpu', so the CPU money handicap never applies here. The aim /
 // 찬스 광장 duels and `--bias --aim cpu` always use the strong heuristic (decisions for everyone).
 //
 // 룰렛 실력 모드: `--roulette skill` plays skill-mode rooms (random-policy characters aim at a uniformly random target
 // = an average human, CPU-policy ones use `cpuSkillTarget`; no side bets) and prints the 룰렛 block (hit / ±1 / ±2
 // shares, landings by tile type per policy). `--bias --roulette skill [--aim random|cpu]` = the turn-order bias with
 // aimed spins. `--aim-duel --games N --seed S` = 8-character lifetime games (CPU decisions for everyone) where each
-// seat aims with a strategy (cpu / random / max 10 / min 1 / none = a plain random roulette), rotated over the seats:
-// 1st-place share, rank, total, goal place and landings per strategy (`simulateAim` is importable).
+// seat aims with a strategy (cpu / random / max 10 / high 8 / mid 6 / min 1 / none = a plain random roulette; `--strategies
+// a,b,…` to pick), rotated over the seats: 1st-place share, rank, total, goal place, mean move, landings per strategy and
+// the CPU's aim histogram (`simulateAim` is importable).
 //
 //   node scripts/simulate.js --bias --games 2000 --seed 1
 // Turn-order bias check: 8-character lifetime games (default eraTurns, index order, random decisions, no
@@ -75,9 +76,12 @@ const POLICY = String(arg('policy', 'random')); // random | cpu | mixed (Stage 9
 if (!['random', 'cpu', 'mixed'].includes(POLICY)) throw new Error(`--policy random|cpu|mixed (got ${POLICY})`);
 /** Does this character play by the CPU heuristics? */
 const cpuPolicy = (c) => POLICY === 'cpu' || (POLICY === 'mixed' && (c?.seq ?? 0) % 2 === 1);
-/** CPU decision level for `--policy cpu|mixed`: easy = the real CPUs (personality tables), hard = the strong heuristic. */
+/**
+ * CPU decision level for `--policy cpu|mixed`: easy = the real CPUs (personality tables), normal = the 보통 mix (strong
+ * heuristic with chance `balance.cpu.levels.normal.hardShare`), hard = the strong heuristic. (No handicap here either way.)
+ */
 const CPU_OPTS = { level: String(arg('cpu-level', 'easy')) };
-if (!['easy', 'hard'].includes(CPU_OPTS.level)) throw new Error(`--cpu-level easy|hard (got ${CPU_OPTS.level})`);
+if (!['easy', 'normal', 'hard'].includes(CPU_OPTS.level)) throw new Error(`--cpu-level easy|normal|hard (got ${CPU_OPTS.level})`);
 /** The duels / `--bias --aim cpu` compare strategies on top of the STRONG heuristic (decisions for everyone). */
 const HARD = { level: 'hard' };
 const ROULETTE = String(arg('roulette', 'random')); // random | skill (룰렛 실력 모드)
@@ -941,6 +945,8 @@ export const AIM_STRATEGIES = {
   cpu: (room, c, rng, d) => cpuSkillTarget(room, c.id, d, HARD),
   random: (room, c, rng) => rng.int(1, 10),
   max: () => 10,
+  high: () => 8,
+  mid: () => 6,
   min: () => 1,
   none: () => null,
 };
@@ -951,8 +957,8 @@ export const AIM_STRATEGIES = {
  * with `strategies[(i + g) % strategies.length]`. @returns {{games, rows: {[strategy]: {n, wins, rankSum, totalSum,
  * placeSum, landings: {tileType: n}, spins, hits, goalFirst}}}}
  */
-export function simulateAim({ games = 200, seed = 1, characters = 8, strategies = ['cpu', 'random', 'max', 'min', 'none'], data: simData = data, mode = 'lifetime', world = WORLD } = {}) {
-  const rows = Object.fromEntries(strategies.map((k) => [k, { n: 0, wins: 0, rankSum: 0, totalSum: 0, relSum: 0, placeSum: 0, landings: {}, spins: 0, hits: 0, salary: 0 }]));
+export function simulateAim({ games = 200, seed = 1, characters = 8, strategies = ['cpu', 'random', 'max', 'high', 'mid', 'min', 'none'], data: simData = data, mode = 'lifetime', world = WORLD } = {}) {
+  const rows = Object.fromEntries(strategies.map((k) => [k, { n: 0, wins: 0, rankSum: 0, totalSum: 0, relSum: 0, placeSum: 0, landings: {}, spins: 0, hits: 0, salary: 0, targets: {}, moved: 0 }]));
   for (let g = 0; g < games; g++) {
     const meta = createRng(seed * 15485863 + g * 7919 + 3);
     const v = validateRoomConfig({ mode, maxCharacters: characters, turnOrder: 'index', rouletteMode: 'skill', world });
@@ -991,6 +997,8 @@ export function simulateAim({ games = 200, seed = 1, characters = 8, strategies 
         if (ev.type === 'spun') {
           row.spins++;
           if (ev.skill && (ev.rolls?.[0] ?? ev.value) === ev.target) row.hits++;
+          if (ev.skill) row.targets[ev.target] = (row.targets[ev.target] ?? 0) + 1; // aim histogram
+          row.moved += ev.steps ?? ev.value;
         }
         if (ev.type === 'moneyChanged' && ev.reason === 'salary') row.salary += ev.delta;
       }
@@ -1077,7 +1085,8 @@ function mainPass() {
 
 function mainAim() {
   const t0 = performance.now();
-  const r = simulateAim({ games: GAMES, seed: SEED });
+  const strategies = typeof arg('strategies', null) === 'string' ? String(arg('strategies')).split(',') : undefined; // e.g. cpu,random,max
+  const r = simulateAim({ games: GAMES, seed: SEED, ...(strategies ? { strategies } : {}) });
   const pct = (n, d) => `${d ? ((100 * n) / d).toFixed(1) : '0.0'}%`;
   console.log(`\n=== 룰렛 실력 모드 전략 대결 (${r.characters}캐릭터 인생 전체, CPU 결정 + 조준 전략만 다름) ${r.games}판 · seed ${SEED} · ${(performance.now() - t0).toFixed(0)}ms ===`);
   console.log(`공정 1위 비율 ${pct(1, r.characters)}`);
@@ -1085,8 +1094,10 @@ function mainAim() {
   for (const [k, x] of Object.entries(r.rows)) {
     const land = Object.values(x.landings).reduce((a, b) => a + b, 0);
     console.log(
-      `${k.padEnd(6)} ${String(x.n).padStart(5)}명 · 1위 ${pct(x.wins, x.n).padStart(6)} · 평균 순위 ${(x.rankSum / x.n).toFixed(2)} · 총자산 ${(x.totalSum / x.n).toFixed(0)} (판 평균 대비 ${(100 * (x.relSum / x.n)).toFixed(1)}%) · 골인 ${(x.placeSum / x.n).toFixed(2)}등 · 룰렛 ${(x.spins / x.n).toFixed(1)}회 · 명중 ${pct(x.hits, x.spins)} · 월급 ${(x.salary / x.n).toFixed(0)}`,
+      `${k.padEnd(6)} ${String(x.n).padStart(5)}명 · 1위 ${pct(x.wins, x.n).padStart(6)} · 평균 순위 ${(x.rankSum / x.n).toFixed(2)} · 총자산 ${(x.totalSum / x.n).toFixed(0)} (판 평균 대비 ${(100 * (x.relSum / x.n)).toFixed(1)}%) · 골인 ${(x.placeSum / x.n).toFixed(2)}등 · 룰렛 ${(x.spins / x.n).toFixed(1)}회 · 평균 ${(x.moved / Math.max(1, x.spins)).toFixed(2)}칸 · 명중 ${pct(x.hits, x.spins)} · 월급 ${(x.salary / x.n).toFixed(0)}`,
     );
+    const aimed = Object.values(x.targets).reduce((a, b) => a + b, 0);
+    if (k === 'cpu' && aimed) console.log(`       조준 분포: ${Array.from({ length: 10 }, (_, i) => `${i + 1}: ${pct(x.targets[i + 1] ?? 0, aimed)}`).join(' · ')}`);
     console.log(`       착지 ${land}회: ${TYPES.map((t) => `${t} ${pct(x.landings[t] ?? 0, land)}`).join(' · ')}`);
   }
 }

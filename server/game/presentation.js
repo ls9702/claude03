@@ -20,6 +20,8 @@ export const SCENES = [
   'hometown', 'temple', 'jeju', 'casino',
   // 세계 설정 (치이카와 모드: 토벌 / 풀뽑기 검정 / 쿠지 + the Chiikawa job scenes; bg todo → tones.json sceneFallbacks)
   'weed-field', 'hunt-forest', 'ramen-shop', 'workshop', 'sento', 'bookstore', 'cafe', 'kuji',
+  // 노년 역전 (bg todo → sceneFallbacks: island → jeju, farm → hometown, auction → shop)
+  'island', 'farm', 'auction',
   'none',
 ];
 export const EMOTIONS = ['joy', 'cry', 'angry', 'sweat', 'love', 'shock', 'neutral'];
@@ -45,6 +47,8 @@ export const EVENT_TYPES = [
   'submapEntered', 'submapResult', 'treasureFound', 'mvpVoted', 'mvpDecided',
   // 세계 설정 — 토벌 / 풀뽑기 검정 (치이카와 모드 tiles)
   'huntResult', 'weedResult',
+  // 노년 역전 — 한방역전섬 / 노년 대회 / 골동품 경매 results + item 노년 활용 chips
+  'islandResult', 'contestResult', 'auctionResult', 'seniorItem',
 ];
 
 /** Types that always get a full cut-in (landed only for `tones.cutinTiles`). statChanged / salary / militaryEnd are chips. */
@@ -59,6 +63,8 @@ export const CUTIN_TYPES = new Set([
   'submapResult', 'treasureFound', 'mvpDecided',
   // 세계 설정 (weedResult work = a minor anchor like a habit: the client shows others' as banners)
   'huntResult', 'weedResult',
+  // 노년 역전 (seniorItem = a chip / banner)
+  'islandResult', 'contestResult', 'auctionResult',
 ]);
 
 /** Stage 8: child growth steps with a full cut-in (입학 = a cost chip). */
@@ -76,6 +82,7 @@ const BOUNDARY = new Set([
   'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged',
   'submapResult', 'treasureFound', 'mvpVoted', 'mvpDecided',
   'huntResult', 'weedResult',
+  'islandResult', 'contestResult', 'auctionResult',
 ]);
 /**
  * Boundary test (Stage 7: an anchored card use is a boundary, a passive trigger / self card is a follow-up;
@@ -91,6 +98,7 @@ const PROMPT_TONES = {
   meet: 'love', date: 'love', propose: 'love', house: 'treasure',
   hometown: 'good', temple: 'good', jeju: 'love', reversal: 'treasure', passTile: 'good', club: 'good', allIn: 'treasure',
   hunt: 'career', weed: 'good',
+  island: 'treasure', islandPick: 'treasure', contest: 'result', auction: 'treasure',
 };
 const PROMPT_TAGS = {
   routeChoice: 'route_choice', exam: 'exam', groupGift: 'gift', habit: 'habit', career: 'career', military: 'military',
@@ -98,12 +106,14 @@ const PROMPT_TAGS = {
   meet: 'heart', date: 'date', propose: 'propose', house: 'house',
   hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'reversal', passTile: 'pass_tile', club: 'club', allIn: 'reversal',
   hunt: 'hunt', weed: 'weed',
+  island: 'island', islandPick: 'island_pick', contest: 'contest', auction: 'auction',
 };
 const PROMPT_EMOTIONS = {
   exam: 'sweat', groupGift: 'love', routeChoice: 'joy', habit: 'joy', career: 'sweat', military: 'sweat', jobOffer: 'joy',
   jobTile: 'neutral', hiddenJobOffer: 'shock', shop: 'joy', holiday: 'joy', meet: 'love', date: 'love', propose: 'love',
   house: 'joy', hometown: 'love', temple: 'neutral', jeju: 'joy', reversal: 'shock', passTile: 'joy', club: 'joy', allIn: 'shock',
   hunt: 'shock', weed: 'joy',
+  island: 'shock', islandPick: 'sweat', contest: 'joy', auction: 'joy',
 };
 /** loop maps: 찬스 광장 results → line tag (buy → the chained shop speaks, passed → quiet). */
 const PASS_TAGS = { wishOk: 'pass_wish_ok', wishFail: 'pass_wish_fail', wishAll: 'pass_wish_all', changed: 'pass_job', buy: 'shop', passed: 'pass_tile' };
@@ -111,7 +121,13 @@ const PROMPT_SCENES = {
   shop: 'shop', holiday: 'holiday', meet: 'park', date: 'park', propose: 'park', house: 'house',
   hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino', club: 'school', allIn: 'casino',
   hunt: 'hunt-forest', weed: 'weed-field',
+  island: 'island', islandPick: 'island', contest: 'stage', auction: 'auction',
 };
+/** 노년 역전: islandResult result → line tag; contest place → tag. */
+const ISLAND_TAGS = { jackpot: 'island_jackpot', win: 'island_win', lose: 'island_lose', bust: 'island_bust', retire: 'retire_early' };
+const CONTEST_TAGS = { 1: 'contest_win', 2: 'contest_second' };
+/** 노년 대회 theme name (balance.senior.contest.themes of the room's world). */
+const contestName = (data, id) => (id ? (data?.balance?.senior?.contest?.themes ?? []).find((t) => t.id === id)?.name ?? '' : '');
 /** Stage 9: submap → cut-in scene; submapResult result → line tag. */
 export const SUBMAP_SCENES = { hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino' };
 const SUBMAP_TAGS = {
@@ -305,7 +321,7 @@ export function presentationFor(ev, ctx) {
   const c = charId ? chars.find((x) => x.id === charId) : null;
   const era = ev.type === 'eraChanged' ? ev.era : ev.type === 'eraTransition' ? ev.toEraId : charId ? ctx.eraOf?.(charId) ?? c?.era ?? null : null;
   const eraName = (id) => room?.board?.eras?.find((e) => e.id === id)?.name ?? ctx.data?.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
-  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '', ...familyVars(ev, c), house: houseName(ctx.data, ev.houseId ?? c?.house?.id), treasure: treasureOf(ctx.data, ev.treasureId)?.name ?? '', award: '', monster: monsterName(ctx.data, ev.monsterId), grade: ev.grade ?? '' };
+  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '', ...familyVars(ev, c), house: houseName(ctx.data, ev.houseId ?? c?.house?.id), treasure: treasureOf(ctx.data, ev.treasureId)?.name ?? '', award: '', monster: monsterName(ctx.data, ev.monsterId), grade: ev.grade ?? '', contest: contestName(ctx.data, ev.themeId) };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.targetId || ev.toId) vars.target = nameOf(ev.targetId ?? ev.toId);
   if (ev.cardId) vars.card = cardName(ctx.data, ev.cardId);
@@ -379,7 +395,7 @@ export function presentationFor(ev, ctx) {
         tone ??= 'career';
         bland = 'rare'; // loop maps: paydays come every few spins — a bubble only now and then
       } else {
-        tag = ['heart', 'job', 'card', 'shop', 'treasure', 'house', 'stop', 'merge', 'goal', 'hometown', 'temple', 'jeju', 'reversal'].includes(tt) ? tt : 'neutral';
+        tag = ['heart', 'job', 'card', 'shop', 'treasure', 'house', 'stop', 'merge', 'goal', 'hometown', 'temple', 'jeju', 'reversal', 'island', 'contest', 'auction'].includes(tt) ? tt : 'neutral';
         if (SUBMAP_SCENES[tt]) scene = SUBMAP_SCENES[tt];
         tone ??= (!['goal', 'merge', 'start'].includes(tt) ? routeTone(route, tones) : null) ?? normalizeTone(tones.tileTones?.[tt], tones) ?? 'neutral';
       }
@@ -418,10 +434,10 @@ export function presentationFor(ev, ctx) {
       route = null;
       bland = 'always';
       break;
-    case 'finished': // final era: goal order (or 조기 은퇴 / 올인 파산 = retired)
-      tag = ev.retired === 'bust' ? 'retire_bust' : ev.retired === 'early' ? 'retire_early' : ev.place === 1 ? 'goal_first' : 'goal';
+    case 'finished': // final era: goal order (or 조기 은퇴 / ⏰ 노년 마감 / 올인 파산 = retired)
+      tag = ev.retired === 'bust' ? 'retire_bust' : ev.retired === 'early' ? 'retire_early' : ev.retired === 'late' ? 'retire_late' : ev.place === 1 ? 'goal_first' : 'goal';
       tone ??= ev.retired === 'bust' ? 'bad' : 'result';
-      emotion ??= ev.retired === 'bust' ? 'cry' : 'joy';
+      emotion ??= ev.retired === 'bust' ? 'cry' : ev.retired === 'late' ? 'sweat' : 'joy';
       if (ev.prize) vars.amount = wonText(ev.prize);
       if (ev.retired) cutin = false; // the 인생역전섬 result (submapResult) is the cut-in; this is its follow-up
       break;
@@ -524,6 +540,14 @@ export function presentationFor(ev, ctx) {
         emotion ??= 'sweat';
         scene = 'hunt-forest';
         cutin = false;
+      } else if (ev.kind === 'island' || ev.kind === 'contest' || ev.kind === 'auction') {
+        // 노년 역전: 한방역전섬 「욕심 버리기」 / 노년 대회 구경 / 경매 구경 — a banner (bets / entries / sales anchor on their result)
+        tag = ev.kind === 'island' ? 'island_pass' : 'neutral';
+        tone ??= 'neutral';
+        emotion ??= 'neutral';
+        scene = PROMPT_SCENES[ev.kind];
+        cutin = false;
+        if (ev.kind !== 'island') bland = 'always';
       } else if (ev.kind === 'weed') {
         tag = 'weed'; // (weedResult anchors every weed outcome; only a refused exam ends here)
         tone ??= 'neutral';
@@ -719,6 +743,44 @@ export function presentationFor(ev, ctx) {
       scene = 'weed-field';
       if (ev.amount) vars.amount = wonText(ev.amount);
       route = null;
+      break;
+    // ---------- 노년 역전 ----------
+    case 'islandResult': {
+      tag = ISLAND_TAGS[ev.result] ?? 'island_lose';
+      tone = ev.result === 'retire' ? 'result' : ev.win ? 'treasure' : 'bad';
+      emotion ??= ev.result === 'jackpot' ? 'shock' : ev.win || ev.result === 'retire' ? 'joy' : 'cry';
+      scene = ev.result === 'bust' ? 'farm' : 'island';
+      if (ev.amount) vars.amount = wonText(Math.abs(ev.amount));
+      else if (ev.prize != null) vars.amount = wonText(ev.prize);
+      if (ev.place != null) vars.place = ev.place;
+      route = null;
+      break;
+    }
+    case 'contestResult':
+      tag = CONTEST_TAGS[ev.place] ?? 'contest_lose';
+      tone = ev.place === 1 ? 'result' : ev.place ? 'good' : 'neutral';
+      emotion ??= ev.place ? 'joy' : 'sweat';
+      scene = 'stage';
+      if (ev.prize) vars.amount = wonText(ev.prize);
+      route = null;
+      break;
+    case 'auctionResult': {
+      tag = ev.fake ? 'auction_fake' : ev.mult >= 2 ? 'auction_big' : ev.mult < 1 ? 'auction_cheap' : 'auction_sold';
+      tone = ev.fake || ev.mult < 1 ? 'neutral' : ev.mult >= 2 ? 'treasure' : 'good';
+      emotion ??= ev.fake ? 'shock' : ev.mult >= 2 ? 'joy' : ev.mult < 1 ? 'sweat' : 'joy';
+      scene = 'auction';
+      vars.item = ev.itemId ? itemName(ctx.data, ev.itemId) : ev.treasureId ? treasureOf(ctx.data, ev.treasureId)?.name ?? '' : '잡동사니';
+      if (ev.amount) vars.amount = wonText(ev.amount);
+      route = null;
+      break;
+    }
+    case 'seniorItem': // an item's 노년 활용 (a chip / banner; the log line is the text)
+      tag = 'senior_item';
+      tone ??= 'good';
+      emotion ??= 'joy';
+      cutin = false;
+      bland = 'always';
+      if (ev.amount) vars.amount = wonText(ev.amount);
       break;
     // ---------- Stage 8 ----------
     case 'met':
@@ -1022,10 +1084,10 @@ export function mcFrequencyOf(room) {
 }
 
 /** Which MC situation an event is (null = MCs stay quiet). Pure; `state` is read, not written. */
-export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {}, jobs = getJobs(), cards = getCards(), items = getItems(), treasures = getTreasures(), houses = getHouses(), monsters = [] }) {
+export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {}, jobs = getJobs(), cards = getCards(), items = getItems(), treasures = getTreasures(), houses = getHouses(), monsters = [], contests = [] }) {
   const chars = room?.characters ?? [];
   const c = ev.charId ? chars.find((x) => x.id === ev.charId) : null;
-  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '', partner: '', child: '', house: '', treasure: '', award: '', monster: '', grade: '' };
+  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '', partner: '', child: '', house: '', treasure: '', award: '', monster: '', grade: '', contest: '' };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.jobId) vars.job = (ev.jobId === jobs.partTime?.id ? jobs.partTime : jobs.jobs?.find((j) => j.id === ev.jobId))?.name ?? '';
   const big = mc?.bigAmount ?? BIG_GAIN;
@@ -1212,6 +1274,25 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       key = 'treasure';
       vars.treasure = (treasures?.treasures ?? []).find((t) => t.id === ev.treasureId)?.name ?? '';
       break;
+    // 노년 역전: 한방역전섬 대박 / 쪽박 (big), a smaller win, a 노년 대회 win, a big hammer at the 경매
+    case 'islandResult':
+      if (ev.amount) vars.amount = wonText(Math.abs(ev.amount));
+      key = ev.result === 'jackpot' ? 'islandJackpot' : ev.result === 'bust' ? 'islandBust' : ev.result === 'win' ? 'islandWin' : null;
+      break;
+    case 'contestResult':
+      if (ev.place === 1) {
+        key = 'contestWin';
+        vars.contest = (contests ?? []).find((t) => t.id === ev.themeId)?.name ?? '';
+        if (ev.prize) vars.amount = wonText(ev.prize);
+      }
+      break;
+    case 'auctionResult':
+      if (!ev.fake && ev.mult >= 2.2 && ev.amount > 0) {
+        key = 'auctionBig';
+        vars.item = ev.itemId ? (items?.items ?? []).find((i) => i.id === ev.itemId)?.name ?? '' : ev.treasureId ? (treasures?.treasures ?? []).find((t) => t.id === ev.treasureId)?.name ?? '' : '잡동사니';
+        vars.amount = wonText(ev.amount);
+      }
+      break;
     case 'mvpDecided':
       key = 'mvp';
       studio = true;
@@ -1243,7 +1324,9 @@ function resultMc(ev, data, rng, { room } = {}) {
   const award = [...(ev.awards ?? [])].sort((a, b) => b.bonus - a.bonus)[0];
   if (award) add('awards', pickMcLines(data, 'award', rng, { duo: rng.next() < 0.5, vars: { name: nameOf(award.charIds[0]), award: award.name, amount: wonText(award.bonus) } }));
   const first = ranking[0];
-  if (first) add('winner', pickMcLines(data, 'resultWinner', rng, { duo: true, vars: { name: first.name, amount: wonText(first.total) } }));
+  // 노년 역전: a winner who was in the bottom half when the final race started gets the comeback duo
+  const comeback = ev.comeback && ev.comeback.charId === first?.charId && data.lines?.mc?.resultComeback ? ev.comeback : null;
+  if (first) add('winner', pickMcLines(data, comeback ? 'resultComeback' : 'resultWinner', rng, { duo: true, vars: { name: first.name, amount: wonText(first.total), place: comeback ? String(comeback.from) : '' } }));
   const last = ranking.length > 1 ? ranking.at(-1) : null;
   if (last) {
     add('last', pickMcLines(data, 'resultLast', rng, { vars: { name: last.name } }));
@@ -1271,7 +1354,7 @@ export function attachMc(events, { room, data = {}, seed = 0, lines = data.lines
   const eraName = (id) => room.board?.eras?.find((e) => e.id === id)?.name ?? data.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
   const placeholders = (data.board ?? getBoardData()).placeholders ?? {};
   events.forEach((ev, index) => {
-    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders, jobs, cards: data.cards ?? getCards(), items: data.items ?? getItems(), treasures: data.treasures ?? getTreasures(), houses: data.houses ?? getHouses(), monsters: data.hunts?.monsters ?? [] });
+    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders, jobs, cards: data.cards ?? getCards(), items: data.items ?? getItems(), treasures: data.treasures ?? getTreasures(), houses: data.houses ?? getHouses(), monsters: data.hunts?.monsters ?? [], contests: data.balance?.senior?.contest?.themes ?? [] });
     if (!sit) return;
     const rng = createRng(hashSeed(seed, turnNo, index, ev.type, 'mc'));
     if (sit.weight !== 'big') {

@@ -23,7 +23,9 @@ test('loop maps: era set follows mode; every loop era is its own ring of lap = c
           assert.ok(!ids.has(t.id), `duplicate ${t.id}`);
           ids.add(t.id);
           if (t.type === 'money' || t.type === 'loss') assert.ok(t.amount > 0);
-          assert.notEqual(t.type, 'shop', 'shop tiles are folded into 찬스 광장');
+          // shop tiles are folded into 찬스 광장 — except the adult loop eras (노년 역전: items to collect for old age)
+          if (!['young', 'middle_age'].includes(era.id)) assert.notEqual(t.type, 'shop', 'shop tiles are folded into 찬스 광장');
+          else assert.ok(t.type !== 'shop' || !t.route, 'no shop tiles on the routes');
         }
         if (era.final) continue;
         assert.equal(era.loop, true);
@@ -118,7 +120,7 @@ test('navigation: the ring wraps to the start (a lap), the fork leads into the c
   assert.ok(wrapsAt(board, pos, np));
 });
 
-test('final era (lifetime / adult): a linear goal race of finalLength tiles — mostly good tiles, 3 trouble spots, 인생역전섬', () => {
+test('final era (lifetime / adult): a linear goal race of finalLength tiles — 3 trouble spots, one 🏝️ 한방역전섬, 1–2 인생역전, 노년 대회 / 경매', () => {
   const data = gameData();
   for (const [mode, L] of [['lifetime', 40], ['adult', 20], ['lifetime', 80]]) {
     for (let seed = 1; seed <= 20; seed++) {
@@ -142,7 +144,14 @@ test('final era (lifetime / adult): a linear goal race of finalLength tiles — 
       assert.ok(losses.length <= 3, 'trouble only at the fixed spots');
       assert.ok(losses.includes(L - 2), 'trouble just before the goal');
       const rev = types.filter((t) => t === 'reversal').length;
-      assert.ok(rev >= 2 && rev <= 3, `인생역전섬 ${rev}`);
+      assert.ok(rev >= 1 && rev <= 2, `인생역전 ${rev}`);
+      // 노년 역전: exactly one 한방역전섬, near 60 % of the way, never next to a payday / trouble spot / another island
+      const isl = types.map((t, i) => (t === 'island' ? i : -1)).filter((i) => i >= 0);
+      assert.equal(isl.length, 1, `한방역전섬 ${isl}`);
+      assert.ok(Math.abs(isl[0] - (L - 1) * 0.6) <= L * 0.2, `island at ${isl[0]} of ${L}`);
+      for (const d of [-1, 1]) assert.ok(!['salary', 'loss', 'reversal', 'goal', 'start'].includes(types[isl[0] + d]), `next to the island: ${types[isl[0] + d]}`);
+      assert.ok(types.some((t) => t === 'contest' || t === 'auction'), 'decision tiles in the pool');
+      assert.ok(!types.includes('jeju'), 'no 제주도 (🏝️) tile next to the 한방역전섬');
       // nextPosition stops at the goal
       assert.equal(nextPosition(board, { eraIndex: board.eras.length - 1, route: 'main', index: L - 1 }, null), null);
     }

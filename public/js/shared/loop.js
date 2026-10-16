@@ -67,17 +67,19 @@ export function eraClock(room) {
   const era = eras[index] ?? null;
   const turn = room?.turn ?? {};
   const race = isRaceEra(era) && isLoopBoard(room?.board);
-  const turns = race ? null : Number.isInteger(turn.eraTurns) ? turn.eraTurns : Number.isInteger(era?.turns) ? era.turns : null;
-  const round = race ? null : Number.isInteger(turn.eraRound) ? turn.eraRound : null;
+  // the final race: ⏰ 노년 마감 clock (turn.raceRound / raceRounds; older servers have none)
+  const raceTurns = race && Number.isInteger(turn.raceRounds) ? turn.raceRounds : null;
+  const turns = race ? raceTurns : Number.isInteger(turn.eraTurns) ? turn.eraTurns : Number.isInteger(era?.turns) ? era.turns : null;
+  const round = race ? (raceTurns != null && Number.isInteger(turn.raceRound) ? turn.raceRound : null) : Number.isInteger(turn.eraRound) ? turn.eraRound : null;
   const left = turns != null && round != null ? Math.max(0, turns - round) : null;
   const last = left === 0 && round != null;
   return { index, id: era?.id ?? null, name: era?.name ?? '', round, turns, left, last, final: last && index === eras.length - 1, race, count: eras.length };
 }
 
-/** 「청년 7/15턴」 (final race → 「노년 · 골인 경쟁」; no round known → 「청년 시대」). */
+/** 「청년 7/15턴」 (final race → 「노년 · 골인 경쟁」 + 「 3/12턴」 with the 노년 마감 clock; no round known → 「청년 시대」). */
 export function eraClockText(clock) {
   if (!clock) return '';
-  if (clock.race) return `${clock.name} · 골인 경쟁`;
+  if (clock.race) return `${clock.name} · 골인 경쟁${clock.round != null && clock.turns != null ? ` ${Math.min(clock.round, clock.turns)}/${clock.turns}턴` : ''}`;
   if (clock.round == null || clock.turns == null) return `${clock.name} 시대`.trim();
   return `${clock.name} ${Math.min(clock.round, clock.turns)}/${clock.turns}턴`.trim();
 }
@@ -85,6 +87,7 @@ export function eraClockText(clock) {
 /** Hint under the spin button / HUD chip on the era's last round. */
 export function lastTurnHint(clock) {
   if (!clock?.last) return '';
+  if (clock.race) return '⏰ 노년 마감 턴! 이번에 골인 못 하면 여기서 은퇴해요';
   return clock.final ? '🏁 마지막 시대의 마지막 턴! 이번 턴이 끝나면 결과 발표' : '⏳ 이번 시대 마지막 턴!';
 }
 
@@ -191,6 +194,8 @@ export function haltNote(e) {
   if (!e || e.type !== 'moved') return null;
   if (e.halted === 'salary') return e.rush ? { text: '💨 월급날 직행! 도착', kind: 'plus', icon: '💨' } : { text: '💵 월급날! 멈춤', kind: 'plus', icon: '💵' };
   if (e.halted === 'pass') return { text: `🎪 찬스 광장${Number(e.remaining) > 0 ? ` (남은 ${Number(e.remaining)}칸)` : ''}`, kind: 'info', icon: '🎪' };
+  if (e.halted === 'island') return { text: `🏝️ 한방역전섬${Number(e.remaining) > 0 ? ` (남은 ${Number(e.remaining)}칸)` : ''}`, kind: 'info', icon: '🏝️' }; // 노년 역전
+  if (e.dodge) return { text: '🚗 쌩— 지출 칸 통과!', kind: 'plus', icon: '🚗' };
   if (e.halted === 'stop') return { text: '🔀 갈림길! 멈춤', kind: 'info', icon: '🔀' };
   if (e.resumed) return { text: '🚶 이어서 출발!', kind: 'info', icon: '🚶' };
   if (e.wrapped || Number(e.laps) > 0) return { text: '🔁 한 바퀴!', kind: 'plus', icon: '🔁' };

@@ -274,21 +274,23 @@ registerPrompts({
         if (stake > cash) Object.assign(opt, { disabled: true, desc: `${won(stake)} 필요 · 돈이 부족해요` });
         return opt;
       });
-      // the final era's 인생역전섬: 전 재산 올인 (cash > 0) / 조기 은퇴
+      // the final race: 조기 은퇴 (+ 전 재산 올인 only on old boards without a 🏝️ 한방역전섬 tile — 노년 역전, senior.js)
       const extra = [];
-      const final = tx.room.board?.eras?.[c.position?.eraIndex ?? 0]?.final;
+      const era = tx.room.board?.eras?.[c.position?.eraIndex ?? 0];
+      const final = era?.final;
       if (final && !c.finished) {
         const ai = cfg.allIn ?? {};
         const mult = ai.mult ?? 7;
-        if (cash > 0) extra.push({ id: 'allIn', label: '🎯 전 재산 올인', icon: '🎯', desc: `현금 ${won(cash)} 전부! 숫자 하나(1~10)를 맞히면 ×${mult}, 틀리면 빈곤 농장으로 은퇴 (확률 10%)`, stake: cash, cost: cash, price: cash, mult, chance: 0.1, ev: Math.round(0.1 * mult * 100) / 100 });
+        const island = (era.tiles ?? []).some((t) => t.type === 'island');
+        if (cash > 0 && !island) extra.push({ id: 'allIn', label: '🎯 전 재산 올인', icon: '🎯', desc: `현금 ${won(cash)} 전부! 숫자 하나(1~10)를 맞히면 ×${mult}, 틀리면 빈곤 농장으로 은퇴 (확률 10%)`, stake: cash, cost: cash, price: cash, mult, chance: 0.1, ev: Math.round(0.1 * mult * 100) / 100 });
         const place = nextPlace(tx.room);
         const prize = Math.round(((tx.data.balance.goalPrizes?.[place - 1] ?? 0) * (tx.data.balance.retirePrizeMult ?? 0.5)) / 5) * 5;
         extra.push({ id: 'retire', label: '🏖️ 조기 은퇴', icon: '🏖️', desc: `지금 ${place}등으로 인생 마무리 · 은퇴 상금 ${won(prize)} (골인 상금의 절반) · 더는 룰렛을 돌리지 않아요`, place, prize });
       }
       return {
         forCharacterIds: [c.id],
-        title: final ? '🏝️ 인생역전섬' : '🎰 인생역전',
-        text: final ? `${josa(c.name, '이/가')} 인생역전섬에 도착했다! 인생 마지막 한 방을 노려 볼까?` : `노년의 ${josa(c.name, '이/가')} 인생역전 한 방을 노려 볼까?`,
+        title: '🎰 인생역전',
+        text: final ? `${josa(c.name, '이/가')} 인생역전 칸에 들렀다! 로또 한 장, 경마 한 판, 아니면 조기 은퇴?` : `노년의 ${josa(c.name, '이/가')} 인생역전 한 방을 노려 볼까?`,
         options: [lotto, ...horses, ...extra, { id: 'skip', label: '🍵 욕심 버리기', icon: '🍵', desc: '지금 가진 것에 만족해요' }],
         defaultOptionId: 'skip',
         context: { stake, final: !!final },

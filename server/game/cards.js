@@ -609,7 +609,8 @@ registerPrompts({
           id: `buy:${n}`,
           label: `${def.icon} ${def.name}`,
           icon: def.icon,
-          desc: `${o.kind === 'card' ? '카드' : '아이템'} · ${def.desc} · ${won(o.price)}${o.price !== o.basePrice ? ` (쿠폰 할인, 원래 ${won(o.basePrice)})` : ''}${short ? ' · 돈이 부족해요' : ''}`,
+          desc: `${o.kind === 'card' ? '카드' : '아이템'} · ${def.desc}${def.seniorDesc ? ` · 👴 노년: ${def.seniorDesc}` : ''} · ${won(o.price)}${o.price !== o.basePrice ? ` (쿠폰 할인, 원래 ${won(o.basePrice)})` : ''}${short ? ' · 돈이 부족해요' : ''}`,
+          ...(def.seniorDesc ? { seniorDesc: def.seniorDesc } : {}), // 노년 역전: the item's 노년 활용 (items.json)
           price: o.price,
           basePrice: o.basePrice,
           ...(o.kind === 'card' ? { cardId: o.id } : { itemId: o.id }),

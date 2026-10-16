@@ -1,0 +1,196 @@
+/* 노년 역전 (senior race comeback) — 🏝️ 한방역전섬 stake cards + 행운의 숫자 pad, 🏆 노년 대회 entry card, 🔨 골동품 경매 lots
+   (cut-in .ci-opt and the 2D decision sheet .btn.choice share them), the result panels in the cut-in window (number wheel,
+   trophy, hammer board), shop / side-list 👴 노년 활용 hints. */
+
+/* ---------- shop cards, side list, detail card ---------- */
+.si-senior {
+  display: block; font-size: 0.72rem; font-weight: 800; line-height: 1.25; color: #92400e; background: #fff7ed; border: 1px dashed #fdba74;
+  border-radius: 8px; padding: 2px 6px; margin: 2px 0; overflow-wrap: anywhere; word-break: keep-all;
+}
+.gc-tag.senior { background: #fff7ed; color: #9a3412; }
+.gd-senior { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gd-sen { font-size: 0.8rem; line-height: 1.3; overflow-wrap: anywhere; word-break: keep-all; }
+.gd-sen b { margin-right: 4px; white-space: nowrap; }
+.ci-chip.senior { background: #fff7ed; color: #9a3412; border-color: #fdba74; }
+
+/* ---------- 🏝️ 한방역전섬: stake cards ---------- */
+.isl-card, .ct-card, .au-card { display: grid; gap: 8px; margin-top: 6px; min-width: 0; }
+.isl-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.isl-head > span { font-size: 0.78rem; font-weight: 800; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.isl-stand { background: #ede9fe; color: #5b21b6; white-space: normal !important; }
+.isl-cash { background: #fef3c7; color: #92400e; }
+.isl-lucky { background: #dcfce7; color: #166534; }
+.isl-warn { background: #fee2e2; color: #991b1b; }
+.isl-head .isl-win { background: #fff; color: #3d2b52; border: 1px solid #e7e5e4; white-space: normal; }
+.isl-tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px; min-width: 0; }
+.isl-tier {
+  display: flex !important; flex-direction: column; align-items: stretch; gap: 3px; text-align: left; min-width: 0; padding: 8px 10px !important;
+  border: 2px solid #d6d3d1 !important; border-radius: 14px !important; background: #fff;
+}
+.isl-tier.t-all { border-color: #e2504c !important; background: linear-gradient(160deg, #fff1e6, #ffe4e1); }
+.isl-tier.t-half { border-color: #f59e0b !important; background: linear-gradient(160deg, #fffbeb, #fff3d6); }
+.isl-tier.t-little { border-color: #20a39e !important; background: linear-gradient(160deg, #f0fdfa, #e6fffb); }
+.isl-tier.off { opacity: 0.55; }
+.isl-top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; min-width: 0; }
+.isl-risk { font-size: 0.72rem; letter-spacing: -0.1em; line-height: 1; flex: none; }
+.isl-odds { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.isl-odds .sm-chance { flex: 1 1 70px; min-width: 70px; margin: 0; }
+.isl-money { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; min-width: 0; }
+.isl-money > span { white-space: normal; word-break: keep-all; overflow-wrap: anywhere; min-width: 0; }
+.isl-count { font-size: 0.72rem; font-weight: 800; color: #57534e; white-space: nowrap; }
+.isl-name { font-size: 1rem; line-height: 1.2; overflow-wrap: anywhere; }
+.isl-stake, .isl-win { font-size: 0.8rem; font-weight: 700; color: #44403c; overflow-wrap: anywhere; }
+.isl-tier .isl-win b, .isl-stake b { color: #b91c1c; font-size: 1.02em; }
+.isl-risknote { font-size: 0.72rem; font-weight: 800; color: #57534e; line-height: 1.25; overflow-wrap: anywhere; word-break: keep-all; }
+.isl-tier.bust .isl-risknote { color: #b91c1c; }
+.isl-tier .sm-chance i { background: linear-gradient(90deg, #fde047, #f97316); }
+.isl-dots { display: flex; gap: 3px; flex-wrap: nowrap; }
+.isl-dots { gap: 2px; }
+.isl-dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid #a8a29e; background: #fff; flex: none; }
+.isl-dots i.on { background: #f59e0b; border-color: #b45309; }
+.isl-dots i.on.lucky { background: #22c55e; border-color: #15803d; }
+.isl-sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.isl-side { display: flex !important; align-items: center; gap: 8px; text-align: left; min-width: 0; }
+.isl-side .ci-opt-l { display: flex; flex-direction: column; min-width: 0; }
+.isl-side .ci-opt-desc { font-size: 0.74rem; font-weight: 700; color: #57534e; }
+/* 행운의 숫자 pad */
+.isl-pad { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.isl-num {
+  display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 0; min-height: 52px; padding: 4px !important; min-width: 0;
+  border: 2px solid #f59e0b !important; border-radius: 12px !important; background: #fffbeb;
+}
+.isl-num b { font-size: 1.4rem; line-height: 1; color: #b45309; }
+.isl-num small { font-size: 0.66rem; font-weight: 800; color: #78716c; white-space: nowrap; }
+
+/* ---------- 🏆 노년 대회 ---------- */
+.ct-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.ct-theme { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.ct-theme i { font-style: normal; font-size: 1.7rem; line-height: 1; }
+.ct-theme b { font-size: 1.05rem; overflow-wrap: anywhere; }
+.ct-stat, .ct-item { font-size: 0.76rem; font-weight: 800; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.ct-stat { background: #e0f2fe; color: #075985; }
+.ct-item { background: #fff7ed; color: #9a3412; border: 1px dashed #fdba74; }
+.ct-odds { display: flex; align-items: center; gap: 8px; }
+.ct-odds .sm-chance { flex: 1; }
+.ct-odds .sm-chance i { background: linear-gradient(90deg, #fde047, #e6a817); }
+.ct-odds small { font-size: 0.74rem; font-weight: 800; color: #57534e; white-space: nowrap; }
+.ct-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.ct-opt { display: flex !important; align-items: center; gap: 8px; text-align: left; min-width: 0; }
+.ct-opt .ci-opt-l { display: flex; flex-direction: column; min-width: 0; }
+.ct-opt .ci-opt-desc { font-size: 0.74rem; font-weight: 700; color: #57534e; }
+.ct-fee { font-size: 0.74rem; font-weight: 800; color: #b45309; white-space: nowrap; }
+.ct-opt.t-big { border-color: #e6a817 !important; }
+
+/* ---------- 🔨 골동품 경매 ---------- */
+.au-hammer-mini { display: flex; flex-wrap: wrap; gap: 3px; }
+.au-hammer-mini i { font-style: normal; font-size: 0.68rem; font-weight: 800; background: #f5f5f4; color: #57534e; border-radius: 6px; padding: 1px 5px; }
+.au-hammer-mini i.hi { background: #fef3c7; color: #b45309; }
+.au-hammer-mini i.lo { background: #f1f5f9; color: #64748b; }
+.au-lots { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; min-width: 0; }
+.au-lot {
+  display: flex !important; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; padding: 8px 6px !important;
+  border: 2px solid #c69c6d !important; border-radius: 14px !important; background: #fffaf0;
+}
+.au-lot.k-treasure { border-color: #d4a017 !important; background: #fffbeb; }
+.au-lot.k-junk { border-style: dashed !important; background: #fafaf9; }
+.au-art { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; line-height: 1; }
+.au-art img { width: 100%; height: 100%; object-fit: contain; }
+.au-name { font-size: 0.86rem; line-height: 1.2; overflow-wrap: anywhere; word-break: keep-all; }
+.au-val, .au-range { font-size: 0.7rem; font-weight: 700; color: #57534e; line-height: 1.25; overflow-wrap: anywhere; word-break: keep-all; }
+.au-range { color: #92400e; }
+.au-prem { font-size: 0.68rem; font-weight: 800; background: #fdf2f8; color: #9d174d; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+.au-leave { display: flex !important; align-items: center; gap: 8px; text-align: left; }
+.au-leave .ci-opt-l { display: flex; flex-direction: column; }
+.au-leave .ci-opt-desc { font-size: 0.74rem; font-weight: 700; color: #57534e; }
+
+/* ---------- cut-in window: the number wheel, trophy, hammer board ---------- */
+.ci-island {
+  position: absolute; right: 4%; top: 6%; z-index: 3; width: clamp(84px, 27cqw, 330px); display: flex; flex-direction: column; align-items: center;
+  animation: sm-pop 0.4s 0.1s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.ci-island.idle { opacity: 0.92; }
+.ci-island-bet { margin-top: 0.4cqw; font-size: clamp(10px, 2cqw, 22px); color: #fff; background: rgba(61, 43, 82, 0.86); border-radius: 999px; padding: 0.1em 0.8em; white-space: nowrap; }
+.isl-wheel { position: relative; width: 100%; filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.3)); }
+.isl-wheel svg { width: 100%; height: auto; display: block; }
+.isl-wheel .w-rot { transform-box: view-box; transform-origin: 110px 110px; transform: rotate(0deg); }
+.isl-wheel.spin .w-rot { transform: rotate(var(--rot)); transition: transform 2.2s cubic-bezier(0.12, 0.8, 0.18, 1); }
+.isl-wheel.spin.instant .w-rot { transition: none; }
+.isl-wheel .w-roll {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0); font-size: clamp(18px, 6cqw, 64px); line-height: 1; color: #fff;
+  background: #3d2b52; border: 0.5cqw solid #ffd23f; border-radius: 50%; width: 1.6em; height: 1.6em; display: flex; align-items: center; justify-content: center;
+}
+.ci-island.done .w-roll { animation: isl-roll 0.45s cubic-bezier(0.3, 1.7, 0.5, 1) forwards; }
+.ci-island.done.lose .w-roll { background: #64748b; border-color: #cbd5e1; }
+.ci-island.done.jackpot .isl-wheel { animation: isl-glow 0.9s ease-in-out 3 alternate; }
+.ci-island.done.bust .isl-wheel { filter: grayscale(0.85) drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.3)); }
+@keyframes isl-roll { to { transform: translate(-50%, -50%) scale(1); } }
+@keyframes isl-glow { to { filter: drop-shadow(0 0 2.4cqw #ffd23f) drop-shadow(0 0 1cqw #fff6c8); } }
+.ci-wishfx.rain i { animation-name: ci-wish-fall; bottom: auto; top: -10%; animation-duration: 2.8s; }
+
+.ci-contest {
+  position: absolute; right: 6%; top: 8%; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 0.6cqw; opacity: 0; transform: scale(0.4);
+}
+.ci-contest.shown { animation: ct-in 0.55s cubic-bezier(0.3, 1.6, 0.5, 1) forwards; }
+@keyframes ct-in { to { opacity: 1; transform: scale(1); } }
+.ct-trophy { position: relative; display: flex; align-items: center; justify-content: center; }
+.ct-cup { font-size: clamp(36px, 15cqw, 170px); line-height: 1; filter: drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.28)); }
+.ct-glow { position: absolute; inset: -25%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 238, 150, 0.85), transparent 65%); z-index: -1; }
+.ct-trophy.p-0 .ct-glow { display: none; }
+.ct-trophy.p-0 .ct-cup { filter: grayscale(0.6); }
+.ct-label { font-size: clamp(10px, 2cqw, 22px); color: #fff; background: rgba(61, 43, 82, 0.86); border-radius: 999px; padding: 0.1em 0.8em; white-space: nowrap; }
+
+.ci-auction { position: absolute; right: 4%; top: 30%; width: clamp(120px, 33cqw, 400px); z-index: 3; }
+.au-board {
+  display: grid; grid-template-columns: auto 1fr; grid-template-areas: "gavel price" "cells cells"; align-items: center; gap: 0.6cqw 1cqw; background: rgba(255, 250, 240, 0.94); border: 0.4cqw solid #8e6b4a; border-radius: 1.6cqw; padding: 0.8cqw 1.4cqw;
+  box-shadow: 0 1cqw 2cqw rgba(0, 0, 0, 0.25);
+}
+.au-gavel { grid-area: gavel; font-size: clamp(18px, 6cqw, 64px); line-height: 1; transform-origin: 80% 80%; }
+.ci-auction.struck .au-gavel { animation: au-strike 0.35s ease-in 2; }
+@keyframes au-strike { 50% { transform: rotate(-40deg); } }
+.au-cells { grid-area: cells; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5cqw; }
+.au-cells i {
+  font-style: normal; font-weight: 800; font-size: clamp(8px, 2cqw, 20px); text-align: center; background: #f5f5f4; color: #57534e; border-radius: 0.6cqw; padding: 0.3cqw 0.2cqw;
+  animation: au-flick 0.12s calc(var(--i) * 0.07s) ease-in-out 2 alternate;
+}
+.au-cells i.hi { background: #fef3c7; color: #b45309; }
+.au-cells i.lo { background: #e2e8f0; color: #64748b; }
+.ci-auction.struck .au-cells i.hit { background: #e2504c; color: #fff; transform: scale(1.3); box-shadow: 0 0 1cqw #ffd23f; transition: transform 0.2s; }
+.au-price { grid-area: price; justify-self: end; font-size: clamp(14px, 5cqw, 54px); color: #b45309; opacity: 0; white-space: nowrap; }
+.ci-auction.struck .au-price { animation: sm-pop 0.35s 0.3s cubic-bezier(0.3, 1.6, 0.5, 1) forwards; }
+.au-board.fake .au-price { color: #64748b; }
+@keyframes au-flick { to { background: #fde68a; } }
+
+/* the wheel / trophy / hammer board sit at the right of the window: the speech bubble stays left of them */
+.cutin[data-senior^="island"]:not([data-senior="island-prompt"]) .ci-bubble,
+.cutin[data-senior^="contest-"]:not([data-senior="contest-prompt"]) .ci-bubble,
+.cutin[data-senior^="auction-"]:not([data-senior="auction-prompt"]) .ci-bubble { max-width: 27%; }
+/* the result / number-pick windows draw their own wheel: hide the scene's beach roulette there */
+.cutin[data-senior^="island"]:not([data-senior="island-prompt"]) .sb-wheel { display: none; }
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 430px) {
+  .isl-tiers { grid-template-columns: 1fr; }
+  .isl-tier { gap: 2px; padding: 6px 10px !important; }
+  .isl-tier:not(.bust):not(.off) .isl-risknote { display: none; }
+  .isl-sides { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .isl-side { padding: 6px 8px !important; gap: 6px; font-size: 0.92rem; }
+  .isl-side .c-icon { font-size: 1.2rem; }
+  .isl-num { min-height: 44px; }
+  .isl-num b { font-size: 1.2rem; }
+  .au-lots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .au-art { width: 36px; height: 36px; font-size: 1.5rem; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .isl-tier { padding: 5px 8px !important; }
+  .isl-tier .isl-dots { display: none; }
+  .isl-tier .isl-risknote { display: none; }
+  .isl-tier.bust .isl-risknote { display: block; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .isl-wheel.spin .w-rot { transition: none; }
+  .ci-island, .ci-contest.shown, .ci-auction.struck .au-gavel, .au-cells i, .ci-island.done .w-roll, .ci-island.done.jackpot .isl-wheel { animation: none !important; }
+  .ci-contest { opacity: 1; transform: none; }
+  .ci-island .w-roll { transform: translate(-50%, -50%) scale(1); }
+  .au-price { opacity: 1; }
+}

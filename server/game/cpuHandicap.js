@@ -9,14 +9,17 @@
 //   - treasureMult:   a CPU's treasure is appraised at value × this (fakes stay fakes; values are hidden until the
 //                     result show, and treasures were what most often lifted a lucky CPU over the people).
 // Losses, prizes, transfers between characters, houses and awards are untouched.
+// CPU 난이도 (room config `cpuLevel`): the handicap applies only at 'easy' (the default, also for old saves); 'normal' and
+// 'hard' rooms play without it.
 import { CPU_PERSONALITIES } from './lobby.js';
+import { CPU_LEVELS, CPU_LEVEL_INFO, DEFAULT_CPU_LEVEL, cpuLevelOf } from './config.js';
 
 export const CPU_OWNER = 'cpu';
 
 const isCpuChar = (c) => c?.ownerSessionId === CPU_OWNER;
 
-/** Does the handicap apply in this room (at least one character played by a person)? */
-export const handicapActive = (room) => !!room?.characters?.some((x) => x && !isCpuChar(x));
+/** Does the handicap apply in this room (CPU 난이도 easy and at least one character played by a person)? */
+export const handicapActive = (room) => cpuLevelOf(room) === 'easy' && !!room?.characters?.some((x) => x && !isCpuChar(x));
 
 /** The handicap of character `c` in `room`: `{startMoneyMult, incomeMult, treasureMult}` or null (people / CPU-only rooms / off). */
 export function cpuHandicap(room, c, data) {
@@ -41,10 +44,18 @@ export function startMoneyFor(room, c, data) {
   return h ? Math.round((base * h.startMoneyMult) / 10) * 10 : base;
 }
 
-/** `/api/meta.cpu` (lobby / admin pickers + the handicap hint): personalities and the handicap (null when off). */
+/**
+ * `/api/meta.cpu` (lobby / admin pickers + the handicap hint): personalities, the difficulty levels `[{id, icon, name,
+ * desc}]` (+ `defaultLevel`) and the handicap of the easy level (null when off).
+ */
 export function cpuMeta(balance) {
   const h = balance?.cpu?.handicap;
   const on = h && h.enabled !== false;
   const n = (v) => (Number.isFinite(v) && v >= 0 ? v : 1);
-  return { personalities: [...CPU_PERSONALITIES], handicap: on ? { startMoneyMult: n(h.startMoneyMult), incomeMult: n(h.incomeMult), treasureMult: n(h.treasureMult) } : null };
+  return {
+    personalities: [...CPU_PERSONALITIES],
+    levels: CPU_LEVELS.map((id) => ({ ...CPU_LEVEL_INFO[id] })),
+    defaultLevel: DEFAULT_CPU_LEVEL,
+    handicap: on ? { startMoneyMult: n(h.startMoneyMult), incomeMult: n(h.incomeMult), treasureMult: n(h.treasureMult) } : null,
+  };
 }

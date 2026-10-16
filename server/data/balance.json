@@ -13,9 +13,19 @@
     "keepTurns": 6
   },
   "roulette": {
-    "_comment": "룰렛 실력 모드 (config rouletteMode skill): 목표 t → t 50 %, t±1 각 20 %, t±2 각 5 % (jitter = |차이|별 비율, ±로 반씩), 1~10 밖은 반사 (0→2, 11→9). 자동 룰렛·관리자 대신 돌리기·골인 후 보너스 룰렛·택시/층간소음의 두 번째 룰렛은 그대로 랜덤. 매 턴 1~10 어느 숫자든 노릴 수 있음 (숫자 덱 규칙은 사용자 결정으로 삭제). cpu.aimNoise = CPU 성격별로 목표가 ±1 빗나갈 확률 (서버 jitter 전에)",
+    "_comment": "룰렛 실력 모드 (config rouletteMode skill): 「빠를수록 위험」(사용자 결정) — 큰 숫자를 노릴수록 더 크게 빗나간다. jitterByTarget = 목표 숫자(\"7\" 또는 범위 \"1-5\")별 |차이| 비율(±로 반씩): 1~5 명중 50 %·±2까지(예전 그대로), 6부터 점점 넓어져 10은 명중 20 %·±5까지; 표에 없는 숫자는 jitter (t 50 %, ±1 40 %, ±2 10 %). 1~10 밖은 반사 (0→2, 11→9, 12→8 …: 10을 노리면 10을 넘지 않고 모자라게 빗나감). 자동 룰렛·관리자 대신 돌리기·골인 후 보너스 룰렛·택시/층간소음의 두 번째 룰렛은 그대로 랜덤. 매 턴 1~10 어느 숫자든 노릴 수 있음 (숫자 덱 규칙은 사용자 결정으로 삭제). cpu.aimNoise = CPU 성격별로 목표가 ±1 빗나갈 확률 (서버 jitter 전에)",
     "modes": ["random", "skill"],
-    "skill": {"jitter": {"0": 0.5, "1": 0.4, "2": 0.1}},
+    "skill": {
+      "jitter": {"0": 0.5, "1": 0.4, "2": 0.1},
+      "jitterByTarget": {
+        "1-5": {"0": 0.5, "1": 0.4, "2": 0.1},
+        "6": {"0": 0.45, "1": 0.4, "2": 0.15},
+        "7": {"0": 0.4, "1": 0.4, "2": 0.15, "3": 0.05},
+        "8": {"0": 0.3, "1": 0.4, "2": 0.2, "3": 0.1},
+        "9": {"0": 0.25, "1": 0.35, "2": 0.2, "3": 0.12, "4": 0.08},
+        "10": {"0": 0.2, "1": 0.3, "2": 0.2, "3": 0.15, "4": 0.1, "5": 0.05}
+      }
+    },
     "cpu": {"aimNoise": {"cautious": 0, "normal": 0.25, "bold": 0.5}}
   },
   "prompts": {"multiTimeoutMs": 40000, "decisionTimeoutMs": null},
@@ -112,7 +122,7 @@
     "eraScale": {"middle": 0.5, "high": 0.6, "young": 1, "middle_age": 1.3, "senior": 1},
     "kidsEras": ["baby", "elem", "middle", "high"]
   },
-  "shop": {"_comment": "상점 칸(Stage 7): 카드 cards장 + 아이템 items개 진열(가중치, 보유 아이템 제외).", "cards": 2, "items": 1},
+  "shop": {"_comment": "상점(Stage 7; 청년·중년 칸 풀의 shop 칸 + 찬스 광장 「구입」): 카드 cards장 + 아이템 items개 진열(가중치, 보유 아이템 제외). 노년 역전: 아이템마다 노년 활용(items.json senior)이 있어 아이템 2개를 진열한다.", "cards": 1, "items": 2},
   "trades": {
     "_comment": "거래 제안(Stage 7): 제안 유효 시간(ms), 제안자 다음 턴 시작·어느 한쪽 골인 시에도 만료.",
     "ttlMs": 60000,
@@ -142,8 +152,56 @@
       "allIn": {
         "mult": 7,
         "chance": 0.1,
-        "_comment": "노년 골인 경주의 인생역전섬: 전 재산 올인 = 1~10 중 숫자 하나(항상 순수 랜덤) 맞히면 현금 × mult, 틀리면 현금 0 + 빈곤 농장 은퇴(꼴찌 자리, 상금 없음). 기대값 < 1."
+        "_comment": "옛 저장 전용(한방역전섬 칸이 없는 노년 골인 경주의 인생역전 칸): 전 재산 올인 = 1~10 중 숫자 하나(항상 순수 랜덤) 맞히면 현금 × mult, 틀리면 현금 0 + 빈곤 농장 은퇴(꼴찌 자리, 상금 없음). 새 게임판은 balance.senior.island(🏝️ 한방역전섬)."
       }
+    }
+  },
+  "senior": {
+    "_comment": "노년 역전(노년 골인 경주, server/game/senior.js). island = 🏝️ 한방역전섬(경주에 1칸, 지나가기만 해도 멈춰서 결정 후 남은 칸을 마저 감), contest = 🏆 노년 대회, auction = 🔨 골동품 경매, 아이템 노년 활용 수치는 items.json senior(dodge·royalty·health·premium·lucky·pension·guard·busking). 노년 대회 상금·아이템 수입(인세·건강 보너스·버스킹)은 CPU 핸디캡 incomeMult를 받는다.",
+    "race": {
+      "_comment": "⏰ 노년 마감: 노년 골인 경주는 최대 clamp(ceil(길이 × perTile), min, max)턴(40칸 → 12턴; 보통 7~8번이면 골인). 마지막 턴이 끝나면 아직 골인 못 한 캐릭터는 진행 칸 순서대로 다음 등수로 은퇴(상금 × retirePrizeMult, finished retired 'late'). 노년 칸이 돈을 주니 1칸씩 기어가며 칸을 더 밟는 전략(실력 룰렛 1 조준)과 게임 늘어짐을 막는다.",
+      "perTile": 0.3,
+      "min": 8,
+      "max": 30
+    },
+    "island": {
+      "_comment": "판돈 단계 tiers: stake = 현금 × share(5만원 단위, min 이상), numbers = 맞히는 숫자 개수(고른 숫자부터 차례로, 10 다음은 1; 행운 아이템이면 +items.json senior.numbers), 맞히면 판돈 × mult를 돌려받음(순이익 판돈 × (mult − 1)). 숫자는 늘 순수 랜덤(실력 모드에서도). 기대값 = numbers / 10 × mult — 행운 아이템 없이 모두 1 미만(all 0.8 · half 0.9 · little 0.9). bust = 틀리면 현금 0 + 빈곤 농장(남은 꼴찌 자리, 상금 없음, 경주 끝) = 쪽박; 나머지 단계는 판돈만 잃는다. minStake 미만이면 걸 수 없음. 조기 은퇴(retire)는 다음 순위 · 골인 상금 × retirePrizeMult.",
+      "title": "🏝️ 한방역전섬",
+      "tiers": [
+        {"id": "all", "name": "인생 한 방", "icon": "💥", "share": 1, "numbers": 1, "mult": 8, "bust": true},
+        {"id": "half", "name": "반반 승부", "icon": "🔥", "share": 0.5, "numbers": 3, "mult": 3},
+        {"id": "little", "name": "소소한 재미", "icon": "🪙", "share": 0.1, "numbers": 5, "mult": 1.8, "min": 10}
+      ],
+      "minStake": 10
+    },
+    "contest": {
+      "_comment": "노년 대회: 칸에 설 때 종목 하나(가지고 있는 아이템의 종목은 ownThemeWeight배 잘 나옴). 우승 확률 = base + perStat × 그 종목 능력치 (+ itemBonus: 그 종목 아이템 = items.json senior.theme) ∈ [min, max], 입상 확률 = (1 − 우승) × secondShare. tiers = 참가비 fee · 우승 상금 prize · 입상 상금 second (상금 × scale[노년]). 기본 선택 = 기대값이 0 이상이고 낼 수 있는 가장 작은 단계, 아니면 구경.",
+      "title": "🏆 노년 대회",
+      "base": 0.08,
+      "perStat": 0.05,
+      "itemBonus": 0.25,
+      "min": 0.05,
+      "max": 0.85,
+      "secondShare": 0.35,
+      "ownThemeWeight": 2,
+      "scale": 1,
+      "tiers": [
+        {"id": "small", "name": "참가", "icon": "🙋", "fee": 20, "prize": 90, "second": 20},
+        {"id": "big", "name": "본선 도전", "icon": "🔥", "fee": 60, "prize": 270, "second": 60}
+      ],
+      "themes": [
+        {"id": "sing", "name": "노래자랑", "icon": "🎤", "stat": "charm"},
+        {"id": "baduk", "name": "바둑 대회", "icon": "♟️", "stat": "int"},
+        {"id": "gateball", "name": "게이트볼 대회", "icon": "🏑", "stat": "str"},
+        {"id": "raffle", "name": "경품 추첨", "icon": "🎁", "stat": "luck"},
+        {"id": "rally", "name": "실버 드라이브 랠리", "icon": "🚗", "stat": "luck"}
+      ]
+    },
+    "auction": {
+      "_comment": "골동품 경매: 아이템(정산 가치 price × resale × 명품 프리미엄 auctionMult)·보물(비공개 감정가, 가짜면 거의 0)·잡동사니(junk) 중 하나를 내놓으면 망치 룰렛 1~10 → 낙찰가 = 가치 × hammer[숫자 − 1](5만원 단위). 기대 배수 ≈ 1.4(아이템·보물을 모아 온 노년의 보상). 판 아이템·보물은 사라진다(아이템으로 오른 능력치는 그대로). 기본 선택 = 잡동사니.",
+      "title": "🔨 골동품 경매",
+      "hammer": [0.5, 0.7, 1, 1, 1.2, 1.2, 1.5, 1.8, 2.2, 3],
+      "junk": 20
     }
   },
   "result": {
@@ -235,6 +293,10 @@
       "incomeMult": 0.45,
       "treasureMult": 0.3
     },
+    "levels": {
+      "_comment": "방 설정 CPU 난이도(config cpuLevel): easy = 위 성향표 + 핸디캡(기본, 옛 저장도), normal = 핸디캡 없이 결정마다 hardShare 확률로 강한 휴리스틱·나머지는 성향표(룰렛 전 카드는 cardHardShare), 실력 룰렛은 aimRandom 확률로 그냥 좋아하는 숫자 — 평범한 사람과 비슷한 실력, hard = 예전의 강한 휴리스틱만(핸디캡 없음).",
+      "normal": {"hardShare": 0.1, "cardHardShare": 0.1, "aimRandom": 1}
+    },
     "prefs": {
       "*": {"best": 3, "*": 1},
       "routeChoice": {"best": 1, "*": 2},
@@ -244,11 +306,15 @@
       "jobOffer": {"dream": 6, "*": 1},
       "hiddenJobOffer": {"accept": 1},
       "groupGift": {"gift": 2, "skip": 1},
-      "allIn": {"*": 1}
+      "allIn": {"*": 1},
+      "island": {"pass": 5, "bet:little": 2, "retire": 1},
+      "islandPick": {"*": 1},
+      "contest": {"default": 3, "*": 1},
+      "auction": {"default": 3, "*": 1}
     },
     "personalities": {
       "cautious": {
-        "_comment": "🐢 신중: 돈을 아끼고 모험을 피한다 — 학자금이 무서워 바로 취업, 승진 시험 대신 야근, 집은 안 사고, 「같이 살자!」 대신 「조금 더 친하게」, 고향에서 푹 쉬고, 찬스 광장은 거의 지나가기, 노년엔 조기 은퇴.",
+        "_comment": "🐢 신중: 돈을 아끼고 모험을 피한다 — 학자금이 무서워 바로 취업, 승진 시험 대신 야근, 집은 안 사고, 「같이 살자!」 대신 「조금 더 친하게」, 고향에서 푹 쉬고, 찬스 광장은 거의 지나가기, 노년엔 조기 은퇴·한방역전섬 지나가기·노년 대회 구경.",
         "cardPlay": 0.2,
         "sabotage": 0,
         "aimRandom": 1,
@@ -270,7 +336,10 @@
           "temple": {"train:": 3, "leave": 2, "wish": 0.5},
           "jeju": {"skip": 3, "trip": 1},
           "reversal": {"skip": 3, "retire": 2, "lotto": 1},
-          "passTile": {"pass": 6, "wish": 1, "dream": 3}
+          "passTile": {"pass": 6, "wish": 1, "dream": 3},
+          "island": {"pass": 6, "retire": 3, "bet:little": 1},
+          "contest": {"watch": 3, "default": 2},
+          "auction": {"default": 3, "leave": 2}
         }
       },
       "normal": {
@@ -294,11 +363,14 @@
           "temple": {"train:": 1, "wish": 1, "leave": 1},
           "jeju": {"trip": 1, "skip": 1},
           "reversal": {"lotto": 2, "horse:2": 1, "skip": 3, "retire": 1},
-          "passTile": {"pass": 2, "wish": 2, "wishAll": 1.5, "buy": 1, "dream": 3}
+          "passTile": {"pass": 2, "wish": 2, "wishAll": 1.5, "buy": 1, "dream": 3},
+          "island": {"pass": 5, "bet:little": 2, "retire": 1},
+          "contest": {"default": 2, "*": 1},
+          "auction": {"default": 2, "*": 1}
         }
       },
       "bold": {
-        "_comment": "🔥 대담: 도박·투자를 좋아한다 — 재수도 불사, 전직·성과급 협상, 쇼핑, 집 갈아타기, 비싼 놀거리(같이 놀기), 바로 「같이 살자!」, 사찰에선 소원, 제주도 여행, 인생역전에선 경마(2배)·로또(전 재산 올인·5배·10배 대박은 안 노림 — 한 방이 약한 CPU에게 판을 넘겨주니까), 찬스 광장에선 소원·모두를 위한 소원.",
+        "_comment": "🔥 대담: 도박·투자를 좋아한다 — 재수도 불사, 전직·성과급 협상, 쇼핑, 집 갈아타기, 비싼 놀거리(같이 놀기), 바로 「같이 살자!」, 사찰에선 소원, 제주도 여행, 인생역전에선 경마(2배)·로또, 한방역전섬에선 소소한 재미·가끔 반반 승부(전 재산 한 방·5배·10배 대박은 안 노림 — 한 방이 약한 CPU에게 판을 넘겨주니까), 노년 대회는 본선 도전, 찬스 광장에선 소원·모두를 위한 소원.",
         "cardPlay": 0.5,
         "sabotage": 0.5,
         "aimRandom": 1,
@@ -320,7 +392,10 @@
           "temple": {"wish": 4, "leave": 1},
           "jeju": {"trip": 2, "skip": 1},
           "reversal": {"horse:2": 3, "lotto": 2, "skip": 1},
-          "passTile": {"wishAll": 3, "wish": 3, "buy": 2, "pass": 1, "dream": 3}
+          "passTile": {"wishAll": 3, "wish": 3, "buy": 2, "pass": 1, "dream": 3},
+          "island": {"bet:little": 3, "bet:half": 1, "pass": 1},
+          "contest": {"join:big": 3, "*": 1},
+          "auction": {"sell:": 2, "*": 1}
         }
       }
     }

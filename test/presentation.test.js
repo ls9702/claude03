@@ -175,6 +175,11 @@ test('presentationFor: every event type maps to a tone, scene and emotion (synth
     // 세계 설정 (치이카와 모드)
     huntResult: { charId: c.id, monsterId: 'chimera', success: true, chance: 0.7, amount: 80, injured: 0, armor: false, sasumata: false },
     weedResult: { charId: c.id, action: 'exam', success: true, level: 2, grade: '4급', target: 2, chance: 0.6 },
+    // 노년 역전
+    islandResult: { charId: c.id, tier: 'all', stake: 500, pick: 7, covers: [7], numbers: 1, lucky: 0, roll: 7, mult: 8, win: true, amount: 3500, result: 'jackpot' },
+    contestResult: { charId: c.id, themeId: 'sing', tier: 'big', stat: 'charm', statValue: 6, itemId: null, chance: 0.38, place: 1, fee: 60, prize: 270, amount: 210 },
+    auctionResult: { charId: c.id, kind: 'item', itemId: 'designer_bag', base: 540, roll: 10, mult: 3, amount: 1620 },
+    seniorItem: { charId: c.id, itemId: 'car', use: 'dodge', tileId: 'senior:main:9' },
   };
   assert.deepEqual(Object.keys(samples).sort(), [...EVENT_TYPES].sort());
   for (const type of EVENT_TYPES) {

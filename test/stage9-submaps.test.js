@@ -89,8 +89,12 @@ test('data: treasures.json (≥ 20, named classics), board pools per era / route
   for (const e of Object.keys(bd.eras)) if (e !== 'senior') assert.equal(w(era(e), 'reversal'), 0, `reversal ${e}`);
   assert.ok(w(era('senior'), 'reversal') > 0);
   for (const r of Object.keys(bd.routePools)) assert.equal(w(route(r), 'reversal'), 0);
-  // loop maps: the final race (노년) track has fixed 인생역전섬 tiles (2–3) and its own mostly-good pool
-  assert.ok(bd.finalTrack.reversal.min >= 2 && bd.finalTrack.reversal.max <= 3);
+  // loop maps: the final race (노년) track has fixed 인생역전 tiles (노년 역전: 1–2 + one 🏝️ 한방역전섬) and its own pool
+  assert.ok(bd.finalTrack.reversal.min >= 1 && bd.finalTrack.reversal.max <= 3);
+  assert.ok(bd.finalTrack.island?.at > 0 && bd.finalTrack.island.at < 1);
+  for (const t of ['island', 'contest', 'auction']) assert.ok(bd.tileTypes[t]?.name && bd.tileTypes[t].icon, t);
+  assert.ok(w(bd.finalTrack.pool, 'contest') > 0 && w(bd.finalTrack.pool, 'auction') > 0);
+  assert.equal(w(bd.finalTrack.pool, 'island'), 0, 'placed as a fixed spot, not drawn');
   assert.equal(w(bd.finalTrack.pool, 'reversal'), 0, 'placed as fixed spots, not drawn');
   assert.equal(w(bd.finalTrack.pool, 'loss'), 0, 'trouble only at the fixed spots');
   // 보물: 금전 루트가 가장 많이, 노년 골인 경주에도 조금

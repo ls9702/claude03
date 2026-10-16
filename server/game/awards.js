@@ -111,6 +111,21 @@ export function awardBonusByChar(awards) {
   return out;
 }
 
+// ---------- 노년 역전: comebacks ----------
+
+/**
+ * The winner's comeback: 1st place now, but in the bottom half of the visible standing when the final race started
+ * (`room.seniorStart`, senior.js; ≥ 3 characters). @returns {charId, from, n} | null
+ */
+export function comebackOf(room, ranking = []) {
+  const start = room?.seniorStart;
+  const n = start?.n ?? 0;
+  if (!start?.ranks || n < 3) return null;
+  const winner = ranking.find((r) => r.rank === 1);
+  const from = winner ? start.ranks[winner.charId] : null;
+  return from != null && from > Math.ceil(n / 2) ? { charId: winner.charId, from, n } : null;
+}
+
 // ---------- titles ----------
 
 /**
@@ -176,6 +191,13 @@ export function titleFacts(room, c, { data, ranking = [] } = {}) {
     huntRuns: rec.huntRuns ?? 0,
     huntOnlyRan: (rec.huntPrompts ?? 0) > 0 && (rec.huntRuns ?? 0) === (rec.huntPrompts ?? 0) ? 1 : 0, // 평화주의자
     weedLevel: c.weed?.level ?? 0,
+    // 노년 역전: 한방역전섬 대박, 잃은 한 방 (인생역전 + 한방역전섬), 노년 대회 우승, 골동품 경매, 노년 대역전 우승
+    islandJackpot: rec.islandJackpot ?? 0,
+    gambleLosses: rec.gambleLosses ?? 0,
+    contestWins: rec.contestWins ?? 0,
+    auctions: rec.auctions ?? 0,
+    auctionTotal: rec.auctionTotal ?? 0,
+    comeback: comebackOf(room, ranking)?.charId === c.id ? 1 : 0,
   };
 }
 

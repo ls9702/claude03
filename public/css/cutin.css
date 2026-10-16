@@ -126,6 +126,8 @@ body.cutin-open { overflow: hidden; }
 .ci-text-ghost { display: grid; visibility: hidden; }
 .ci-text-ghost > * { grid-area: 1 / 1; }
 .ci-text-live { position: absolute; left: 0; right: 0; top: 0; }
+/* floated chips (≤ 3): the text box sits beside them, so the absolutely placed live text never runs under a chip */
+.ci-chips:not(.row):not(:empty) + .ci-text { display: flow-root; }
 .ci-options { clear: both; }
 /* fit() last resort: the body (chips / text / extra / options) scrolls inside the box, ▼ and the tabs stay on screen */
 .ci-body { min-height: 0; }

@@ -4,6 +4,7 @@ import { buildTurnOrder } from './order.js';
 import { cloneState } from './clone.js';
 import { randomLook, sanitizeAvatar } from './avatar.js';
 import { josa, particle } from './korean.js';
+import { CPU_LEVELS, CPU_LEVEL_ERROR, CPU_LEVEL_INFO, cpuLevelOf } from './config.js';
 
 export const MAX_PLAYERS = 4;
 export const NAME_MAX = 12;
@@ -378,6 +379,22 @@ export function setCpuPersonality(room, charId, personality, now = Date.now(), {
   nc.cpuPersonality = value;
   const logs = [pushLog(next, `🤖 ${by} 님이 CPU 「${c.name}」의 성향을 ${CPU_PERSONALITY_LABELS[value]}${particle(CPU_PERSONALITY_LABELS[value], '으로/로')} 바꿨습니다.`, now)];
   return { ok: true, room: next, logs, character: nc, changed: true };
+}
+
+/**
+ * CPU 난이도 of the room (lobby only): easy (the weak CPUs + the money handicap against people) / normal (no handicap,
+ * about a casual person's strength) / hard (the old strong CPUs). Same value → `{changed: false}`. `by` = who changed it.
+ */
+export function setCpuLevel(room, level, now = Date.now(), { by = '관리자' } = {}) {
+  if (typeof level !== 'string' || !CPU_LEVELS.includes(level)) return fail(400, CPU_LEVEL_ERROR);
+  if (room.status !== 'lobby') return fail(409, '로비에서만 CPU 난이도를 바꿀 수 있어요.');
+  if (cpuLevelOf(room) === level) return { ok: true, room, logs: [], changed: false };
+  const next = cloneState(room);
+  next.config.cpuLevel = level;
+  const info = CPU_LEVEL_INFO[level];
+  const label = `${info.icon} ${info.name}`;
+  const logs = [pushLog(next, `🤖 ${by} 님이 CPU 난이도를 ${label}${particle(info.name, '으로/로')} 바꿨습니다.`, now)];
+  return { ok: true, room: next, logs, changed: true };
 }
 
 /** Remove a CPU character (lobby only). */

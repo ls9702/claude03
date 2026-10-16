@@ -32,7 +32,7 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
   assert.equal(validateManifest(m).ok, true);
   const count = (k) => m.items.filter((i) => i.kind === k).length;
   assert.equal(count('anchor'), 1);
-  assert.equal(count('bg'), 31); // 5 event scenes + the MC studio (Stage 5.6) + 11 Stage 7 scenes (stage … holiday) + Stage 8 park / house + Stage 9 hometown / temple / jeju / casino + 8 세계 설정 scenes (weed-field … kuji)
+  assert.equal(count('bg'), 34); // 5 event scenes + the MC studio (Stage 5.6) + 11 Stage 7 scenes (stage … holiday) + Stage 8 park / house + Stage 9 hometown / temple / jeju / casino + 8 세계 설정 scenes (weed-field … kuji) + 노년 역전 island / farm / auction
   assert.equal(count('charLayer'), 8); // base + 4 expressions + 3 outfits
   assert.equal(count('pose'), 6);
   assert.ok(count('sprite') >= 1);

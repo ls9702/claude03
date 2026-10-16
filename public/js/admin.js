@@ -1,6 +1,6 @@
 // Admin page: login, create room (per-era turns), room list, lobby detail, start/end/delete.
 import { charaToken, setCharaMeta } from './ui/chara.js';
-import { cpuHandicapText, cpuPersonalityHtml, cpuPersonalityOptions, ownerHtml } from './format.js';
+import { cpuHandicapText, cpuLevelOf, cpuLevelOptions, cpuLevelText, cpuPersonalityHtml, cpuPersonalityOptions, ownerHtml } from './format.js';
 import { LONG_GAME_TURNS, SEC_PER_TURN, lapSize, loopConfig } from './shared/loop.js';
 import { worldLabel, worldOf } from './shared/world.js';
 
@@ -299,6 +299,8 @@ async function onCreate(ev) {
   if (f.rouletteMode?.value === 'skill') body.rouletteMode = 'skill';
   // Stage 9-C 「CPU 허용」 (default off; only sent when on)
   if (f.allowCpu?.checked) body.allowCpu = true;
+  // CPU 난이도: always sent (easy = the weak CPUs + handicap, normal, hard = the old strong CPUs)
+  if (f.cpuLevel?.value) body.cpuLevel = f.cpuLevel.value;
   try {
     const { room } = await req('POST', '/admin/api/rooms', body);
     toast(`방을 만들었습니다. 코드: ${room.code}`);
@@ -389,6 +391,11 @@ async function renderDetail() {
       <dt>명절 대잔치</dt><dd>${room.config.holidays === false ? '끄기' : '켜기 (설날·추석 미니게임)'}</dd>
       <dt>룰렛</dt><dd>${room.config.rouletteMode === 'skill' ? '🎯 실력 모드 (흔들기·타이밍, 훈수 베팅 없음)' : '완전 랜덤'}</dd>
       <dt>CPU 허용</dt><dd>${room.config.allowCpu ? '켜기 (방장도 CPU 추가 가능)' : '끄기 (관리자만 추가)'}</dd>
+      <dt>CPU 난이도</dt><dd>${
+        room.status === 'lobby'
+          ? `<select class="cpu-level-sel" data-cpu-level aria-label="CPU 난이도" title="CPU 난이도 (로비에서만 바꿀 수 있어요)">${cpuLevelOptions(cpuLevelOf(room), meta)}</select>`
+          : esc(cpuLevelText(room, meta))
+      }</dd>
       ${room.turn ? `<dt>턴 순서(실제)</dt><dd>${room.turn.order.map((id) => esc(byId.get(id)?.name ?? id)).join(' → ')}</dd>` : ''}
     </dl>
     <h3>참가자 (${players.length}/4)${spectators.length ? ` <small class="muted">· 👀 관전 ${spectators.length}</small>` : ''}</h3>
@@ -412,7 +419,7 @@ function cpuTools(room) {
   if (room.status !== 'lobby') return '';
   const cpus = room.characters.filter((c) => c.ownerId === 'cpu');
   const full = room.characters.length >= room.config.maxCharacters;
-  const handicap = cpuHandicapText(meta);
+  const handicap = cpuLevelOf(room) === 'easy' ? cpuHandicapText(meta) : ''; // the handicap exists only at 쉬움
   const chip = (c) =>
     `<span class="cpu-chip"><span class="cpu-chip-n">🤖 ${esc(c.name)}</span><select data-cpu-pers="${esc(c.id)}" aria-label="${esc(c.name)} 성향" title="${esc(c.name)}의 성향">${cpuPersonalityOptions(c.cpuPersonality, { random: false })}</select><button class="btn tiny ghost" data-cpu-remove="${esc(c.id)}" title="CPU 빼기" aria-label="${esc(c.name)} 빼기">✕</button></span>`;
   return `
@@ -431,6 +438,20 @@ function cpuTools(room) {
 async function onDetailChange(ev) {
   if (ev.target.matches?.('[data-cpu-new]')) {
     cpuNewPick = ev.target.value;
+    return;
+  }
+  // CPU 난이도 (lobby only)
+  const lv = ev.target.closest?.('[data-cpu-level]');
+  if (lv && selectedId) {
+    lv.disabled = true;
+    try {
+      await req('PATCH', `/admin/api/rooms/${selectedId}/cpu-level`, { level: lv.value });
+      toast('CPU 난이도를 바꿨어요.');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    lv.blur();
+    await refresh().catch(() => {});
     return;
   }
   const sel = ev.target.closest?.('[data-cpu-pers]');

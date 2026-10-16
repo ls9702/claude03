@@ -89,15 +89,16 @@ export const DEFAULT_CARDS = Object.freeze({
 });
 
 export const DEFAULT_ITEMS = Object.freeze({
-  car: { name: '자동차', icon: '🚗', desc: '룰렛 1이 나오면 2칸' },
-  laptop: { name: '노트북', icon: '💻', desc: '지력 +1, 창작·e스포츠 급여 +10%' },
-  gym_pass: { name: '헬스 이용권', icon: '🏋️', desc: '체력 +1' },
-  designer_bag: { name: '명품 가방', icon: '👜', desc: '매력 +1' },
-  lucky_cat: { name: '행운의 고양이', icon: '🐱', desc: '운 +1' },
-  massage_chair: { name: '안마의자', icon: '💺', desc: '노년 체력 감소 방지' },
+  // seniorDesc = 노년 역전: the item's 「👴 노년 활용」 (items.json `seniorDesc`; the meta wins)
+  car: { name: '자동차', icon: '🚗', desc: '룰렛 1이 나오면 2칸', seniorDesc: '지출 칸에 멈추면 한 칸 더 달려서 피해요' },
+  laptop: { name: '노트북', icon: '💻', desc: '지력 +1, 창작·e스포츠 급여 +10%', seniorDesc: '골인하면 자서전 인세 (지력 × 15만원)' },
+  gym_pass: { name: '헬스 이용권', icon: '🏋️', desc: '체력 +1', seniorDesc: '지출 칸 손해 절반' },
+  designer_bag: { name: '명품 가방', icon: '👜', desc: '매력 +1', seniorDesc: '골동품 경매에 내놓으면 명품 프리미엄 ×1.5' },
+  lucky_cat: { name: '행운의 고양이', icon: '🐱', desc: '운 +1', seniorDesc: '한방역전섬에서 행운의 숫자 +1개' },
+  massage_chair: { name: '안마의자', icon: '💺', desc: '노년 체력 감소 방지', seniorDesc: '노년 월급날마다 건강 보너스 · 부상 회복' },
   // 세계 설정: items that exist only in the 🐹 치이카와 모드 (the world meta wins)
-  armor: { name: '갑옷', icon: '🛡️', desc: '토벌에서 지면 손해 절반, 다치지 않아요' },
-  guitar: { name: '하치와레표 기타', icon: '🎸', desc: '매력 +1, 길거리 가수 보수 +10%' },
+  armor: { name: '갑옷', icon: '🛡️', desc: '토벌에서 지면 손해 절반, 다치지 않아요', seniorDesc: '노년 경주 지출 칸 손해를 한 번 막아요' },
+  guitar: { name: '하치와레표 기타', icon: '🎸', desc: '매력 +1, 길거리 가수 보수 +10%', seniorDesc: '노년 월급날마다 버스킹 수입 (매력 × 6만원)' },
 });
 
 export const DEFAULT_HAND_LIMIT = 6;

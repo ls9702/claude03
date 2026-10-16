@@ -66,7 +66,7 @@ export function cardChipHtml(id, { meta = null, count = 1, cls = '' } = {}) {
 /** Small inline item icon (asset image or emoji). */
 export function itemIconHtml(id, { art = null, meta = null, cls = 'item-ic' } = {}) {
   const info = itemInfo(id, meta);
-  const title = `${info.name}${info.desc ? ` — ${info.desc}` : ''}`;
+  const title = `${info.name}${info.desc ? ` — ${info.desc}` : ''}${info.seniorDesc ? ` · 👴 노년: ${info.seniorDesc}` : ''}`;
   return art
     ? `<img class="${cls} img" src="${esc(art)}" alt="${esc(info.name)}" title="${esc(title)}" loading="lazy" decoding="async">`
     : `<span class="${cls}" title="${esc(title)}" role="img" aria-label="${esc(info.name)}">${esc(info.icon)}</span>`;
@@ -159,11 +159,14 @@ export function shopOptionsHtml(p, who, { meta = null, artFor = () => null, btnC
       const desc = info?.known ? info.desc : o.desc || info?.desc || '';
       const disabled = !!o.disabled;
       const tagText = isCard ? `${color === 'blue' ? '🔵 보유' : '🔴 사용'}${kind === 'passive' ? ' · 자동' : ''} 카드` : '아이템';
+      // 노년 역전: the item's 「👴 노년 활용」 (server option `seniorDesc`, else items.json via the meta)
+      const senior = isCard ? '' : o.seniorDesc || info?.seniorDesc || '';
       return `<button type="button" class="${btnClass} shop-item k-${esc(kind)} c-${esc(color)}${disabled ? ' off' : ''}" ${attrs(o)}${disabled ? ' disabled' : ''}>
         <span class="si-tag">${esc(tagText)}</span>
         <span class="si-art">${art ? `<img src="${esc(art)}" alt="" decoding="async">` : `<span class="si-emoji" aria-hidden="true">${esc(info?.icon ?? o.icon ?? '🛍️')}</span>`}</span>
         <span class="si-name">${esc(name)}</span>
         <span class="si-desc">${esc(desc)}</span>
+        ${senior ? `<span class="si-senior" title="노년 골인 경주에서 쓰여요">👴 노년: ${esc(senior)}</span>` : ''}
         <span class="si-price">${Number.isFinite(price) ? `${discounted ? `<s>${esc(won(base))}</s>` : ''}<b>${esc(won(price))}</b>` : ''}${discounted ? '<span class="si-coupon">🎟️ 쿠폰 할인</span>' : ''}</span>
         ${disabled ? `<span class="si-off">${esc(o.reason ?? (/부족/.test(String(o.desc ?? '')) ? '돈이 부족해요' : '살 수 없어요'))}</span>` : ''}
       </button>`;
