@@ -28,6 +28,10 @@ export function initRecord(c) {
     proposeFails: 0,
     partners: 0,
     submaps: Object.fromEntries(SUBMAP_KEYS.map((k) => [k, 0])),
+    // 세계 설정 (치이카와 모드): 토벌 prompts seen / run away from / lost (wins = character.hunts)
+    huntPrompts: 0,
+    huntRuns: 0,
+    huntLosses: 0,
   };
 }
 
@@ -75,7 +79,7 @@ export function trackRecords(room, events, from = 0) {
           }
         } else if (debt <= 0) r.inDebt = false;
         r.maxDebt = Math.max(r.maxDebt, debt);
-        if (ev.reason === 'lotto' && ev.delta > 0) r.luckWin += ev.delta;
+        if ((ev.reason === 'lotto' || ev.reason === 'kuji') && ev.delta > 0) r.luckWin += ev.delta;
         if (ev.reason === 'reversal') {
           r.gambleNet += ev.delta;
           if (ev.delta > 0) r.luckWin += ev.delta;
@@ -102,6 +106,15 @@ export function trackRecords(room, events, from = 0) {
         break;
       case 'promptResolved':
         if (c && ev.kind === 'jobTile' && ev.result === 'overtime') c.record.overtime += 1;
+        if (c && ev.kind === 'hunt' && ev.result === 'run') {
+          c.record.huntPrompts += 1;
+          c.record.huntRuns += 1;
+        }
+        break;
+      case 'huntResult':
+        if (!c) break;
+        c.record.huntPrompts += 1;
+        if (!ev.success) c.record.huntLosses += 1;
         break;
       case 'proposed':
         if (c && !ev.success) c.record.proposeFails += 1;
@@ -210,7 +223,28 @@ export function highlightsOf(ev, { room, data, events, index }) {
       }
       break;
     case 'lottoDraw':
-      for (const e of ev.entries ?? []) if (e.prize > 0) add(e.charId, 4 + e.prize / 300, `🎱 전국 로또 ${e.matches}개 적중! +${won(e.prize)}`, e.prize);
+      if (ev.kuji) {
+        // 세계 설정: 쿠지 뽑기 — the top prizes are moments (1등 = the big plush)
+        for (const e of ev.entries ?? []) {
+          const m = e.prize?.money ?? 0;
+          if (e.rank === 1) add(e.charId, 6 + m / 300, `🎟️ 쿠지 1등! ${e.prize?.name ?? ''}`.trim(), m || undefined);
+          else if (e.rank === 2) add(e.charId, 3 + m / 300, `🎟️ 쿠지 2등 당첨${m ? ` +${won(m)}` : ''}`, m || undefined);
+        }
+      } else for (const e of ev.entries ?? []) if (e.prize > 0) add(e.charId, 4 + e.prize / 300, `🎱 전국 로또 ${e.matches}개 적중! +${won(e.prize)}`, e.prize);
+      break;
+    case 'huntResult': {
+      // 세계 설정: 토벌 — a 데카츠요 win (7), a big win, a painful defeat
+      const m = monsterDefOf(data, ev.monsterId);
+      const amt = ev.amount ?? 0;
+      if (ev.success && (m?.power ?? 1) >= 4) add(ev.charId, 7 + amt / 300, `⚔️ 전설의 ${m?.name ?? '키메라'} 토벌! +${won(amt)}`, amt);
+      else if (ev.success && amt >= big / 2) add(ev.charId, 3 + amt / 300, `⚔️ ${m?.name ?? '키메라'} 토벌 대성공 +${won(amt)}`, amt);
+      else if (ev.success && (m?.power ?? 1) >= 3) add(ev.charId, 3, `⚔️ ${m?.name ?? '키메라'} 토벌 성공`, amt);
+      else if (!ev.success && ev.injured) add(ev.charId, 3, `💥 ${m?.name ?? '키메라'}에게 지고 다쳤다`, amt);
+      break;
+    }
+    case 'weedResult':
+      if (ev.action === 'exam' && ev.success && (ev.level ?? 0) >= 5) add(ev.charId, 6, '🌾 풀뽑기 1급 합격! 명인의 길');
+      else if (ev.action === 'exam' && ev.success && (ev.level ?? 0) >= 3) add(ev.charId, 2.5, `🌿 풀뽑기 ${ev.grade ?? ''} 합격`);
       break;
     case 'holidayResult':
       for (const r of ev.results ?? []) if (Math.abs(r.won ?? 0) >= 100) add(r.charId, 2 + Math.abs(r.won) / 200, `🎴 고스톱 ${r.won > 0 ? '대박' : '쪽박'} ${r.won > 0 ? '+' : ''}${won(r.won)}`, r.won);
@@ -254,7 +288,7 @@ export function highlightsOf(ev, { room, data, events, index }) {
 }
 
 /** moneyChanged reasons whose own event already makes the highlight (house purchase, lotto, gambling, goal…). */
-const OWN_HIGHLIGHT_REASONS = new Set(['house', 'lotto', 'reversal', 'goalPrize', 'bonusSpin', 'gostop']);
+const OWN_HIGHLIGHT_REASONS = new Set(['house', 'lotto', 'kuji', 'hunt', 'reversal', 'goalPrize', 'bonusSpin', 'gostop']);
 
 function jobDefOf(data, id) {
   if (!id) return null;
@@ -265,6 +299,7 @@ const jobName = (data, id) => jobDefOf(data, id)?.name ?? '';
 const treasureName = (data, id) => data?.treasures?.treasures?.find((t) => t.id === id)?.name ?? '보물';
 const houseName = (data, id) => data?.houses?.houses?.find((h) => h.id === id)?.name ?? '집';
 const cardName = (data, id) => data?.cards?.cards?.find((k) => k.id === id)?.name ?? '카드';
+const monsterDefOf = (data, id) => data?.hunts?.monsters?.find((m) => m.id === id) ?? null;
 
 /**
  * Record the batch's highlights into `room.highlights` (after the presentation pass, so tone / scene / line are

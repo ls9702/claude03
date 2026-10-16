@@ -17,6 +17,8 @@
     "temple": {"name": "사찰", "icon": "🛕", "color": "#b07cc6"},
     "jeju": {"name": "제주도", "icon": "🏝️", "color": "#3fb8c9"},
     "reversal": {"name": "인생역전", "icon": "🎰", "color": "#e0527a"},
+    "hunt": {"name": "토벌", "icon": "⚔️", "color": "#c0392b"},
+    "weed": {"name": "풀뽑기", "icon": "🌿", "color": "#6ab04c"},
     "stop": {"name": "정지", "icon": "🛑", "color": "#e2504c"},
     "merge": {"name": "합류", "icon": "🔗", "color": "#8d99ae"},
     "goal": {"name": "골", "icon": "🏁", "color": "#2d2a32"}

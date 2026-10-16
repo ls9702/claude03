@@ -1,8 +1,9 @@
 // Room config validation (pure).
 import { defaultEraTurns, eraIds, getBoardData, getEras } from '../data/index.js';
 import { ROULETTE_MODES } from './roulette.js';
+import { DEFAULT_WORLD, WORLDS } from './world.js';
 
-export { ROULETTE_MODES };
+export { ROULETTE_MODES, WORLDS, DEFAULT_WORLD };
 
 export const TURN_ORDERS = ['family', 'index'];
 /** MC NPC (호야 & 봄이) appearance frequency (Stage 5.6). */
@@ -62,6 +63,7 @@ export function defaultRoomConfig() {
     holidays: true, // Stage 7: 명절 대잔치 when the holiday eras (holidays.json) begin
     rouletteMode: 'random', // 룰렛 실력 모드: 'skill' = the player aims (shake / gauge), the server lands near the target
     finalLength: finalLengthLimits().default, // loop maps: tiles of the final era's goal race (노년 길이)
+    world: DEFAULT_WORLD, // 세계 설정: new rooms play 🐹 치이카와 모드 (a room without `world` = 현실 모드, world.js worldOf)
   };
 }
 
@@ -164,6 +166,11 @@ export function validateRoomConfig(input = {}) {
   if (input.rouletteMode !== undefined) {
     if (!ROULETTE_MODES.includes(input.rouletteMode)) errors.push('룰렛 방식은 완전 랜덤(random) 또는 실력 모드(skill) 중 하나여야 합니다.');
     else cfg.rouletteMode = input.rouletteMode;
+  }
+
+  if (input.world !== undefined) {
+    if (!WORLDS.includes(input.world)) errors.push('세계는 치이카와 모드(chiikawa) 또는 현실 모드(real) 중 하나여야 합니다.');
+    else cfg.world = input.world;
   }
 
   if (input.mcFrequency !== undefined) {

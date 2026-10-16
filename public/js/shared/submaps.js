@@ -234,9 +234,12 @@ export function racePlan(e) {
 // ---------- treasures ----------
 
 /** Treasure definition (`/api/meta.treasures.treasures`), else a generic 💎. */
+/** Fallback of treasures that only the 🐹 치이카와 모드 has (the 쿠지 1등 plush; the world meta wins). */
+export const WORLD_TREASURE_FALLBACK = Object.freeze({ kuji_plush: Object.freeze({ id: 'kuji_plush', name: '커다란 치이카와 인형', icon: '🧸', desc: '쿠지 1등 상품' }) });
+
 export function treasureInfo(id, meta = null) {
   const list = Array.isArray(meta?.treasures?.treasures) ? meta.treasures.treasures : Array.isArray(meta?.treasures) ? meta.treasures : [];
-  const t = list.find((x) => x?.id === id);
+  const t = list.find((x) => x?.id === id) ?? WORLD_TREASURE_FALLBACK[id];
   return {
     id,
     name: t?.name ?? (id ? String(id) : '보물'),

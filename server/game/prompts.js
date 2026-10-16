@@ -28,6 +28,8 @@ export const ANCHOR_TYPES = new Set([
   'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'houseBought', 'houseValueChanged',
   // Stage 9
   'submapResult', 'treasureFound', 'mvpDecided',
+  // 세계 설정 (치이카와 모드): 토벌 / 풀뽑기 검정 results
+  'huntResult', 'weedResult',
 ]);
 
 /** Open a prompt → turn.pending, phase awaitDecision (CPU characters answer via the runner: cpu.js). */

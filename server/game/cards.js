@@ -14,6 +14,14 @@
 import { HALT_TYPES, nextPosition, tileAt } from './board.js';
 import { addLog, addStats, assertOwner, changeMoney, charById, emit, fail, hasBuff, josa, particle, round5, won } from './effects.js';
 import { openPrompt, registerPrompts } from './prompts.js';
+import { fillLine } from './presentation.js';
+
+/**
+ * A card's log text (세계 설정: cards.json entries may carry `texts {key: template}` — the Chiikawa overlay re-words
+ * 변호사 / 세무조사 / 민원 as 사스마타 방어 / 나쁜 녀석 습격 / 일거리 뺏기); `fallback` = the real-world template.
+ * Placeholders {name} {target} {card} {amount} {n} (particles after them are fixed).
+ */
+const cardText = (def, key, fallback, vars) => fillLine(def?.texts?.[key] ?? fallback, vars);
 
 export const CARD_COLORS = ['blue', 'red'];
 export const CARD_KINDS = ['instant', 'passive', 'sabotage', 'held', 'merit', 'status'];
@@ -244,7 +252,8 @@ export function applyLoss(tx, c, amount, reason, extra = {}) {
     const before = a;
     a = Math.min(before, round5(before * mult));
     consumeCard(tx, c, 'insurance');
-    addLog(tx, `☂️ ${c.name}: 실손 보험 발동! 손실 ${won(before)} → ${won(a)}`, { tone: 'good', charId: c.id, emotion: 'joy' });
+    const d = cardDef(tx.data, 'insurance');
+    addLog(tx, `${d?.icon ?? '☂️'} ${c.name}: ${d?.name ?? '실손 보험'} 발동! 손실 ${won(before)} → ${won(a)}`, { tone: 'good', charId: c.id, emotion: 'joy' });
   }
   const debt = changeMoney(tx, c, -a, reason, extra);
   return { amount: a, debt };
@@ -254,7 +263,8 @@ export function applyLoss(tx, c, amount, reason, extra = {}) {
 export function tryAmulet(tx, c, what) {
   if (!hasCard(c, 'amulet')) return false;
   consumeCard(tx, c, 'amulet', { cancelled: what });
-  addLog(tx, `🧧 ${c.name}: 건강 부적 덕분에 ${what === 'injury' ? '부상을 피했다' : '액땜했다'}!`, { tone: 'good', charId: c.id, emotion: 'joy' });
+  const d = cardDef(tx.data, 'amulet');
+  addLog(tx, `${d?.icon ?? '🧧'} ${c.name}: ${d?.name ?? '건강 부적'} 덕분에 ${what === 'injury' ? '부상을 피했다' : '액땜했다'}!`, { tone: 'good', charId: c.id, emotion: 'joy' });
   return true;
 }
 
@@ -428,7 +438,8 @@ export function useCard(tx, action, currentId) {
       const li = target.cards.findIndex((k) => k.id === 'lawyer');
       const [lawyer] = target.cards.splice(li, 1);
       emit(tx, 'cardBlocked', { charId: c.id, targetId: target.id, cardId: def.id, uid: card.uid, lawyerUid: lawyer.uid, tone: 'good', emotion: 'shock' });
-      addLog(tx, `⚖️ ${target.name}의 변호사가 ${c.name}의 「${def.icon} ${def.name}」${particle(def.name, '을/를')} 막아냈다!`, { tone: 'good', charId: target.id, emotion: 'joy' });
+      const ldef = cardDef(tx.data, 'lawyer');
+      addLog(tx, cardText(ldef, 'block', `⚖️ {target}의 변호사가 {name}의 「${def.icon} {card}」${particle(def.name, '을/를')} 막아냈다!`, { target: target.name, name: c.name, card: def.name }), { tone: 'good', charId: target.id, emotion: 'joy' });
       return;
     }
   }
@@ -497,8 +508,8 @@ export function useCard(tx, action, currentId) {
       addLog(tx, `${def.icon} 뒤통수! ${josa(c.name, '이/가')} ${target.name}에게 「${def.name}」!`, { tone: 'bad', charId: c.id, emotion: 'angry' });
       if (amount > 0) {
         const r = applyLoss(tx, target, amount, 'tax', { by: c.id, tone: 'bad', emotion: 'cry' });
-        addLog(tx, `🔍 ${target.name}: 세금 ${won(r.amount)} 추징…`, { tone: 'bad', charId: target.id, emotion: 'cry' });
-      } else addLog(tx, `🔍 ${target.name}: 털어도 먼지 한 톨 안 나왔다`, { tone: 'info', charId: target.id });
+        addLog(tx, cardText(def, 'hit', '🔍 {target}: 세금 {amount} 추징…', { target: target.name, amount: won(r.amount) }), { tone: 'bad', charId: target.id, emotion: 'cry' });
+      } else addLog(tx, cardText(def, 'miss', '🔍 {target}: 털어도 먼지 한 톨 안 나왔다', { target: target.name }), { tone: 'info', charId: target.id });
       return;
     }
     case 'complaint': {
@@ -506,11 +517,11 @@ export function useCard(tx, action, currentId) {
       if (target.job) {
         const before = target.job.exp ?? 0;
         target.job.exp = Math.max(0, before - (e.exp ?? 2));
-        addLog(tx, `📢 ${target.name}: 민원 때문에 경험치 −${before - target.job.exp}`, { tone: 'bad', charId: target.id, emotion: 'angry' });
+        addLog(tx, cardText(def, 'exp', '📢 {target}: 민원 때문에 경험치 −{n}', { target: target.name, n: String(before - target.job.exp) }), { tone: 'bad', charId: target.id, emotion: 'angry' });
       } else {
         const fine = round5((e.fine ?? 30) * eraScale(tx.data, target.era));
         const r = applyLoss(tx, target, fine, 'fine', { by: c.id, tone: 'bad', emotion: 'cry' });
-        addLog(tx, `📢 ${target.name}: 벌금 ${won(r.amount)}…`, { tone: 'bad', charId: target.id, emotion: 'cry' });
+        addLog(tx, cardText(def, 'fine', '📢 {target}: 벌금 {amount}…', { target: target.name, amount: won(r.amount) }), { tone: 'bad', charId: target.id, emotion: 'cry' });
       }
       return;
     }
@@ -591,7 +602,7 @@ registerPrompts({
       options.push({ id: 'leave', label: '🚶 그냥 나가기', icon: '🚶', desc: '구경만 하고 나간다' });
       return {
         forCharacterIds: [c.id],
-        title: '🛍️ 동네 마트',
+        title: tx.data.balance.shop?.title ?? '🛍️ 동네 마트', // 세계 설정: 치이카와 모드 = 갑옷씨 상점
         text: `${josa(c.name, '은/는')} 뭘 살까? (현금 ${won(c.money)}${coupon ? ' · 🎟️ 할인 쿠폰 적용' : ''})`,
         options,
         defaultOptionId: 'leave',

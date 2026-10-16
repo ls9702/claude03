@@ -18,6 +18,8 @@ export const SCENES = [
   'park', 'house',
   // Stage 9 submaps (bg todo → sceneFallbacks: hometown / temple / jeju → mountain-trail, casino → office)
   'hometown', 'temple', 'jeju', 'casino',
+  // 세계 설정 (치이카와 모드: 토벌 / 풀뽑기 검정 / 쿠지 + the Chiikawa job scenes; bg todo → tones.json sceneFallbacks)
+  'weed-field', 'hunt-forest', 'ramen-shop', 'workshop', 'sento', 'bookstore', 'cafe', 'kuji',
   'none',
 ];
 export const EMOTIONS = ['joy', 'cry', 'angry', 'sweat', 'love', 'shock', 'neutral'];
@@ -41,6 +43,8 @@ export const EVENT_TYPES = [
   'houseValueChanged',
   // Stage 9 — submaps, treasures, result show
   'submapEntered', 'submapResult', 'treasureFound', 'mvpVoted', 'mvpDecided',
+  // 세계 설정 — 토벌 / 풀뽑기 검정 (치이카와 모드 tiles)
+  'huntResult', 'weedResult',
 ];
 
 /** Types that always get a full cut-in (landed only for `tones.cutinTiles`). statChanged / salary / militaryEnd are chips. */
@@ -53,6 +57,8 @@ export const CUTIN_TYPES = new Set([
   'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged',
   // Stage 9 (submapEntered = a follow-up of the landing, mvpVoted = a toast)
   'submapResult', 'treasureFound', 'mvpDecided',
+  // 세계 설정 (weedResult work = a minor anchor like a habit: the client shows others' as banners)
+  'huntResult', 'weedResult',
 ]);
 
 /** Stage 8: child growth steps with a full cut-in (입학 = a cost chip). */
@@ -69,6 +75,7 @@ const BOUNDARY = new Set([
   'cardBlocked', 'itemBought', 'tradeOffered', 'tradeResolved', 'gift', 'holidayStarted', 'holidayResult', 'lottoDraw',
   'met', 'proposed', 'married', 'schoolMeet', 'childBorn', 'houseBought', 'houseValueChanged',
   'submapResult', 'treasureFound', 'mvpVoted', 'mvpDecided',
+  'huntResult', 'weedResult',
 ]);
 /**
  * Boundary test (Stage 7: an anchored card use is a boundary, a passive trigger / self card is a follow-up;
@@ -83,23 +90,27 @@ const PROMPT_TONES = {
   jobOffer: 'career', jobTile: 'career', hiddenJobOffer: 'result', shop: 'treasure', holiday: 'holiday',
   meet: 'love', date: 'love', propose: 'love', house: 'treasure',
   hometown: 'good', temple: 'good', jeju: 'love', reversal: 'treasure', passTile: 'good', club: 'good', allIn: 'treasure',
+  hunt: 'career', weed: 'good',
 };
 const PROMPT_TAGS = {
   routeChoice: 'route_choice', exam: 'exam', groupGift: 'gift', habit: 'habit', career: 'career', military: 'military',
   jobOffer: 'job_offer', jobTile: 'job', hiddenJobOffer: 'hidden_job', shop: 'shop', holiday: 'holiday',
   meet: 'heart', date: 'date', propose: 'propose', house: 'house',
   hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'reversal', passTile: 'pass_tile', club: 'club', allIn: 'reversal',
+  hunt: 'hunt', weed: 'weed',
 };
 const PROMPT_EMOTIONS = {
   exam: 'sweat', groupGift: 'love', routeChoice: 'joy', habit: 'joy', career: 'sweat', military: 'sweat', jobOffer: 'joy',
   jobTile: 'neutral', hiddenJobOffer: 'shock', shop: 'joy', holiday: 'joy', meet: 'love', date: 'love', propose: 'love',
   house: 'joy', hometown: 'love', temple: 'neutral', jeju: 'joy', reversal: 'shock', passTile: 'joy', club: 'joy', allIn: 'shock',
+  hunt: 'shock', weed: 'joy',
 };
 /** loop maps: 찬스 광장 results → line tag (buy → the chained shop speaks, passed → quiet). */
 const PASS_TAGS = { wishOk: 'pass_wish_ok', wishFail: 'pass_wish_fail', wishAll: 'pass_wish_all', changed: 'pass_job', buy: 'shop', passed: 'pass_tile' };
 const PROMPT_SCENES = {
   shop: 'shop', holiday: 'holiday', meet: 'park', date: 'park', propose: 'park', house: 'house',
   hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino', club: 'school', allIn: 'casino',
+  hunt: 'hunt-forest', weed: 'weed-field',
 };
 /** Stage 9: submap → cut-in scene; submapResult result → line tag. */
 export const SUBMAP_SCENES = { hometown: 'hometown', temple: 'temple', jeju: 'jeju', reversal: 'casino' };
@@ -135,6 +146,15 @@ const holidayName = (data, kind) => data?.holidays?.names?.[kind] ?? { seol: '�
 const eventOf = (data, id) => (id ? (data?.events ?? getEvents()).events?.find((e) => e.id === id) ?? null : null);
 const newsOf = (data, id) => (id ? (data?.news ?? getNews()).news?.find((n) => n.id === id) ?? null : null);
 const houseName = (data, id) => (id ? (data?.houses ?? getHouses()).houses?.find((h) => h.id === id)?.name ?? '' : '');
+/** 세계 설정: monster name (hunts.json) of a hunt prompt / result. */
+const monsterName = (data, id) => (id ? (data?.hunts?.monsters ?? []).find((m) => m.id === id)?.name ?? '' : '');
+/** A drawn kuji prize brought something (money / card / treasure / stats). */
+const kujiWon = (pz) => !!(pz?.money || pz?.cardId || pz?.treasureId || Object.keys(pz?.stats ?? {}).length);
+/** Best entry of a lottoDraw: kuji = the best rank that won something; numbers = the biggest prize. */
+const bestLottoEntry = (ev) =>
+  ev?.kuji
+    ? [...(ev.entries ?? [])].filter((e) => kujiWon(e.prize)).sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))[0] ?? null
+    : [...(ev?.entries ?? [])].sort((a, b) => (b.prize ?? 0) - (a.prize ?? 0))[0] ?? null;
 /** Stage 8: partner / spouse / child names of a character for line vars. */
 function familyVars(ev, c) {
   const partner = ev.partner?.name ?? ev.spouse?.name ?? c?.love?.partner?.name ?? c?.spouse?.name ?? '';
@@ -285,7 +305,7 @@ export function presentationFor(ev, ctx) {
   const c = charId ? chars.find((x) => x.id === charId) : null;
   const era = ev.type === 'eraChanged' ? ev.era : ev.type === 'eraTransition' ? ev.toEraId : charId ? ctx.eraOf?.(charId) ?? c?.era ?? null : null;
   const eraName = (id) => room?.board?.eras?.find((e) => e.id === id)?.name ?? ctx.data?.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
-  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '', ...familyVars(ev, c), house: houseName(ctx.data, ev.houseId ?? c?.house?.id), treasure: treasureOf(ctx.data, ev.treasureId)?.name ?? '', award: '' };
+  const vars = { name: c?.name ?? '', era: eraName(ev.era ?? era), amount: '', place: ev.place ?? c?.place ?? '', job: '', rank: '', news: '', stat: '', target: '', card: '', item: '', holiday: '', ...familyVars(ev, c), house: houseName(ctx.data, ev.houseId ?? c?.house?.id), treasure: treasureOf(ctx.data, ev.treasureId)?.name ?? '', award: '', monster: monsterName(ctx.data, ev.monsterId), grade: ev.grade ?? '' };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.targetId || ev.toId) vars.target = nameOf(ev.targetId ?? ev.toId);
   if (ev.cardId) vars.card = cardName(ctx.data, ev.cardId);
@@ -497,6 +517,19 @@ export function presentationFor(ev, ctx) {
         cutin = ['wishOk', 'wishFail', 'wishAll'].includes(ev.result);
         if (!cutin) bland = 'always';
         if (o.delta) vars.amount = wonText(o.delta);
+      } else if (ev.kind === 'hunt') {
+        // 세계 설정: running away from a 토벌 (a fight anchors on huntResult instead) — a banner, never a cut-in
+        tag = 'hunt_run';
+        tone ??= 'neutral';
+        emotion ??= 'sweat';
+        scene = 'hunt-forest';
+        cutin = false;
+      } else if (ev.kind === 'weed') {
+        tag = 'weed'; // (weedResult anchors every weed outcome; only a refused exam ends here)
+        tone ??= 'neutral';
+        emotion ??= 'sweat';
+        scene = 'weed-field';
+        cutin = false;
       } else if (ev.kind === 'club') {
         tag = 'club';
         tone ??= 'good';
@@ -658,15 +691,35 @@ export function presentationFor(ev, ctx) {
       break;
     }
     case 'lottoDraw': {
-      const best = [...(ev.entries ?? [])].sort((a, b) => (b.prize ?? 0) - (a.prize ?? 0))[0];
+      // 세계 설정: the 쿠지 payload {kuji: true, entries [{charId, rank, prize: {name, money?, …}}]} or the numbered lotto
+      const best = bestLottoEntry(ev) ?? ev.entries?.[0];
+      const won = ev.kuji ? kujiWon(best?.prize) : best?.prize > 0;
+      const amount = ev.kuji ? best?.prize?.money ?? 0 : best?.prize ?? 0;
       vars.name = nameOf(best?.charId);
-      tag = best?.prize > 0 ? 'lotto_win' : 'lotto_lose';
-      if (best?.prize > 0) vars.amount = wonText(best.prize);
-      tone ??= best?.prize > 0 ? 'treasure' : 'neutral';
-      emotion ??= best?.prize > 0 ? 'joy' : 'sweat';
-      scene = 'shop';
+      tag = won ? 'lotto_win' : 'lotto_lose';
+      if (amount > 0) vars.amount = wonText(amount);
+      tone ??= won ? 'treasure' : 'neutral';
+      emotion ??= won ? 'joy' : 'sweat';
+      scene = ev.kuji ? 'kuji' : 'shop';
       break;
     }
+    // ---------- 세계 설정 (치이카와 모드) ----------
+    case 'huntResult':
+      tag = ev.success ? 'hunt_win' : 'hunt_lose';
+      tone = ev.success ? 'good' : 'bad';
+      emotion ??= ev.success ? 'joy' : 'cry';
+      scene = 'hunt-forest';
+      if (ev.amount) vars.amount = wonText(ev.amount);
+      route = null;
+      break;
+    case 'weedResult':
+      tag = ev.action === 'exam' ? (ev.success ? 'weed_pass' : 'weed_fail') : 'weed_work';
+      tone = ev.action === 'exam' && !ev.success ? 'neutral' : 'good';
+      emotion ??= ev.action === 'exam' && !ev.success ? 'sweat' : 'joy';
+      scene = 'weed-field';
+      if (ev.amount) vars.amount = wonText(ev.amount);
+      route = null;
+      break;
     // ---------- Stage 8 ----------
     case 'met':
       tag = 'meet';
@@ -908,9 +961,11 @@ function decorateRows(ev, { lines, room, data, seed, vars, history = null }) {
   if (ev.type === 'mvpDecided' && room?.result?.mvp) room.result.mvp.line = ev.line ?? null;
   if (ev.type === 'lottoDraw') {
     for (const e of ev.entries ?? []) {
-      const tag = e.prize > 0 ? 'lotto_win' : 'lotto_lose';
+      const won = ev.kuji ? kujiWon(e.prize) : e.prize > 0;
+      const amount = ev.kuji ? e.prize?.money ?? 0 : e.prize ?? 0;
+      const tag = won ? 'lotto_win' : 'lotto_lose';
       e.lineTag = tag;
-      e.line = pickLine(lines, tag, hashSeed(seed, e.charId), { ...vars, name: nameOf(e.charId), amount: e.prize > 0 ? wonText(e.prize) : '' }, history);
+      e.line = pickLine(lines, tag, hashSeed(seed, e.charId), { ...vars, name: nameOf(e.charId), amount: amount > 0 ? wonText(amount) : '' }, history);
     }
   }
   return data;
@@ -967,10 +1022,10 @@ export function mcFrequencyOf(room) {
 }
 
 /** Which MC situation an event is (null = MCs stay quiet). Pure; `state` is read, not written. */
-export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {}, jobs = getJobs(), cards = getCards(), items = getItems() }) {
+export function mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders = {}, jobs = getJobs(), cards = getCards(), items = getItems(), treasures = getTreasures(), houses = getHouses(), monsters = [] }) {
   const chars = room?.characters ?? [];
   const c = ev.charId ? chars.find((x) => x.id === ev.charId) : null;
-  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '', partner: '', child: '', house: '', treasure: '', award: '' };
+  const vars = { name: c?.name ?? '', era: '', amount: '', place: '', job: '', rank: '', news: '', target: '', card: '', item: '', holiday: '', partner: '', child: '', house: '', treasure: '', award: '', monster: '', grade: '' };
   const nameOf = (id) => chars.find((x) => x.id === id)?.name ?? '';
   if (ev.jobId) vars.job = (ev.jobId === jobs.partTime?.id ? jobs.partTime : jobs.jobs?.find((j) => j.id === ev.jobId))?.name ?? '';
   const big = mc?.bigAmount ?? BIG_GAIN;
@@ -983,6 +1038,7 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
   };
   let key = null;
   let studio = false;
+  let promote = false; // a medium situation promoted to big for this event (데카츠요 토벌, 풀뽑기 1급)
   switch (ev.type) {
     case 'gameStarted':
       key = 'gameStart';
@@ -1093,11 +1149,25 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       break;
     case 'lottoDraw': {
       key = 'lotto';
-      const best = [...(ev.entries ?? [])].sort((a, b) => (b.prize ?? 0) - (a.prize ?? 0))[0];
+      const best = bestLottoEntry(ev) ?? ev.entries?.[0];
       vars.name = nameOf(best?.charId);
       studio = true;
       break;
     }
+    // 세계 설정 (치이카와 모드): 토벌 outcomes (데카츠요 = big) and a passed 풀뽑기 검정 (1급 = big)
+    case 'huntResult':
+      key = ev.success ? 'huntWin' : 'huntLose';
+      vars.monster = (monsters ?? []).find((m) => m.id === ev.monsterId)?.name ?? '';
+      if (ev.amount) vars.amount = wonText(ev.amount);
+      if (ev.success && (monsters ?? []).find((m) => m.id === ev.monsterId)?.power >= 4) promote = true;
+      break;
+    case 'weedResult':
+      if (ev.action === 'exam' && ev.success) {
+        key = 'weedPass';
+        vars.grade = ev.grade ?? '';
+        if ((ev.level ?? 0) >= 5) promote = true;
+      }
+      break;
     case 'gift':
       key = 'gift';
       vars.name = nameOf(ev.fromId);
@@ -1123,7 +1193,7 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       break;
     case 'houseBought':
       key = 'house';
-      vars.house = houseName(null, ev.houseId);
+      vars.house = houseName({ houses }, ev.houseId);
       break;
     case 'houseValueChanged':
       key = 'market';
@@ -1140,7 +1210,7 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
     }
     case 'treasureFound':
       key = 'treasure';
-      vars.treasure = (getTreasures().treasures ?? []).find((t) => t.id === ev.treasureId)?.name ?? '';
+      vars.treasure = (treasures?.treasures ?? []).find((t) => t.id === ev.treasureId)?.name ?? '';
       break;
     case 'mvpDecided':
       key = 'mvp';
@@ -1150,7 +1220,7 @@ export function mcSituationFor(ev, { events, index, room, mc, state, eraName, pl
       break;
   }
   if (!key || !mc?.situations?.[key]) return null;
-  return { key, weight: mc.situations[key].weight, studio, vars };
+  return { key, weight: promote ? 'big' : mc.situations[key].weight, studio, vars };
 }
 
 /**
@@ -1167,7 +1237,7 @@ function resultMc(ev, data, rng, { room } = {}) {
   const treasures = [...(ev.treasures ?? [])].sort((a, b) => b.value - a.value);
   const star = treasures.find((t) => !t.fake) ?? treasures[0];
   if (star) {
-    const name = (getTreasures().treasures ?? []).find((t) => t.id === star.treasureId)?.name ?? '';
+    const name = ((data.treasures ?? getTreasures()).treasures ?? []).find((t) => t.id === star.treasureId)?.name ?? '';
     add('appraisal', pickMcLines(data, 'appraisal', rng, { duo: rng.next() < 0.5, vars: { name: nameOf(star.charId), treasure: name, amount: wonText(star.value) } }));
   }
   const award = [...(ev.awards ?? [])].sort((a, b) => b.bonus - a.bonus)[0];
@@ -1194,14 +1264,14 @@ export function attachMc(events, { room, data = {}, seed = 0, lines = data.lines
   const mc = data.mc ?? getMc();
   const jobs = data.jobs ?? getJobs();
   const freq = mc.frequency?.[freqKey] ?? mc.frequency?.normal ?? { medium: 0.7, minor: 0.3, cooldown: 2, duoChance: 0.35 };
-  const src = { lines, mc };
+  const src = { lines, mc, treasures: data.treasures ?? getTreasures() };
   const state = room.mcState ?? { cool: 0, eras: room.board?.eras?.[0] ? [room.board.eras[0].id] : [], firstSpin: false };
   room.mcState = state;
   const turnNo = room.turn?.turnNo ?? 0;
   const eraName = (id) => room.board?.eras?.find((e) => e.id === id)?.name ?? data.eras?.eras?.find((e) => e.id === id)?.name ?? id ?? '';
   const placeholders = (data.board ?? getBoardData()).placeholders ?? {};
   events.forEach((ev, index) => {
-    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders, jobs, cards: data.cards ?? getCards(), items: data.items ?? getItems() });
+    const sit = mcSituationFor(ev, { events, index, room, mc, state, eraName, placeholders, jobs, cards: data.cards ?? getCards(), items: data.items ?? getItems(), treasures: data.treasures ?? getTreasures(), houses: data.houses ?? getHouses(), monsters: data.hunts?.monsters ?? [] });
     if (!sit) return;
     const rng = createRng(hashSeed(seed, turnNo, index, ev.type, 'mc'));
     if (sit.weight !== 'big') {

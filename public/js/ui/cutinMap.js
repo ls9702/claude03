@@ -107,17 +107,23 @@ export const isFamilyAnchor = (e) => STAGE8_ANCHORS.has(e?.type) || (e?.type ===
  * anchor (the submap prompt cut-in follows it) but a boundary + a board pop.
  */
 export const STAGE9_ANCHORS = new Set(['submapResult', 'treasureFound']);
+/**
+ * 세계 설정 (🐹 치이카와 모드) anchors (always anchors + boundaries): 토벌 결과, 풀뽑기 결과 (검정 / 일하기). Running away from a 토벌
+ * (`promptResolved {kind: 'hunt', result: 'run'}`, cutin false) is a lone banner group.
+ */
+export const WORLD_ANCHORS = new Set(['huntResult', 'weedResult']);
+export const isHuntRunEvent = (e) => e?.type === 'promptResolved' && e.kind === 'hunt' && String(e.result ?? '') === 'run';
 const NEVER_ANCHOR = new Set(['prompt', 'submapEntered', 'mvpDecided']);
 /** Loop maps: the shared era transition is always an anchor (the batch's per-character eraChanged fold into it). */
 export const TRANSITION = 'eraTransition';
 const isAnchor = (e) =>
-  !!e && !NEVER_ANCHOR.has(e.type) && (e.cutin || e.type === TRANSITION || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || STAGE9_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind));
+  !!e && !NEVER_ANCHOR.has(e.type) && (e.cutin || e.type === TRANSITION || STAGE6_ANCHORS.has(e.type) || STAGE7_ANCHORS.has(e.type) || STAGE9_ANCHORS.has(e.type) || WORLD_ANCHORS.has(e.type) || isCardAnchor(e) || isFamilyAnchor(e)) && !(e.type === 'childGrew' && !CHILD_GROW_ANCHORS.has(e.kind)) && !isHuntRunEvent(e);
 
 /** Follow-ups stop at these (they start their own step / group). */
 const BOUNDARY = new Set([
   'turnStarted', 'spun', 'moved', 'landed', 'eraChanged', 'eraTransition', 'routeChosen', 'finished', 'bonusSpin', 'prompt', 'chose',
   'promptResolved', 'gameOver', 'betPlaced', ...STAGE6_ANCHORS, ...STAGE7_ANCHORS, 'tradeOffered', 'tradeResolved',
-  ...STAGE8_ANCHORS, ...STAGE9_ANCHORS, 'submapEntered',
+  ...STAGE8_ANCHORS, ...STAGE9_ANCHORS, 'submapEntered', ...WORLD_ANCHORS,
 ]);
 /** Stage 8: childGrew dol / exam / job are boundaries (their own cut-in); 입학 is a chip of the anchor before it. */
 const isBoundary = (e) => BOUNDARY.has(e?.type) || (e?.type === 'childGrew' && CHILD_GROW_ANCHORS.has(e.kind));
@@ -194,7 +200,7 @@ export function planCutins(events = []) {
   // 전역 / Stage 7 card · gift · trade events without an anchor in front of them → their own (banner) group
   events.forEach((e, i) => {
     if (covered.has(i) || isAnchor(e)) return;
-    if (e?.type === 'militaryEnd' || STAGE7_LONE.has(e?.type)) groups.push(build(i, e));
+    if (e?.type === 'militaryEnd' || STAGE7_LONE.has(e?.type) || isHuntRunEvent(e)) groups.push(build(i, e));
   });
   groups.sort((x, y) => x._i - y._i);
   foldEraEntries(groups, events);
@@ -224,6 +230,16 @@ export function planCutins(events = []) {
     trip.money = [...trip.money, ...g.money];
     trip.mcEvents = [...trip.mcEvents, ...g.mcEvents];
     trip.mc ??= g.mc;
+    groups.splice(groups.indexOf(g), 1);
+  }
+  // 세계 설정: the 쿠지 1등 plush (treasureFound {source: 'kuji'}) is part of the kuji draw's show (no second cut-in)
+  for (const g of [...groups]) {
+    if (g.anchor.type !== 'treasureFound' || g.anchor.source !== 'kuji') continue;
+    const draw = groups.find((x) => x._i < g._i && x.anchor.type === 'lottoDraw' && x.anchor.kuji);
+    if (!draw) continue;
+    draw.treasure = g.anchor;
+    draw.texts = [...draw.texts, ...g.texts];
+    draw.mcEvents = [...draw.mcEvents, ...g.mcEvents];
     groups.splice(groups.indexOf(g), 1);
   }
   for (const g of groups) delete g._i;
@@ -319,7 +335,7 @@ export function fallbackText(anchor, name = '') {
     case 'holidayResult':
       return '명절 정산 결과!';
     case 'lottoDraw':
-      return '전국 로또 추첨!';
+      return anchor.kuji ? '쿠지 뽑기! 상자 속에서 한 장씩!' : '전국 로또 추첨!';
     case 'cardGained':
       return `${name} 카드 획득!`;
     case 'cardLost':
@@ -356,6 +372,14 @@ export function fallbackText(anchor, name = '') {
       return `${name} 보물 발견! 💎 감정은 게임이 끝나면…`;
     case 'submapResult':
       return submapResultText(anchor, name);
+    // 세계 설정 (🐹 치이카와 모드)
+    case 'huntResult':
+      return anchor.success ? `${name}, 키메라 토벌 성공! ⚔️` : `${name}, 키메라에게 졌어요… 💥`;
+    case 'weedResult':
+      return anchor.action === 'exam' ? (anchor.success ? `${name}, 풀뽑기 ${anchor.grade ?? ''} 검정 합격! 📝` : `${name}, 풀뽑기 검정 불합격… 다음엔 꼭!`) : `${name}, 풀을 쏙쏙 뽑았어요! 🌿`;
+    case 'promptResolved':
+      if (isHuntRunEvent(anchor)) return `${name}, 키메라에게서 후다닥 도망쳤어요! 🏃`;
+      return anchor?.line ?? '';
     default:
       return anchor?.line ?? '';
   }
@@ -372,11 +396,13 @@ export function tagLabel(anchor, { tones = {}, tileTypes = {}, routes = {} } = {
   else if (anchor?.type === 'finished') place = '골인';
   else if ((anchor?.type === 'gameOver' || anchor?.type === 'result') && anchor?.tone !== 'result') place = '결과 발표';
   else if (anchor?.type === 'prompt') return promptTag(anchor, tone);
-  else if (anchor?.type === 'promptResolved') place = { exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '새 친구', date: '같이 놀기', propose: '「같이 살자!」', house: '부동산', hometown: '고향 시골집', temple: '산사', jeju: '제주도', reversal: '인생역전', passTile: '찬스 광장' }[anchor.kind] ?? '결과';
+  else if (isHuntRunEvent(anchor)) return '🏃 토벌 · 도망';
+  else if (anchor?.type === 'promptResolved') place = { hunt: '토벌', weed: '풀뽑기 검정소', exam: '수능 결과', groupGift: '생일 파티', habit: '습관', jobTile: '직업 칸', career: '진로', military: '군 복무', shop: '상점', holiday: '명절', meet: '새 친구', date: '같이 놀기', propose: '「같이 살자!」', house: '부동산', hometown: '고향 시골집', temple: '산사', jeju: '제주도', reversal: '인생역전', passTile: '찬스 광장' }[anchor.kind] ?? '결과';
   else if (STAGE6_TAGS[anchor?.type]) return STAGE6_TAGS[anchor.type](anchor);
   else if (STAGE7_TAGS[anchor?.type]) return STAGE7_TAGS[anchor.type](anchor);
   else if (STAGE8_TAGS[anchor?.type]) return STAGE8_TAGS[anchor.type](anchor);
   else if (STAGE9_TAGS[anchor?.type]) return STAGE9_TAGS[anchor.type](anchor);
+  else if (WORLD_TAGS[anchor?.type]) return WORLD_TAGS[anchor.type](anchor);
   // the tone label repeats the route name for routes ("💕 단짝·반려 · 단짝·반려 루트") → keep just the place
   if (place && tone.label && place.startsWith(tone.label)) return `${tone.icon ?? ''} ${place}`.trim();
   return `${tone.icon ?? ''} ${tone.label ?? ''}${place ? ` · ${place}` : ''}`.trim();
@@ -402,7 +428,7 @@ const STAGE7_TAGS = {
   itemBought: () => '🛍️ 쇼핑',
   holidayStarted: (a) => (a.kind === 'chuseok' ? '🌕 추석 대잔치' : a.kind === 'seol' ? '🧧 설날 대잔치' : '🎉 명절 대잔치'),
   holidayResult: (a) => (a.kind === 'chuseok' ? '🌕 추석 정산' : a.kind === 'seol' ? '🧧 설날 정산' : '🎴 명절 정산'),
-  lottoDraw: () => '🎱 전국 로또',
+  lottoDraw: (a) => (a?.kuji ? '🎟️ 쿠지 뽑기' : '🎱 전국 로또'),
   cardGained: () => '🃏 카드 획득',
   cardLost: (a) => (a.reason === 'healed' ? '🩹 부상 회복' : a.reason === 'married' ? '💞 카드 소멸' : a.reason === 'merit' ? '🏅 공적 사용' : '🗑️ 카드 버림'),
   gift: () => '🎁 선물',
@@ -433,6 +459,12 @@ const STAGE9_TAGS = {
     return what ? `${base} · ${what}` : base;
   },
   treasureFound: () => '💎 보물 발견',
+};
+
+/** 세계 설정 (🐹 치이카와 모드) anchors: own tag. */
+const WORLD_TAGS = {
+  huntResult: (a) => `⚔️ 토벌 · ${a.success ? '승리' : '패배'}`,
+  weedResult: (a) => (a.action === 'exam' ? `🌿 풀뽑기 검정 · ${a.success ? '합격' : '불합격'}` : '🌿 풀뽑기 일하기'),
 };
 
 /** Dialogue fallback of a submap result (the server's log line wins). */
@@ -563,14 +595,20 @@ export function resolveSceneBg(scene, { presentation = {}, assetUrl = () => null
   }
   return { scene, url: null, svgScene: via.find((x) => SVG_SCENES.has(x)) ?? scene, via };
 }
-/** Stage 9 submap scenes: their own SVG (시골집 · 산사 · 제주도 · 경마장) beats a fallback chain's generic background. */
-export const PREFER_SVG_SCENES = new Set(['hometown', 'temple', 'jeju', 'casino']);
+/**
+ * Stage 9 submap scenes: their own SVG (시골집 · 산사 · 제주도 · 경마장) beats a fallback chain's generic background; 세계 설정:
+ * 풀밭 · 토벌 숲 · 라멘 가게 「郎」 · 쿠지 가게 too (ui/worldArt.js).
+ */
+export const PREFER_SVG_SCENES = new Set(['hometown', 'temple', 'jeju', 'casino', 'weed-field', 'hunt-forest', 'ramen-shop', 'kuji']);
 /** Contract default of tones.json `sceneFallbacks` (used when the server doesn't send it). */
 export const DEFAULT_SCENE_FALLBACKS = Object.freeze({
   stage: 'wedding-hall', stadium: 'mountain-trail', gym: 'mountain-trail', army: 'mountain-trail', space: 'mountain-trail',
   campus: 'school', kitchen: 'office', police: 'office', shop: 'office', lab: 'hospital', holiday: 'wedding-hall',
   // Stage 9 submaps (drawn as SVG here anyway, see PREFER_SVG_SCENES)
   hometown: 'mountain-trail', temple: 'mountain-trail', jeju: 'mountain-trail', casino: 'studio',
+  // 세계 설정 (치이카와 모드 scenes; weed-field / hunt-forest / ramen-shop / kuji are drawn as SVG here)
+  'weed-field': 'park', 'hunt-forest': 'mountain-trail', 'ramen-shop': 'kitchen', workshop: 'office', sento: 'house', bookstore: 'office', cafe: 'kitchen', kuji: 'shop',
+  park: 'mountain-trail', house: 'office',
 });
 /** Scenes the cut-in can draw as SVG without a generated background. */
-export const SVG_SCENES = new Set(['school', 'office', 'hospital', 'wedding-hall', 'mountain-trail', 'studio', 'shop', 'holiday', 'hometown', 'temple', 'jeju', 'casino']);
+export const SVG_SCENES = new Set(['school', 'office', 'hospital', 'wedding-hall', 'mountain-trail', 'studio', 'shop', 'holiday', 'hometown', 'temple', 'jeju', 'casino', 'weed-field', 'hunt-forest', 'ramen-shop', 'kuji']);

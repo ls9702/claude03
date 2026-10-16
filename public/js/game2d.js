@@ -26,6 +26,9 @@ import {
   seenFromRoom,
 } from './ui/cutinPolicy.js';
 import { clockOffset } from './api.js';
+import { worldMeta, worldOf } from './shared/world.js';
+import { WORLD_TILE_TYPES, huntOutcome, isKujiDraw, kujiRows, weedGrade, weedLevelOf, weedOutcome, worldTags, WEED_MAX } from './shared/worldPlay.js';
+import { worldOptionsHtml } from './ui/worldArt.js';
 import {
   CARD_KINDS,
   TRADE_STATUS,
@@ -121,9 +124,11 @@ const STAGE7_CUTIN_TYPES = ['cardUsed', 'cardBlocked', 'itemBought', 'holidaySta
 const STAGE8_CUTIN_TYPES = ['met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'houseBought', 'houseValueChanged'];
 /** Stage 9 cut-in anchors (3D: shown after their board step). */
 const STAGE9_CUTIN_TYPES = ['submapResult', 'treasureFound'];
-const CUTIN_TYPES = ['landed', 'eraChanged', 'eraTransition', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, ...STAGE9_CUTIN_TYPES];
+/** 세계 설정 (🐹 치이카와 모드) cut-in anchors: 토벌 / 풀뽑기 결과 (3D: shown after their board step). */
+const WORLD_CUTIN_TYPES = ['huntResult', 'weedResult'];
+const CUTIN_TYPES = ['landed', 'eraChanged', 'eraTransition', 'routeChosen', 'finished', 'promptResolved', ...STAGE6_CUTIN_TYPES, ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, ...STAGE9_CUTIN_TYPES, ...WORLD_CUTIN_TYPES];
 /** Animated event types that may carry MC lines shown in the board corner (Stage 5.6). */
-const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'eraTransition', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold', ...STAGE9_CUTIN_TYPES, 'submapEntered'];
+const MC_CORNER_TYPES = ['turnStarted', 'landed', 'moneyChanged', 'betResolved', 'promptResolved', 'routeChosen', 'finished', 'eraChanged', 'eraTransition', 'gameOver', ...STAGE6_CUTIN_TYPES, 'salary', 'statChanged', ...STAGE7_CUTIN_TYPES, ...STAGE8_CUTIN_TYPES, 'allowance', 'houseSold', ...STAGE9_CUTIN_TYPES, 'submapEntered', ...WORLD_CUTIN_TYPES];
 /** Stage 6 tile types the server may send before board.json knows them (meta wins). */
 const CLIENT_TILE_TYPES = {
   start: { name: '출발', icon: '🚩', color: '#9aa5b1' },
@@ -135,6 +140,7 @@ const CLIENT_TILE_TYPES = {
   card: { name: '카드', icon: '🃏', color: '#9a6ad6' },
   shop: { name: '상점', icon: '🛍️', color: '#f39a3d' },
   ...SUBMAP_TILE_TYPES, // Stage 9: 고향 · 산사 · 제주도 · 인생역전 · 보물
+  ...WORLD_TILE_TYPES, // 세계 설정 (🐹 치이카와 모드): ⚔️ 토벌 · 🌿 풀뽑기
 };
 const FALLBACK_KEY = 'jinsei.board3dFallback'; // sessionStorage: auto-fallback happened this session
 const FPS_MIN = 15;
@@ -195,7 +201,16 @@ function tileIdAt(board, pos) {
  * @param {{ getMeta: () => object, act: (body) => Promise<void>, toast: (msg, kind?) => void,
  *           resync?: () => Promise<object|null> }} deps  `resync` = fetch + apply the latest room (stale actions)
  */
-export function createGameUI(root, { getMeta, act, toast, resync = null }) {
+export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = null }) {
+  // 세계 설정: every lookup (cards, items, jobs, treasures, news, monsters, tile labels, scenes, MC lines …) reads the
+  // /api/meta of the shown room's world (🐹 치이카와 모드 / 🏙️ 현실 모드); the app's getMeta already resolves it — this keeps
+  // injected / switched rooms right too (no room yet → the meta as given).
+  const uiRef = { ui: null }; // set right after `ui` exists (getMeta may run before: no room yet)
+  const getMeta = () => {
+    const m = getMetaIn();
+    const raw = uiRef.ui?.rawRoom;
+    return raw ? worldMeta(m, worldOf(raw)) : m;
+  };
   root.innerHTML = `
     <div class="g-top card">
       <div class="g-era-line"><span class="era-chip" data-el="era"></span><span class="muted small" data-el="turninfo"></span>
@@ -306,6 +321,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     modalAt: 0, // 2D decision sheet: when its options appeared (input guard)
     dockInView: true, // spin dock visible in the viewport (else the floating 🎡 button)
   };
+  uiRef.ui = ui;
+
 
   // ---------- Stage 5: cut-ins + sound ----------
   const cutin = createCutin(document.body, { getMeta, assets: { findAsset, assetUrl }, audio, now: () => Date.now() + clockOffset() });
@@ -1334,6 +1351,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     // Stage 9: 💎 treasures (values stay hidden until the appraisal)
     const nTr = treasureCount(c);
     if (nTr) out.push(`<span class="gc-tag treasure" title="${esc(`보물 ${nTr}개 · ${treasuresOf(c, getMeta()).map((t) => t.info.name).join(', ')}`)}">💎 ${nTr}</span>`);
+    // 세계 설정 (🐹 치이카와 모드): 🌿 풀뽑기 검정 급수 · ⚔️ 토벌 횟수
+    for (const t of worldTags(c)) out.push(`<span class="gc-tag world ${t.key}" title="${esc(t.title)}">${esc(t.text)}</span>`);
     // Stage 7: roulette modifiers (⚡+2 / ✂️−3 …), hand size, item icons
     for (const b of spinModBadges(c.spinMods)) out.push(`<span class="gc-tag mod ${b.kind}" title="${esc(b.title)}">${esc(b.text)}</span>`);
     if (Array.isArray(c.cards)) out.push(`<span class="gc-tag hand-n" title="손패 ${c.cards.length}장">🃏 ${c.cards.length}</span>`);
@@ -1384,6 +1403,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     if (Number.isFinite(Number(c.laps)) && isLoopBoard(ui.room?.board)) facts.push(`<div class="gd-fact"><span class="gd-k">바퀴 수</span><span class="gd-v">🔁 ${lapsOf(c)}바퀴</span></div>`);
     if ('education' in c) facts.push(`<div class="gd-fact"><span class="gd-k">학력</span><span class="gd-v">${edu ? `🎓 ${esc(edu)}` : '<span class="muted">-</span>'}</span></div>`);
     if (mil) facts.push(`<div class="gd-fact"><span class="gd-k">군 복무</span><span class="gd-v">🪖 ${esc(mil)}</span></div>`);
+    // 세계 설정 (🐹 치이카와 모드): 풀뽑기 검정 급수, 토벌 횟수 (only once they exist)
+    const wl = weedLevelOf(c);
+    if (wl > 0) facts.push(`<div class="gd-fact"><span class="gd-k">풀뽑기 검정</span><span class="gd-v">🌿 ${esc(weedGrade(wl))}${wl >= WEED_MAX ? ' <small>최고 급수!</small>' : ''}</span></div>`);
+    if (Number(c.hunts) > 0) facts.push(`<div class="gd-fact"><span class="gd-k">토벌</span><span class="gd-v">⚔️ ${Number(c.hunts)}회 성공</span></div>`);
     if (hist.length) {
       facts.push(
         `<div class="gd-fact"><span class="gd-k">직업 이력</span><span class="gd-v gd-hist">${hist
@@ -1579,7 +1602,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         <p>${esc(p.text ?? '')}</p>
         ${subject && subject.id !== who.id ? `<p class="small muted">대상: ${esc(subject.name)}</p>` : ''}
         ${
-          submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won }) != null
+          worldOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won, artFor }) != null
+            ? `<div class="choice-list world-choices">${worldOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won, artFor })}</div>`
+            : submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won }) != null
             ? `<div class="choice-list sm-choices">${submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'btn choice', won })}</div>`
             : p.kind === 'shop'
             ? `<div class="choice-list shop-choices">${shopOptionsHtml(p, who, { meta: getMeta(), artFor, btnClass: 'btn choice' })}</div>`
@@ -2538,7 +2563,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
         case 'cardGained': {
           const info = cardInfo(e.cardId, getMeta());
           floatOn(e.charId, info.kind === 'status' ? '🤕 부상 카드' : `🃏 ${info.name}`, info.kind === 'status' ? 'minus' : 'plus');
-          if (c?.isMe && (!cutinsOn() || e.source === 'gift' || e.source === 'trade')) toast(`🃏 ${c.name}: ${info.icon} ${info.name} 카드를 얻었어요!`);
+          // (a 토벌 defeat already said 🤕 부상 in its own toast)
+          const huntHurt = info.kind === 'status' && ui.huntHurt?.charId === e.charId && Date.now() - ui.huntHurt.at < 3000;
+          if (c?.isMe && !huntHurt && (!cutinsOn() || e.source === 'gift' || e.source === 'trade')) toast(`🃏 ${c.name}: ${info.icon} ${info.name} 카드를 얻었어요!`);
           break;
         }
         case 'cardUsed': {
@@ -2581,6 +2608,14 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           if (!cutinsOn()) toast(`${holidayTitle(e.kind)} 시작!`);
           break;
         case 'lottoDraw':
+          if (isKujiDraw(e)) {
+            // 세계 설정: 쿠지 뽑기 — a float per holder, a toast for my tickets when cut-ins are off
+            const rows = kujiRows(e, { characters: chars(), meta: getMeta(), won });
+            for (const r of rows) floatOn(r.charId, `${r.icon} ${r.label}`, r.won ? 'plus' : 'info');
+            const mineRows = rows.filter((r) => r.char?.isMe);
+            if (!cutinsOn() || (ui.cutinMode === 'off' && mineRows.length)) toast(mineRows.length ? `🎟️ 쿠지 뽑기: ${mineRows.map((r) => `${r.name} ${r.label}${r.won ? ` (${r.title})` : ''}`).join(', ')}` : '🎟️ 쿠지 뽑기가 열렸어요!');
+            break;
+          }
           if (!cutinsOn()) {
             const hit = (e.entries ?? []).filter((x) => Number(x.prize) > 0 && byId(x.charId)?.isMe);
             toast(hit.length ? `🎱 로또 당첨! ${hit.map((x) => `${byId(x.charId)?.name ?? ''} ${won(x.prize)}`).join(', ')}` : `🎱 전국 로또 추첨: ${(e.numbers ?? []).join(', ')}`);
@@ -2629,6 +2664,26 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           const t = treasureInfo(e.treasureId, getMeta());
           floatOn(e.charId, `💎 ${t.name}`, 'plus');
           if (c?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(`💎 ${c.name}: ${t.icon} ${t.name} 발견! 감정은 게임이 끝나면…`);
+          break;
+        }
+        // ---------- 세계 설정 (🐹 치이카와 모드) ----------
+        case 'promptResolved':
+          if (e.kind === 'hunt' && e.result === 'run') floatOn(e.charId, '🏃 도망!', 'info');
+          break;
+        case 'huntResult': {
+          const h = huntOutcome(e, { meta: getMeta() });
+          floatOn(e.charId, h.win ? `⚔️ ${h.monster.name} 토벌!` : `💥 ${h.monster.name}에게 패배`, h.win ? 'plus' : 'minus');
+          if (h.injured) {
+            floatOn(e.charId, `🤕 ${h.injured}턴`, 'minus');
+            ui.huntHurt = { charId: e.charId, at: Date.now() };
+          }
+          if (c?.isMe && (!cutinsOn() || ui.cutinMode === 'off')) toast(h.win ? `⚔️ ${c.name}: ${h.monster.icon} ${h.monster.name} 토벌 성공!${h.amount ? ` +${won(h.amount)}` : ''}` : `💥 ${c.name}: ${h.monster.icon} ${h.monster.name}에게 졌어요…${h.injured ? ` 🤕 부상 ${h.injured}턴` : ''}`, h.win ? 'info' : 'error');
+          break;
+        }
+        case 'weedResult': {
+          const w = weedOutcome(e);
+          floatOn(e.charId, w.action === 'exam' ? (w.pass ? `📝 ${w.grade} 합격!` : `📝 ${weedGrade(w.target)} 불합격`) : `🌿 풀뽑기${w.amount ? ` +${won(w.amount)}` : ''}`, w.pass === false ? 'info' : 'plus');
+          if (c?.isMe && w.action === 'exam' && (!cutinsOn() || ui.cutinMode === 'off' || w.payday)) toast(w.pass ? `📝 ${c.name}: 풀뽑기 ${w.grade} 검정 합격!${w.payday ? ' (일하면서)' : ''}` : `📝 ${c.name}: 풀뽑기 ${weedGrade(w.target)} 검정 불합격…`);
           break;
         }
         case 'houseValueChanged': {
@@ -2819,6 +2874,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     /** Stage 5: the cut-in controller (show/queue/showPrompt/reaction…). */
     cutin,
     audio,
+    /** 세계 설정: the /api/meta of the shown room's world (debug / E2E). */
+    getMeta,
     /** Stage 5 hook: the animator (pause/resume/enqueue) of the 3D board, or null in 2D. */
     get animator() {
       return ui.b3?.animator ?? null;

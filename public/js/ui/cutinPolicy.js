@@ -15,8 +15,12 @@
 // unless it's big; 찬스 광장 「그냥 지나가기」 results and 찬스 버프 changes are banners.
 // Stage 9: a submap result is big for jackpots / big 인생역전 wins / a wish that opens 산신령 (else minor → a banner for
 // others in 「간단히」); a treasure find is minor unless it's mine.
-import { isCardAnchor } from './cutinMap.js';
+// 세계 설정 (🐹 치이카와 모드): a 데카츠요 토벌 win / a 1급 검정 pass / a 쿠지 1등 are big; other 토벌 / 검정 results are normal
+// anchors (banners for others in 「간단히」); plain 풀뽑기 work and running away from a 토벌 are banners for other players (any
+// mode; running away also for mine); a kuji draw with one of my tickets counts as mine.
+import { isCardAnchor, isHuntRunEvent } from './cutinMap.js';
 import { isSubmapBig, isSubmapPass } from '../shared/submaps.js';
+import { isHuntBig, isKujiBig, isKujiDraw, isWeedBig, isWeedWork } from '../shared/worldPlay.js';
 
 /** 「관전 컷인」 setting: full cut-ins for everything / small banners for other players' minor events / none. */
 export const CUTIN_MODES = ['full', 'compact', 'off'];
@@ -44,7 +48,7 @@ export const DEADLINE_RESERVE_MS = 12000;
 
 /** Tiles that will become marriage / job events (Stage 6) — always full cut-ins. */
 export const BIG_TILE_TYPES = ['heart', 'job'];
-const BIG_TYPES = new Set(['finished', 'eraChanged', 'eraTransition', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash', 'holidayStarted', 'holidayResult', 'lottoDraw',
+const BIG_TYPES = new Set(['finished', 'eraChanged', 'eraTransition', 'gameOver', 'jobChanged', 'rankUp', 'hiddenJobUnlocked', 'newsFlash', 'holidayStarted', 'holidayResult',
   // Stage 8: 집들이 파티, 반려동물 입양, 고교 첫 친구, 부동산 시세 (full even in 「간단히」)
   'married', 'childBorn', 'schoolMeet', 'houseValueChanged']);
 /** Stage 8 minor anchors: never full for other players in 「간단히」 (whatever their line tag says). */
@@ -59,6 +63,11 @@ export function isPaydayGroup(g) {
   const anchors = g?.anchors ?? [g?.anchor];
   return anchors.length > 0 && anchors.every((a) => a?.type === 'landed' && a.tileType === 'salary');
 }
+/** 세계 설정: a plain 풀뽑기 work group (every anchor of it is a weedResult work). */
+export function isWeedWorkGroup(g) {
+  const anchors = g?.anchors ?? [g?.anchor];
+  return anchors.length > 0 && anchors.every((a) => isWeedWork(a));
+}
 /** 찬스 광장: 「그냥 지나가기」 / 나가기 results. */
 export const isPassSkip = (a) => a?.type === 'promptResolved' && a.kind === 'passTile' && ['passed', 'left', 'pass', 'skip'].includes(String(a.result ?? ''));
 /** Always a small banner (also for my own characters): 전역 (Stage 6); card gained / plain card use / gift / trade (Stage 7). */
@@ -70,6 +79,7 @@ export const DEFER_TYPES = ['lottoDraw', 'holidayResult'];
 export function isBannerGroup(g) {
   const a = g?.anchor;
   if (!a) return false;
+  if (isHuntRunEvent(a)) return true; // 세계 설정: ran away from a 토벌
   if (isSubmapPass(a)) return true; // Stage 9: 지나가기 / 그냥 나가기 at a submap
   if (isPassSkip(a)) return true; // loop maps: 찬스 광장 그냥 지나가기
   if (a.type === 'cardUsed') return !isCardAnchor(a);
@@ -86,9 +96,14 @@ export function isBigGroup(g) {
   const a = g?.anchor;
   if (!a) return false;
   if (g.studio?.length || a.mcStudio) return true;
+  // the numbered lotto draw is always a show; a 쿠지 draw only with a 1등 (a draw with my ticket is mine, see isOwnGroup)
+  if (a.type === 'lottoDraw') return isKujiDraw(a) ? isKujiBig(a) : true;
   if (BIG_TYPES.has(a.type)) return true;
   if (MINOR_TYPES.includes(a.type)) return false;
   if (a.type === 'submapResult') return isSubmapBig(a);
+  // 세계 설정: 데카츠요 토벌 / 풀뽑기 1급 / 쿠지 1등
+  if (a.type === 'huntResult') return isHuntBig(a);
+  if (a.type === 'weedResult') return isWeedBig(a);
   if (a.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType)) return true;
   if (a.type === 'landed' && MINOR_TILE_TYPES.includes(a.tileType)) return false;
   if (BIG_TAG.test(String(a.mcKey ?? '')) || BIG_TAG.test(String(a.lineTag ?? ''))) return true;
@@ -105,6 +120,8 @@ export function isOwnGroup(g, mine) {
   const t = g?.anchor?.type;
   // Stage 8: a 고교 첫 만남 with one of my characters in it, a wedding I paid a gift for
   if (t === 'schoolMeet' && (g.anchor.pairs ?? []).some((p) => set.has(p?.charId))) return true;
+  // 세계 설정: a 쿠지 draw with one of my tickets
+  if (t === 'lottoDraw' && isKujiDraw(g.anchor) && (g.anchor.entries ?? []).some((e) => set.has(e?.charId))) return true;
   const target = g?.targetId ?? g?.anchor?.targetId ?? g?.anchor?.toId ?? null;
   return !!target && ['cardUsed', 'cardBlocked', 'gift', 'tradeResolved'].includes(t) && set.has(target);
 }
@@ -136,6 +153,8 @@ export function classifyGroup(g, { mine = [], mode = DEFAULT_CUTIN_MODE, promptF
   // 💵 월급날: the board shows the pay (float / banner); only a big payday of mine takes the screen
   if (isPaydayGroup(g) && !(own && Number(g.delta) >= PAYDAY_BIG)) return own || normalizeCutinMode(mode) !== 'off' ? 'banner' : 'skip';
   if (own) return 'full';
+  // 세계 설정: other players' plain 풀뽑기 work → a banner (also in 「전체」)
+  if (isWeedWorkGroup(g)) return normalizeCutinMode(mode) !== 'off' ? 'banner' : 'skip';
   const m = normalizeCutinMode(mode);
   if (m === 'off') return 'skip';
   // ⏩ 빨리 감기 / my roulette is waiting: other players' events never take over the screen (A3, waiting time);
@@ -219,6 +238,8 @@ const ANCHOR_RANK = {
   married: 9, childBorn: 8, proposed: 7, schoolMeet: 7, houseValueChanged: 6, childGrew: 5, houseBought: 5, met: 4, dated: 2,
   // Stage 9
   submapResult: 6, treasureFound: 5,
+  // 세계 설정
+  huntResult: 6, weedResult: 4,
 };
 const rankOf = (a) => (a?.type === 'landed' && BIG_TILE_TYPES.includes(a.tileType) ? 4 : ANCHOR_RANK[a?.type] ?? 0);
 

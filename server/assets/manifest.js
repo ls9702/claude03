@@ -177,7 +177,11 @@ export function validateItem(item) {
   }
   if (item.kind === 'mc') errs.push(...validateMcMeta(item, at));
   if (item.kind === 'card' && !(isObj(item.meta) && typeof item.meta.card === 'string' && item.meta.card)) errs.push(`${at} card에는 meta.card(카드 id)가 필요합니다.`);
-  if (item.kind === 'item' && !(isObj(item.meta) && typeof item.meta.item === 'string' && item.meta.item)) errs.push(`${at} item에는 meta.item(아이템 id)가 필요합니다.`);
+  // item: a shop item (meta.item = items.json id) or a 세계 설정 토벌 monster icon (meta.monster = hunts.json id) — exactly one
+  if (item.kind === 'item') {
+    const ids = isObj(item.meta) ? ['item', 'monster'].filter((k) => typeof item.meta[k] === 'string' && item.meta[k]) : [];
+    if (ids.length !== 1) errs.push(`${at} item에는 meta.item(아이템 id) 또는 meta.monster(키메라 id) 중 하나가 필요합니다.`);
+  }
   if (item.kind === 'treasure' && !(isObj(item.meta) && typeof item.meta.treasure === 'string' && item.meta.treasure)) errs.push(`${at} treasure에는 meta.treasure(보물 id)가 필요합니다.`);
   if (item.kind === 'chara') errs.push(...validateCharaMeta(item, at));
   if (item.kind === 'prop') {

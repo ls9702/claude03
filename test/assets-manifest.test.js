@@ -32,14 +32,14 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
   assert.equal(validateManifest(m).ok, true);
   const count = (k) => m.items.filter((i) => i.kind === k).length;
   assert.equal(count('anchor'), 1);
-  assert.equal(count('bg'), 23); // 5 event scenes + the MC studio (Stage 5.6) + 11 Stage 7 scenes (stage … holiday) + Stage 8 park / house + Stage 9 hometown / temple / jeju / casino
+  assert.equal(count('bg'), 31); // 5 event scenes + the MC studio (Stage 5.6) + 11 Stage 7 scenes (stage … holiday) + Stage 8 park / house + Stage 9 hometown / temple / jeju / casino + 8 세계 설정 scenes (weed-field … kuji)
   assert.equal(count('charLayer'), 8); // base + 4 expressions + 3 outfits
   assert.equal(count('pose'), 6);
   assert.ok(count('sprite') >= 1);
   assert.equal(count('icon'), 12 + 23); // tile icons + Stage 7 job badges (icon-job-<id>)
   assert.equal(count('card'), 30); // 16 Stage 7 cards + 14 blue / red cards
-  assert.equal(count('item'), 6);
-  assert.equal(count('treasure'), 22); // Stage 9: one icon per treasures.json id (treasure-<id>)
+  assert.equal(count('item'), 12); // 6 shop items + 세계 설정 armor / guitar + 4 토벌 monsters (meta.monster)
+  assert.equal(count('treasure'), 23); // Stage 9: one icon per treasures.json id (treasure-<id>) + 세계 설정 kuji_plush
   assert.equal(count('texture'), 2);
   assert.equal(count('frame'), 7);
   for (const scene of ['school', 'mountain-trail', 'wedding-hall', 'office', 'hospital']) {

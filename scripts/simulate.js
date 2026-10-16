@@ -46,12 +46,13 @@
 // `simulateBias({games, seed})` (used by test/balance.test.js).
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { gameData, getRoster } from '../server/data/index.js';
+import { getRoster } from '../server/data/index.js';
+import { WORLDS, dataForWorld } from '../server/game/world.js';
 import { minEraTurns, validateRoomConfig } from '../server/game/config.js';
 import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, joinRoom } from '../server/game/lobby.js';
 import { createRng } from '../server/game/rng.js';
-import { lottoExpectedValue } from '../server/game/holidays.js';
+import { kujiExpectedValue, lottoExpectedValue } from '../server/game/holidays.js';
 import { cpuDecide, cpuPassScores, cpuSkillTarget, cpuTradeAccept } from '../server/game/cpu.js';
 import { ROULETTE_MODES } from '../server/game/roulette.js';
 import { cardBlockReason, spinFixed, transferable } from '../server/game/cards.js';
@@ -85,8 +86,11 @@ const AIM = String(arg('aim', 'random')); // --bias --roulette skill: random | c
 const AIM_DUEL = !!arg('aim-duel', false);
 const PASS_DUEL = !!arg('pass-duel', false);
 const MAX_ACTIONS = 20000;
+/** 세계 설정: `--world real|chiikawa` (default real so the older numbers stay comparable). */
+const WORLD = String(arg('world', 'real'));
+if (!WORLDS.includes(WORLD)) throw new Error(`--world ${WORLDS.join('|')} (got ${WORLD})`);
 
-const data = gameData();
+const data = dataForWorld(WORLD);
 const MODES = Object.keys(data.eras.modes);
 const ERA_IDS = data.eras.eras.map((e) => e.id);
 const BET_PICKS = { oddEven: ['odd', 'even'], range: Object.keys(data.balance.bets.ranges) };
@@ -148,6 +152,7 @@ function makeLobbyRoom(meta, gameNo) {
     startingMoney: meta.pick([0, 500, 1000, 3000]),
     turnOrder: meta.pick(['family', 'index']),
     rouletteMode: ROULETTE,
+    world: WORLD,
   });
   if (!v.ok) throw new Error(v.errors.join(' '));
   let room = {
@@ -214,6 +219,25 @@ const stats = {
   // 룰렛 실력 모드 (--roulette skill): |value − target| → n, landings by policy → tileType → n
   aim: { spins: 0, off: {}, landings: { cpu: {}, random: {} } },
   // Stage 9
+  // 세계 설정 (치이카와 모드): 토벌 / 풀뽑기 검정 / 쿠지
+  cw: {
+    huntPrompts: { random: 0, cpu: 0 },
+    huntFights: { random: 0, cpu: 0 },
+    huntWins: { random: 0, cpu: 0 },
+    huntByMonster: {}, // monsterId → [fights, wins]
+    huntInjured: 0,
+    huntMoney: 0,
+    weedPrompts: { random: 0, cpu: 0 },
+    weedExams: { random: 0, cpu: 0 },
+    weedByTarget: {}, // target level → [tries, passes] (검정소 tiles only)
+    weedPaydayPasses: 0, // 풀뽑기 일꾼: passes of the payday 검정
+    weedMoney: 0,
+    kuji: { tickets: 0, money: 0, ranks: {} },
+    finalWeed: {},
+    finalHunts: {},
+    adultChars: 0,
+    hidden: {},
+  },
   s9: {
     submaps: {}, // `${submap}:${choice}` → n
     visits: {}, // submap → prompts
@@ -467,13 +491,43 @@ function playGame(g) {
           else s7.sebae.out -= r.sebae;
         }
       }
-      if (ev.type === 'lottoDraw') {
+      if (ev.type === 'lottoDraw' && !ev.kuji) {
         for (const e of ev.entries) {
           s7.lottoTickets++;
           s7.lottoPrize += e.prize;
           s7.lottoWins[e.matches] = (s7.lottoWins[e.matches] ?? 0) + 1;
         }
       }
+      // 세계 설정 (치이카와 모드)
+      const cw = stats.cw;
+      const pol = (id) => (cpuPolicy(room.characters.find((x) => x.id === id)) ? 'cpu' : 'random');
+      if (ev.type === 'lottoDraw' && ev.kuji) {
+        for (const e of ev.entries) {
+          cw.kuji.tickets++;
+          cw.kuji.ranks[e.rank] = (cw.kuji.ranks[e.rank] ?? 0) + 1;
+        }
+      }
+      if (ev.type === 'moneyChanged' && ev.reason === 'kuji') cw.kuji.money += ev.delta;
+      if (ev.type === 'prompt' && ev.kind === 'hunt') cw.huntPrompts[pol(ev.charId)]++;
+      if (ev.type === 'huntResult') {
+        const w = pol(ev.charId);
+        cw.huntFights[w]++;
+        if (ev.success) cw.huntWins[w]++;
+        if (ev.injured) cw.huntInjured++;
+        const b = (cw.huntByMonster[ev.monsterId] ??= [0, 0]);
+        b[0]++;
+        if (ev.success) b[1]++;
+      }
+      if (ev.type === 'moneyChanged' && ev.reason === 'hunt') cw.huntMoney += ev.delta;
+      if (ev.type === 'prompt' && ev.kind === 'weed') cw.weedPrompts[pol(ev.charId)]++;
+      if (ev.type === 'weedResult' && ev.payday) cw.weedPaydayPasses++; // 풀뽑기 일꾼 payday 검정 (only passes are events)
+      else if (ev.type === 'weedResult' && ev.action === 'exam') {
+        cw.weedExams[pol(ev.charId)]++;
+        const b = (cw.weedByTarget[ev.target] ??= [0, 0]);
+        b[0]++;
+        if (ev.success) b[1]++;
+      }
+      if (ev.type === 'moneyChanged' && (ev.reason === 'weed' || ev.reason === 'weedFee')) cw.weedMoney += ev.delta;
       if (ev.type === 'gift') s7.gifts++;
       // Stage 8
       const s8 = stats.s8;
@@ -566,6 +620,17 @@ function playGame(g) {
     apply({ type: 'spin', characterId: cur.id, ...(ROULETTE === 'skill' ? { target: meta.int(1, 10), input: 'gauge' } : {}) });
   }
   const mode = room.config.mode;
+  if (mode !== 'kids') {
+    const cw = stats.cw;
+    for (const c of room.characters) {
+      cw.adultChars++;
+      const lv = c.weed?.level ?? 0;
+      cw.finalWeed[lv] = (cw.finalWeed[lv] ?? 0) + 1;
+      const h = Math.min(8, c.hunts ?? 0);
+      cw.finalHunts[h] = (cw.finalHunts[h] ?? 0) + 1;
+      if (c.job && data.jobs.jobs.find((j) => j.id === c.job.id)?.hidden) cw.hidden[c.job.id] = (cw.hidden[c.job.id] ?? 0) + 1;
+    }
+  }
   // Stage 9: result (treasures, awards, titles, composition) + a random MVP vote closed at once
   {
     const s9 = stats.s9;
@@ -816,13 +881,13 @@ function interactAnswers(live, rng, apply) {
  * characters, random decisions, no bets; Stage 7: random card plays unless `cards: false`, holidays on).
  * @returns {{games, winShare: number[], avgRank: number[], avgGoalPlace: number[]}} per turn position
  */
-export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true, onGame = null, roulette = 'random', aim = 'random', eraTurns = undefined, finalLength = undefined } = {}) {
+export function simulateBias({ games = 500, seed = 1, characters = 8, data: simData, cards = true, onGame = null, roulette = 'random', aim = 'random', eraTurns = undefined, finalLength = undefined, world = WORLD } = {}) {
   const wins = Array(characters).fill(0);
   const rankSum = Array(characters).fill(0);
   const placeSum = Array(characters).fill(0);
   for (let g = 0; g < games; g++) {
     const meta = createRng(seed * 7919 + g * 104729 + 1);
-    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', rouletteMode: roulette, ...(eraTurns ? { eraTurns } : {}), ...(finalLength ? { finalLength } : {}) });
+    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', rouletteMode: roulette, world, ...(eraTurns ? { eraTurns } : {}), ...(finalLength ? { finalLength } : {}) });
     let room = { id: `bias${g}`, code: 'BIASXX', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
     for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
     for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}` }, 0).room;
@@ -879,11 +944,11 @@ export const AIM_STRATEGIES = {
  * with `strategies[(i + g) % strategies.length]`. @returns {{games, rows: {[strategy]: {n, wins, rankSum, totalSum,
  * placeSum, landings: {tileType: n}, spins, hits, goalFirst}}}}
  */
-export function simulateAim({ games = 200, seed = 1, characters = 8, strategies = ['cpu', 'random', 'max', 'min', 'none'], data: simData = data, mode = 'lifetime' } = {}) {
+export function simulateAim({ games = 200, seed = 1, characters = 8, strategies = ['cpu', 'random', 'max', 'min', 'none'], data: simData = data, mode = 'lifetime', world = WORLD } = {}) {
   const rows = Object.fromEntries(strategies.map((k) => [k, { n: 0, wins: 0, rankSum: 0, totalSum: 0, relSum: 0, placeSum: 0, landings: {}, spins: 0, hits: 0, salary: 0 }]));
   for (let g = 0; g < games; g++) {
     const meta = createRng(seed * 15485863 + g * 7919 + 3);
-    const v = validateRoomConfig({ mode, maxCharacters: characters, turnOrder: 'index', rouletteMode: 'skill' });
+    const v = validateRoomConfig({ mode, maxCharacters: characters, turnOrder: 'index', rouletteMode: 'skill', world });
     let room = { id: `aim${g}`, code: 'AIMAIM', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
     for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
     for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}`, avatar: { character: ROSTER_IDS[Math.min(ROSTER_IDS.length - 1, Math.floor(meta.next() * ROSTER_IDS.length))] } }, 0).room;
@@ -953,11 +1018,11 @@ export const PASS_STRATEGIES = {
  * which follows the seat's strategy (rotated over the seats). @returns {{games, rows: {[strategy]: {n, wins, rankSum,
  * totalSum, relSum, passes}}}}
  */
-export function simulatePass({ games = 200, seed = 1, characters = 8, strategies = ['cpu', 'always', 'never'], data: simData = data, eraTurns = undefined } = {}) {
+export function simulatePass({ games = 200, seed = 1, characters = 8, strategies = ['cpu', 'always', 'never'], data: simData = data, eraTurns = undefined, world = WORLD } = {}) {
   const rows = Object.fromEntries(strategies.map((k) => [k, { n: 0, wins: 0, rankSum: 0, totalSum: 0, relSum: 0, passes: 0 }]));
   for (let g = 0; g < games; g++) {
     const meta = createRng(seed * 32452843 + g * 7919 + 5);
-    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', ...(eraTurns ? { eraTurns } : {}) });
+    const v = validateRoomConfig({ mode: 'lifetime', maxCharacters: characters, turnOrder: 'index', world, ...(eraTurns ? { eraTurns } : {}) });
     let room = { id: `pass${g}`, code: 'PASSPS', status: 'lobby', config: v.config, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
     for (let s = 0; s < 4; s++) room = joinRoom(room, `sess${s}`, `P${s}`, 0).room;
     for (let i = 0; i < characters; i++) room = addCharacter(room, `sess${i % 4}`, { name: `C${i + 1}`, avatar: { character: ROSTER_IDS[Math.min(ROSTER_IDS.length - 1, Math.floor(meta.next() * ROSTER_IDS.length))] } }, 0).room;
@@ -1048,7 +1113,7 @@ function mainRandom() {
   const sortedMoney = [...stats.finalMoney].sort((a, b) => a - b);
   const routeTotal = stats.routes.love + stats.routes.career + stats.routes.money;
 
-  console.log(`\n=== 시뮬레이션 ${stats.games}/${GAMES}판 (seed ${SEED}) · ${ms.toFixed(0)}ms · 예외 ${errors}건 ===`);
+  console.log(`\n=== 시뮬레이션 ${stats.games}/${GAMES}판 (seed ${SEED}, 세계 ${WORLD}) · ${ms.toFixed(0)}ms · 예외 ${errors}건 ===`);
   console.log(`행동 수 ${stats.actions} · 평균 턴 ${avg(stats.turns).toFixed(1)} · 평균 라운드 ${avg(stats.rounds).toFixed(1)}`);
   console.log(
     `최종 순자산(만원) 평균 ${avg(stats.finalMoney).toFixed(0)} · 중앙값 ${sortedMoney[sortedMoney.length >> 1] ?? 0} · 최소 ${sortedMoney[0] ?? 0} · 최대 ${sortedMoney.at(-1) ?? 0} · 빚 보유 ${pct(stats.debtors, stats.finalMoney.length)}`,
@@ -1143,9 +1208,14 @@ function mainRandom() {
   console.log(`뒤통수 대상의 순자산 순위(1 = 1위): ${sabRanks.map(([r, n]) => `${r}위 ${pct(n, s7.sabotage - s7.blocked)}`).join(' · ')}`);
   console.log(`상점 방문 ${s7.shopVisits}회 · 구매율 ${pct(s7.shopBuys.card + s7.shopBuys.item, s7.shopVisits)} (카드 ${s7.shopBuys.card} · 아이템 ${s7.shopBuys.item}) · 최종 아이템 캐릭터당 ${perChar(s7.itemsPerChar)}개 ${JSON.stringify(s7.items)}`);
   console.log(`명절 ${s7.holidays}회 · 고스톱 판돈 합 ${s7.gostopPots}만원 · 고스톱 순이동 합계 ${s7.gostopNet} (0이어야 보존) · 세뱃돈 받음 ${s7.sebae.in} / 줌 ${s7.sebae.out}`);
-  const ev = lottoExpectedValue(data.balance.lotto);
   const price = data.cards.cards.find((k) => k.id === 'lotto')?.price;
-  console.log(`로또 ${s7.lottoTickets}장 · 평균 당첨금 ${(s7.lottoPrize / Math.max(1, s7.lottoTickets)).toFixed(2)}만원 (기대값 ${ev.toFixed(2)} < 카드 가격 ${price}) · 맞춘 개수 ${JSON.stringify(s7.lottoWins)}`);
+  if ((data.balance.lottoMode ?? 'numbers') === 'kuji') {
+    const kj = stats.cw.kuji;
+    console.log(`쿠지 ${kj.tickets}장 · 장당 현금 ${(kj.money / Math.max(1, kj.tickets)).toFixed(2)}만원 (기대값 ${kujiExpectedValue(data).toFixed(2)} 〔카드·인형 포함〕 < 응모권 가격 ${price}; 뉴스 쿠지 열풍 ${kujiExpectedValue(data, { luck: 1.25 }).toFixed(2)}) · 등수 ${JSON.stringify(kj.ranks)}`);
+  } else {
+    const ev = lottoExpectedValue(data.balance.lotto);
+    console.log(`로또 ${s7.lottoTickets}장 · 평균 당첨금 ${(s7.lottoPrize / Math.max(1, s7.lottoTickets)).toFixed(2)}만원 (기대값 ${ev.toFixed(2)} < 카드 가격 ${price}) · 맞춘 개수 ${JSON.stringify(s7.lottoWins)}`);
+  }
   console.log(`선물 ${s7.gifts}회 · 거래 제안 ${s7.offers}건 → ${JSON.stringify(s7.trades)}`);
   const bc = stats.bc;
   const hc = bc.handAtEnd;
@@ -1203,6 +1273,19 @@ function mainRandom() {
   console.log(`사찰 소원 성취 횟수 분포(청년 이후 캐릭터): ${JSON.stringify(s9.wishes)}`);
   console.log(`산신령 해금: 청년 이후 캐릭터 ${pct(s9.spiritUnlocked, s8.chars)} · 게임 ${pct(s9.spiritGames, stats.games - (stats.byMode.kids?.games ?? 0))} · MVP = 최종 1위 ${pct(s9.mvp.first, s9.mvp.games)} (무투표 ${s9.mvp.noVotes}판)`);
   console.log(`뉴스: ${Object.entries(stats.news).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
+  // ---------- 세계 설정 ----------
+  const cw = stats.cw;
+  const tot = (o) => o.random + o.cpu;
+  if (tot(cw.huntPrompts) || tot(cw.weedPrompts)) {
+    console.log(`\n--- 세계 설정: ${WORLD} (토벌·풀뽑기 검정·쿠지) ---`);
+    const pol = (k) => `${k} ${pct(cw.huntFights[k], cw.huntPrompts[k])} (승 ${pct(cw.huntWins[k], cw.huntFights[k])})`;
+    console.log(`토벌 ${tot(cw.huntPrompts)}회 (청년 이후 캐릭터당 ${(tot(cw.huntPrompts) / Math.max(1, cw.adultChars)).toFixed(2)}) · 싸움 비율 ${pol('random')} · ${pol('cpu')} · 부상 ${cw.huntInjured} · 방문당 손익 ${(cw.huntMoney / Math.max(1, tot(cw.huntPrompts))).toFixed(1)}만원 · 싸움당 ${(cw.huntMoney / Math.max(1, tot(cw.huntFights))).toFixed(1)}만원`);
+    console.log(`키메라별 [싸움, 승]: ${Object.entries(cw.huntByMonster).map(([k, [f, w]]) => `${k} ${f}·${pct(w, f)}`).join(' · ')} · 최종 토벌 수 분포 ${JSON.stringify(cw.finalHunts)}`);
+    const wpol = (k) => `${k} ${pct(cw.weedExams[k], cw.weedPrompts[k])}`;
+    console.log(`풀뽑기 ${tot(cw.weedPrompts)}회 (캐릭터당 ${(tot(cw.weedPrompts) / Math.max(1, cw.adultChars)).toFixed(2)}) · 검정 응시 비율 ${wpol('random')} · ${wpol('cpu')} · 방문당 손익 ${(cw.weedMoney / Math.max(1, tot(cw.weedPrompts))).toFixed(1)}만원`);
+    console.log(`검정소 합격률(목표 단계 1 = 5급 … 5 = 1급): ${Object.entries(cw.weedByTarget).sort((a, b) => a[0] - b[0]).map(([k, [n, ok]]) => `${6 - k}급 ${pct(ok, n)} (${n})`).join(' · ')} · 풀뽑기 일꾼 월급날 검정 합격 ${cw.weedPaydayPasses}회 · 최종 단계 분포 ${JSON.stringify(cw.finalWeed)}`);
+    console.log(`숨은 직업 보유(청년 이후 캐릭터 ${cw.adultChars}명): ${Object.entries(cw.hidden).map(([k, n]) => `${k} ${pct(n, cw.adultChars)}`).join(' · ') || '없음'}`);
+  }
   if (errors) process.exit(1);
 }
 

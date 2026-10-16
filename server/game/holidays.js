@@ -5,9 +5,11 @@
 //
 // room.erasOpened [eraId] · room.eraQueue [eraId] · room.holidayCount · room.holidays {eraId: seol|chuseok}
 // room.lotto {draws: [{eraId, numbers, entries, at}]} (last balance.lotto.keepDraws)
-import { STAT_KEYS, addLog, addStat, changeMoney, charById, emit, round5, statName, won } from './effects.js';
-import { ensureCards } from './cards.js';
+import { STAT_KEYS, addLog, addStat, addStats, changeMoney, charById, emit, round5, statName, statText, won } from './effects.js';
+import { cardDef, drawCardId, drawableCards, ensureCards, gainCard } from './cards.js';
 import { openPrompt, registerPrompts } from './prompts.js';
+import { effectsFor } from './news.js';
+import { giveTreasure, treasureDef } from './treasures.js';
 
 export const HOLIDAY_KINDS = ['seol', 'chuseok'];
 export const STAKES = ['pass', 'small', 'big'];
@@ -68,6 +70,7 @@ export function lottoExpectedValue(cfg) {
  * @returns the draw or null (nobody held a ticket)
  */
 export function lottoDraw(tx, eraId) {
+  if ((tx.data.balance.lottoMode ?? 'numbers') === 'kuji') return kujiDraw(tx, eraId); // 세계 설정: 치이카와 모드
   const room = tx.room;
   const holders = room.characters.filter((c) => ensureCards(c).cards.some((k) => k.id === 'lotto'));
   if (!holders.length) return null;
@@ -97,6 +100,112 @@ export function lottoDraw(tx, eraId) {
   const keep = cfg.keepDraws ?? 10;
   if (room.lotto.draws.length > keep) room.lotto.draws.splice(0, room.lotto.draws.length - keep);
   return { eraId, numbers, entries };
+}
+
+// ---------- 쿠지 뽑기 (세계 설정: 치이카와 모드, balance.lottoMode 'kuji') ----------
+
+/**
+ * The kuji box of `balance.kuji.prizes` with the news luck applied: the chances of `luckRanks` (default 1–3) × `luck`,
+ * the 꽝 rank (the one without any prize) shrinks so the chances still add up to 1. @returns [{…prize, chance}]
+ */
+export function kujiPrizes(cfg, luck = 1) {
+  const prizes = (cfg?.prizes ?? []).map((p) => ({ ...p }));
+  if (!prizes.length) return prizes;
+  const lucky = new Set(cfg.luckRanks ?? [1, 2, 3]);
+  if (luck !== 1) for (const p of prizes) if (lucky.has(p.rank)) p.chance *= luck;
+  const blank = prizes.find((p) => !kujiHasPrize(p)) ?? prizes.at(-1);
+  const others = prizes.filter((p) => p !== blank).reduce((a, p) => a + p.chance, 0);
+  blank.chance = Math.max(0, 1 - others);
+  return prizes;
+}
+
+const kujiHasPrize = (p) => !!(p.money || p.card || p.treasure || Object.keys(p.stats ?? {}).length);
+/** Did a drawn kuji prize (`{name, money?, cardId?, treasureId?, stats?}`) bring anything? */
+export const kujiWon = (pz) => !!(pz?.money || pz?.cardId || pz?.treasureId || Object.keys(pz?.stats ?? {}).length);
+
+/** Mean shop price of the cards a kuji prize may hand out (job-only cards aside), weighted like the draw. */
+function meanCardPrice(data) {
+  const pool = drawableCards(data, null);
+  const w = pool.reduce((a, k) => a + (k.weight ?? 1), 0);
+  return w ? pool.reduce((a, k) => a + (k.weight ?? 1) * (k.price ?? 0), 0) / w : 0;
+}
+
+/**
+ * Exact expected value (만원) of one kuji ticket: money + a card at `cardShare` (0.5) of its mean price + the mean
+ * appraisal of a treasure prize (fake chance included). Must stay below the 응모권 card price (test).
+ */
+export function kujiExpectedValue(data, { luck = 1, cardShare = 0.5 } = {}) {
+  const cfg = data.balance.kuji ?? {};
+  let ev = 0;
+  for (const p of kujiPrizes(cfg, luck)) {
+    let v = p.money ?? 0;
+    if (p.card) v += meanCardPrice(data) * cardShare;
+    if (p.treasure) {
+      const t = treasureDef(data, p.treasure);
+      if (t) v += (1 - (t.fakeChance ?? 0)) * ((t.min + t.max) / 2) + (t.fakeChance ?? 0) * (((data.treasures?.fake?.min ?? 0) + (data.treasures?.fake?.max ?? 5)) / 2);
+    }
+    ev += p.chance * v;
+  }
+  return ev;
+}
+
+/**
+ * 쿠지 뽑기 of an era (where the lotto draw was): every holder of a `lotto` card (🎟️ 쿠지 응모권) uses one and draws a
+ * ticket from the box (seeded). Emits `lottoDraw {eraId, kuji: true, entries: [{charId, rank, prize: {name, money?,
+ * cardId?, treasureId?, stats?}}]}` BEFORE its follow-ups: moneyChanged `kuji` (CPU income handicap applies), cardGained
+ * {source: 'kuji'}, treasureFound {source: 'kuji'}, statChanged (reason kuji). `room.lotto.draws` keeps {eraId, kuji: true,
+ * entries, at}. @returns the draw or null (nobody held a ticket)
+ */
+export function kujiDraw(tx, eraId) {
+  const room = tx.room;
+  const holders = room.characters.filter((c) => ensureCards(c).cards.some((k) => k.id === 'lotto'));
+  if (!holders.length) return null;
+  const cfg = tx.data.balance.kuji ?? { prizes: [] };
+  const entries = holders.map((c) => {
+    const i = c.cards.findIndex((k) => k.id === 'lotto');
+    c.cards.splice(i, 1);
+    const eff = effectsFor(tx, c);
+    const box = kujiPrizes(cfg, eff.kujiLuck ?? 1);
+    let r = tx.rng.next();
+    let p = box.at(-1);
+    for (const x of box) {
+      r -= x.chance;
+      if (r < 0) {
+        p = x;
+        break;
+      }
+    }
+    const prize = { name: p.name };
+    if (p.money) prize.money = round5(p.money * (eff.incomeMult ?? 1));
+    if (p.card) {
+      const id = drawCardId(tx, c);
+      if (id) prize.cardId = id;
+    }
+    if (p.treasure && treasureDef(tx.data, p.treasure)) prize.treasureId = p.treasure;
+    if (p.stats && Object.keys(p.stats).length) prize.stats = { ...p.stats };
+    return { charId: c.id, rank: p.rank, prize };
+  });
+  const top = entries.reduce((a, e) => (a == null || e.rank < a.rank ? e : a), null);
+  const won1 = entries.some((e) => kujiWon(e.prize));
+  emit(tx, 'lottoDraw', { eraId, kuji: true, entries: entries.map((e) => ({ ...e, prize: { ...e.prize } })), tone: won1 ? 'treasure' : 'neutral', emotion: top?.rank === 1 ? 'shock' : won1 ? 'joy' : 'sweat' });
+  addLog(tx, `🎟️ 쿠지 뽑기! 응모권을 가진 ${entries.length}명이 한 장씩 뽑아요`, { tone: 'treasure' });
+  for (const e of entries) {
+    const c = charById(room, e.charId);
+    const pz = e.prize;
+    if (pz.money) changeMoney(tx, c, pz.money, 'kuji', { tone: 'treasure', emotion: 'joy' });
+    const changes = pz.stats ? addStats(tx, c, pz.stats, 'kuji') : [];
+    if (pz.cardId) gainCard(tx, c, pz.cardId, 'kuji', { log: false });
+    const card = pz.cardId ? cardDef(tx.data, pz.cardId) : null;
+    const extras = [pz.money ? `+${won(pz.money)}` : '', card ? `「${card.icon} ${card.name}」 카드` : '', changes.length ? statText(tx.data, changes) : ''].filter(Boolean);
+    const lucky = kujiWon(pz);
+    addLog(tx, `${lucky ? '🎉' : '🧻'} ${c.name}: ${pz.name}${lucky ? '!' : '…'}${extras.length ? ` (${extras.join(', ')})` : ''}`, { tone: lucky ? 'good' : 'info', charId: c.id, emotion: lucky ? 'joy' : 'sweat' });
+    if (pz.treasureId) giveTreasure(tx, c, treasureDef(tx.data, pz.treasureId), 'kuji');
+  }
+  room.lotto ??= { draws: [] };
+  room.lotto.draws.push({ eraId, kuji: true, entries, at: tx.now });
+  const keep = cfg.keepDraws ?? tx.data.balance.lotto?.keepDraws ?? 10;
+  if (room.lotto.draws.length > keep) room.lotto.draws.splice(0, room.lotto.draws.length - keep);
+  return { eraId, kuji: true, entries };
 }
 
 // ---------- 명절 대잔치 ----------

@@ -645,6 +645,37 @@ const HEAD_PROPS = {
     const cy = y0 + k.H * 0.5;
     return ell(x, cy, k.rx * 1.12, k.H * 0.62, `fill="#cfefff" fill-opacity=".35" stroke="#8fa3b8" stroke-width="${n1(C.lw * 1.4)}"`) + path(`M${P(x - k.rx * 0.8, cy - k.H * 0.3)} Q${P(x - k.rx * 0.6, cy - k.H * 0.5, x - k.rx * 0.2, cy - k.H * 0.55)}`, `fill="none" stroke="#fff" stroke-width="${n1(C.lw * 1.6)}" stroke-linecap="round" opacity=".9"`) + ell(x, cy + k.H * 0.6, k.rx * 0.75, k.H * 0.07, ln(C, '#e6ebf2'));
   },
+  // 세계 설정 (치이카와 모드 jobs): 토벌대 / 갑옷씨 helmet, 라멘 「郎」 / 목욕탕 head towel
+  armor_helmet: (C, k, col) => {
+    const [x, y0] = k.head;
+    const y = y0 + k.H * 0.25;
+    const dark = shade(col, -0.25);
+    const rivets = [-0.62, -0.31, 0.31, 0.62].map((t) => circ(x + t * k.rx, y - k.H * 0.005 + Math.abs(t) * k.H * 0.01, k.H * 0.016, `fill="${shade(col, 0.45)}" stroke="${dark}" stroke-width="${n1(C.lw * 0.4)}"`)).join('');
+    return (
+      ell(x, y - k.H * 0.45, k.H * 0.045, k.H * 0.085, ln(C, PC.red, C.lw * 0.8, ` transform="rotate(-12 ${n1(x)} ${n1(y - k.H * 0.45)})"`)) +
+      path(`M${P(x - k.rx * 0.96, y)} C${P(x - k.rx * 0.98, y - k.H * 0.47, x + k.rx * 0.98, y - k.H * 0.47, x + k.rx * 0.96, y)}Z`, ln(C, col)) +
+      path(`M${P(x, y - k.H * 0.37)} L${P(x, y - k.H * 0.04)}`, `stroke="${dark}" stroke-width="${n1(k.H * 0.03)}" stroke-linecap="round"`) +
+      path(`M${P(x - k.rx * 0.99, y - k.H * 0.05)} Q${P(x, y - k.H * 0.13, x + k.rx * 0.99, y - k.H * 0.05)} L${P(x + k.rx * 1.0, y + k.H * 0.05)} Q${P(x, y - k.H * 0.03, x - k.rx * 1.0, y + k.H * 0.05)}Z`, ln(C, dark)) +
+      rivets +
+      path(`M${P(x - k.rx * 0.7, y - k.H * 0.12)} Q${P(x - k.rx * 0.62, y - k.H * 0.3, x - k.rx * 0.3, y - k.H * 0.36)}`, `fill="none" stroke="#fff" stroke-width="${n1(C.lw * 1.5)}" stroke-linecap="round" opacity=".75"`)
+    );
+  },
+  head_towel: (C, k, col) => {
+    const [x, y0] = k.head;
+    const y = y0 + k.H * 0.2;
+    const stripe = '#7fb0dc';
+    const kx = x + k.rx * 0.86;
+    const ky = y + k.H * 0.02;
+    return (
+      path(`M${P(x - k.rx * 0.9, y)} C${P(x - k.rx * 0.9, y - k.H * 0.4, x + k.rx * 0.9, y - k.H * 0.4, x + k.rx * 0.9, y)}Z`, ln(C, col)) +
+      path(`M${P(x - k.rx * 0.5, y - k.H * 0.22)} Q${P(x, y - k.H * 0.3, x + k.rx * 0.5, y - k.H * 0.22)}`, `fill="none" stroke="${stripe}" stroke-width="${n1(C.lw * 0.9)}" stroke-dasharray="${n1(k.H * 0.03)} ${n1(k.H * 0.02)}"`) +
+      path(`M${P(x - k.rx * 0.98, y - k.H * 0.06)} Q${P(x, y - k.H * 0.16, x + k.rx * 0.98, y - k.H * 0.06)} L${P(x + k.rx * 0.98, y + k.H * 0.07)} Q${P(x, y - k.H * 0.03, x - k.rx * 0.98, y + k.H * 0.07)}Z`, ln(C, shade(col, -0.06))) +
+      path(`M${P(x - k.rx * 0.9, y - k.H * 0.01)} Q${P(x, y - k.H * 0.1, x + k.rx * 0.9, y - k.H * 0.01)}`, `fill="none" stroke="${stripe}" stroke-width="${n1(C.lw * 1.1)}"`) +
+      path(`M${P(kx, ky)} q${P(k.H * 0.14, -k.H * 0.02, k.H * 0.18, -k.H * 0.13)} q${P(-k.H * 0.02, k.H * 0.12, -k.H * 0.12, k.H * 0.17)}Z`, ln(C, col, C.lw * 0.9)) +
+      path(`M${P(kx, ky)} q${P(k.H * 0.12, k.H * 0.04, k.H * 0.13, k.H * 0.17)} q${P(-k.H * 0.08, -k.H * 0.02, -k.H * 0.15, -k.H * 0.1)}Z`, ln(C, col, C.lw * 0.9)) +
+      circ(kx, ky, k.H * 0.045, ln(C, shade(col, -0.1), C.lw * 0.9))
+    );
+  },
 };
 
 /** A small heart (stickers, headband). */
@@ -870,6 +901,65 @@ const HAND_PROPS = {
     const key = (a) => `<g transform="rotate(${a} ${n1(x)} ${n1(y + r)})">${path(`M${P(x, y + r)} L${P(x, y + r + k.H * 0.12)} M${P(x, y + r + k.H * 0.09)} l${P(k.H * 0.03, 0)} M${P(x, y + r + k.H * 0.12)} l${P(k.H * 0.03, 0)}`, `stroke="${PC.gold}" stroke-width="${n1(C.lw * 1.1)}" stroke-linecap="round"`)}</g>`;
     return circ(x, y, r, `fill="none" stroke="${PC.grey}" stroke-width="${n1(C.lw * 0.9)}"`) + key(-30) + key(0) + key(30);
   },
+  // 세계 설정 (치이카와 모드): 사스마타 (토벌), 국자 (라멘), 망치 (공방), 뒤집개 (팬케이크)
+  sasumata: (C, k, col) => {
+    const [x, y] = k.handR;
+    const ty = y - k.H * 0.66;
+    const w = k.H * 0.1;
+    const metal = '#b9c2cc';
+    const fork = `M${P(x - w * 1.25, ty - w * 2.05)} L${P(x - w, ty - w * 1.7)} L${P(x - w, ty - w * 0.5)} Q${P(x - w, ty, x, ty)} Q${P(x + w, ty, x + w, ty - w * 0.5)} L${P(x + w, ty - w * 1.7)} L${P(x + w * 1.25, ty - w * 2.05)}`;
+    return (
+      `<g transform="rotate(9 ${n1(x)} ${n1(y)})">` +
+      path(`M${P(x, y + k.H * 0.16)} L${P(x, ty)}`, `stroke="${C.line}" stroke-width="${n1(k.H * 0.045 + C.lw)}" stroke-linecap="round"`) +
+      path(`M${P(x, y + k.H * 0.16)} L${P(x, ty)}`, `stroke="${col}" stroke-width="${n1(k.H * 0.045)}" stroke-linecap="round"`) +
+      path(fork, `fill="none" stroke="${C.line}" stroke-width="${n1(k.H * 0.035 + C.lw)}" stroke-linecap="round" stroke-linejoin="round"`) +
+      path(fork, `fill="none" stroke="${metal}" stroke-width="${n1(k.H * 0.035)}" stroke-linecap="round" stroke-linejoin="round"`) +
+      `<rect x="${n1(x - k.H * 0.035)}" y="${n1(ty - k.H * 0.01)}" width="${n1(k.H * 0.07)}" height="${n1(k.H * 0.06)}" rx="${n1(k.H * 0.012)}" ${ln(C, shade(metal, -0.2), C.lw * 0.7)}/>` +
+      `</g>`
+    );
+  },
+  ladle: (C, k, col) => {
+    const [x, y] = k.handR;
+    const bx = x + k.H * 0.16;
+    const by = y - k.H * 0.44;
+    const r = k.H * 0.1;
+    return (
+      path(`M${P(x - k.H * 0.01, y + k.H * 0.08)} L${P(bx - r * 0.95, by + k.H * 0.005)}`, `stroke="${C.line}" stroke-width="${n1(k.H * 0.028 + C.lw)}" stroke-linecap="round"`) +
+      path(`M${P(x - k.H * 0.01, y + k.H * 0.08)} L${P(bx - r * 0.95, by + k.H * 0.005)}`, `stroke="${col}" stroke-width="${n1(k.H * 0.028)}" stroke-linecap="round"`) +
+      path(`M${P(bx - r, by)} A${P(r, r * 0.95)} 0 0 0 ${P(bx + r, by)}Z`, ln(C, col)) +
+      ell(bx, by, r, r * 0.3, ln(C, shade(col, -0.28), C.lw * 0.8)) +
+      path(`M${P(bx - r * 0.6, by + r * 0.4)} Q${P(bx - r * 0.3, by + r * 0.75, bx + r * 0.2, by + r * 0.8)}`, `fill="none" stroke="#fff" stroke-width="${n1(C.lw * 0.9)}" stroke-linecap="round" opacity=".8"`)
+    );
+  },
+  hammer: (C, k, col) => {
+    const [x, y] = k.handR;
+    const hy = y - k.H * 0.38;
+    const metal = '#9aa3ae';
+    return (
+      `<g transform="rotate(12 ${n1(x)} ${n1(y)})">` +
+      path(`M${P(x, y + k.H * 0.1)} L${P(x, hy)}`, `stroke="${C.line}" stroke-width="${n1(k.H * 0.045 + C.lw)}" stroke-linecap="round"`) +
+      path(`M${P(x, y + k.H * 0.1)} L${P(x, hy)}`, `stroke="${col}" stroke-width="${n1(k.H * 0.045)}" stroke-linecap="round"`) +
+      `<rect x="${n1(x - k.H * 0.15)}" y="${n1(hy - k.H * 0.075)}" width="${n1(k.H * 0.3)}" height="${n1(k.H * 0.12)}" rx="${n1(k.H * 0.02)}" ${ln(C, metal)}/>` +
+      `<rect x="${n1(x + k.H * 0.1)}" y="${n1(hy - k.H * 0.085)}" width="${n1(k.H * 0.06)}" height="${n1(k.H * 0.14)}" rx="${n1(k.H * 0.015)}" ${ln(C, shade(metal, -0.2), C.lw * 0.8)}/>` +
+      path(`M${P(x - k.H * 0.12, hy - k.H * 0.045)} L${P(x + k.H * 0.05, hy - k.H * 0.045)}`, `stroke="#fff" stroke-width="${n1(C.lw * 0.9)}" stroke-linecap="round" opacity=".7"`) +
+      `</g>`
+    );
+  },
+  turner: (C, k, col) => {
+    const [x, y] = k.handR;
+    const ty = y - k.H * 0.3;
+    const bw = k.H * 0.17;
+    const bh = k.H * 0.19;
+    const slots = [-0.25, 0, 0.25].map((t) => path(`M${P(x + t * bw * 1.6, ty - bh * 0.75)} L${P(x + t * bw * 1.6, ty - bh * 0.25)}`, `stroke="${shade(col, -0.4)}" stroke-width="${n1(C.lw * 0.9)}" stroke-linecap="round"`)).join('');
+    return (
+      `<g transform="rotate(-8 ${n1(x)} ${n1(y)})">` +
+      path(`M${P(x, y + k.H * 0.1)} L${P(x, y - k.H * 0.12)}`, `stroke="${PC.black}" stroke-width="${n1(k.H * 0.05)}" stroke-linecap="round"`) +
+      path(`M${P(x, y - k.H * 0.12)} L${P(x, ty)}`, `stroke="${shade(col, -0.15)}" stroke-width="${n1(k.H * 0.02)}" stroke-linecap="round"`) +
+      path(`M${P(x - bw * 0.5, ty)} L${P(x + bw * 0.5, ty)} L${P(x + bw * 0.6, ty - bh)} Q${P(x, ty - bh * 1.12, x - bw * 0.6, ty - bh)}Z`, ln(C, col)) +
+      slots +
+      `</g>`
+    );
+  },
 };
 
 function mic(C, k, body, head, sparkle = false) {
@@ -907,6 +997,73 @@ const BACK_PROPS = {
     const wing = path(`M${P(x - k.bw * 0.4, y - k.H * 0.05)} C${P(x - k.bw * 1.4, y - k.H * 0.5, x - k.bw * 2.1, y - k.H * 0.2, x - k.bw * 1.9, y + k.H * 0.05)} C${P(x - k.bw * 1.7, y + k.H * 0.15, x - k.bw * 1.4, y + k.H * 0.05, x - k.bw * 1.3, y + k.H * 0.18)} C${P(x - k.bw * 1.0, y + k.H * 0.2, x - k.bw * 0.6, y + k.H * 0.1, x - k.bw * 0.4, y - k.H * 0.05)}Z`, ln(C, col));
     return `<g class="ch-wings">${mirror(wing)}</g>`;
   },
+  // 세계 설정 (치이카와 모드): 기타 (길거리 가수), 풀 바구니 (풀뽑기), 배달 상자 (배달부), 갑옷 등판 (갑옷씨)
+  guitar: (C, k, col) => {
+    const [x0, y0] = k.back;
+    const gx = x0 + k.bw * 1.02;
+    const gy = y0 + k.H * 0.04;
+    const H = k.H;
+    const neck = shade(col, -0.45);
+    const body = `M${P(gx, gy + H * 0.16)} C${P(gx - H * 0.2, gy + H * 0.16, gx - H * 0.19, gy - H * 0.08, gx - H * 0.09, gy - H * 0.1)} C${P(gx - H * 0.16, gy - H * 0.16, gx - H * 0.12, gy - H * 0.32, gx, gy - H * 0.32)} C${P(gx + H * 0.12, gy - H * 0.32, gx + H * 0.16, gy - H * 0.16, gx + H * 0.09, gy - H * 0.1)} C${P(gx + H * 0.19, gy - H * 0.08, gx + H * 0.2, gy + H * 0.16, gx, gy + H * 0.16)}Z`;
+    return (
+      `<g transform="rotate(24 ${n1(gx)} ${n1(gy)})">` +
+      `<rect x="${n1(gx - H * 0.03)}" y="${n1(gy - H * 0.78)}" width="${n1(H * 0.06)}" height="${n1(H * 0.5)}" ${ln(C, neck, C.lw * 0.8)}/>` +
+      `<rect x="${n1(gx - H * 0.05)}" y="${n1(gy - H * 0.9)}" width="${n1(H * 0.1)}" height="${n1(H * 0.13)}" rx="${n1(H * 0.02)}" ${ln(C, neck, C.lw * 0.8)}/>` +
+      [-1, 1].map((s) => circ(gx + s * H * 0.06, gy - H * 0.86, H * 0.016, `fill="${PC.cream}"`) + circ(gx + s * H * 0.06, gy - H * 0.81, H * 0.016, `fill="${PC.cream}"`)).join('') +
+      path(body, ln(C, col)) +
+      circ(gx, gy - H * 0.11, H * 0.05, `fill="${shade(col, -0.6)}" stroke="${shade(col, -0.3)}" stroke-width="${n1(C.lw * 0.6)}"`) +
+      `<rect x="${n1(gx - H * 0.06)}" y="${n1(gy + H * 0.03)}" width="${n1(H * 0.12)}" height="${n1(H * 0.03)}" rx="${n1(H * 0.01)}" fill="${neck}"/>` +
+      path(`M${P(gx - H * 0.012, gy + H * 0.04)} L${P(gx - H * 0.012, gy - H * 0.8)} M${P(gx + H * 0.012, gy + H * 0.04)} L${P(gx + H * 0.012, gy - H * 0.8)}`, `stroke="${PC.cream}" stroke-width="${n1(C.lw * 0.35)}"`) +
+      `</g>`
+    );
+  },
+  weed_basket: (C, k, col) => {
+    const [x0, y0] = k.back;
+    const H = k.H;
+    const bx = x0 - k.bw * 0.95 - H * 0.1;
+    const by = y0 - k.H * 0.02;
+    const top = by - H * 0.16;
+    const bot = by + H * 0.16;
+    const weed = (dx, h0, lean, c) => {
+      const h = h0 * 1.25;
+      return path(`M${P(bx + dx, top + H * 0.02)} Q${P(bx + dx + lean * 0.4, top - h * 0.6, bx + dx + lean, top - h)} Q${P(bx + dx + lean * 0.2, top - h * 0.5, bx + dx + H * 0.03, top + H * 0.02)}Z`, `fill="${c}" stroke="${C.line}" stroke-width="${n1(C.lw * 0.6)}" stroke-linejoin="round"`);
+    };
+    const weave = [0.25, 0.5, 0.75].map((t) => path(`M${P(bx - H * (0.17 - t * 0.04), top + (bot - top) * t)} L${P(bx + H * (0.17 - t * 0.04), top + (bot - top) * t)}`, `stroke="${shade(col, -0.3)}" stroke-width="${n1(C.lw * 0.6)}"`)).join('') + [-0.09, 0, 0.09].map((dx) => path(`M${P(bx + dx * H, top)} L${P(bx + dx * H * 0.8, bot)}`, `stroke="${shade(col, -0.3)}" stroke-width="${n1(C.lw * 0.5)}"`)).join('');
+    return (
+      weed(-H * 0.12, H * 0.2, -H * 0.08, '#5aa84a') + weed(-H * 0.04, H * 0.27, -H * 0.02, '#6cc070') + weed(H * 0.04, H * 0.22, H * 0.06, '#4f9a40') + weed(H * 0.1, H * 0.16, H * 0.1, '#7bd06a') +
+      circ(bx - H * 0.04, top - H * 0.3, H * 0.035, `fill="${PC.yellow}" stroke="${C.line}" stroke-width="${n1(C.lw * 0.5)}"`) +
+      path(`M${P(bx - H * 0.2, top)} L${P(bx + H * 0.2, top)} L${P(bx + H * 0.14, bot)} Q${P(bx, bot + H * 0.03, bx - H * 0.14, bot)}Z`, ln(C, col)) +
+      weave +
+      ell(bx, top, H * 0.2, H * 0.04, ln(C, shade(col, -0.15), C.lw * 0.8))
+    );
+  },
+  delivery_box: (C, k, col) => {
+    const [x0, y0] = k.back;
+    const H = k.H;
+    const w = H * 0.48;
+    const h = H * 0.4;
+    const cx = x0 + k.bw * 0.95 + H * 0.12;
+    const cy = y0 - k.H * 0.12;
+    return (
+      `<g transform="rotate(7 ${n1(cx)} ${n1(cy)})">` +
+      `<rect x="${n1(cx - w / 2)}" y="${n1(cy - h / 2)}" width="${n1(w)}" height="${n1(h)}" rx="${n1(H * 0.015)}" ${ln(C, col)}/>` +
+      path(`M${P(cx - w / 2, cy - h / 2 + H * 0.05)} L${P(cx + w / 2, cy - h / 2 + H * 0.05)}`, `stroke="${shade(col, -0.25)}" stroke-width="${n1(C.lw * 0.7)}"`) +
+      `<rect x="${n1(cx - H * 0.035)}" y="${n1(cy - h / 2)}" width="${n1(H * 0.07)}" height="${n1(h)}" fill="${shade(col, 0.3)}" stroke="${C.line}" stroke-width="${n1(C.lw * 0.5)}"/>` +
+      `<rect x="${n1(cx + w * 0.12)}" y="${n1(cy + h * 0.05)}" width="${n1(w * 0.28)}" height="${n1(h * 0.28)}" rx="${n1(H * 0.008)}" fill="#ffffff" stroke="${C.line}" stroke-width="${n1(C.lw * 0.5)}"/>` +
+      path(`M${P(cx + w * 0.17, cy + h * 0.14)} l${P(w * 0.18, 0)} M${P(cx + w * 0.17, cy + h * 0.22)} l${P(w * 0.12, 0)}`, `stroke="${PC.grey}" stroke-width="${n1(C.lw * 0.5)}"`) +
+      path(`M${P(cx - w * 0.36, cy + h * 0.1)} l${P(0, h * 0.18)} M${P(cx - w * 0.43, cy + h * 0.18)} l${P(w * 0.07, -h * 0.08)} l${P(w * 0.07, h * 0.08)}`, `fill="none" stroke="${shade(col, -0.4)}" stroke-width="${n1(C.lw * 0.7)}" stroke-linecap="round"`) +
+      `</g>`
+    );
+  },
+  armor_plate: (C, k, col) => {
+    const [x] = k.back;
+    const top = k.neck[1] + k.H * 0.02;
+    const bot = F - k.H * 0.2;
+    const w = k.bw * 1.18;
+    const dark = shade(col, -0.25);
+    const rivets = [-1, 1].flatMap((s) => [0.25, 0.55, 0.85].map((t) => circ(x + s * w * 0.93, top + (bot - top) * t, k.H * 0.016, `fill="${shade(col, 0.4)}" stroke="${dark}" stroke-width="${n1(C.lw * 0.4)}"`))).join('');
+    return path(`M${P(x - w * 0.8, top)} Q${P(x - w * 1.08, top, x - w, top + k.H * 0.12)} L${P(x - w * 0.96, bot - k.H * 0.06)} Q${P(x - w * 0.9, bot, x - w * 0.6, bot)} L${P(x + w * 0.6, bot)} Q${P(x + w * 0.9, bot, x + w * 0.96, bot - k.H * 0.06)} L${P(x + w, top + k.H * 0.12)} Q${P(x + w * 1.08, top, x + w * 0.8, top)}Z`, ln(C, col)) + path(`M${P(x - w * 0.86, top + k.H * 0.06)} L${P(x - w * 0.84, bot - k.H * 0.06)} M${P(x + w * 0.86, top + k.H * 0.06)} L${P(x + w * 0.84, bot - k.H * 0.06)}`, `stroke="${dark}" stroke-width="${n1(C.lw * 0.8)}"`) + rivets;
+  },
 };
 /** Straps drawn over the body for backpacks (front side). */
 const BACK_FRONT = {
@@ -914,6 +1071,23 @@ const BACK_FRONT = {
   school_backpack: (C, k, col = '#e0484f') => mirror(path(`M${P(k.back[0] - k.bw * 0.55, k.neck[1] + k.H * 0.02)} Q${P(k.back[0] - k.bw * 0.75, k.back[1], k.back[0] - k.bw * 0.62, k.back[1] + k.H * 0.2)}`, `fill="none" stroke="${shade(col, -0.2)}" stroke-width="${n1(k.H * 0.04)}" stroke-linecap="round"`)),
   cape: (C, k) => circ(k.neck[0], k.neck[1] + k.H * 0.02, k.H * 0.035, ln(C, PC.gold, C.lw * 0.8)),
   teddy_bag: (C, k, col = '#b07a4e') => path(`M${P(k.back[0] - k.bw * 0.5, k.neck[1] + k.H * 0.02)} L${P(k.back[0] + k.bw * 0.7, k.back[1] - k.H * 0.12)}`, `fill="none" stroke="${shade(col, -0.25)}" stroke-width="${n1(k.H * 0.03)}" stroke-linecap="round"`),
+  // 세계 설정: guitar strap across the chest, basket / box straps, armor shoulder plates (pauldrons) in front
+  guitar: (C, k) => path(`M${P(k.back[0] - k.bw * 0.6, k.neck[1] + k.H * 0.03)} L${P(k.back[0] + k.bw * 0.85, k.back[1] + k.H * 0.08)}`, `fill="none" stroke="#5a3a24" stroke-width="${n1(k.H * 0.032)}" stroke-linecap="round"`) + path(`M${P(k.back[0] - k.bw * 0.6, k.neck[1] + k.H * 0.03)} L${P(k.back[0] + k.bw * 0.85, k.back[1] + k.H * 0.08)}`, `fill="none" stroke="${PC.yellow}" stroke-width="${n1(k.H * 0.008)}" stroke-dasharray="${n1(k.H * 0.02)} ${n1(k.H * 0.025)}"`),
+  weed_basket: (C, k, col = '#c8a165') => path(`M${P(k.back[0] + k.bw * 0.5, k.neck[1] + k.H * 0.02)} L${P(k.back[0] - k.bw * 0.8, k.back[1] - k.H * 0.02)}`, `fill="none" stroke="${shade(col, -0.35)}" stroke-width="${n1(k.H * 0.03)}" stroke-linecap="round"`),
+  delivery_box: (C, k, col = '#c69c6d') => mirror(path(`M${P(k.back[0] - k.bw * 0.55, k.neck[1] + k.H * 0.02)} Q${P(k.back[0] - k.bw * 0.75, k.back[1], k.back[0] - k.bw * 0.62, k.back[1] + k.H * 0.2)}`, `fill="none" stroke="${shade(col, -0.4)}" stroke-width="${n1(k.H * 0.035)}" stroke-linecap="round"`)),
+  armor_plate: (C, k, col = '#9aa5b1') => {
+    const [x, by] = k.back;
+    const y = by - k.H * 0.24;
+    const w = k.bw * 0.55;
+    const h = k.H * 0.28;
+    const dark = shade(col, -0.25);
+    return (
+      path(`M${P(x - w, y)} Q${P(x, y + k.H * 0.05, x + w, y)} L${P(x + w * 0.88, y + h * 0.75)} Q${P(x, y + h * 1.1, x - w * 0.88, y + h * 0.75)}Z`, ln(C, col)) +
+      path(`M${P(x, y + k.H * 0.04)} L${P(x, y + h * 0.9)}`, `stroke="${dark}" stroke-width="${n1(C.lw * 0.9)}"`) +
+      path(`M${P(x - w * 0.6, y + h * 0.25)} Q${P(x - w * 0.5, y + h * 0.55, x - w * 0.2, y + h * 0.7)}`, `fill="none" stroke="#fff" stroke-width="${n1(C.lw * 1.2)}" stroke-linecap="round" opacity=".75"`) +
+      [-1, 1].map((s) => circ(x + s * w * 0.7, y + k.H * 0.035, k.H * 0.016, `fill="${shade(col, 0.45)}" stroke="${dark}" stroke-width="${n1(C.lw * 0.4)}"`)).join('')
+    );
+  },
 };
 
 const DEFAULT_PROP_COLOR = { head: '#ff7eb6', face: '#5b4a44', neck: '#e2453c', hand: '#ff6b8a', back: '#f2a65a' };

@@ -9,6 +9,7 @@ import { effectsFor } from './news.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 import { MERIT_ID, cardDef, clubCardRoll, gainCard, hasCard, injuryProof, itemSalaryMult, loseCard, meritCount, salaryCardMult, salaryCharmMult, syncInjuryCard, tryAmulet } from './cards.js';
 import { payAllowances, spouseSalary } from './family.js';
+import { getJobs } from '../data/index.js';
 
 export const PART_TIME_ID = 'parttime';
 
@@ -16,12 +17,16 @@ export const allJobs = (data) => data.jobs?.jobs ?? [];
 export const regularJobs = (data) => allJobs(data).filter((j) => !j.hidden);
 export const hiddenJobs = (data) => allJobs(data).filter((j) => j.hidden);
 
-/** Job definition by id (the part-time job included). */
+/**
+ * Job definition by id (the part-time job included). 세계 설정: a job missing in the room's world (an old save, a test
+ * hiring a real-world job in a 치이카와 room) falls back to the real-world definition so the engine keeps working;
+ * offers / eligibility / hidden unlocks only ever read the world's own list.
+ */
 export function jobDef(data, id) {
   if (!id) return null;
   const pt = data.jobs?.partTime;
   if (id === PART_TIME_ID || id === pt?.id) return pt ?? null;
-  return allJobs(data).find((j) => j.id === id) ?? null;
+  return allJobs(data).find((j) => j.id === id) ?? getJobs().jobs.find((j) => j.id === id) ?? null;
 }
 
 export const maxRank = (def) => Math.max(1, def?.ranks?.length ?? 1);
@@ -48,18 +53,34 @@ export const jobCardRequirements = (def) => def?.requires?.cards ?? [];
 /** Requirement cards of a job the character does not hold. */
 export const missingJobCards = (c, def) => jobCardRequirements(def).filter((id) => !hasCard(c, id));
 
-/** Does a character meet a (regular) job's requirements (stats, degree, requirement cards) under the given news effects? */
+/** 세계 설정: 풀뽑기 검정 level (0 = 무자격, 1 = 5급 … 5 = 1급) and 토벌 wins of a character. */
+export const weedLevel = (c) => c?.weed?.level ?? 0;
+export const huntCount = (c) => c?.hunts ?? 0;
+
+/**
+ * Does a character meet a (regular) job's requirements (stats, degree, requirement cards; 치이카와 모드: `weed` = 풀뽑기
+ * 검정 level ≥, `hunts` = 토벌 wins ≥) under the given news effects?
+ */
 export function meetsRequirements(c, def, eff) {
   const req = jobRequirements(def, eff);
   for (const [k, v] of Object.entries(req)) if ((c.stats?.[k] ?? 0) < v) return false;
   const edu = def?.requires?.education;
   if (edu && (EDU_RANK[c.education] ?? 0) < (EDU_RANK[edu] ?? 0)) return false;
   if (missingJobCards(c, def).length) return false;
+  if (def?.requires?.weed != null && weedLevel(c) < def.requires.weed) return false;
+  if (def?.requires?.hunts != null && huntCount(c) < def.requires.hunts) return false;
   return true;
 }
 
-/** Merit cards the next rank-up of a job needs (jobs.json `rankUp.merit`; 0 = none). */
-export const meritNeeded = (def) => Math.max(0, def?.rankUp?.merit ?? 0);
+/**
+ * Merit cards a rank-up of a job needs (jobs.json `rankUp.merit`; 0 = none). `toRank` = the rank being reached: with
+ * `rankUp.meritFrom` only rank-ups INTO ranks ≥ meritFrom need them (토벌대: 조장 / 대장).
+ */
+export const meritNeeded = (def, toRank = null) => {
+  const n = Math.max(0, def?.rankUp?.merit ?? 0);
+  const from = def?.rankUp?.meritFrom;
+  return n && toRank != null && from != null && toRank < from ? 0 : n;
+};
 
 /** Grant a 🏅 공적 카드 (`why` = a short Korean reason for the log). */
 export function grantMerit(tx, c, why) {
@@ -154,6 +175,8 @@ export function salaryAmount(tx, c) {
   if (job.injured > 0) mult *= cfg.injurySalaryMult ?? 0.5;
   mult *= itemSalaryMult(data, c); // Stage 7: 노트북 (+10 % for creative / e-sports jobs)
   mult *= salaryCharmMult(data, c); // 💴 월급 부적 (blue card): +10 % while held
+  mult *= eff.jobSalaryMult?.[def?.id] ?? 1; // 세계 설정 news: a per-job salary multiplier (라멘 값 인상 …)
+  if (def?.salaryPerWeedLevel) mult *= 1 + def.salaryPerWeedLevel * weedLevel(c); // 풀뽑기 일꾼: + per 검정 level
   return round5(base * mult);
 }
 
@@ -190,7 +213,7 @@ export function tryRankUp(tx, c, { exam = false } = {}) {
     addLog(tx, `🤕 ${c.name}: 부상 때문에 승진 심사를 받지 못했다…`, { tone: 'bad', charId: c.id, emotion: 'cry' });
     return 'blocked';
   }
-  const need = meritNeeded(def); // 🏅 some jobs need merit cards in the hand to be considered
+  const need = meritNeeded(def, job.rank + 1); // 🏅 some jobs need merit cards in the hand to be considered
   if (need > meritCount(c)) {
     if (exam) addLog(tx, `🏅 ${c.name}: 공적 카드가 ${need}장 있어야 승진 심사를 받을 수 있다…`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
     return 'noMerit';
@@ -210,7 +233,7 @@ export function tryRankUp(tx, c, { exam = false } = {}) {
     addLog(tx, `🎉 ${c.name} 승진! ${def.name} 「${rn}」 (★${job.rank})`, { tone: 'good', charId: c.id, emotion: 'joy' });
     const gain = data.balance.jobs.rankUpStatGain ?? 0;
     if (gain && def.rankUp?.stat) addStats(tx, c, { [def.rankUp.stat]: gain }, 'rankUp');
-    if (exam && need && meritCfg(data).exam !== false && job.rank < maxRank(def)) grantMerit(tx, c, '승진 시험 합격으로');
+    if (exam && meritNeeded(def, job.rank + 1) && meritCfg(data).exam !== false && job.rank < maxRank(def)) grantMerit(tx, c, '승진 시험 합격으로');
     return 'up';
   }
   if (exam) addLog(tx, `😓 ${c.name}, 승진 시험에서 아쉽게 떨어졌다`, { tone: 'bad', charId: c.id, emotion: 'sweat' });
@@ -238,6 +261,13 @@ export function rollInjury(tx, c) {
   syncInjuryCard(tx, c); // the 🤕 status card occupies a hand slot until it heals
   return true;
 }
+
+/**
+ * Payday hooks `(tx, c, jobDef)` run after the salary of a character with a job (before exp / rank-up / injury) —
+ * registered by modules that would otherwise import jobs.js in a cycle (hunt.js: the 토벌대 patrol and the 풀뽑기 일꾼
+ * 검정 of the 치이카와 모드 jobs, data flags `paydayPatrol` / `paydayWeedExam`).
+ */
+export const PAYDAY_HOOKS = [];
 
 /** Military pay (while serving a salary tile / every serving spin pays this instead of a job salary). */
 export function militaryPay(tx, c, why = '군 월급') {
@@ -270,6 +300,7 @@ export function paySalary(tx, c) {
   }
   payAllowances(tx, c); // Stage 8: star pets earn 펫 광고 수입
   if (!job) return amount;
+  for (const hook of PAYDAY_HOOKS) hook(tx, c, def); // 세계 설정: 토벌대 순찰 / 풀뽑기 일꾼 검정 (hunt.js)
   job.exp += tx.data.balance.jobs.expPerSalary ?? 1;
   const mc = meritCfg(tx.data);
   // 🏅 jobs whose promotions need merit cards earn them on the job now and then
@@ -326,6 +357,8 @@ export function unlockMet(tx, c, def) {
   if (u.house && !u.house.includes(c.house?.id)) return false;
   if (u.anyOf && !u.anyOf.some((sub) => unlockMet(tx, c, { unlock: sub }))) return false;
   if (u.cards && !u.cards.every((id) => hasCard(c, id))) return false; // requirement cards (국민 MC: 카리스마◎)
+  if (u.weed != null && weedLevel(c) < u.weed) return false; // 치이카와 모드: 풀뽑기 1급 명인 (검정 level)
+  if (u.hunts != null && huntCount(c) < u.hunts) return false; // 치이카와 모드: 전설의 토벌자 (토벌 wins)
   return true;
 }
 
@@ -412,7 +445,7 @@ registerPrompts({
       if (!top) {
         const p = rankUpChance(tx, c, { exam: true });
         const next = rankName(def, c.job.rank + 1);
-        const need = meritNeeded(def);
+        const need = meritNeeded(def, c.job.rank + 1);
         const have = meritCount(c);
         const short = need > have;
         options.push({

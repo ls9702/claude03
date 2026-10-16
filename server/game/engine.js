@@ -1,7 +1,7 @@
 // Game engine: pure reducer `applyAction(room, action, ctx) → { room, events, logs }`.
 // Turn state machine: awaitSpin → resolveSpace → (awaitDecision)* → endTurn → next character.
 // Never mutates its input; randomness only from ctx.rng (default: restored from room.rngState).
-import { gameData } from '../data/index.js';
+import { roomData } from './world.js';
 import { HALT_TYPES, buildBoard, findTile, nextPosition, startPosition, tileAt, tileIdAt, wrapsAt } from './board.js';
 import {
   EngineError,
@@ -50,6 +50,7 @@ import { drawHousingMarket, houseValue, syncHouseOwners } from './houses.js';
 import { ensureRoomTreasures, ensureTreasures } from './treasures.js';
 import { ensureRecord, initRecord, recordHighlights, topHighlights, trackRecords } from './highlights.js';
 import { migrateRoomLooks } from './avatar.js';
+import { ensureWorldFields } from './hunt.js'; // 세계 설정: registers the hunt / weed prompts; 토벌 / 풀뽑기 fields
 import './submaps.js'; // Stage 9: registers the hometown / temple / jeju / reversal prompts
 import { enterPassTile } from './passTile.js'; // loop maps: 찬스 광장
 import { finishCharacter } from './finish.js'; // final era: goal order / 조기 은퇴 / 올인 파산
@@ -62,11 +63,15 @@ export const ACTION_TYPES = ['spin', 'choose', 'bet', 'timeout', 'skip', 'useCar
 export const RESULT_ACTIONS = ['vote', 'closeVote'];
 export const BET_KINDS = ['oddEven', 'range'];
 
+/**
+ * Engine context: rng (restored from the room), now, and the data of the room's WORLD (세계 설정: gameData() or a
+ * test's `ctx.data` with the world overlay merged — a room without `config.world` plays the real world as is).
+ */
 function makeCtx(room, ctx = {}) {
   return {
     rng: ctx.rng ?? createRng(room.rngState ?? room.seed ?? 0),
     now: ctx.now ?? Date.now(),
-    data: ctx.data ?? gameData(),
+    data: roomData(room, ctx.data),
   };
 }
 
@@ -117,6 +122,9 @@ export function startGame(room, ctx = {}) {
     // Stage 9: treasures [{uid, id}] (values hidden in room.treasureValues), 사찰 소원 성취 횟수, life record counters
     treasures: [],
     wishes: 0,
+    // 세계 설정 (치이카와 모드 activities; public): 토벌 wins, 풀뽑기 검정 {level 0..5, tries}
+    hunts: 0,
+    weed: { level: 0, tries: 0 },
   }));
   for (const c of next.characters) c.record = initRecord(c);
   // The board is public; without a secret, its tiles would reveal the seed and so every future spin.
@@ -169,7 +177,7 @@ export function endGame(room, ctx = {}) {
   if (r.room.board && r.room.characters.every((c) => typeof c.money === 'number')) {
     for (const c of r.room.characters) ensureTreasures(ensureRecord(c));
     ensureRoomTreasures(r.room);
-    applyResult(r.room, now, { forced: true, ...(ctx.data ? { data: ctx.data } : {}) });
+    applyResult(r.room, now, { forced: true, data: roomData(r.room, ctx.data) });
   }
   return r;
 }
@@ -863,6 +871,7 @@ export function applyAction(room, action, ctx = {}) {
     ensureCards(ch); // … and Stage 7
     ensureFamily(ch); // … and Stage 8
     ensureTreasures(ch); // … and Stage 9
+    ensureWorldFields(ch); // … and the world setting (토벌 / 풀뽑기)
     if (!ch.record) ensureRecord(ch);
   }
   ensureRoomTreasures(next);

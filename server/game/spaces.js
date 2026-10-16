@@ -14,6 +14,7 @@ import { resolveHouseTile } from './houses.js';
 import { SUBMAPS, resolveSubmapTile } from './submaps.js';
 import { resolveTreasureTile } from './treasures.js';
 import { resolvePassTile } from './passTile.js';
+import { resolveHuntTile, resolveWeedTile } from './hunt.js'; // 세계 설정: 토벌 / 풀뽑기 검정 (치이카와 모드 pools)
 
 export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
@@ -133,7 +134,7 @@ function runEvent(tx, c, era) {
   if (ev.money) {
     const scale = ev.scale ? (tx.data.balance.eventScale[era.id] ?? 1) : 1;
     const eff = effectsFor(tx, c);
-    delta = tx.rng.int(ev.money.min, ev.money.max) * scale * eff.eventMoneyMult;
+    delta = tx.rng.int(ev.money.min, ev.money.max) * scale * eff.eventMoneyMult * (eff.eventMult?.[ev.id] ?? 1);
     if (delta > 0) delta *= eff.incomeMult ?? 1; // CPU handicap (gains only)
     if (delta > 0 && hasBuff(c, 'moneyX15')) delta *= 1.5; // 💰 행운 주머니 (찬스 광장 buff)
     delta = Math.abs(delta) < 5 ? Math.round(delta) : round5(delta);
@@ -222,6 +223,11 @@ export function resolveTile(tx, c, tile, { onGoal } = {}) {
     case 'jeju':
     case 'reversal':
       return resolveSubmapTile(tx, c, tile) ? 'prompt' : null;
+    case 'hunt': // 세계 설정 (치이카와 모드): 토벌 — ⚔️ 싸운다 / 🏃 도망친다
+      return resolveHuntTile(tx, c) ? 'prompt' : null;
+    case 'weed': // 세계 설정 (치이카와 모드): 풀뽑기 검정소 — 🌿 일하기 / 📝 검정 응시
+      resolveWeedTile(tx, c);
+      return 'prompt';
     case 'stop':
       if (tile.promptId === 'routeChoice') return null; // opened by the turn epilogue after life decisions
       if (PROMPTS[tile.promptId]) {

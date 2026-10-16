@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getBalance, getEras } from '../data/index.js';
+import { WORLD_INFO } from '../game/world.js';
 import { TURN_TIMEOUTS, defaultRoomConfig, finalLengthLimits, loopMeta, minTurnsTable, validateRoomConfig } from '../game/config.js';
 import { adminSummary, adminView } from '../game/view.js';
 import { addCpuCharacter, removeCpuCharacter, setCpuPersonality } from '../game/lobby.js';
@@ -144,7 +145,7 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
     const eras = getEras();
     // Form hints: minimum turns per era for each mode (route eras ≥ 3; the final era = goal race, no turn limit) +
     // turn timer choices + loop map sizes (admin estimate) + the final race length limits.
-    res.json({ eras, defaults: defaultRoomConfig(), turnTimeouts: TURN_TIMEOUTS, minTurns: minTurnsTable(), loop: loopMeta(), finalLength: finalLengthLimits(), cpu: cpuMeta(getBalance()) });
+    res.json({ eras, defaults: defaultRoomConfig(), turnTimeouts: TURN_TIMEOUTS, minTurns: minTurnsTable(), loop: loopMeta(), finalLength: finalLengthLimits(), cpu: cpuMeta(getBalance()), worlds: WORLD_INFO });
   });
 
   router.get('/rooms', requireAdmin, (req, res) => {

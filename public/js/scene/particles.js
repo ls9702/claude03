@@ -56,7 +56,7 @@ function shapeTexture(kind) {
 }
 
 /** Particle kind for a landed tile type. */
-export const BURST_FOR_TILE = { money: 'coin', heart: 'heart', loss: 'drop', event: 'star', card: 'star', job: 'star', treasure: 'coin', house: 'coin', shop: 'star', stop: 'star', goal: 'confetti', merge: 'star' };
+export const BURST_FOR_TILE = { money: 'coin', heart: 'heart', loss: 'drop', event: 'star', card: 'star', job: 'star', treasure: 'coin', house: 'coin', shop: 'star', stop: 'star', goal: 'confetti', merge: 'star', hunt: 'star', weed: 'star' };
 
 const CONFETTI_COLORS = ['#ff5c5c', '#ffd23f', '#4f8ee0', '#5cb87a', '#ff7eb6', '#9a6ad6'];
 

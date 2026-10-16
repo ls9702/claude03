@@ -49,6 +49,7 @@
 5. **통합 E2E**(Sonnet 4명: 실제 멀티플레이 플레이테스트 / 규칙·안정성 퍼징 / UI 몽키 / 밸런스) — 버그만 찾고 수정은 사용자와 협의.
 6. 관리자 에셋 페이지 종류 필터에 새 kind(chara, prop) 추가.
 7. 10단계: systemd, README(라즈베리파이), 저장 복원 확인, BGM 시대 전환, 치킨 내기 정산표.
+8. **세계 설정(14단계)**: 서버(CW-A) 완료 — 방 설정 `world` 🐹 치이카와 모드(새 방 기본) / 🏙️ 현실 모드, 오버레이 `server/data/worlds/chiikawa.json` + 순수 모듈 `public/js/shared/world.js`(`worldData`), 토벌·풀뽑기 검정·쿠지 규칙, 치이카와 직업·아이템·카드·보물·이벤트·뉴스·대사, CPU, `simulate.js` / `cpu-game.js --world`. 클라이언트(CW-B) 완료: 방의 세계 메타(`worldMeta`), 토벌 전투 카드·풀뽑기 검정소 카드(컷인 + 2D 시트), 토벌·풀뽑기·쿠지 컷인(키메라 4종 SVG, 합격 도장, 쿠지 상자·티켓·1등 인형), 풀밭·토벌 숲·라멘 「郎」·쿠지 가게 SVG 배경, ⚔️/🌿 타일(2D 글리프, 3D 마커), 사이드 목록 🌿 n급·⚔️ 토벌 n회, 요구 조건 배지, 새 소품 10종 2D/3D 그림, 로비 세계 안내 줄. 계약: 세션 스크래치패드 `cworld-contract.md` / `cworld-deviations.md`, 사실은 CLAUDE.md "World setting".
 
 ## 6. 작업 방식
 

@@ -2,6 +2,10 @@
 import { charaToken, setCharaMeta } from './ui/chara.js';
 import { cpuHandicapText, cpuPersonalityHtml, cpuPersonalityOptions, ownerHtml } from './format.js';
 import { LONG_GAME_TURNS, SEC_PER_TURN, lapSize, loopConfig } from './shared/loop.js';
+import { worldLabel, worldOf } from './shared/world.js';
+
+/** 세계 설정 line of the room detail (a room without `world` = an old save = 현실 모드). */
+const worldText = (room) => `${worldLabel(worldOf(room))}${worldOf(room) === 'chiikawa' ? ' (토벌·풀뽑기 검정·쿠지)' : ' (현실 세계 직업·아이템·로또)'}`;
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) =>
@@ -282,6 +286,8 @@ async function onCreate(ev) {
     turnOrder: f.turnOrder.value,
     mcFrequency: f.mcFrequency.value,
   };
+  // 세계 설정: always sent (🐹 치이카와 모드 = the default of new rooms; 🏙️ 현실 모드 = the realistic content)
+  if (f.world?.value) body.world = f.world.value;
   if (race && f.finalLength) body.finalLength = f.finalLength.value === '' ? finalCfg().default : Number(f.finalLength.value);
   const timeout = Number(f.turnTimeoutSec?.value ?? 0);
   if (timeout > 0) body.turnTimeoutSec = timeout;
@@ -370,6 +376,7 @@ async function renderDetail() {
     ${hostTools(room, byId)}
     ${mvpTools(room, byId)}
     <dl class="kv">
+      <dt>세계</dt><dd>${worldText(room)}</dd>
       <dt>모드</dt><dd>${esc(eras.modes[room.config.mode].name)}</dd>
       <dt>시대 길이(턴)</dt><dd>${esc(eraText)}</dd>
       <dt>최대 캐릭터</dt><dd>${room.config.maxCharacters}</dd>

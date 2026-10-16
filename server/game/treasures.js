@@ -45,10 +45,17 @@ export function appraise(rng, def, data) {
  * Emits `treasureFound {charId, uid, treasureId, source}` (a cut-in anchor). @returns the {uid, id} | null
  */
 export function findTreasure(tx, c, source = 'tile') {
-  const room = ensureRoomTreasures(tx.room);
-  const pool = treasurePool(tx.data, c.era);
+  const pool = treasurePool(tx.data, c.era).filter((t) => (t.weight ?? 1) > 0); // weight 0 = never found on a tile (쿠지 경품)
   if (!pool.length) return null;
-  const def = tx.rng.weighted(pool);
+  return giveTreasure(tx, c, tx.rng.weighted(pool), source);
+}
+
+/**
+ * Give a character treasure `def` (a treasures.json entry, e.g. the 쿠지 1등 prize) with a fresh hidden appraisal.
+ * Emits `treasureFound {charId, uid, treasureId, source}`. @returns the {uid, id}
+ */
+export function giveTreasure(tx, c, def, source = 'tile') {
+  const room = ensureRoomTreasures(tx.room);
   const { value, fake } = appraise(tx.rng, def, tx.data);
   room.nextTreasureSeq += 1;
   const t = { uid: `tr${room.nextTreasureSeq}`, id: def.id };

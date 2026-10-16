@@ -1,5 +1,5 @@
 {
-  "_comment": "캐릭터 소품 (CH-1). avatar = {character, props: {head?, face?, neck?, hand?, back?}} — 플레이어는 choice: true 소품만 고를 수 있다(슬롯마다 하나, 없으면 생략). eraProps = 시대별 성장 소품(같은 슬롯의 선택 소품만 덮어쓴다, 다른 슬롯은 그대로; {job: true} = 직업 소품 시대), jobProps = 직업별 소품(jobs.json 각 직업의 props와 같은 표, 테스트가 확인). 방 설정 growthOutfits = 성장 소품 켜기/끄기. color = 기본 색(3D 말·SVG 기본값), tintable = 캐릭터 accent 색으로 칠해도 되는 소품. promptDesc = 그림 요청용 영어 설명. id는 에셋 prop-<id> 키(바꾸지 말 것).",
+  "_comment": "캐릭터 소품 (CH-1). avatar = {character, props: {head?, face?, neck?, hand?, back?}} — 플레이어는 choice: true 소품만 고를 수 있다(슬롯마다 하나, 없으면 생략). eraProps = 시대별 성장 소품(같은 슬롯의 선택 소품만 덮어쓴다, 다른 슬롯은 그대로; {job: true} = 직업 소품 시대), jobProps = 직업별 소품(jobs.json 각 직업의 props와 같은 표, 테스트가 확인 — 🐹 치이카와 모드(server/data/worlds/chiikawa.json)의 직업도 이 표에 있다: 소품은 세계와 상관없음). 방 설정 growthOutfits = 성장 소품 켜기/끄기. color = 기본 색(3D 말·SVG 기본값), tintable = 캐릭터 accent 색으로 칠해도 되는 소품. promptDesc = 그림 요청용 영어 설명. id는 에셋 prop-<id> 키(바꾸지 말 것).",
   "slots": [
     {"id":"head","name":"머리"},
     {"id":"face","name":"얼굴"},
@@ -38,6 +38,10 @@
     {"id":"cape","slot":"back","name":"망토","icon":"🧥","choice":true,"color":"#d94a6a","tintable":true,"promptDesc":"a short hero cape flowing behind"},
     {"id":"wings","slot":"back","name":"천사 날개","icon":"🪽","choice":true,"color":"#ffffff","promptDesc":"two small white angel wings on the back"},
     {"id":"teddy_bag","slot":"back","name":"곰인형 가방","icon":"🧸","choice":true,"color":"#b07a4e","promptDesc":"a teddy-bear shaped backpack"},
+    {"id":"sasumata","slot":"hand","name":"사스마타","icon":"🔱","choice":true,"color":"#8a6b4a","promptDesc":"a sasumata: a long wooden pole with a U-shaped metal fork at the top, held upright"},
+    {"id":"armor_helmet","slot":"head","name":"갑옷 투구","icon":"🪖","choice":true,"color":"#9aa5b1","promptDesc":"a small round grey metal armor helmet with a tiny crest"},
+    {"id":"guitar","slot":"back","name":"기타","icon":"🎸","choice":true,"color":"#d08a3a","promptDesc":"a small acoustic guitar slung on the back with a strap"},
+    {"id":"head_towel","slot":"head","name":"머리 수건","icon":"🧖","choice":true,"color":"#f4f1ea","promptDesc":"a white towel tied around the head like a ramen cook's headband"},
     {"id":"bonnet","slot":"head","name":"아기 보닛","icon":"👶","choice":false,"color":"#fbe3ee","promptDesc":"a frilly baby bonnet tied under the chin"},
     {"id":"pacifier","slot":"face","name":"쪽쪽이","icon":"🍼","choice":false,"color":"#8ad0f0","promptDesc":"a baby pacifier in the mouth"},
     {"id":"yellow_hat","slot":"head","name":"노란 학교 모자","icon":"🟡","choice":false,"color":"#ffd23f","promptDesc":"a yellow elementary-school safety cap"},
@@ -67,7 +71,13 @@
     {"id":"space_helmet","slot":"head","name":"우주 헬멧","icon":"🪐","choice":false,"color":"#dfe9f3","promptDesc":"a round glass astronaut helmet"},
     {"id":"beard","slot":"face","name":"산신령 수염","icon":"☁️","choice":false,"color":"#ffffff","promptDesc":"a long fluffy white mountain-spirit beard"},
     {"id":"golden_mic","slot":"hand","name":"황금 마이크","icon":"🏆","choice":false,"color":"#d4a017","promptDesc":"a shiny golden broadcast microphone"},
-    {"id":"apron","slot":"neck","name":"앞치마","icon":"🧾","choice":false,"color":"#6aa84f","promptDesc":"a small work apron"}
+    {"id":"apron","slot":"neck","name":"앞치마","icon":"🧾","choice":false,"color":"#6aa84f","promptDesc":"a small work apron"},
+    {"id":"weed_basket","slot":"back","name":"풀 바구니","icon":"🧺","choice":false,"color":"#c8a165","promptDesc":"a woven basket full of pulled weeds carried on the back"},
+    {"id":"ladle","slot":"hand","name":"국자","icon":"🥄","choice":false,"color":"#b0b7c3","promptDesc":"a big silver soup ladle"},
+    {"id":"hammer","slot":"hand","name":"망치","icon":"🔨","choice":false,"color":"#8a6b4a","promptDesc":"a small wooden-handled blacksmith hammer"},
+    {"id":"turner","slot":"hand","name":"뒤집개","icon":"🍳","choice":false,"color":"#c0c6cf","promptDesc":"a flat metal pancake turner spatula"},
+    {"id":"delivery_box","slot":"back","name":"배달 상자","icon":"📦","choice":false,"color":"#c69c6d","promptDesc":"a cardboard delivery box strapped on the back"},
+    {"id":"armor_plate","slot":"back","name":"갑옷 등판","icon":"🛡️","choice":false,"color":"#9aa5b1","promptDesc":"a shiny grey metal armor back plate with straps"}
   ],
   "eraProps": {
     "baby": {"head":"bonnet","face":"pacifier"},
@@ -102,6 +112,22 @@
     "mountain_spirit": {"face":"beard"},
     "chaebol": {"head":"crown"},
     "national_mc": {"hand":"golden_mic"},
-    "parttime": {"neck":"apron"}
+    "parttime": {"neck":"apron"},
+    "weeder": {"head":"straw_hat","back":"weed_basket"},
+    "hunter": {"head":"armor_helmet","hand":"sasumata"},
+    "ramen": {"head":"head_towel","hand":"ladle"},
+    "workshop": {"neck":"apron","hand":"hammer"},
+    "bookstore": {"face":"round_glasses","hand":"book"},
+    "busker": {"back":"guitar"},
+    "pancake": {"head":"chef_hat","hand":"turner"},
+    "photographer": {"hand":"camera"},
+    "sento": {"head":"head_towel"},
+    "delivery": {"head":"baseball_cap","back":"delivery_box"},
+    "fisher": {"head":"straw_hat","hand":"fishing_rod"},
+    "cafe": {"neck":"apron"},
+    "legend_hunter": {"hand":"sasumata","back":"cape"},
+    "weed_sage": {"head":"straw_hat","hand":"flower"},
+    "ramen_owner": {"head":"head_towel","neck":"bow_tie"},
+    "armor_san": {"head":"armor_helmet","back":"armor_plate"}
   }
 }

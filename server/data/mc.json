@@ -1,5 +1,5 @@
 {
-  "_comment": "MC NPC (Stage 5.6, Stage 6 adds job/promotion/hiddenJob/injury/military/news — only on real outcomes, never on a job tile landing; Stage 7 adds sabotage/blocked/shopping/holiday (studio)/lotto (studio)/gift; Stage 8: marriage (married = 단짝 동거 · 집들이 파티), proposeFail (「같이 살자!」 실패), birth (childBorn = 반려동물 입양), house (houseBought), market (studio, 노년 시세), schoolMeet (고교 첫 친구) — heart/house TILE landings never map here; CH-1 keeps the situation keys): 사용자의 반려견 시츄 두 마리가 진행 MC. 프로필·색·표정/포즈 목록, 상황(situation) 메타(big/medium/minor 가중치, 대표 화자, 기본 표정·포즈, 쓸 수 있는 자리표시자), 등장 빈도 설정. 대사 풀은 lines.json의 mc.<상황>.<hoya|bomi|duo>.",
+  "_comment": "MC NPC (Stage 5.6, Stage 6 adds job/promotion/hiddenJob/injury/military/news — only on real outcomes, never on a job tile landing; Stage 7 adds sabotage/blocked/shopping/holiday (studio)/lotto (studio)/gift; Stage 8: marriage (married = 단짝 동거 · 집들이 파티), proposeFail (「같이 살자!」 실패), birth (childBorn = 반려동물 입양), house (houseBought), market (studio, 노년 시세), schoolMeet (고교 첫 친구) — heart/house TILE landings never map here; CH-1 keeps the situation keys): 사용자의 반려견 시츄 두 마리가 진행 MC. 프로필·색·표정/포즈 목록, 상황(situation) 메타(big/medium/minor 가중치, 대표 화자, 기본 표정·포즈, 쓸 수 있는 자리표시자), 등장 빈도 설정. 대사 풀은 lines.json의 mc.<상황>.<hoya|bomi|duo>. 세계 설정 (치이카와 모드만): huntWin (토벌 승리, 데카츠요면 big) / huntLose (토벌 패배) / weedPass (풀뽑기 검정 합격, 1급이면 big).",
   "order": ["hoya", "bomi"],
   "expressions": ["neutral", "joy", "surprise", "sad", "angry", "proud", "sleepy"],
   "poses": ["idle", "wave", "clap", "mic"],
@@ -497,6 +497,30 @@
       "vars": ["name"],
       "hoya": {"expression": "joy", "pose": "clap"},
       "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "huntWin": {
+      "weight": "medium",
+      "lead": "hoya",
+      "duo": "chance",
+      "vars": ["name", "monster", "amount"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
+    },
+    "huntLose": {
+      "weight": "medium",
+      "lead": "bomi",
+      "duo": "chance",
+      "vars": ["name", "monster"],
+      "hoya": {"expression": "sad", "pose": "idle"},
+      "bomi": {"expression": "neutral", "pose": "mic"}
+    },
+    "weedPass": {
+      "weight": "medium",
+      "lead": "any",
+      "duo": "chance",
+      "vars": ["name", "grade"],
+      "hoya": {"expression": "joy", "pose": "clap"},
+      "bomi": {"expression": "proud", "pose": "mic"}
     }
   },
   "eraSituations": {

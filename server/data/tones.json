@@ -146,9 +146,17 @@
     "temple": {"label": "산사", "bg": "bg-temple"},
     "jeju": {"label": "제주도", "bg": "bg-jeju"},
     "casino": {"label": "인생역전 경마장", "bg": "bg-casino"},
+    "weed-field": {"label": "풀밭", "bg": "bg-weed-field"},
+    "hunt-forest": {"label": "토벌 숲", "bg": "bg-hunt-forest"},
+    "ramen-shop": {"label": "라멘 가게 「郎」", "bg": "bg-ramen-shop"},
+    "workshop": {"label": "갑옷씨 공방", "bg": "bg-workshop"},
+    "sento": {"label": "목욕탕", "bg": "bg-sento"},
+    "bookstore": {"label": "고서점", "bg": "bg-bookstore"},
+    "cafe": {"label": "카페", "bg": "bg-cafe"},
+    "kuji": {"label": "쿠지 가게", "bg": "bg-kuji"},
     "none": {"label": "", "bg": null}
   },
-  "_sceneFallbacksComment": "Stage 7: scenes whose bg asset is not accepted yet are drawn with the fallback scene's bg (client resolves; chains end at the 5 original scenes).",
+  "_sceneFallbacksComment": "Stage 7: scenes whose bg asset is not accepted yet are drawn with the fallback scene's bg (client resolves; chains end at the 5 original scenes). 세계 설정: sento → house → office is a 2-step chain (house has no art yet either).",
   "sceneFallbacks": {
     "stage": "wedding-hall",
     "stadium": "mountain-trail",
@@ -166,7 +174,15 @@
     "hometown": "mountain-trail",
     "temple": "mountain-trail",
     "jeju": "mountain-trail",
-    "casino": "office"
+    "casino": "office",
+    "weed-field": "park",
+    "hunt-forest": "mountain-trail",
+    "ramen-shop": "kitchen",
+    "workshop": "office",
+    "sento": "house",
+    "bookstore": "office",
+    "cafe": "kitchen",
+    "kuji": "shop"
   },
   "eraScenes": {
     "baby": "hospital",
@@ -257,7 +273,15 @@
     "reversal_skip": "casino",
     "mvp": "stage",
     "goal": "mountain-trail",
-    "goal_first": "mountain-trail"
+    "goal_first": "mountain-trail",
+    "hunt": "hunt-forest",
+    "hunt_win": "hunt-forest",
+    "hunt_lose": "hunt-forest",
+    "hunt_run": "hunt-forest",
+    "weed": "weed-field",
+    "weed_work": "weed-field",
+    "weed_pass": "weed-field",
+    "weed_fail": "weed-field"
   },
   "eventScenes": {"rain": "mountain-trail", "phone": "school", "lucky": "mountain-trail", "found_money": "school"},
   "cutinTiles": [
@@ -293,6 +317,8 @@
     "temple": "good",
     "jeju": "love",
     "reversal": "treasure",
+    "hunt": "career",
+    "weed": "good",
     "pass": "good",
     "start": "neutral",
     "goal": "result"
@@ -354,6 +380,12 @@
     "jackpot": "fanfare",
     "reversalLose": "thud",
     "mvpVoted": "pop",
-    "mvpDecided": "fanfare"
+    "mvpDecided": "fanfare",
+    "huntResult": "whoosh",
+    "huntWin": "fanfare",
+    "huntLose": "thud",
+    "weedResult": "pop",
+    "weedPass": "fanfare",
+    "kuji": "fanfare"
   }
 }

@@ -1,6 +1,7 @@
 // Player REST API: session, join, characters, ready, reactions.
 import express from 'express';
-import { getAvatars, getAwards, getBalance, getBoardData, getCards, getEras, getHolidays, getHouses, getItems, getJobs, getLines, getMc, getNews, getNpcs, getPartners, getPets, getProps, getRoster, getTitles, getTones, getTreasures } from '../data/index.js';
+import { getAvatars, getAwards, getBalance, getBoardData, getCards, getEras, getHolidays, getHouses, getHunts, getItems, getJobs, getLines, getMc, getNews, getNpcs, getPartners, getPets, getProps, getRoster, getTitles, getTones, getTreasures, getWorldOverlays } from '../data/index.js';
+import { WORLD_INFO } from '../game/world.js';
 import {
   addCharacter,
   addCpuCharacter,
@@ -54,7 +55,7 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
 
   router.get('/meta', async (req, res) => {
     const board = getBoardData();
-    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, jobs, cpu } = getBalance();
+    const { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, lottoMode, kuji, weed, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, jobs, cpu } = getBalance();
     const charArtOn = charArt ? await charArt.enabled() : false;
     res.json({
       eras: getEras(),
@@ -72,7 +73,8 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       finalLength: finalLengthLimits(),
       // roulette: 실력 모드 jitter; loop maps: salary (용돈), passTile (찬스 광장), chanceBuffs, clubs; final race goalPrizes
       // blue / red cards: cardSources (graduation stat → requirement card), merit (🏅 공적 카드 chances of balance.jobs)
-      balance: { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, merit: jobs?.merit ?? null },
+      // 세계 설정: lottoMode (numbers = 전국 로또 | kuji = 쿠지 뽑기, the Chiikawa overlay), kuji (prizes), weed (풀뽑기 검정)
+      balance: { bets, spin, bonusSpinUnit, goalPrizes, retirePrizeMult, stats, military, career, lotto, lottoMode: lottoMode ?? 'numbers', kuji: kuji ?? null, weed: weed ?? null, shop, trades, submaps, result, roulette, salary, passTile, chanceBuffs, clubs, cardSources, merit: jobs?.merit ?? null },
       presentation: getTones(), // Stage 5: tone → frame/colors/sfx, scenes (cut-ins + audio)
       features: { charArt: charArtOn }, // Stage 5.5-D: a Gemini key is configured → "✨ AI 일러스트 만들기"
       // CPU players: personalities (lobby / admin pickers) + the handicap against people (lobby hint)
@@ -90,6 +92,11 @@ export function createApiRouter({ store, runner, charArt = null, sessionRate = S
       treasures: getTreasures(),
       awards: getAwards(),
       titles: getTitles(),
+      hunts: getHunts(), // 세계 설정: 토벌 monsters + rules (the hunt tile is only in the Chiikawa world's pools)
+      // 세계 설정: this meta is the REAL world; a room's world meta = worldData(meta, room.config.world, worldOverlays)
+      // (public/js/shared/world.js — the overlay as stored: {<dataName>: patch}; its `lines.mc` pools land on meta.lines.mc)
+      worlds: WORLD_INFO,
+      worldOverlays: getWorldOverlays(),
     });
   });
 

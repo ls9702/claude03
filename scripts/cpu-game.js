@@ -15,14 +15,16 @@
 // over the seats and the seats ROTATE from game to game (turn order `index`), so nobody keeps the better seat.
 // `--cpu-personality cautious|normal|bold|mix|random` (default random = the seeded pick of a real room; mix =
 // cautious / normal / bold rotated over the CPU slots), `--cpu-level easy|hard` (default easy = the real CPUs),
-// `--roulette skill`, `--mode lifetime|adult|kids`, `--workers N` (worker threads; same results as 1).
+// `--roulette skill`, `--mode lifetime|adult|kids`, `--workers N` (worker threads; same results as 1),
+// `--world real|chiikawa` (세계 설정; default real so the older numbers stay comparable).
 // Prints ≤ 5 games in detail (or with --verbose) and a summary: human 1st-place share, CPU 1st-place share by
 // personality, average rank / total per side, CPU jobs / routes / education.
 // Importable: `playCpuGame(opts)`, `cpuVsHumans(opts)`, `cpuVsRandom(opts)` (legacy), `targetMatrix(opts)`,
 // `humanAction(policy, room, charId, rng, data)`, `HUMAN_POLICIES`, `TARGETS`.
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { gameData, getRoster } from '../server/data/index.js';
+import { getRoster } from '../server/data/index.js';
+import { WORLDS, dataForWorld, roomData } from '../server/game/world.js';
 import { validateRoomConfig } from '../server/game/config.js';
 import { applyAction, startGame } from '../server/game/engine.js';
 import { addCharacter, addCpuCharacter, joinRoom } from '../server/game/lobby.js';
@@ -67,7 +69,8 @@ const humanSpin = (room, charId, rng) => (room.config?.rouletteMode === 'skill' 
  * The next action of a human proxy (`policy` ∈ HUMAN_POLICIES) for character `charId` — answering the pending prompt,
  * or a card (maybe) / the spin on its turn. `rng` = the harness RNG (never the game RNG).
  */
-export function humanAction(policy, room, charId, rng, data = gameData()) {
+export function humanAction(policy, room, charId, rng, data = null) {
+  data = roomData(room, data);
   if (policy === 'expert') return cpuDecide(room, charId, data, { level: 'hard', personality: 'normal' });
   const p = room.turn.pending;
   const c = room.characters.find((x) => x.id === charId);
@@ -104,7 +107,8 @@ export function seatPlan(n, humans, shift = 0) {
  * slots and `seat`) or undefined / 'random' (the lobby's seeded pick).
  * @returns {{room, ranking, actions}}
  */
-export function playCpuGame({ cpus = 4, humans = 0, humanPolicy = 'random', randoms = 0, mode = 'lifetime', seed = 1, eraTurns, holidays = true, roulette = 'random', data = gameData(), fastLog = true, seat = null, cpuPersonality: persona, cpuLevel } = {}) {
+export function playCpuGame({ cpus = 4, humans = 0, humanPolicy = 'random', randoms = 0, mode = 'lifetime', seed = 1, eraTurns, holidays = true, roulette = 'random', world = 'real', data = null, fastLog = true, seat = null, cpuPersonality: persona, cpuLevel } = {}) {
+  data = dataForWorld(world, data);
   if (randoms && !humans) {
     humans = randoms;
     humanPolicy = 'random';
@@ -112,7 +116,7 @@ export function playCpuGame({ cpus = 4, humans = 0, humanPolicy = 'random', rand
   if (!HUMAN_POLICIES.includes(humanPolicy)) throw new Error(`--human-policy ${HUMAN_POLICIES.join('|')} (got ${humanPolicy})`);
   const meta = createRng(seed * 2654435761);
   const n = cpus + humans;
-  const v = validateRoomConfig({ mode, maxCharacters: Math.min(8, Math.max(2, n)), turnOrder: 'index', holidays, rouletteMode: roulette, ...(eraTurns ? { eraTurns } : {}) });
+  const v = validateRoomConfig({ mode, maxCharacters: Math.min(8, Math.max(2, n)), turnOrder: 'index', holidays, rouletteMode: roulette, world, ...(eraTurns ? { eraTurns } : {}) });
   if (!v.ok) throw new Error(v.errors.join(' '));
   let room = { id: `cpu${seed}`, code: 'CPUCPU', status: 'lobby', config: { ...v.config, allowCpu: true }, players: [], characters: [], turn: null, log: [], seed: meta.int(0, 2 ** 32 - 1), version: 1, nextPlayerSeq: 0, nextCharSeq: 0, createdAt: 0 };
   // legacy layout (seat null, random humans): CPU and human alternate, CPU first — as before
@@ -290,10 +294,10 @@ export async function cpuVsHumans(opts = {}) {
 }
 
 /** Legacy: many mixed CPU vs random games (synchronous, old seat layout) → CPU win share / rank / total. */
-export function cpuVsRandom({ games = 100, seed = 1, cpus = 4, randoms = 4, mode = 'lifetime', roulette = 'random', eraTurns, data = gameData() } = {}) {
+export function cpuVsRandom({ games = 100, seed = 1, cpus = 4, randoms = 4, mode = 'lifetime', roulette = 'random', eraTurns, world = 'real', data = null } = {}) {
   const records = [];
   for (let g = 0; g < games; g++) {
-    const { room, ranking, actions } = playCpuGame({ cpus, randoms, mode, roulette, eraTurns, seed: gameSeed(seed, g), data });
+    const { room, ranking, actions } = playCpuGame({ cpus, randoms, mode, roulette, eraTurns, world, seed: gameSeed(seed, g), data });
     records.push(gameRecord(room, ranking, actions));
   }
   const s = summarize(records);
@@ -313,9 +317,9 @@ export const TARGETS = [
  * Every target in lifetime mode, the casual 1 + 3 case in adult / kids / skill-roulette rooms and against each CPU
  * personality alone. @returns [{label, mode, roulette, personality, min?, summary}]
  */
-export async function targetMatrix({ games = 300, seed = 1, workers = 1, cpuLevel, extra = true } = {}) {
+export async function targetMatrix({ games = 300, seed = 1, workers = 1, cpuLevel, extra = true, world = 'real' } = {}) {
   const rows = [];
-  const run = async (row) => rows.push({ ...row, summary: await cpuVsHumans({ games, seed, workers, cpuLevel, ...row }) });
+  const run = async (row) => rows.push({ ...row, summary: await cpuVsHumans({ games, seed, workers, cpuLevel, world, ...row }) });
   for (const t of TARGETS) await run({ ...t, mode: 'lifetime', roulette: 'random' });
   if (extra) {
     const casual = TARGETS[0];
@@ -339,9 +343,9 @@ function arg(name, def) {
 const pct = (x) => `${(100 * x).toFixed(1)}%`;
 const PERS_KO = { cautious: '🐢 신중', normal: '🙂 보통', bold: '🔥 대담' };
 
-function printSummary(s, { cpus, humans, humanPolicy, mode, roulette, seed, ms }) {
+function printSummary(s, { cpus, humans, humanPolicy, mode, roulette, seed, ms, world = 'real' }) {
   const per = (k) => s.byPers[k];
-  console.log(`\n=== ${s.games}판 · CPU ${cpus} + 사람(${humanPolicy}) ${humans} · ${mode}${roulette === 'skill' ? ' · 룰렛 실력 모드' : ''} · seed ${seed}${ms != null ? ` · ${ms.toFixed(0)}ms` : ''} ===`);
+  console.log(`\n=== ${s.games}판 · CPU ${cpus} + 사람(${humanPolicy}) ${humans} · ${mode}${roulette === 'skill' ? ' · 룰렛 실력 모드' : ''} · 세계 ${world} · seed ${seed}${ms != null ? ` · ${ms.toFixed(0)}ms` : ''} ===`);
   if (humans) console.log(`사람 1위 ${pct(s.humanWinShare)} (인원 비율 ${pct(humans / (cpus + humans))}) · 평균 순위 사람 ${s.avgRank.human.toFixed(2)} / CPU ${s.avgRank.cpu.toFixed(2)} · 평균 총자산 사람 ${s.avgTotal.human.toFixed(0)} / CPU ${s.avgTotal.cpu.toFixed(0)}만원`);
   console.log(`CPU 성향별: ${PERSONALITIES.filter(per).map((k) => `${PERS_KO[k]} ${per(k).n}명 · 1위 ${pct(per(k).wins / per(k).n)} · 평균 순위 ${(per(k).rank / per(k).n).toFixed(2)} · 평균 ${(per(k).total / per(k).n).toFixed(0)}만원`).join(' | ')}`);
   // style per personality: 대학 / 단짝 동거 / 집 (share of CPUs), 소원 · 인생역전 도박 · 야근 · 승진 · 뒤통수 · 아이템 (per CPU)
@@ -351,7 +355,7 @@ function printSummary(s, { cpus, humans, humanPolicy, mode, roulette, seed, ms }
     return `${PERS_KO[k]} 대학 ${pct(b.college / b.n)} · 단짝 ${pct(b.married / b.n)} · 집 ${pct(b.house / b.n)} · 소원 ${r(b.wishes)} · 도박 ${r(b.gambles)} · 야근 ${r(b.overtime)} · 승진 ${r(b.rankUps)} · 뒤통수 ${r(b.sabotage)} · 아이템 ${r(b.items)}`;
   };
   console.log(`CPU 성향별 스타일: ${PERSONALITIES.filter(per).map(style).join(' | ')}`);
-  const data = gameData();
+  const data = dataForWorld(world);
   const jobs = Object.entries(s.jobs).sort((a, b) => b[1] - a[1]);
   const nCpu = s.married[1] || 1;
   console.log(`CPU 최종 직업: ${jobs.map(([k, n]) => `${k === 'none' ? '무직' : jobDef(data, k)?.name ?? k} ${pct(n / nCpu)}`).join(' · ')}`);
@@ -359,15 +363,17 @@ function printSummary(s, { cpus, humans, humanPolicy, mode, roulette, seed, ms }
 }
 
 async function main() {
-  const data = gameData();
+  const world = String(arg('world', 'real'));
+  if (!WORLDS.includes(world)) throw new Error(`--world ${WORLDS.join('|')} (got ${world})`);
+  const data = dataForWorld(world);
   const games = Number(arg('games', 1));
   const seed = Number(arg('seed', 1));
   const workers = Number(arg('workers', 1)) || 1;
   const cpuLevel = arg('cpu-level', undefined);
   if (arg('matrix', false)) {
     const t0 = performance.now();
-    const rows = await targetMatrix({ games: Number(arg('games', 300)), seed, workers, cpuLevel });
-    console.log(`\n=== CPU 세기 목표 (${Number(arg('games', 300))}판 × seed ${seed}${cpuLevel ? ` · CPU ${cpuLevel}` : ''} · ${((performance.now() - t0) / 1000).toFixed(0)}초) ===`);
+    const rows = await targetMatrix({ games: Number(arg('games', 300)), seed, workers, cpuLevel, world });
+    console.log(`\n=== CPU 세기 목표 (${Number(arg('games', 300))}판 × seed ${seed} · 세계 ${world}${cpuLevel ? ` · CPU ${cpuLevel}` : ''} · ${((performance.now() - t0) / 1000).toFixed(0)}초) ===`);
     for (const r of rows) {
       const s = r.summary;
       const ok = r.min == null ? '  ' : s.humanWinShare >= r.min ? '✅' : '❌';
@@ -384,7 +390,7 @@ async function main() {
   const roulette = String(arg('roulette', 'random'));
   const persona = arg('cpu-personality', undefined);
   const verbose = !!arg('verbose', false) || games <= 5;
-  const opts = { cpus, humans, humanPolicy, mode, roulette, seed, cpuPersonality: persona, cpuLevel, workers };
+  const opts = { cpus, humans, humanPolicy, mode, roulette, seed, cpuPersonality: persona, cpuLevel, workers, world };
   const t0 = performance.now();
   if (verbose) {
     const edu = { none: '고졸', college: '대졸', elite: '명문대졸' };

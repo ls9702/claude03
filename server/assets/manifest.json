@@ -19629,6 +19629,508 @@
         "part": "mouth-open",
         "base": "mc-bomi-neutral"
       }
+    },
+    {
+      "id": "bg-weed-field",
+      "kind": "bg",
+      "label": "컷인 배경 · 풀밭",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a sunny grassy field full of tall weeds and clover in a gentle Chiikawa-like countryside: a small wooden sign post (blank), a woven basket of pulled weeds, soft rolling hills and fluffy clouds. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/weed-field.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "weed-field"
+      }
+    },
+    {
+      "id": "bg-hunt-forest",
+      "kind": "bg",
+      "label": "컷인 배경 · 토벌 숲",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a slightly spooky but cute forest clearing where monsters are hunted: tall dark-green trees, tangled bushes, mushrooms, a narrow dirt path, soft beams of light through the leaves, a few broken branches. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/hunt-forest.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "hunt-forest"
+      }
+    },
+    {
+      "id": "bg-ramen-shop",
+      "kind": "bg",
+      "label": "컷인 배경 · 라멘 가게",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a cozy small ramen shop interior: a wooden counter with stools, steaming big pots behind the counter, hanging noren curtains with a plain abstract pattern (no letters), paper lanterns, warm yellow light. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/ramen-shop.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "ramen-shop"
+      }
+    },
+    {
+      "id": "bg-workshop",
+      "kind": "bg",
+      "label": "컷인 배경 · 갑옷 공방",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a small armor-maker workshop: a wooden workbench with hammers and tongs, metal armor plates and round helmets on shelves, a small glowing forge, sparks, warm orange light. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/workshop.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "workshop"
+      }
+    },
+    {
+      "id": "bg-sento",
+      "kind": "bg",
+      "label": "컷인 배경 · 목욕탕",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a traditional public bathhouse (sento) interior: a large tiled bath with steaming water, a big mountain mural painted on the back wall, small wooden buckets and stools, soft steam. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/sento.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "sento"
+      }
+    },
+    {
+      "id": "bg-bookstore",
+      "kind": "bg",
+      "label": "컷인 배경 · 고서점",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a quiet old secondhand bookstore: tall wooden shelves packed with old books, stacks of books on the floor, a small reading lamp on a counter, dust motes in a sunbeam. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/bookstore.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "bookstore"
+      }
+    },
+    {
+      "id": "bg-cafe",
+      "kind": "bg",
+      "label": "컷인 배경 · 카페",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a cute small cafe interior: a counter with a coffee machine and a glass case of pancakes and pastries, round tables with flower vases, big window with daylight, hanging plants. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/cafe.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "cafe"
+      }
+    },
+    {
+      "id": "bg-kuji",
+      "kind": "bg",
+      "label": "컷인 배경 · 쿠지 가게",
+      "aspect": "16:9",
+      "size": {
+        "w": 1920,
+        "h": 1080
+      },
+      "prompt": "{{style}} {{sameStyle}} {{noPeople}} Scene: a cheerful lottery-ticket (kuji) shop counter: a big box with a round hole full of folded paper tickets, shelves of prize plush toys of all sizes, a little bell on the counter, colorful paper garlands. Wide 16:9 background illustration for a game event cut-in, leave open empty space in the lower center for characters to stand. No text, no letters, no signs with writing.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "bg/kuji.webp",
+      "postprocess": [
+        "resize:1920x1080",
+        "webp"
+      ],
+      "status": "todo",
+      "meta": {
+        "scene": "kuji"
+      }
+    },
+    {
+      "id": "monster-small-chimera",
+      "kind": "item",
+      "label": "토벌 키메라 · 꼬마 키메라",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single game monster icon: a small silly round chimera monster, a fluffy body with tiny stubby legs, little bat wings and a short curly tail, big goofy eyes, more cute than scary. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "monsters/small-chimera.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "monster": "small_chimera"
+      }
+    },
+    {
+      "id": "monster-chimera",
+      "kind": "item",
+      "label": "토벌 키메라 · 키메라",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single game monster icon: a medium chimera monster, a lumpy purple body with mismatched animal parts (one horn, small fangs, a lizard tail), grumpy but comical face. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "monsters/chimera.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "monster": "chimera"
+      }
+    },
+    {
+      "id": "monster-big-chimera",
+      "kind": "item",
+      "label": "토벌 키메라 · 커다란 키메라",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single game monster icon: a big hulking green chimera monster with spiky back plates, big clawed paws and a wide toothy grin, slightly menacing but still cartoonish. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "monsters/big-chimera.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "monster": "big_chimera"
+      }
+    },
+    {
+      "id": "monster-dekatsuyo",
+      "kind": "item",
+      "label": "토벌 키메라 · 데카츠요",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single game monster icon: a huge legendary boss chimera, dark red with glowing yellow eyes, big curved horns and a crown-like crest, mighty but silly-looking, a little dust cloud at its feet. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "monsters/dekatsuyo.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "monster": "dekatsuyo"
+      }
+    },
+    {
+      "id": "item-armor",
+      "kind": "item",
+      "label": "아이템 · 갑옷",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game item icon: a small shiny grey suit of chest armor with a round helmet resting on top. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "items/armor.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "armor"
+      }
+    },
+    {
+      "id": "item-guitar",
+      "kind": "item",
+      "label": "아이템 · 기타",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game item icon: a cute small acoustic guitar with a warm orange wooden body and a little pick. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "items/guitar.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "guitar"
+      }
+    },
+    {
+      "id": "treasure-kuji-plush",
+      "kind": "treasure",
+      "label": "보물 · 커다란 치이카와 인형",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "{{style}} {{sameStyle}} A single glossy game treasure icon: a big soft plush toy of a small round white chubby hamster-like character with tiny ears and pink cheeks, with a red prize ribbon, a tiny sparkle. Centered, fills about 80% of the square, thick dark outline, slight top-left highlight. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "style-anchor"
+      ],
+      "output": "treasures/kuji-plush.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "kuji_plush"
+      }
+    },
+    {
+      "id": "prop-sasumata",
+      "kind": "prop",
+      "label": "소품 · 손 · 사스마타",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a sasumata: a long wooden pole with a U-shaped metal fork at the top, held upright, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/sasumata.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "sasumata",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-armor-helmet",
+      "kind": "prop",
+      "label": "소품 · 머리 · 갑옷 투구",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small round grey metal armor helmet with a tiny crest, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/armor-helmet.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "armor_helmet",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-guitar",
+      "kind": "prop",
+      "label": "소품 · 등 · 기타",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small acoustic guitar slung on the back with a strap, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/guitar.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "guitar",
+        "slot": "back"
+      }
+    },
+    {
+      "id": "prop-head-towel",
+      "kind": "prop",
+      "label": "소품 · 머리 · 머리 수건",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white towel tied around the head like a ramen cook's headband, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/head-towel.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "head_towel",
+        "slot": "head"
+      }
+    },
+    {
+      "id": "prop-weed-basket",
+      "kind": "prop",
+      "label": "소품 · 등 · 풀 바구니",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a woven basket full of pulled weeds carried on the back, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/weed-basket.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "weed_basket",
+        "slot": "back"
+      }
+    },
+    {
+      "id": "prop-ladle",
+      "kind": "prop",
+      "label": "소품 · 손 · 국자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big silver soup ladle, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/ladle.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "ladle",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-hammer",
+      "kind": "prop",
+      "label": "소품 · 손 · 망치",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small wooden-handled blacksmith hammer, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/hammer.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "hammer",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-turner",
+      "kind": "prop",
+      "label": "소품 · 손 · 뒤집개",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a flat metal pancake turner spatula, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/turner.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "turner",
+        "slot": "hand"
+      }
+    },
+    {
+      "id": "prop-delivery-box",
+      "kind": "prop",
+      "label": "소품 · 등 · 배달 상자",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cardboard delivery box strapped on the back, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/delivery-box.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "delivery_box",
+        "slot": "back"
+      }
+    },
+    {
+      "id": "prop-armor-plate",
+      "kind": "prop",
+      "label": "소품 · 등 · 갑옷 등판",
+      "aspect": "1:1",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a shiny grey metal armor back plate with straps, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "refs": [],
+      "output": "chara/props/armor-plate.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "prop": "armor_plate",
+        "slot": "back"
+      }
     }
   ]
 }

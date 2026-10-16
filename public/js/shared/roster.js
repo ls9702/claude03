@@ -70,6 +70,11 @@ export const DEFAULT_PROPS = Object.freeze([
   p('cape', 'back', '망토', '🧥', { choice: true, color: '#d94a6a', tintable: true }),
   p('wings', 'back', '천사 날개', '🪽', { choice: true, color: '#ffffff' }),
   p('teddy_bag', 'back', '곰인형 가방', '🧸', { choice: true, color: '#b07a4e' }),
+  // 세계 설정 (치이카와 모드 jobs / items; props are world-independent)
+  p('sasumata', 'hand', '사스마타', '🔱', { choice: true, color: '#8a6b4a' }),
+  p('armor_helmet', 'head', '갑옷 투구', '🪖', { choice: true, color: '#9aa5b1' }),
+  p('guitar', 'back', '기타', '🎸', { choice: true, color: '#d08a3a' }),
+  p('head_towel', 'head', '머리 수건', '🧖', { choice: true, color: '#f4f1ea' }),
   p('bonnet', 'head', '아기 보닛', '👶', { choice: false, color: '#fbe3ee' }),
   p('pacifier', 'face', '쪽쪽이', '🍼', { choice: false, color: '#8ad0f0' }),
   p('yellow_hat', 'head', '노란 학교 모자', '🟡', { choice: false, color: '#ffd23f' }),
@@ -100,6 +105,12 @@ export const DEFAULT_PROPS = Object.freeze([
   p('beard', 'face', '산신령 수염', '☁️', { choice: false, color: '#ffffff' }),
   p('golden_mic', 'hand', '황금 마이크', '🏆', { choice: false, color: '#d4a017' }),
   p('apron', 'neck', '앞치마', '🧾', { choice: false, color: '#6aa84f' }),
+  p('weed_basket', 'back', '풀 바구니', '🧺', { choice: false, color: '#c8a165' }),
+  p('ladle', 'hand', '국자', '🥄', { choice: false, color: '#b0b7c3' }),
+  p('hammer', 'hand', '망치', '🔨', { choice: false, color: '#8a6b4a' }),
+  p('turner', 'hand', '뒤집개', '🍳', { choice: false, color: '#c0c6cf' }),
+  p('delivery_box', 'back', '배달 상자', '📦', { choice: false, color: '#c69c6d' }),
+  p('armor_plate', 'back', '갑옷 등판', '🛡️', { choice: false, color: '#9aa5b1' }),
 ]);
 
 /** Contract fallback of props.json `eraProps` (`job: true` = the job props in that era). */
@@ -139,6 +150,23 @@ export const DEFAULT_JOB_PROPS = Object.freeze({
   chaebol: { head: 'crown' },
   national_mc: { hand: 'golden_mic' },
   parttime: { neck: 'apron' },
+  // 세계 설정: 🐹 치이카와 모드 jobs (server/data/worlds/chiikawa.json)
+  weeder: { head: 'straw_hat', back: 'weed_basket' },
+  hunter: { head: 'armor_helmet', hand: 'sasumata' },
+  ramen: { head: 'head_towel', hand: 'ladle' },
+  workshop: { neck: 'apron', hand: 'hammer' },
+  bookstore: { face: 'round_glasses', hand: 'book' },
+  busker: { back: 'guitar' },
+  pancake: { head: 'chef_hat', hand: 'turner' },
+  photographer: { hand: 'camera' },
+  sento: { head: 'head_towel' },
+  delivery: { head: 'baseball_cap', back: 'delivery_box' },
+  fisher: { head: 'straw_hat', hand: 'fishing_rod' },
+  cafe: { neck: 'apron' },
+  legend_hunter: { hand: 'sasumata', back: 'cape' },
+  weed_sage: { head: 'straw_hat', hand: 'flower' },
+  ramen_owner: { head: 'head_towel', neck: 'bow_tie' },
+  armor_san: { head: 'armor_helmet', back: 'armor_plate' },
 });
 
 const sp = (id, name, icon, colors, ears, extra = {}) => ({ id, name, icon, colors, ears, ...extra });

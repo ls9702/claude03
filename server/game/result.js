@@ -1,6 +1,6 @@
 // Final settlement (pure): 보물 감정 → 특별상 → 칭호 → 총자산 순위 → MVP 투표.
 // total = money − debt + items (Stage 7) + house (Stage 8) + treasures + award bonuses (Stage 9).
-import { gameData } from '../data/index.js';
+import { roomData } from './world.js';
 import { EngineError, emit, netWorth } from './effects.js';
 import { itemsValue } from './cards.js';
 import { houseValue } from './houses.js';
@@ -15,7 +15,8 @@ import { topHighlights } from './highlights.js';
  * @returns {{rank, charId, name, money, debt, goalBonus, items, house, treasures, awards, total, place}[]} best
  *   first. Ties on total are broken by goal arrival order (the final race), then creation order.
  */
-export function computeRanking(room, { data = gameData(), reveal = false, awards = null } = {}) {
+export function computeRanking(room, { data = null, reveal = false, awards = null } = {}) {
+  data = roomData(room, data); // the room's world (its items' resale values)
   const rows = room.characters.map((c) => {
     const items = itemsValue(data, c);
     const house = houseValue(c);
@@ -57,7 +58,8 @@ export const mvpVoters = (room) => (room.players ?? []).filter((p) => p.role !==
  * titles, highlights, mvp, finishedAt, forced}`. Without eligible voters the MVP is decided at once (1st place).
  * @returns the ranking
  */
-export function applyResult(room, now, { forced = false, data = gameData() } = {}) {
+export function applyResult(room, now, { forced = false, data = null } = {}) {
+  data = roomData(room, data);
   const awards = computeAwards(room, data);
   const ranking = computeRanking(room, { data, reveal: true, awards: awardBonusByChar(awards) });
   // Everyone is finished now. Without a goal race (kids mode: the last era's turns ran out) `place` = the final rank;

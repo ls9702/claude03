@@ -83,8 +83,8 @@ test('roster data: fallbacks mirror the server data (ids fixed, ears, sizes; pro
   assert.equal(petStages(META).adult.name, '어른');
 });
 
-test('props: choosable list per slot (growth / job props hidden), info with colour / tintable, 30 choices', () => {
-  assert.equal(propList(META).length, 30);
+test('props: choosable list per slot (growth / job props hidden), info with colour / tintable, 34 choices', () => {
+  assert.equal(propList(META).length, 34); // 30 + 세계 설정 sasumata / armor_helmet / guitar / head_towel
   for (const slot of PROP_SLOTS) assert.ok(propList(META, slot).length >= 4, slot);
   assert.ok(!propList(META).some((p) => p.id === 'bonnet' || p.id === 'stethoscope'));
   assert.deepEqual(propInfo('beanie', META).slot, 'head');

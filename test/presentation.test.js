@@ -172,6 +172,9 @@ test('presentationFor: every event type maps to a tone, scene and emotion (synth
     // loop maps
     eraTransition: { fromEraId: 'baby', toEraId: 'elem', eraIndex: 1, turns: 3, lap: 18, eraName: '초등학생' },
     chanceBuff: { charId: c.id, buff: { id: 'salaryX2', name: '월급 두 배', icon: '💵', desc: '' }, action: 'gained' },
+    // 세계 설정 (치이카와 모드)
+    huntResult: { charId: c.id, monsterId: 'chimera', success: true, chance: 0.7, amount: 80, injured: 0, armor: false, sasumata: false },
+    weedResult: { charId: c.id, action: 'exam', success: true, level: 2, grade: '4급', target: 2, chance: 0.6 },
   };
   assert.deepEqual(Object.keys(samples).sort(), [...EVENT_TYPES].sort());
   for (const type of EVENT_TYPES) {
@@ -297,7 +300,9 @@ test('tones.json: 8 tones, frames/backgrounds are accepted manifest assets (or C
     assert.equal(items.get(s.bg)?.kind, 'bg', `${scene}: ${s.bg}`);
     assert.equal(items.get(s.bg).meta.scene, scene);
     if (!accepted.has(s.bg)) {
-      const fb = tones.sceneFallbacks?.[scene];
+      // the client follows the fallback chain (세계 설정: sento → house → office) to the first scene with accepted art
+      let fb = tones.sceneFallbacks?.[scene];
+      for (const seen = new Set([scene]); fb && !accepted.has(tones.scenes[fb]?.bg) && !seen.has(fb); fb = tones.sceneFallbacks?.[fb]) seen.add(fb);
       assert.ok(fb && accepted.get(tones.scenes[fb]?.bg)?.kind === 'bg', `${scene}: fallback ${fb} is accepted`);
     }
   }

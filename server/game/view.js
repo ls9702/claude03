@@ -1,6 +1,7 @@
 // Per-session state views. THE single place where room state is masked
 // before leaving the server (session tokens, seed, and later secret info).
 import { cloneState } from './clone.js';
+import { worldOf } from './world.js';
 
 function playerIdOf(room, sessionId) {
   return room.players.find((p) => p.sessionId === sessionId)?.id ?? null;
@@ -114,6 +115,7 @@ export function adminSummary(room) {
     code: room.code,
     status: room.status,
     mode: room.config.mode,
+    world: worldOf(room), // 세계 설정 (a room without one = an old save = 현실 모드)
     players: room.players.filter((p) => p.role !== 'spectator').length,
     spectators: room.players.filter((p) => p.role === 'spectator').length,
     connected: room.players.filter((p) => p.connected).length,

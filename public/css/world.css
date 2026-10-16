@@ -1,0 +1,178 @@
+/* 세계 설정 (🐹 치이카와 모드) — 토벌 battle card + chimera moods, 풀뽑기 field card / 검정 stamp / grade badge, 쿠지 box +
+   tickets, side-list tags. Prompts: the cut-in options (.ci-opt) and the 2D decision sheet (.btn.choice) share the cards. */
+
+/* ---------- side list ---------- */
+.gc-tag.world.weed { background: #ecfccb; color: #3f6212; }
+.gc-tag.world.hunts { background: #fee2e2; color: #991b1b; }
+
+/* ---------- chimeras ---------- */
+.monster-art { display: inline-flex; align-items: flex-end; justify-content: center; line-height: 1; }
+.monster-art img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.monster-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.monster-svg .mon-body { transform-box: fill-box; transform-origin: 50% 100%; animation: mon-bob 1.3s ease-in-out infinite alternate; }
+.monster-svg .mon-puff { opacity: 0; }
+@keyframes mon-bob { to { transform: translateY(-3%) scale(1.02, 0.98); } }
+@keyframes mon-poof { 0% { transform: scale(1); opacity: 1; } 40% { transform: scale(1.1, 0.8); opacity: 1; } 100% { transform: translate(40%, -30%) scale(0.2) rotate(40deg); opacity: 0; } }
+@keyframes mon-puff { 0% { opacity: 0; transform: scale(0.4); } 40% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.4); } }
+@keyframes mon-gloat { 0%, 100% { transform: translateY(0) scale(1); } 30% { transform: translateY(-8%) scale(0.96, 1.06); } 60% { transform: translateY(0) scale(1.06, 0.94); } }
+
+/* ---------- cut-in window: the chimera (prompt + result), clash, coins, tumble ---------- */
+.ci-foe {
+  position: absolute; right: 5%; bottom: 6%; z-index: 2; width: clamp(80px, 26cqw, 300px); display: flex; flex-direction: column; align-items: center;
+  animation: ci-foe-in 0.55s 0.15s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.ci-foe.p-1 { width: clamp(70px, 20cqw, 230px); }
+.ci-foe.p-3 { width: clamp(90px, 30cqw, 340px); }
+.ci-foe.p-4 { width: clamp(100px, 36cqw, 400px); right: 2%; }
+.ci-foe .monster-art { width: 100%; filter: drop-shadow(0 0.6cqw 0.8cqw rgba(0, 0, 0, 0.28)); }
+.ci-foe-name {
+  margin-top: 0.4cqw; white-space: nowrap; font-size: clamp(10px, 1.9cqw, 20px); color: #fff; background: rgba(61, 43, 82, 0.86);
+  border-radius: 999px; padding: 0.1em 0.7em;
+}
+.ci-foe-stars { color: #fde047; font-size: clamp(9px, 1.5cqw, 16px); letter-spacing: 0.08em; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+@keyframes ci-foe-in { from { transform: translateX(40%) scale(0.6); opacity: 0; } }
+.ci-foe.win.after .monster-svg, .ci-foe.win.after .monster-art.img img { animation: mon-poof 0.9s ease-in forwards; }
+.ci-foe.win.after .mon-puff { animation: mon-puff 0.9s ease-out forwards; transform-box: fill-box; transform-origin: 50% 50%; }
+.ci-foe.lose.after .mon-body, .ci-foe.lose.after .monster-art.img img { animation: mon-gloat 0.6s ease-in-out 3; }
+.ci-clash {
+  position: absolute; left: 52%; top: 36%; z-index: 3; font-size: clamp(24px, 9cqw, 96px); transform: translate(-50%, -50%) scale(0); opacity: 0;
+  animation: ci-clash 0.7s 0.55s cubic-bezier(0.3, 1.7, 0.5, 1) both;
+}
+@keyframes ci-clash { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.25) rotate(12deg); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; } }
+.ci-coins { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; }
+.ci-coins i {
+  position: absolute; left: calc(55% + (var(--x) - 50%) * 0.45); top: 40%; font-style: normal; font-size: clamp(14px, 3.4cqw, 38px);
+  animation: ci-coin 1.4s calc(var(--i) * 0.06s) cubic-bezier(0.2, 0.8, 0.4, 1) both;
+}
+@keyframes ci-coin { from { transform: translate(0, 0) scale(0.4); opacity: 0; } 30% { opacity: 1; } to { transform: translate(calc((var(--i) - 6) * 2.2cqw), 34cqh) scale(1); opacity: 0; } }
+.ci-slot.tumble { animation: ci-tumble 0.9s cubic-bezier(0.3, 1.2, 0.5, 1) forwards; }
+@keyframes ci-tumble { 0% { transform: translateX(-50%) rotate(0); } 35% { transform: translateX(-62%) translateY(-6%) rotate(-24deg); } 100% { transform: translateX(-58%) translateY(4%) rotate(-12deg); } }
+
+/* ---------- 풀뽑기: stamp, grade badge, work weeds ---------- */
+.ci-weedpanel { position: absolute; right: 5%; top: 12%; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 1cqw; }
+.wd-stamp {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: clamp(70px, 20cqw, 220px); aspect-ratio: 1; border-radius: 50%;
+  border: clamp(4px, 1cqw, 10px) double currentColor; color: #dc2626; background: rgba(255, 255, 255, 0.82); transform: rotate(-14deg) scale(2.2); opacity: 0;
+  font-weight: 900; line-height: 1.05; text-align: center;
+}
+.wd-stamp b { font-size: clamp(16px, 4.6cqw, 50px); }
+.wd-stamp small { font-size: clamp(9px, 1.8cqw, 20px); }
+.wd-stamp.fail { color: #64748b; }
+.ci-weedpanel.stamped .wd-stamp { animation: wd-stamp 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) forwards; }
+@keyframes wd-stamp { to { transform: rotate(-14deg) scale(1); opacity: 1; } }
+.ci-weedpanel .wd-badge { opacity: 0; }
+.ci-weedpanel.stamped .wd-badge { animation: sm-pop 0.35s 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) forwards; }
+.ci-weedpanel:not(.exam) .wd-badge { opacity: 1; }
+.wd-badge {
+  display: inline-flex; align-items: baseline; gap: 0.3em; white-space: nowrap; font-weight: 800; font-size: clamp(10px, 2cqw, 22px);
+  background: #ecfccb; color: #3f6212; border: 0.3cqw solid #65a30d; border-radius: 999px; padding: 0.15em 0.8em;
+}
+.wd-badge b { font-size: 1.2em; color: #166534; }
+.wd-badge.lv-5 { background: linear-gradient(90deg, #fef08a, #bbf7d0); border-color: #ca8a04; }
+.ci-weedwork { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.ci-weedwork i { position: absolute; left: var(--x); bottom: 8%; font-style: normal; font-size: clamp(14px, 3.4cqw, 36px); animation: wd-pluck 1.3s calc(0.4s + var(--i) * 0.12s) ease-out both; }
+@keyframes wd-pluck { 0% { transform: translateY(0) rotate(0); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-40cqh) rotate(220deg); opacity: 0; } }
+
+/* ---------- 쿠지 box + tickets ---------- */
+.ci-kuji {
+  position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 4%; z-index: 4; display: flex; align-items: center; gap: 2cqw; max-width: 94%;
+  background: rgba(255, 244, 214, 0.92); border: 0.4cqw solid #e2504c; border-radius: 2cqw; padding: 1cqw 2cqw; box-shadow: 0 1cqw 2cqw rgba(0, 0, 0, 0.25);
+}
+.ci-kuji-box { width: clamp(56px, 15cqw, 170px); flex: none; }
+.ci-kuji-box .kuji-box-svg { width: 100%; height: auto; display: block; }
+.ci-kuji.go .ci-kuji-box { animation: kuji-shake 0.25s 0.2s 3 ease-in-out; }
+@keyframes kuji-shake { 50% { transform: rotate(-4deg) translateY(-3%); } }
+.ci-kuji-tix { display: flex; flex-wrap: wrap; gap: 1.2cqw; min-width: 0; max-width: 64cqw; }
+.ci-kuji-slot { display: flex; flex-direction: column; align-items: center; gap: 0.3cqw; min-width: 0; }
+.ci-kuji-n { font-size: clamp(9px, 1.6cqw, 16px); max-width: 12cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #3d2b52; unicode-bidi: isolate; }
+.ci-kuji-slot.me .ci-kuji-n { color: #c2410c; }
+.kuji-ticket { width: clamp(34px, 9cqw, 96px); aspect-ratio: 0.72; perspective: 400px; }
+.kt-in { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.ci-kuji.go .kt-in, .kuji-ticket.open .kt-in { transform: rotateY(180deg); transition-delay: var(--d, 0ms); }
+.kt-back, .kt-front {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 0.8cqw; backface-visibility: hidden;
+  border: 0.3cqw solid #3d2b52; font-weight: 900;
+}
+.kt-back { background: repeating-linear-gradient(45deg, #ffd2a3 0 0.8cqw, #fff4d6 0.8cqw 1.6cqw); font-size: clamp(14px, 4cqw, 40px); }
+.kt-front { transform: rotateY(180deg); background: #fff; color: var(--kc, #9aa5b1); }
+.kt-front i { font-style: normal; font-size: clamp(14px, 4.4cqw, 46px); line-height: 1; }
+.kt-front b { font-size: clamp(9px, 2cqw, 22px); }
+.kuji-ticket.won .kt-front { box-shadow: 0 0 0 0.4cqw var(--kc) inset; }
+.kuji-ticket.jackpot .kt-front { background: radial-gradient(circle, #fff8c5, #ffd6e5); box-shadow: 0 0 2cqw #ffd23f; }
+.kuji-plush {
+  position: absolute; left: 78%; bottom: 4%; z-index: 4; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%) scale(0);
+  animation: kuji-plush 0.8s cubic-bezier(0.3, 1.7, 0.5, 1) forwards;
+}
+.kp-toy { font-size: clamp(40px, 18cqw, 200px); line-height: 1; filter: drop-shadow(0 0 2cqw #ffe27a); }
+.kp-glow { position: absolute; inset: -20%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 238, 150, 0.9), transparent 65%); z-index: -1; }
+.kp-name { white-space: nowrap; font-size: clamp(10px, 2cqw, 22px); background: #ff5c8a; color: #fff; border-radius: 999px; padding: 0.1em 0.8em; }
+@keyframes kuji-plush { to { transform: translateX(-50%) scale(1); } }
+.ci-chip.kuji-rank { font-weight: 900; }
+.ci-chip.kuji-rank.r-1 { background: #ff5c8a; color: #fff; }
+.ci-chip.kuji-rank.r-2 { background: #ff9f43; color: #fff; }
+.ci-chip.kuji-rank.r-5 { opacity: 0.8; }
+.ci-kuji-prize { font-weight: 800; font-size: 0.82rem; color: #fde68a; }
+.cutin[data-kind='kuji'] .ci-cast { display: none; }
+.cutin.lotto .ci-kuji { z-index: 2; }
+
+/* ---------- prompt cards (cut-in .ci-opt and 2D .btn.choice) ---------- */
+.hw-card, .wd-card { display: grid; gap: 8px; margin-top: 8px; min-width: 0; }
+.hw-foe { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.hw-foe .hw-foe-art { width: 96px; flex: none; }
+.hw-foe-txt { display: flex; flex-direction: column; min-width: 0; }
+.hw-foe-txt b { font-size: 1.05rem; }
+.hw-stars { color: #b45309; font-weight: 800; letter-spacing: 0.04em; }
+.hw-foe.mini { gap: 6px; }
+.hw-foe.danger-hard .hw-stars { color: #b91c1c; }
+.hw-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.hw-opt, .wd-opt { display: flex !important; align-items: center; gap: 10px; text-align: left; min-width: 0; }
+.hw-opt .hw-body, .wd-opt .hw-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hw-opt .hw-body b, .wd-opt .hw-body b { line-height: 1.2; overflow-wrap: anywhere; }
+.hw-opt small, .wd-opt small { font-size: 0.78rem; font-weight: 700; color: #57534e; }
+.hw-ic { font-size: 1.6rem; line-height: 1; flex: none; }
+.hw-opt.fight { border-color: #c0392b !important; }
+.hw-opt.fight .hw-ic { background: #fee2e2; border-radius: 12px; padding: 6px; }
+.hw-opt.run .hw-ic { background: #e0f2fe; border-radius: 12px; padding: 6px; }
+.hw-opt.fight .sm-chance i { background: linear-gradient(90deg, #f87171, #c0392b); }
+.hw-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.hw-badge { font-size: 0.72rem; font-weight: 800; background: #fef3c7; color: #92400e; border-radius: 999px; padding: 1px 8px; }
+.hw-reward { color: #a16207 !important; }
+.wd-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.wd-cur { font-weight: 800; }
+.wd-cur b { color: #3f6212; }
+.wd-ladder { display: inline-flex; gap: 3px; }
+.wd-ladder i {
+  font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 0.68rem; font-weight: 900;
+  background: #f1f5f9; color: #94a3b8; border: 2px solid #e2e8f0;
+}
+.wd-ladder i.on { background: #65a30d; color: #fff; border-color: #3f6212; }
+.wd-ladder i.next { border-color: #65a30d; color: #3f6212; border-style: dashed; }
+.wd-opt.work { border-color: #6ab04c !important; }
+.wd-opt.work .hw-ic { background: #ecfccb; border-radius: 12px; padding: 6px; }
+.wd-opt.exam .hw-ic { background: #fef9c3; border-radius: 12px; padding: 6px; }
+.wd-opt.exam .sm-chance i { background: linear-gradient(90deg, #a3e635, #4d7c0f); }
+.wd-why { color: #b91c1c !important; }
+.choice-list.world-choices { display: block; }
+/* cut-in (dark dialogue box): readable small texts */
+.ci-options .hw-opt small, .ci-options .wd-opt small, .ci-options .hw-foe-txt small { color: inherit; opacity: 0.85; }
+.ci-options .wd-cur, .ci-options .hw-foe-txt b { color: inherit; }
+.ci-options .wd-cur b { color: #bef264; }
+.ci-options .hw-stars { color: #fde047; }
+
+@media (max-width: 430px) {
+  .hw-opts { grid-template-columns: 1fr; gap: 8px; }
+  .hw-foe .hw-foe-art { width: 72px; }
+  .wd-ladder i { width: 19px; height: 19px; font-size: 0.62rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .monster-svg .mon-body, .ci-foe, .ci-clash, .ci-coins i, .ci-weedwork i, .ci-slot.tumble { animation: none !important; }
+  .ci-clash { display: none; }
+  .wd-stamp, .ci-weedpanel .wd-badge { opacity: 1; transform: rotate(-14deg) scale(1); animation: none !important; }
+  .ci-weedpanel .wd-badge { transform: none; }
+  .kt-in { transition: none; }
+  .kuji-plush { transform: translateX(-50%) scale(1); animation: none; }
+}
+
+/* ---------- lobby: the room's world line ---------- */
+.world-line { margin: 4px 0 0; padding: 6px 10px; border-radius: 10px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; background: #f1f5f9; color: #334155; }
+.world-line[data-world='chiikawa'] { background: #fff1f2; color: #9f1239; }

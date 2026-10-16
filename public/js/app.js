@@ -15,6 +15,7 @@ import {
 } from './api.js';
 import { NAME_MAX, cleanName, cpuHandicapText, cpuPersonalityHtml, cpuPersonalityOptions, josa, nameFits, ownerHtml } from './format.js';
 import { bindNameInput } from './ui/nameInput.js';
+import { worldInfo, worldLabel, worldMeta, worldOf } from './shared/world.js';
 import { createGameUI } from './game2d.js';
 // Chiikawa conversion (CH-1): roster characters + props (ui/chara.js renderer, ui/picker.js); the human paper-doll /
 // AI-art modules (ui/avatar2d.js, avatarCompose.js, customize.js, charArt.js) are legacy and no longer called here.
@@ -39,6 +40,12 @@ const state = {
   seenChars: new Set(), // ids already rendered → no pop-in replay on re-render
   game: null, // 2D board UI (createGameUI)
 };
+
+/**
+ * 세계 설정: /api/meta of the current room's world (🐹 치이카와 모드 / 🏙️ 현실 모드: jobs, items, cards, treasures, news,
+ * tile labels, MC lines …) — lobby, game, cut-ins, result; outside a room the base meta.
+ */
+const roomMeta = (room = state.room) => (room ? worldMeta(state.meta, worldOf(room)) : state.meta);
 
 /** Accept a room view unless it is older than the one we already show (SSE vs. POST response races). */
 function acceptRoom(r) {
@@ -276,7 +283,7 @@ function render() {
 
 // ---------- lobby ----------
 function modeLabel(room) {
-  const eras = state.meta?.eras;
+  const eras = roomMeta(room)?.eras;
   const mode = eras?.modes?.[room.config.mode];
   if (!mode) return room.config.mode;
   // loop maps: turns per era; the final 노년 era of lifetime / adult mode is a goal race of `finalLength` tiles
@@ -286,7 +293,8 @@ function modeLabel(room) {
     return race ? `${era?.name ?? id} 🏁 ${room.config.finalLength}칸` : `${era?.name ?? id} ${room.config.eraTurns?.[id] ?? '-'}턴`;
   });
   const skill = room.config.rouletteMode === 'skill' ? ' · 🎯 룰렛 실력 모드 (흔들기·버튼으로 목표 숫자)' : '';
-  return `${mode.name} · ${parts.join(' / ')} · 초기 자금 ${room.config.startingMoney.toLocaleString()}만원${skill}`;
+  // 세계 설정: 🐹 치이카와 모드 / 🏙️ 현실 모드 (a room without `world` = an old save = 현실 모드)
+  return `${mode.name} · ${parts.join(' / ')} · 초기 자금 ${room.config.startingMoney.toLocaleString()}만원${skill} · ${worldLabel(worldOf(room))}`;
 }
 
 function charCard(c, { mine = false } = {}) {
@@ -316,7 +324,7 @@ function renderMcWelcome(room) {
   } catch {
     /* storage unavailable */
   }
-  const off = (room.config.mcFrequency ?? 'normal') === 'off' || closed === room.id || !state.meta?.mc;
+  const off = (room.config.mcFrequency ?? 'normal') === 'off' || closed === room.id || !roomMeta(room)?.mc;
   if (off) {
     if (box) box.hidden = true;
     return;
@@ -332,7 +340,7 @@ function renderMcWelcome(room) {
   box.hidden = false;
   if (box.dataset.room === room.id) return; // keep the same greeting while the lobby re-renders
   box.dataset.room = room.id;
-  const lines = mcLinesFrom(state.meta.mc, 'gameStart', { duo: true, seed: `${room.id}:${Math.floor(Math.random() * 1e6)}` });
+  const lines = mcLinesFrom(roomMeta(room).mc, 'gameStart', { duo: true, seed: `${room.id}:${Math.floor(Math.random() * 1e6)}` });
   const pair = document.createElement('div');
   pair.className = 'mc-pair';
   pair.append(renderMc('hoya', { expression: 'joy', pose: 'wave', size: 0 }), renderMc('bomi', { expression: 'neutral', pose: 'mic', size: 0 }));
@@ -359,6 +367,14 @@ function renderLobby(room) {
   renderMcWelcome(room);
   $('#lobby-code').textContent = room.code;
   $('#lobby-mode').textContent = modeLabel(room);
+  // 세계 설정: one line about the room's world (🐹 치이카와 모드: 토벌·풀뽑기 검정·쿠지 / 🏙️ 현실 모드)
+  const wl = $('#lobby-world');
+  if (wl) {
+    const w = worldInfo(worldOf(room));
+    wl.hidden = false;
+    wl.dataset.world = w.id;
+    wl.textContent = `${w.icon} ${w.name} · ${w.desc}`;
+  }
 
   const players = playersOnly(room);
   const spectators = room.players.filter((p) => p.role === 'spectator');
@@ -518,7 +534,7 @@ function startCustomizer(charId = null) {
     title: existing ? `「${existing.name}」 꾸미기` : '새 캐릭터 고르기',
     submitLabel: existing ? '저장' : '만들기',
     initial: existing ? { name: existing.name, avatar: existing.avatar } : {},
-    meta: state.meta,
+    meta: roomMeta(room),
     onSave: async ({ name, avatar }) => {
       const res = existing
         ? await api('PATCH', `/api/rooms/${room.id}/characters/${existing.id}`, { name, avatar })
@@ -674,7 +690,7 @@ async function boot() {
     setCharaMeta(state.meta); // roster / props / NPC friends / pets for every character drawing
     loadAssetIndex(); // raster character art (ch-<id>-…) replaces the SVG rigs once accepted
     buildReactionBar();
-    state.game = createGameUI($('#game-root'), { getMeta: () => state.meta, act, toast, resync });
+    state.game = createGameUI($('#game-root'), { getMeta: () => roomMeta(), act, toast, resync });
     await ensureSession();
     // A15: no site storage → every refresh would join as a new player; say so once
     if (storageMode() === 'memory') toast('⚠️ 이 브라우저는 저장소가 막혀 있어서 새로고침하면 새 참가자로 들어가요. 새로고침하지 말고 이 화면을 계속 써 주세요.', 'error', 7000);

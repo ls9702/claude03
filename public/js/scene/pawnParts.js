@@ -522,6 +522,9 @@ export const PROP_DEFAULT_COLORS = {
   cane: '#8b5a2b', mic: '#3a3a42', bat: '#c9965c', soccer_ball: WHITE, camera: '#3a3a42', pen: '#4f8ee0', flask: '#5cd68a', script: '#fbf8f2',
   key_ring: GOLD, sparkle_mic: '#ff7eb6', golden_mic: GOLD,
   backpack: '#ff8a3d', cape: '#d8434a', wings: '#fdfbff', teddy_bag: '#b07a4e', school_backpack: '#d8434a',
+  // 세계 설정 (치이카와 모드)
+  armor_helmet: '#9aa5b1', head_towel: '#f4f1ea', sasumata: '#8a6b4a', ladle: '#b0b7c3', hammer: '#8a6b4a', turner: '#c0c6cf',
+  guitar: '#d08a3a', weed_basket: '#c8a165', delivery_box: '#c69c6d', armor_plate: '#9aa5b1',
 };
 
 const hatBeanie = (f, c) => {
@@ -944,6 +947,146 @@ const PROP_BUILDERS = {
     const B = f.body;
     return [-1, 1].map((s) => sph(0.21, 7, 4, [s * 0.22, B.y + 0.24, -B.rz - 0.04], c, { scale: [0.46, 1.1, 0.16], rot: axisRot([s * 0.65, 0.75, -0.15], [0, 0, -1]), paint: { type: 'tip', at: 0.45, color: '#dcecff' } }));
   },
+  // ---- 세계 설정 (치이카와 모드 jobs; props are world-independent) ----
+  armor_helmet: (f, c) => {
+    const H = f.head;
+    const g = 1.09;
+    const frac = 0.46;
+    const yEdge = H.y + Math.cos(Math.PI * frac) * H.ry * g;
+    const rEdge = Math.sin(Math.PI * frac) * H.rx * g;
+    const top = H.y + H.ry * g;
+    return [
+      cap(10, 4, frac, [0, H.y, 0], [H.rx * g, H.ry * g, H.rz * g], c),
+      cyl(rEdge * 1.03, rEdge * 1.07, 0.07, 12, [0, yEdge + 0.015, 0], shade(c, 0.72), { scale: [1, 1, H.rz / H.rx] }, true),
+      sph(0.06, 4, 3, [0, top + 0.08, -0.02], '#e2504c', { scale: [0.7, 1.5, 1], rot: [-0.3, 0, 0] }),
+    ];
+  },
+  head_towel: (f, c) => {
+    const H = f.head;
+    const g = 1.06;
+    const frac = 0.4;
+    const yEdge = H.y + Math.cos(Math.PI * frac) * H.ry * g;
+    const rEdge = Math.sin(Math.PI * frac) * H.rx * g;
+    const knot = [rEdge * 0.95, yEdge + 0.03, H.rz * 0.25];
+    return [
+      cap(10, 4, frac, [0, H.y, 0], [H.rx * g, H.ry * g, H.rz * g], c, { rot: [-0.08, 0, 0] }),
+      cyl(rEdge * 1.04, rEdge * 1.06, 0.09, 12, [0, yEdge + 0.02, 0], shade(c, 0.9), { scale: [1, 1, H.rz / H.rx], paint: { type: 'bands', color: '#7fb0dc', n: 3, y0: -0.045, y1: 0.045 } }, true),
+      sph(0.055, 4, 3, knot, shade(c, 0.92)),
+      cone(0.05, 0.13, 4, add3(knot, [0.07, 0.06, 0]), c, { rot: [0, 0, -0.9], scale: [1, 1, 0.4] }),
+      cone(0.05, 0.12, 4, add3(knot, [0.06, -0.06, 0]), c, { rot: [0, 0, -2.3], scale: [1, 1, 0.4] }),
+    ];
+  },
+  sasumata: (f, c) => {
+    const h = f.hand;
+    const d = norm([-0.12, 1, 0.22]);
+    const top = add3(h, d, 0.78);
+    const metal = '#b9c2cc';
+    const side = norm(cross(d, [0, 0, 1]));
+    const out = [rod(add3(h, d, -0.22), top, 0.022, 0.022, 6, c)];
+    // the U-shaped fork: a half ring opening upwards + two prongs with outward tips
+    out.push(tor(0.1, 0.018, 3, 6, add3(top, d, 0.1), metal, { rot: rotCompose(axisRot(d), [0, 0, Math.PI]) }, Math.PI));
+    for (const s of [-1, 1]) {
+      const base = add3(add3(top, d, 0.1), side, s * 0.1);
+      out.push(rod(base, add3(add3(base, d, 0.16), side, s * 0.035), 0.018, 0.016, 4, metal));
+    }
+    return out;
+  },
+  ladle: (f, c) => {
+    const h = f.hand;
+    const d = norm([0.05, 1, 0.3]);
+    const top = add3(h, d, 0.42);
+    const bowl = add3(top, [0, -0.02, 0.07]);
+    return [
+      rod(add3(h, d, -0.06), top, 0.016, 0.016, 4, c),
+      S('sphere', [0.085, 6, 3, 0, TAU, Math.PI / 2, Math.PI / 2], bowl, c, { rot: [0.5, 0, 0] }),
+      cyl(0.087, 0.087, 0.012, 8, bowl, shade(c, 0.7), { rot: [0.5, 0, 0] }, true),
+    ];
+  },
+  hammer: (f, c) => {
+    const h = f.hand;
+    const d = norm([0.1, 1, 0.25]);
+    const top = add3(h, d, 0.34);
+    const metal = '#9aa3ae';
+    const side = norm(cross(d, [0, 0, 1]));
+    return [
+      rod(add3(h, d, -0.08), top, 0.024, 0.024, 5, c),
+      box(0.27, 0.1, 0.1, top, metal, { rot: axisRot(side, [0, 0, 1]) }),
+      cyl(0.055, 0.055, 0.04, 6, add3(top, side, 0.15), shade(metal, 0.8), { rot: axisRot(side, [0, 0, 1]) }),
+    ];
+  },
+  turner: (f, c) => {
+    const h = f.hand;
+    const d = norm([0.08, 1, 0.3]);
+    const grip = add3(h, d, 0.12);
+    const top = add3(h, d, 0.3);
+    return [
+      rod(add3(h, d, -0.08), grip, 0.026, 0.026, 5, DARK),
+      rod(grip, top, 0.01, 0.01, 4, shade(c, 0.85)),
+      box(0.17, 0.19, 0.016, add3(top, d, 0.09), c, { rot: axisRot(d, [0, 0.3, 1]), paint: { type: 'bands', color: shade(c, 0.55), n: 5, y0: -0.07, y1: 0.07 } }),
+    ];
+  },
+  guitar: (f, c) => {
+    const B = f.body;
+    const z = -B.rz - 0.08;
+    const d = norm([0.55, 1, 0]);
+    const lower = [-0.12, B.y - 0.02, z];
+    const upper = add3(lower, d, 0.18);
+    const neckC = add3(lower, d, 0.48);
+    const rot = axisRot(d, [0, 0, -1]);
+    const out = [
+      sph(0.17, 6, 4, lower, c, { scale: [1, 1, 0.42], rot }),
+      sph(0.125, 5, 3, upper, c, { scale: [1, 1, 0.42], rot }),
+      cyl(0.05, 0.05, 0.02, 5, add3(add3(lower, d, 0.1), [0, 0, -0.07]), DARK, { rot: rotCompose(rot, [Math.PI / 2, 0, 0]) }),
+      box(0.06, 0.42, 0.04, neckC, shade(c, 0.45), { rot }),
+      box(0.1, 0.12, 0.05, add3(lower, d, 0.74), shade(c, 0.4), { rot }),
+    ];
+    const st = onBody(f, -0.02, B.y + 0.08, 0.014);
+    out.push(box(0.035, 0.5, 0.02, st.pos, '#5a3a24', { rot: rotCompose(st.rot, [0, 0, 0.75]) }));
+    return out;
+  },
+  weed_basket: (f, c) => {
+    const B = f.body;
+    // carried on the back, off to the left shoulder so the weeds peek out beside the big head
+    const x = 0.24;
+    const z = -B.rz - 0.08;
+    const y = B.y + 0.18;
+    const out = [cyl(0.19, 0.14, 0.28, 8, [x, y, z], c, { scale: [1, 1, 0.75], rot: [0, 0, -0.25], paint: { type: 'bands', color: shade(c, 0.75), n: 5, y0: -0.14, y1: 0.14 } }), cyl(0.2, 0.2, 0.03, 8, [x + 0.035, y + 0.14, z], shade(c, 0.8), { scale: [1, 1, 0.75], rot: [0, 0, -0.25] }, true)];
+    const greens = ['#5aa84a', '#6cc070', '#4f9a40', '#7bd06a'];
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU + 0.4;
+      out.push(cone(0.045, 0.24 + (i % 2) * 0.08, 4, [x + 0.08 + Math.cos(a) * 0.08, y + 0.26 + (i % 2) * 0.04, z + Math.sin(a) * 0.06], greens[i], { rot: [Math.sin(a) * 0.3, 0, -0.45 - Math.cos(a) * 0.25] }));
+    }
+    for (const s of [-1, 1]) {
+      const st = onBody(f, s * 0.16, B.y + 0.13, 0.012);
+      out.push(box(0.035, 0.2, 0.02, st.pos, shade(c, 0.6), { rot: st.rot }));
+    }
+    return out;
+  },
+  delivery_box: (f, c) => {
+    const B = f.body;
+    // a big cardboard delivery box on the back, a little to the left so a corner shows beside the body
+    const z = -B.rz - 0.16;
+    const y = B.y + 0.2;
+    const x = 0.12;
+    const rot = [0, 0.25, -0.12];
+    const out = [
+      box(0.48, 0.46, 0.3, [x, y, z], c, { rot }),
+      box(0.08, 0.465, 0.305, [x, y, z], shade(c, 1.25), { rot }),
+      box(0.14, 0.1, 0.02, add3([x, y, z], rotateXYZ([0.12, -0.1, -0.155], rot)), WHITE, { rot }),
+    ];
+    for (const s of [-1, 1]) {
+      const st = onBody(f, s * 0.16, B.y + 0.13, 0.012);
+      out.push(box(0.035, 0.2, 0.02, st.pos, shade(c, 0.6), { rot: st.rot }));
+    }
+    return out;
+  },
+  armor_plate: (f, c) => {
+    const B = f.body;
+    const chest = onBody(f, 0, B.y + 0.06, 0.02);
+    const out = [sph(0.3, 7, 4, [0, B.y + 0.06, -B.rz - 0.03], c, { scale: [1.2, 1.05, 0.5] }), box(0.24, 0.2, 0.03, chest.pos, shade(c, 1.12), { rot: chest.rot })];
+    for (const s of [-1, 1]) out.push(sph(0.12, 5, 3, [s * (B.rx - 0.02), B.y + B.ry * 0.62, -0.07], shade(c, 0.9), { scale: [1.1, 0.55, 1.1], rot: [0, 0, s * -0.45] }));
+    return out;
+  },
 };
 /** Generic shape per slot for a prop id without a builder. */
 const SLOT_FALLBACK = { head: 'beret', face: 'round_glasses', neck: 'bandana', hand: 'wand', back: 'backpack' };
@@ -993,7 +1136,7 @@ export function charaSpecs(look, defs = null, opts = {}) {
 export function lineColor(look, defs = null) {
   return rosterEntry(normalizeLook(look, defs).character, defs).colors.line;
 }
-const TALL_HATS = new Set(['party_hat', 'chef_hat', 'crown', 'space_helmet', 'straw_hat', 'police_cap']);
+const TALL_HATS = new Set(['party_hat', 'chef_hat', 'crown', 'space_helmet', 'straw_hat', 'police_cap', 'armor_helmet']);
 /** Name-tag height of a look (head top incl. ears / hats, not hand items) in pawn units before the board scale. */
 export function charaHeight(look, defs = null) {
   const n = normalizeLook(look, defs);

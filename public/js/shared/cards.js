@@ -95,6 +95,9 @@ export const DEFAULT_ITEMS = Object.freeze({
   designer_bag: { name: '명품 가방', icon: '👜', desc: '매력 +1' },
   lucky_cat: { name: '행운의 고양이', icon: '🐱', desc: '운 +1' },
   massage_chair: { name: '안마의자', icon: '💺', desc: '노년 체력 감소 방지' },
+  // 세계 설정: items that exist only in the 🐹 치이카와 모드 (the world meta wins)
+  armor: { name: '갑옷', icon: '🛡️', desc: '토벌에서 지면 손해 절반, 다치지 않아요' },
+  guitar: { name: '하치와레표 기타', icon: '🎸', desc: '매력 +1, 길거리 가수 보수 +10%' },
 });
 
 export const DEFAULT_HAND_LIMIT = 6;

@@ -30,6 +30,13 @@
     <section id="admin-view" class="admin-grid" hidden>
       <form id="create-form" class="card" novalidate>
         <h2>방 만들기</h2>
+        <label class="field"><span>세계</span>
+          <select name="world">
+            <option value="chiikawa" selected>🐹 치이카와 모드 (기본)</option>
+            <option value="real">🏙️ 현실 모드</option>
+          </select>
+        </label>
+        <p class="small muted growth-hint">치이카와 모드: 직업·아이템·카드·보물·이벤트가 치이카와 세상 것으로 바뀌고 토벌·풀뽑기 검정·쿠지 뽑기가 열려요. 현실 모드: 공무원·의사·경차·전국 로또 같은 현실 세계 그대로. 규칙과 캐릭터는 같아요.</p>
         <label class="field"><span>모드</span><select name="mode" id="mode-select"></select></label>
         <fieldset class="era-set">
           <legend>시대 길이(턴) <small class="muted">(시대마다 룰렛 횟수 · 지도 크기는 턴 수에 맞춰 자동, 기본값 표시)</small></legend>

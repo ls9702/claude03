@@ -16,7 +16,8 @@ function deepFreeze(obj) {
 
 /** Load server/data/<name>.json once (cached, deep-frozen). */
 export function loadData(name) {
-  if (!/^[a-z0-9_-]+$/i.test(name)) throw new Error(`invalid data name: ${name}`);
+  // one optional sub-folder (`worlds/chiikawa` = a world overlay)
+  if (!/^([a-z0-9_-]+\/)?[a-z0-9_-]+$/i.test(name)) throw new Error(`invalid data name: ${name}`);
   if (!cache.has(name)) {
     const raw = readFileSync(path.join(DATA_DIR, `${name}.json`), 'utf8');
     cache.set(name, deepFreeze(JSON.parse(raw)));
@@ -75,10 +76,24 @@ export const getRoster = () => loadData('roster');
 export const getProps = () => loadData('props');
 export const getNpcs = () => loadData('npcs');
 export const getPets = () => loadData('pets');
+/** 세계 설정: 토벌 monsters + rules (hunts.json; the hunt tile is only in the Chiikawa world's pools). */
+export const getHunts = () => loadData('hunts');
 
-/** Everything the engine reads, as one object (tests may pass overrides). */
+/** World overlays (server/data/worlds/<world>.json): {chiikawa: {<dataName>: patch}} — see public/js/shared/world.js. */
+export const WORLD_OVERLAY_IDS = ['chiikawa'];
+export const getWorldOverlays = () => {
+  if (!cache.has('@worlds')) cache.set('@worlds', Object.freeze(Object.fromEntries(WORLD_OVERLAY_IDS.map((id) => [id, loadData(`worlds/${id}`)]))));
+  return cache.get('@worlds');
+};
+
+/**
+ * Everything the engine reads, as one object (tests may pass overrides) — the REAL world. A room's world data =
+ * `server/game/world.js` `roomData(room)` (this object with the world's overlay merged). Cached: the same object every
+ * call (the world memo keys off it).
+ */
 export function gameData() {
-  return {
+  if (cache.has('@game')) return cache.get('@game');
+  const out = {
     eras: getEras(),
     board: getBoardData(),
     balance: getBalance(),
@@ -101,5 +116,8 @@ export function gameData() {
     props: getProps(),
     npcs: getNpcs(),
     pets: getPets(),
+    hunts: getHunts(),
   };
+  cache.set('@game', Object.freeze(out));
+  return out;
 }

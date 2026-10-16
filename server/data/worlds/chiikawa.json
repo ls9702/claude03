@@ -1,0 +1,599 @@
+{
+  "_comment": "🐹 치이카와 모드 = 현실 모드 데이터(server/data/*.json) 위에 덮어쓰는 세계 설정 오버레이 {<데이터 이름>: patch}. id 배열은 {replace: {id: {필드…}}, add: [항목], remove: [id]}, 객체는 깊은 병합(배열·값은 통째로 교체, null = 삭제), _로 시작하는 키는 주석. 형식·규칙은 public/js/shared/world.js. 규칙(엔진 코드)은 두 세계가 같고 내용(직업·아이템·카드·보물·이벤트·뉴스·칸 이름·대사)만 바뀐다. 토벌(hunt)·풀뽑기(weed) 칸은 여기 칸 풀에만 있다.",
+  "jobs": {
+    "_comment": "사람 세상 직업 21개를 빼고 치이카와 세상 직업 12개 + 숨은 직업 4개를 넣는다(건물주·산신령은 두 세계 공통). requires.weed = 풀뽑기 검정 단계 이상, requires.hunts / unlock.hunts = 토벌 성공 횟수 이상, rankUp.meritFrom = 그 직급부터 승진에 공적 카드가 필요, salaryPerWeedLevel = 검정 단계마다 급여 +%, paydayPatrol = 월급날마다 그 키메라와 순찰 토벌(이기면 토벌 +1), paydayWeedExam = 월급날마다 무료 풀뽑기 검정.",
+    "jobs": {
+      "remove": [
+        "civil_servant",
+        "office_worker",
+        "webtoonist",
+        "politician",
+        "baseball",
+        "soccer",
+        "esports",
+        "fighter",
+        "actor",
+        "idol",
+        "youtuber",
+        "chef",
+        "doctor",
+        "researcher",
+        "police",
+        "comedian",
+        "teacher",
+        "trot_star",
+        "astronaut",
+        "chaebol",
+        "national_mc"
+      ],
+      "add": [
+        {"id": "weeder", "name": "풀뽑기 일꾼", "icon": "🌿", "hidden": false, "desc": "풀뽑기 자격으로 시작하는 꾸준한 일! 급수가 오를수록 보수 쑥쑥 · 월급날마다 검정에 한 번 더 도전", "requires": {"weed": 1}, "ranks": [{"name": "풀뽑기 견습", "salary": 25}, {"name": "풀뽑기 일꾼", "salary": 40}, {"name": "풀뽑기 반장", "salary": 65}, {"name": "풀뽑기 명인", "salary": 95}], "rankUp": {"stat": "str", "base": 0.4, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0.02, "props": {"head": "straw_hat", "back": "weed_basket"}, "scene": "weed-field", "tone": "career", "salaryPerWeedLevel": 0.1, "paydayWeedExam": true},
+        {"id": "hunter", "name": "토벌대", "icon": "⚔️", "hidden": false, "desc": "키메라를 물리치는 용감한 직업! 보수는 크지만 다치기 쉬워요 · 월급날마다 순찰 토벌 · 직급만큼 승리 확률 +", "requires": {"stats": {"str": 4}, "cards": ["iron_body"]}, "ranks": [{"name": "토벌 견습", "salary": 35}, {"name": "토벌대원", "salary": 65}, {"name": "토벌 조장", "salary": 105}, {"name": "토벌 대장", "salary": 155}], "rankUp": {"stat": "str", "base": 0.3, "perStat": 0.05, "expNeeded": 1, "merit": 1, "meritFrom": 3}, "injuryRisk": 0.12, "props": {"head": "armor_helmet", "hand": "sasumata"}, "scene": "hunt-forest", "tone": "career", "paydayPatrol": "small_chimera"},
+        {"id": "ramen", "name": "라멘 가게 「郎」", "icon": "🍜", "hidden": false, "desc": "산더미 라멘으로 유명한 가게! 절대미각이 있어야 주방에 설 수 있어요", "requires": {"stats": {"str": 3}, "cards": ["tongue"]}, "ranks": [{"name": "설거지 담당", "salary": 30}, {"name": "면 삶기 담당", "salary": 55}, {"name": "수석 조리", "salary": 90}, {"name": "「郎」 점장", "salary": 135}], "rankUp": {"stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0.03, "props": {"head": "head_towel", "hand": "ladle"}, "scene": "ramen-shop", "tone": "career"},
+        {"id": "workshop", "name": "갑옷씨 공방", "icon": "🛠️", "hidden": false, "desc": "갑옷씨 곁에서 갑옷과 도구를 만드는 장인의 길", "requires": {"stats": {"int": 4}}, "ranks": [{"name": "견습 공방원", "salary": 40}, {"name": "공방원", "salary": 65}, {"name": "공방 장인", "salary": 95}, {"name": "공방장", "salary": 140}], "rankUp": {"stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1, "merit": 1, "meritFrom": 4}, "injuryRisk": 0.03, "props": {"neck": "apron", "hand": "hammer"}, "scene": "workshop", "tone": "career"},
+        {"id": "bookstore", "name": "고서점 직원", "icon": "📚", "hidden": false, "desc": "낡은 책 냄새가 좋은 고서점! 연구열심 카드가 있어야 감정 일을 배울 수 있어요", "requires": {"stats": {"int": 5}, "cards": ["research"]}, "ranks": [{"name": "책 정리 담당", "salary": 55}, {"name": "고서 감정사", "salary": 85}, {"name": "수석 감정사", "salary": 120}, {"name": "고서점 주인", "salary": 170}], "rankUp": {"stat": "int", "base": 0.3, "perStat": 0.05, "expNeeded": 2}, "injuryRisk": 0, "props": {"face": "round_glasses", "hand": "book"}, "scene": "bookstore", "tone": "career"},
+        {"id": "busker", "name": "길거리 가수", "icon": "🎸", "hidden": false, "desc": "노래로 동네를 웃게 하는 직업! 카리스마◎ 카드가 필요해요", "requires": {"stats": {"charm": 4}, "cards": ["charisma"]}, "ranks": [{"name": "거리 연습생", "salary": 25}, {"name": "길거리 가수", "salary": 55}, {"name": "인기 가수", "salary": 95}, {"name": "전설의 가수", "salary": 160}], "rankUp": {"stat": "charm", "base": 0.25, "perStat": 0.05, "expNeeded": 1, "merit": 1, "meritFrom": 4}, "injuryRisk": 0, "props": {"back": "guitar"}, "scene": "stage", "tone": "career"},
+        {"id": "pancake", "name": "팬케이크 가게", "icon": "🥞", "hidden": false, "desc": "폭신폭신 팬케이크를 굽는 달콤한 가게", "requires": {"stats": {"charm": 3}}, "ranks": [{"name": "반죽 담당", "salary": 30}, {"name": "굽기 담당", "salary": 50}, {"name": "수석 파티시에", "salary": 80}, {"name": "가게 주인", "salary": 115}], "rankUp": {"stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0.02, "props": {"head": "chef_hat", "hand": "turner"}, "scene": "kitchen", "tone": "career"},
+        {"id": "photographer", "name": "사진사", "icon": "📷", "hidden": false, "desc": "찰칵! 친구들의 소중한 순간을 담는 직업", "requires": {"stats": {"luck": 3}}, "ranks": [{"name": "견습 사진사", "salary": 25}, {"name": "사진사", "salary": 50}, {"name": "인기 사진사", "salary": 85}, {"name": "사진 작가", "salary": 130}], "rankUp": {"stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1}, "injuryRisk": 0, "props": {"hand": "camera"}, "scene": "park", "tone": "career"},
+        {"id": "sento", "name": "목욕탕지기", "icon": "♨️", "hidden": false, "desc": "따끈한 목욕탕을 지키는 든든한 일. 보수는 적당하지만 꾸준해요", "requires": {"stats": {"str": 3}}, "ranks": [{"name": "청소 담당", "salary": 35}, {"name": "카운터", "salary": 50}, {"name": "보일러 장인", "salary": 65}, {"name": "목욕탕 주인", "salary": 90}], "rankUp": {"stat": "str", "base": 0.4, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0.02, "props": {"head": "head_towel"}, "scene": "sento", "tone": "career"},
+        {"id": "delivery", "name": "배달부", "icon": "📦", "hidden": false, "desc": "동네 구석구석 달리는 배달부! 운이 좋으면 팁도 두둑", "requires": {"stats": {"luck": 4}}, "ranks": [{"name": "배달 견습", "salary": 30}, {"name": "배달부", "salary": 55}, {"name": "베테랑 배달부", "salary": 85}, {"name": "배달 왕", "salary": 120}], "rankUp": {"stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1}, "injuryRisk": 0.06, "props": {"head": "baseball_cap", "back": "delivery_box"}, "scene": "park", "tone": "career"},
+        {"id": "fisher", "name": "섬 낚시꾼", "icon": "🎣", "hidden": false, "desc": "섬에서 월척을 노리는 바다 사나이", "requires": {"stats": {"luck": 3, "str": 3}}, "ranks": [{"name": "초보 낚시꾼", "salary": 30}, {"name": "낚시꾼", "salary": 55}, {"name": "바다 사나이", "salary": 90}, {"name": "낚시 명인", "salary": 130}], "rankUp": {"stat": "luck", "base": 0.3, "perStat": 0.05, "expNeeded": 1}, "injuryRisk": 0.05, "props": {"head": "straw_hat", "hand": "fishing_rod"}, "scene": "jeju", "tone": "career"},
+        {"id": "cafe", "name": "카페 점원", "icon": "☕", "hidden": false, "desc": "향긋한 커피와 미소로 손님을 맞는 카페", "requires": {"stats": {"charm": 4}}, "ranks": [{"name": "컵 닦기", "salary": 30}, {"name": "바리스타", "salary": 50}, {"name": "수석 바리스타", "salary": 75}, {"name": "카페 사장", "salary": 110}], "rankUp": {"stat": "charm", "base": 0.35, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0, "props": {"neck": "apron"}, "scene": "cafe", "tone": "career"},
+        {"id": "legend_hunter", "name": "전설의 토벌자", "icon": "🗡️", "hidden": true, "desc": "수많은 키메라를 물리친 전설! 숲의 평화를 지켜요 (토벌 승리 확률 +직급)", "requires": {}, "ranks": [{"name": "전설의 토벌자", "salary": 115}, {"name": "숲의 수호자", "salary": 175}, {"name": "토벌 영웅", "salary": 250}], "rankUp": {"stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0.04, "props": {"hand": "sasumata", "back": "cape"}, "scene": "hunt-forest", "tone": "result", "unlock": {"hunts": 8, "stats": {"str": 8}, "desc": "토벌 8번 이상 성공(순찰 포함) + 체력 8 이상"}, "paydayPatrol": "small_chimera"},
+        {"id": "weed_sage", "name": "풀뽑기 1급 명인", "icon": "🌾", "hidden": true, "desc": "풀뽑기 검정 1급! 풀 한 포기에도 우주가 보인다", "requires": {}, "ranks": [{"name": "풀뽑기 명인", "salary": 100}, {"name": "풀뽑기 달인", "salary": 165}, {"name": "풀의 현자", "salary": 225}], "rankUp": {"stat": "luck", "base": 0.35, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0, "props": {"head": "straw_hat", "hand": "flower"}, "scene": "weed-field", "tone": "result", "unlock": {"weed": 5, "desc": "풀뽑기 검정 1급 합격"}},
+        {"id": "ramen_owner", "name": "「郎」 2호점 사장", "icon": "🍜", "hidden": true, "desc": "라멘 「郎」의 맛을 이어받아 2호점을 연 사장님", "requires": {}, "ranks": [{"name": "2호점 사장", "salary": 125}, {"name": "체인점 사장", "salary": 180}, {"name": "라멘 왕", "salary": 250}], "rankUp": {"stat": "str", "base": 0.35, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0.02, "props": {"head": "head_towel", "neck": "bow_tie"}, "scene": "ramen-shop", "tone": "result", "unlock": {"maxRankOf": ["ramen"], "netWorth": 1500, "desc": "라멘 가게 「郎」 최고 직급(점장) + 순자산 1,500만원 이상"}},
+        {"id": "armor_san", "name": "갑옷씨", "icon": "🛡️", "hidden": true, "desc": "모두의 갑옷을 만들어 주는 전설의 장인, 갑옷씨가 되었다!", "requires": {}, "ranks": [{"name": "갑옷씨", "salary": 115}, {"name": "명장 갑옷씨", "salary": 175}, {"name": "전설의 갑옷씨", "salary": 250}], "rankUp": {"stat": "int", "base": 0.35, "perStat": 0.04, "expNeeded": 1}, "injuryRisk": 0, "props": {"head": "armor_helmet", "back": "armor_plate"}, "scene": "workshop", "tone": "result", "unlock": {"maxRankOf": ["workshop"], "stats": {"int": 8}, "desc": "갑옷씨 공방 최고 직급(공방장) + 지력 8 이상"}}
+      ]
+    },
+    "partTime": {
+      "name": "갑옷씨네 노동",
+      "icon": "🪖",
+      "desc": "갑옷씨가 맡기는 노동으로 시작! 직업 칸에서 정식 일에 도전하세요",
+      "ranks": [{"name": "노동 견습", "salary": 15}, {"name": "노동 반장", "salary": 20}, {"name": "노동 대장", "salary": 35}],
+      "scene": "workshop"
+    }
+  },
+  "items": {
+    "items": {
+      "replace": {
+        "car": {"name": "씽씽 킥보드", "icon": "🛴", "desc": "룰렛 1이 나오면 2칸 이동"},
+        "laptop": {
+          "name": "고서점 책 꾸러미",
+          "icon": "📚",
+          "desc": "지력 +1 · 고서점 직원·사진사·길거리 가수 급여 +10%",
+          "effect": {"salaryBonus": 0.1, "jobs": ["bookstore", "photographer", "busker"]}
+        },
+        "gym_pass": {"name": "사스마타", "icon": "🔱", "desc": "체력 +1 · 토벌 승리 확률 +10%p", "effect": {"huntBonus": true}},
+        "designer_bag": {"name": "포셰트", "icon": "👜", "desc": "매력 +1 · 되팔 때 값이 거의 그대로"},
+        "lucky_cat": {"name": "네잎클로버", "icon": "🍀", "desc": "운 +1"},
+        "massage_chair": {"name": "목욕탕 평생 회수권", "icon": "♨️", "desc": "노년 이벤트에서 체력이 줄지 않는다"}
+      },
+      "add": [
+        {"id": "armor", "name": "갑옷", "icon": "🛡️", "desc": "토벌에서 지면 손해 절반 · 다치지 않는다", "price": 250, "resale": 0.5, "effect": {"huntArmor": true}},
+        {"id": "guitar", "name": "하치와레표 기타", "icon": "🎸", "desc": "매력 +1 · 길거리 가수 급여 +10%", "price": 200, "resale": 0.6, "stats": {"charm": 1}, "effect": {"salaryBonus": 0.1, "jobs": ["busker"]}}
+      ]
+    }
+  },
+  "cards": {
+    "cards": {
+      "replace": {
+        "study": {"name": "밤샘 공부", "icon": "📖", "desc": "지력 +1"},
+        "insider": {"name": "노래 연습", "icon": "🎤", "desc": "매력 +1"},
+        "energy": {"name": "푸딩 파워", "icon": "🍮", "desc": "이번 룰렛 +2칸"},
+        "taxi": {"name": "우사기 점프 (야하!)", "icon": "🐰", "desc": "이번 룰렛을 두 번 돌려 큰 값으로 이동"},
+        "pledge": {"name": "후원 모금", "icon": "📣", "jobOnly": "busker", "desc": "길거리 가수 전용 · 다른 캐릭터 모두에게서 후원금을 받는다"},
+        "bonus": {"name": "보수 봉투", "icon": "💌", "desc": "다음 급여 2배 (자동)"},
+        "insurance": {"name": "갑옷씨 보증서", "icon": "🛡️", "desc": "다음 손실(지출 칸·나쁜 이벤트·토벌 패배·습격·벌금) 절반 (자동)"},
+        "amulet": {"name": "수호 부적", "icon": "🧿", "desc": "다음 부상이나 나쁜 이벤트 한 번을 막아 준다 (자동)"},
+        "lotto": {"name": "쿠지 응모권", "icon": "🎟️", "desc": "다음 시대가 열릴 때 쿠지 뽑기에 한 장 응모 (자동)"},
+        "coupon": {"name": "갑옷씨 상점 할인권", "icon": "🏷️", "desc": "다음 상점 구매 50% 할인 (자동)"},
+        "lawyer": {
+          "name": "사스마타 방어",
+          "icon": "🔱",
+          "desc": "나를 노린 뒤통수 카드 한 장을 막는다 (자동)",
+          "texts": {"block": "🔱 {target}, 사스마타로 {name}의 「{card}」 공격을 막아냈다!"}
+        },
+        "cut_line": {"name": "함정 파기", "icon": "🕳️", "desc": "대상의 다음 룰렛 −3칸 (최소 1칸)"},
+        "noise": {"name": "「우라!」 고함", "icon": "📢", "desc": "대상의 다음 룰렛을 두 번 돌려 작은 값으로"},
+        "tax_audit": {
+          "name": "나쁜 녀석 습격",
+          "icon": "😈",
+          "desc": "대상이 현금의 10%를 빼앗긴다 (최대 300만원)",
+          "texts": {"hit": "😈 {target}: 나쁜 녀석에게 {amount}을 빼앗겼다…", "miss": "😈 {target}: 빼앗길 돈이 하나도 없어서 나쁜 녀석이 그냥 갔다"}
+        },
+        "complaint": {
+          "name": "일거리 뺏기",
+          "icon": "🧹",
+          "desc": "일하는 대상은 경험치 −2, 아니면 벌금",
+          "texts": {"exp": "🧹 {target}: 일거리를 뺏겨서 경험치 −{n}", "fine": "🧹 {target}: 일거리를 뺏겨 {amount} 손해…"}
+        },
+        "gossip": {"name": "소문내기", "icon": "🤫", "desc": "대상의 매력 −1"},
+        "salary_charm": {"name": "보수 부적", "icon": "💰", "desc": "가지고 있는 동안 월급날 보수 +10%"},
+        "research": {"desc": "직업 요구 카드: 고서점 직원이 되려면 필요해요 (계속 보유)"},
+        "charisma": {"desc": "직업 요구 카드: 길거리 가수가 되려면 필요해요 (계속 보유)"},
+        "tongue": {"desc": "직업 요구 카드: 라멘 가게 「郎」에서 일하려면 필요해요 (계속 보유)"},
+        "iron_body": {"desc": "직업 요구 카드: 토벌대가 되려면 필요해요 (계속 보유)"}
+      }
+    }
+  },
+  "treasures": {
+    "treasures": {
+      "replace": {
+        "celadon": {"name": "고대 항아리", "icon": "🏺", "desc": "숲속 동굴에서 나온 천 년 묵은 항아리"},
+        "white_porcelain": {"name": "갑옷씨의 은잔", "icon": "🫖", "desc": "갑옷씨가 아끼던 반짝이는 은잔"},
+        "old_coin": {"name": "오래된 동전", "icon": "🪙", "desc": "흙 속에서 나온 녹슨 동전… 혹시 귀한 걸까?"},
+        "idol_goods": {"name": "레어 스티커", "icon": "✨", "desc": "반짝반짝 한정판 캐릭터 스티커"},
+        "dino_fossil": {"name": "키메라 화석", "icon": "🐉", "desc": "아주 옛날 키메라의 뼈라는데…"},
+        "gold_toad": {"name": "황금 밤", "icon": "🌰", "desc": "황금빛으로 빛나는 신기한 밤"},
+        "stamp": {"name": "네잎클로버 책갈피", "icon": "🍀", "desc": "네잎클로버를 눌러 만든 행운의 책갈피"},
+        "lp_record": {"name": "낡은 기타 줄", "icon": "🎸", "desc": "전설의 길거리 가수가 쓰던 기타 줄"},
+        "sneakers": {"name": "랏코의 운동화", "icon": "👟", "desc": "랏코 선배가 신던 운동화라는 소문"},
+        "fake_painting": {"name": "가짜 명화", "icon": "🖼️", "desc": "누가 봐도 가짜… 인데 혹시?"},
+        "antique_clock": {"name": "골동품 시계", "icon": "🕰️", "desc": "째깍째깍, 아직도 가는 오래된 시계"},
+        "calligraphy": {"name": "고서점 희귀본", "icon": "📕", "desc": "고서점 구석에서 찾은 희귀한 옛날 책"},
+        "meteorite": {"name": "별똥별 조각", "icon": "☄️", "desc": "밤하늘에서 떨어진 반짝이는 돌"},
+        "ginseng": {"name": "거대 버섯", "icon": "🍄", "desc": "숲 깊은 곳에서 찾은 커다란 버섯"},
+        "retro_console": {"name": "옛날 장난감", "icon": "🪀", "desc": "상자까지 멀쩡한 추억의 장난감"},
+        "first_edition": {"name": "초판 그림책", "icon": "📖", "desc": "전설의 그림책 1권 초판"},
+        "black_pearl": {"name": "진주 조개", "icon": "🦪", "desc": "섬 바닷가에서 주운 진주 조개"},
+        "vintage_camera": {"name": "빈티지 카메라", "icon": "📷", "desc": "찰칵 소리가 경쾌한 옛날 카메라"},
+        "signed_ball": {"name": "푸딩 왕관", "icon": "🍮", "desc": "푸딩 대회 우승자에게만 주던 왕관"},
+        "amber": {"name": "바다 유리", "icon": "🫧", "desc": "파도에 동글동글해진 신비한 바다 유리"},
+        "gold_crown": {"name": "전설의 사스마타", "icon": "🔱", "desc": "전설의 토벌자가 썼다는 사스마타"},
+        "treasure_map": {"name": "보물 지도", "icon": "🗺️", "desc": "X 표시가 된 낡은 지도"}
+      },
+      "add": [
+        {"id": "kuji_plush", "name": "커다란 치이카와 인형", "icon": "🧸", "desc": "쿠지 1등 경품! 폭신폭신 커다란 인형", "min": 100, "max": 200, "fakeChance": 0, "weight": 0}
+      ]
+    }
+  },
+  "events": {
+    "events": {
+      "replace": {
+        "game_topup": {"text": "뽑기 장난감을 잔뜩 사다가 혼난 {name}"},
+        "academy_loop": {"text": "공부방에서 밤늦게까지 공부하고 돌아온 {name}"},
+        "concert_ticket": {"text": "{name}, 하치와레 길거리 공연 맨 앞자리 확보!"},
+        "pc_bang": {"text": "친구들과 밤새 보드게임을 한 {name}"},
+        "hs_parttime": {"text": "{name}, 방학 동안 갑옷씨네 노동 알바로 용돈 벌이"},
+        "coin_moon": {"text": "{name}, 친구 따라 모은 반짝이 돌 값이 쑥 올랐다!"},
+        "coin_crash": {"text": "{name}의 반짝이 돌이 그냥 돌멩이였다…"},
+        "gym_pass": {"text": "랏코 선배 도장 1년권을 끊은 {name}, 사흘은 열심히 다녔다"},
+        "delivery_vip": {"text": "라멘 배달 단골이 된 {name}… 지갑이 얇아졌다"},
+        "first_pay_gift": {"text": "{name}, 첫 보수로 친구들에게 팬케이크를 쐈다"},
+        "overtime_taxi": {"text": "늦게까지 일하고 깜깜한 밤길을 걸어온 {name}"},
+        "interview_fail": {"text": "노동 면접에서 또 떨어진 {name}… 다음엔 붙는다!"},
+        "surprise_bonus": {"text": "{name}, 갑옷씨가 깜짝 보수를 얹어 줬다!"},
+        "side_project": {"text": "{name}의 주말 공방 작품이 동네에서 대박!"},
+        "jeju_month": {"text": "{name}, 섬에서 한 달 살기로 힐링했다"},
+        "auction_win": {"text": "{name}, 고서점 경매에서 귀한 책을 싸게 낙찰!"},
+        "hoesik_3rd": {"text": "{name}, 토벌대 뒤풀이 3차까지 끌려갔다…"},
+        "overtime_week": {"text": "{name}, 이번 주도 노동 5일 연속. 수당은 챙겼다"},
+        "dividend": {"text": "{name}, 모아 둔 반짝이 돌을 비싸게 팔았다"},
+        "promotion_treat": {"text": "{name}, 승진 기념으로 모두에게 라멘을 쐈다"},
+        "golf_start": {"text": "{name}, 낚시에 입문했다 (장비값 실화?)"},
+        "fender_bender": {"text": "킥보드를 타다 쿵! {name}, 수리비가 나왔다"},
+        "reunion_tip": {"text": "{name}, 옛 친구에게 쿠지 명당 정보를 들었다"},
+        "study_group": {"text": "{name}, 일 끝나고 밤샘 공부 모임으로 자기계발"},
+        "video_call": {"text": "{name}, 옛 친구와 편지를 주고받으며 추억에 잠겼다"},
+        "homeshopping": {"text": "떠돌이 장사꾼의 수상한 약을 잔뜩 산 {name}"},
+        "chicken": {"text": "{name}, 야식으로 라멘을 한 그릇 더 먹었다"},
+        "phone": {"text": "{name}, 아끼던 컵을 떨어뜨려 깨뜨렸다"},
+        "karaoke": {"text": "{name}, 친구들과 노래 연습을 하다 목이 쉬었다"},
+        "lab_intern": {"text": "{name}, 고서점 아르바이트에서 주인 할아버지 눈에 띄었다"},
+        "sns_star": {"text": "{name}의 사진이 동네 소식지에 실렸다! 인기 폭발"},
+        "project_win": {
+          "text": "{name}, 공방 품평회 대상! 공적을 인정받았다",
+          "conditions": {"job": ["hunter", "workshop", "busker"]},
+          "scene": "workshop"
+        },
+        "crisis_save": {"text": "위기의 노동 현장을 살려 낸 {name}, 모두가 박수!", "scene": "workshop"},
+        "gym_trainer": {"text": "{name}, 동네 씨름 대회 우승! 강철 체력을 인정받았다"},
+        "food_blog": {"text": "{name}의 라멘 맛 평가가 입소문! 절대미각이라는 소문이 났다"},
+        "alumni_network": {"text": "명문 학교 친구들과 든든한 인맥을 만든 {name}"},
+        "parents_allowance": {"text": "{name}, 명절에 고향 어르신들께 두둑한 용돈을 드렸다"},
+        "busking": {"text": "{name}의 길거리 노래가 동네 소문이 났다!"},
+        "festival_stage": {"text": "동네 축제 무대를 휘어잡은 {name}, 타고난 카리스마!"},
+        "cooking_class": {"text": "요리 시간에 {name}의 라멘이 1등! 다들 감탄"}
+      },
+      "add": [
+        {"id": "pancake_party", "eras": ["elem", "middle", "high", "young", "middle_age"], "text": "{name}, 친구들과 팬케이크 파티! 배가 빵빵", "money": {"min": -10, "max": -5}, "scale": true, "stats": {"charm": 1}, "tone": "good", "scene": "kitchen", "emotion": "joy"},
+        {"id": "sento_day", "eras": ["elem", "middle", "high", "young", "middle_age", "senior"], "text": "{name}, 목욕탕 가는 날! 뜨끈한 탕에서 피로가 싹", "money": {"min": -5, "max": -2}, "scale": true, "stats": {"str": 1}, "tone": "good", "scene": "sento", "emotion": "joy"},
+        {"id": "ramen_bowl", "eras": ["middle", "high", "young", "middle_age", "senior"], "text": "라멘 「郎」 산더미 한 그릇 완식! {name}의 배가 터질 것 같다", "money": {"min": -10, "max": -5}, "scale": true, "stats": {"str": 1}, "tone": "good", "scene": "ramen-shop", "emotion": "joy"},
+        {"id": "chimera_flee", "eras": ["young", "middle_age"], "text": "{name}, 길에서 키메라를 만나 전력으로 도망쳤다!", "stats": {"str": 1}, "tone": "neutral", "scene": "hunt-forest", "emotion": "sweat"},
+        {"id": "usagi_yaha", "eras": ["elem", "middle", "high", "young", "middle_age", "senior"], "text": "「야하!」 우사기가 {name}에게 행운의 춤을 보여 줬다", "stats": {"luck": 1}, "tone": "good", "emotion": "joy"},
+        {"id": "rain_umbrella", "eras": ["elem", "middle", "high", "young", "middle_age", "senior"], "text": "비 오는 날, {name}, 친구와 우산을 나눠 썼다", "stats": {"charm": 1}, "tone": "love", "scene": "park", "emotion": "love"},
+        {"id": "picnic_day", "eras": ["baby", "elem", "middle", "high", "young", "middle_age", "senior"], "text": "{name}, 친구들과 소풍! 도시락이 꿀맛", "money": {"min": -10, "max": -5}, "scale": true, "stats": {"luck": 1}, "tone": "good", "scene": "park", "emotion": "joy"},
+        {"id": "island_trip", "eras": ["high", "young", "middle_age", "senior"], "text": "{name}, 배를 타고 섬 나들이! 바닷바람 최고", "money": {"min": -20, "max": -10}, "scale": true, "stats": {"charm": 1}, "tone": "good", "scene": "jeju", "emotion": "joy"},
+        {"id": "hachiware_song", "eras": ["elem", "middle", "high", "young", "middle_age", "senior"], "text": "하치와레의 노래를 듣고 {name}, 힘이 났다!", "stats": {"charm": 1}, "tone": "good", "scene": "stage", "emotion": "joy"},
+        {"id": "momonga_tantrum", "eras": ["elem", "middle", "high", "young", "middle_age", "senior"], "text": "모몽가가 {name}에게 「사 줘!」 떼를 써서 간식을 사 줬다", "money": {"min": -15, "max": -5}, "scale": true, "tone": "bad", "emotion": "sweat"},
+        {"id": "kurimanju_cheers", "eras": ["young", "middle_age", "senior"], "text": "쿠리만쥬와 한 잔! 「하-!」 {name}, 기분 최고", "money": {"min": -10, "max": -5}, "scale": true, "stats": {"luck": 1}, "tone": "good", "emotion": "joy"},
+        {"id": "rakko_training", "eras": ["middle", "high", "young", "middle_age"], "text": "랏코 선배와 수련! {name}의 체력이 쑥 늘었다", "stats": {"str": 1}, "tone": "good", "scene": "mountain-trail", "emotion": "joy"},
+        {"id": "labor_reward", "eras": ["young", "middle_age"], "text": "{name}, 갑옷씨가 노동 보수 봉투를 두둑하게 챙겨 줬다", "money": {"min": 20, "max": 50}, "scale": true, "tone": "career", "scene": "workshop", "emotion": "joy", "conditions": {"job": "any"}},
+        {"id": "weed_job", "eras": ["middle", "high", "young"], "text": "{name}, 풀뽑기 알바로 용돈 벌이", "money": {"min": 10, "max": 20}, "scale": true, "stats": {"str": 1}, "tone": "good", "scene": "weed-field", "emotion": "joy"},
+        {"id": "kuji_miss", "eras": ["elem", "middle", "high", "young", "middle_age", "senior"], "text": "쿠지를 뽑았는데 꽝… {name}, 휴지만 잔뜩 받았다", "money": {"min": -5, "max": -2}, "scale": true, "tone": "bad", "scene": "kuji", "emotion": "sweat"},
+        {"id": "armor_shop_sale", "card": "coupon", "eras": ["middle", "high", "young", "middle_age"], "text": "갑옷씨 상점 세일! {name}, 할인권을 받았다", "tone": "good", "scene": "shop", "emotion": "joy"},
+        {"id": "shisa_bakery", "eras": ["elem", "middle", "high", "young", "middle_age", "senior"], "text": "시사가 일하는 빵집에서 {name}, 갓 구운 빵을 시식했다", "stats": {"luck": 1}, "tone": "good", "scene": "kitchen", "emotion": "joy"},
+        {"id": "pochette_fashion", "eras": ["middle", "high", "young", "middle_age"], "text": "포셰트가 {name}에게 멋 내는 법을 알려 줬다", "stats": {"charm": 1}, "tone": "good", "emotion": "joy"},
+        {"id": "chimera_reward", "eras": ["young", "middle_age"], "text": "{name}, 길 잃은 꼬마 키메라를 숲으로 돌려보내고 사례를 받았다", "money": {"min": 15, "max": 40}, "scale": true, "tone": "good", "scene": "hunt-forest", "emotion": "joy"}
+      ]
+    }
+  },
+  "news": {
+    "news": {
+      "replace": {
+        "coding_edu": {"title": "그림책 읽기 운동", "text": "동네마다 그림책 읽기 모임! 이 시대에 들어서는 모두 지력 +1"},
+        "pe_boost": {"title": "동네 체조 열풍", "text": "아침마다 다 같이 체조! 이 시대에 들어서는 모두 체력 +1"},
+        "gacha_craze": {"title": "뽑기 장난감 대유행", "text": "동네마다 뽑기 열풍! 이 시대에 들어서는 모두 운 +1"},
+        "academy_fee_up": {"title": "공부방 수강료 인상", "text": "공부방 수강료가 1.5배로! 습관 비용이 올라요"},
+        "kpop_wave": {"title": "하치와레 노래 대유행", "text": "동네가 온통 하치와레 노래! 이 시대에 들어서는 모두 매력 +1"},
+        "flu_season": {"title": "감기 대유행", "text": "콜록콜록… 약값이 올라요. 지출 칸 금액 ×1.3"},
+        "job_freeze": {"title": "노동 일감 한파", "text": "일거리가 줄었다! 모든 직업 요구 능력치 +1"},
+        "job_fair": {"title": "갑옷씨네 일자리 박람회", "text": "일손을 구하는 가게가 가득! 모든 직업 요구 능력치 −1"},
+        "half_tuition": {"title": "학비 반값", "text": "대학 학자금 대출이 절반으로 줄어요"},
+        "min_wage": {"title": "노동 보수 인상", "text": "갑옷씨네 노동 보수 ×1.5!"},
+        "coin_boom": {"title": "반짝이 돌 열풍", "text": "너도나도 반짝이 돌 모으기! 이벤트 칸 금액 변동 ×1.5"},
+        "esports_boom": {
+          "title": "동네 사진 콘테스트",
+          "text": "사진사·배달부 요구 능력치가 낮아져요",
+          "effects": {"jobDelta": {"photographer": -2, "delivery": -1}}
+        },
+        "kdrama_hit": {
+          "title": "길거리 공연 붐",
+          "text": "길거리 가수·카페·팬케이크 가게 요구 능력치가 낮아져요",
+          "effects": {"jobDelta": {"busker": -2, "cafe": -1, "pancake": -1}}
+        },
+        "sports_era": {
+          "title": "토벌대 대모집",
+          "text": "토벌대·목욕탕지기·섬 낚시꾼 요구 체력 −1, 대신 부상 확률 ×1.3",
+          "effects": {"jobDelta": {"hunter": -1, "sento": -1, "fisher": -1}, "injuryMult": 1.3}
+        },
+        "pay_raise": {"title": "보수 인상 바람", "text": "갑옷씨 공방부터 보수 인상 릴레이! 급여 ×1.2"},
+        "recession": {"title": "일거리 가뭄", "text": "허리띠를 졸라매야 할 때… 급여 ×0.85, 돈 칸 ×0.8"},
+        "four_day_week": {"title": "주 4일 노동제", "text": "여유가 생겼다! 이 시대에 들어서는 모두 운 +1"},
+        "free_checkup": {"title": "무료 건강 검진", "text": "부상 확률이 절반으로!"},
+        "restructuring": {"title": "공방 구조조정", "text": "승진 확률 −10%p"},
+        "bonus_party": {"title": "보수 봉투 잔치", "text": "승진 확률 +10%p, 급여 ×1.1"},
+        "lotto_fever": {
+          "title": "쿠지 1등 당첨자 속출",
+          "text": "커다란 인형이 줄줄이! 쿠지 1~3등 확률 ×1.25, 이벤트 칸 금액 변동 ×1.3",
+          "effects": {"eventMoneyMult": 1.3, "kujiLuck": 1.25}
+        },
+        "trot_fever": {"title": "노래 대회 열풍", "text": "동네마다 노래 대회! 이 시대에 들어서는 모두 매력 +1"},
+        "pension_up": {"title": "연금 인상 확정", "text": "노후가 든든! 돈 칸 ×1.2"}
+      },
+      "add": [
+        {"id": "chimera_surge", "eras": ["young", "middle_age"], "title": "키메라 대량 출몰", "text": "숲이 시끌시끌! 토벌 보상 ×1.5, 대신 토벌에서 질 때 부상 확률 ×1.5", "tone": "treasure", "effects": {"huntRewardMult": 1.5, "huntInjuryMult": 1.5}},
+        {"id": "weed_boom", "eras": ["middle", "high", "young", "middle_age"], "title": "풀뽑기 일감 폭증", "text": "풀이 쑥쑥! 풀뽑기 보수 ×1.5, 풀뽑기 일꾼 급여 ×1.2", "tone": "good", "effects": {"weedMult": 1.5, "jobSalaryMult": {"weeder": 1.2, "weed_sage": 1.2}}},
+        {"id": "ramen_price", "eras": ["young", "middle_age", "senior"], "title": "라멘 값 인상", "text": "라멘 「郎」 가게 급여 ×1.2, 라멘 사 먹는 비용 ×1.5", "tone": "career", "effects": {"jobSalaryMult": {"ramen": 1.2, "ramen_owner": 1.2}, "eventMult": {"ramen_bowl": 1.5}}}
+      ]
+    }
+  },
+  "board": {
+    "_comment": "치이카와 모드 칸 풀: 중·고등학생 시대에 풀뽑기(weed ×3), 청년·중년에 토벌(hunt ×3)·풀뽑기(×2), 루트마다 단짝·반려 = 풀뽑기 ×2, 일·커리어 = 토벌 ×3, 보물·부동산·금전 = 토벌 ×1. 칸 이름(돈·지출 labels)도 치이카와 세상 말로.",
+    "eras": {
+      "elem": {"loss": {"labels": ["공부방 간식비", "뽑기 장난감", "잃어버린 우산", "찢어진 그림책"]}},
+      "middle": {
+        "pool": [
+          {"type": "money", "weight": 3},
+          {"type": "loss", "weight": 2},
+          {"type": "event", "weight": 3},
+          {"type": "habit", "weight": 2},
+          {"type": "card", "weight": 2},
+          {"type": "hometown", "weight": 1},
+          {"type": "temple", "weight": 1},
+          {"type": "weed", "weight": 3}
+        ],
+        "money": {"labels": ["세뱃돈", "줍줍한 동전", "용돈 인상", "풀뽑기 알바비"]},
+        "loss": {"labels": ["공부방 수강료", "소풍비", "새 모자", "깨진 컵"]}
+      },
+      "high": {
+        "pool": [
+          {"type": "money", "weight": 3},
+          {"type": "loss", "weight": 2},
+          {"type": "event", "weight": 3},
+          {"type": "habit", "weight": 2},
+          {"type": "card", "weight": 2},
+          {"type": "heart", "weight": 1},
+          {"type": "hometown", "weight": 1},
+          {"type": "temple", "weight": 1},
+          {"type": "weed", "weight": 3}
+        ],
+        "money": {"labels": ["노동 알바비", "교내 대회 상금", "세뱃돈", "쿠지 4등 식사권"]},
+        "loss": {"labels": ["참고서값", "도서관 연체료", "밤샘 공부 간식비", "망가진 우산"]}
+      },
+      "young": {
+        "pool": [
+          {"type": "money", "weight": 8},
+          {"type": "loss", "weight": 5},
+          {"type": "event", "weight": 8},
+          {"type": "card", "weight": 4},
+          {"type": "job", "weight": 4},
+          {"type": "heart", "weight": 2},
+          {"type": "house", "weight": 1},
+          {"type": "hometown", "weight": 1},
+          {"type": "temple", "weight": 1},
+          {"type": "hunt", "weight": 3},
+          {"type": "weed", "weight": 2}
+        ],
+        "money": {"labels": ["보수 봉투", "줍줍한 동전", "쿠지 2등 상품권", "갑옷씨의 보너스"]},
+        "loss": {"labels": ["집세", "갑옷 수리비", "이사 비용", "라멘 외상값"]}
+      },
+      "middle_age": {
+        "pool": [
+          {"type": "money", "weight": 8},
+          {"type": "loss", "weight": 5},
+          {"type": "event", "weight": 8},
+          {"type": "card", "weight": 4},
+          {"type": "job", "weight": 4},
+          {"type": "heart", "weight": 2},
+          {"type": "house", "weight": 2},
+          {"type": "hometown", "weight": 1},
+          {"type": "temple", "weight": 1},
+          {"type": "treasure", "weight": 1},
+          {"type": "hunt", "weight": 3},
+          {"type": "weed", "weight": 2}
+        ],
+        "money": {"labels": ["두둑한 보수 봉투", "연말 보너스", "저금통 개봉", "공방 부업 수익"]},
+        "loss": {"labels": ["펫 미용비", "킥보드 수리비", "친구 선물값", "건강검진 재검"]}
+      },
+      "senior": {"money": {"labels": ["연금 수령", "펫 굿즈 판매 수익", "텃밭 수확", "옛 보수 저금"]}}
+    },
+    "routePools": {
+      "love": {
+        "pool": [
+          {"type": "heart", "weight": 6},
+          {"type": "house", "weight": 1},
+          {"type": "event", "weight": 2},
+          {"type": "card", "weight": 1},
+          {"type": "money", "weight": 4, "scale": 1.2},
+          {"type": "loss", "weight": 1, "scale": 0.8},
+          {"type": "hometown", "weight": 1},
+          {"type": "jeju", "weight": 1},
+          {"type": "weed", "weight": 2}
+        ]
+      },
+      "career": {
+        "pool": [
+          {"type": "job", "weight": 3},
+          {"type": "money", "weight": 3, "scale": 1.15},
+          {"type": "event", "weight": 1},
+          {"type": "card", "weight": 2},
+          {"type": "loss", "weight": 2},
+          {"type": "heart", "weight": 1},
+          {"type": "house", "weight": 1},
+          {"type": "hunt", "weight": 3}
+        ],
+        "labels": {"money": ["토벌 포상금", "승진 보너스", "늦게까지 일한 수당", "갑옷씨 특별 보수"], "loss": ["뒤풀이 2차", "공구 장만", "밤길 킥보드 수리"]}
+      },
+      "money": {
+        "pool": [
+          {"type": "treasure", "weight": 2},
+          {"type": "house", "weight": 3},
+          {"type": "card", "weight": 1},
+          {"type": "money", "weight": 2, "scale": 1.8},
+          {"type": "loss", "weight": 2, "scale": 1.5},
+          {"type": "heart", "weight": 1},
+          {"type": "temple", "weight": 2},
+          {"type": "jeju", "weight": 1},
+          {"type": "hunt", "weight": 1}
+        ],
+        "labels": {
+          "money": ["반짝이 돌 대박", "고서 경매 차익", "쿠지 2등 상품권", "줍줍한 금화"],
+          "loss": ["반짝이 돌 폭락", "나쁜 녀석 습격", "수상한 장사꾼 사기", "가짜 보물 지도"]
+        }
+      }
+    }
+  },
+  "balance": {
+    "_comment": "쿠지 뽑기(lottoMode kuji): 시대가 열릴 때 쿠지 응모권(lotto 카드) 한 장마다 상자에서 한 장 — 1등 인형(보물 kuji_plush) + 돈, 2등 상품권(돈), 3등 랜덤 카드, 4등 라멘 식사권(돈 + 체력), 꽝(휴지). 한 장 기대값(돈 + 카드 가격 × 0.5 + 인형 평균 감정가) < 응모권 가격(테스트). luckRanks = 뉴스 kujiLuck가 확률을 올리는 등수(꽝이 그만큼 줄어든다).",
+    "lottoMode": "kuji",
+    "kuji": {
+      "prizes": [
+        {"rank": 1, "name": "1등 · 커다란 치이카와 인형", "chance": 0.02, "money": 150, "treasure": "kuji_plush"},
+        {"rank": 2, "name": "2등 · 갑옷씨 상점 상품권", "chance": 0.06, "money": 60},
+        {"rank": 3, "name": "3등 · 랜덤 카드", "chance": 0.15, "card": true},
+        {"rank": 4, "name": "4등 · 라멘 「郎」 식사권", "chance": 0.27, "money": 10, "stats": {"str": 1}},
+        {"rank": 5, "name": "꽝 · 휴지", "chance": 0.5}
+      ],
+      "luckRanks": [1, 2, 3],
+      "keepDraws": 10
+    },
+    "shop": {"title": "🛍️ 갑옷씨 상점"},
+    "habits": {
+      "labels": {
+        "elem": {"academy": "공부방 숙제", "taekwondo": "랏코 선배 체조", "art": "노래·그림 연습", "game": "뽑기 장난감"},
+        "middle": {"academy": "고서점 책 읽기", "taekwondo": "동네 달리기", "art": "하치와레랑 노래 연습", "game": "보드게임"},
+        "high": {"academy": "밤샘 공부", "taekwondo": "랏코 도장 수련", "art": "길거리 공연 연습", "game": "쿠지 뽑기 구경"}
+      }
+    },
+    "clubs": {
+      "options": {
+        "replace": {
+          "study": {"jobs": ["bookstore", "workshop", "cafe"]},
+          "sports": {"jobs": ["hunter", "sento", "fisher", "ramen"]},
+          "band": {"jobs": ["busker", "cafe", "pancake"]},
+          "boardgame": {"jobs": ["photographer", "delivery", "fisher"]},
+          "broadcast": {"jobs": ["busker", "photographer", "delivery"]}
+        }
+      }
+    },
+    "cpu": {
+      "_worldComment": "치이카와 모드 CPU: 토벌(hunt)·풀뽑기 검정(weed) 선호표와 치이카와 직업 꿈의 직업 목록 — 🐢 도망치고 일만, 🔥 싸우고 검정 도전.",
+      "prefs": {"hunt": {"best": 2, "*": 1}, "weed": {"best": 2, "*": 1}},
+      "personalities": {
+        "cautious": {
+          "dreamJobs": ["sento", "weeder", "cafe", "workshop", "bookstore", "pancake", "photographer"],
+          "prefs": {"hunt": {"run": 4, "fight": 1}, "weed": {"work": 3, "exam": 1, "dream": 3}}
+        },
+        "normal": {
+          "dreamJobs": [
+            "weeder",
+            "hunter",
+            "ramen",
+            "ramen",
+            "workshop",
+            "bookstore",
+            "bookstore",
+            "busker",
+            "pancake",
+            "photographer",
+            "sento",
+            "delivery",
+            "fisher",
+            "cafe"
+          ],
+          "prefs": {"hunt": {"best": 2, "fight": 1, "run": 1}, "weed": {"best": 1, "work": 1, "exam": 1, "dream": 3}}
+        },
+        "bold": {
+          "dreamJobs": ["hunter", "hunter", "busker", "ramen", "fisher", "delivery", "photographer", "bookstore"],
+          "prefs": {"hunt": {"fight": 4, "run": 1}, "weed": {"exam": 3, "work": 1, "dream": 3}}
+        }
+      }
+    }
+  },
+  "awards": {
+    "awards": {
+      "replace": {"lucky": {"desc": "쿠지·인생역전으로 가장 많이 번 캐릭터"}},
+      "add": [
+        {"id": "hunt_king", "name": "토벌왕", "icon": "⚔️", "desc": "토벌에 가장 많이 성공한 캐릭터 (3번 이상)", "metric": "hunts", "min": 3, "bonus": 60, "tie": "split"},
+        {"id": "weed_master", "name": "풀뽑기 명인상", "icon": "🌿", "desc": "풀뽑기 검정 급수가 가장 높은 캐릭터 (3급 이상)", "metric": "weedLevel", "min": 3, "bonus": 50, "tie": "all"}
+      ]
+    }
+  },
+  "titles": {
+    "titles": {
+      "replace": {
+        "eternal_civil": {
+          "name": "만년 풀뽑기 일꾼",
+          "icon": "🌿",
+          "desc": "한 우물만 판 풀뽑기 인생",
+          "when": {"all": [{"fact": "job", "eq": "weeder"}, {"fact": "jobChanges", "max": 1}, {"fact": "jobRank", "max": 2}]}
+        },
+        "lotto_life": {"name": "쿠지 인생", "icon": "🎟️", "desc": "쿠지·인생역전으로 500만원 넘게 번 행운아"},
+        "gambler": {"desc": "인생역전에 두 번 이상 도전한 승부사"}
+      },
+      "add": [
+        {"id": "sasumata_master", "name": "사스마타 마스터", "icon": "🔱", "desc": "토벌에 다섯 번 이상 성공했다", "priority": 72, "when": {"fact": "hunts", "min": 5}},
+        {"id": "pacifist", "name": "평화주의자", "icon": "🕊️", "desc": "토벌 칸에서 세 번 이상 만나고도 늘 도망쳤다", "priority": 50, "when": {"all": [{"fact": "huntPrompts", "min": 3}, {"fact": "huntOnlyRan", "min": 1}]}},
+        {"id": "weed_first", "name": "풀뽑기 1급", "icon": "🌾", "desc": "풀뽑기 검정 1급에 합격했다", "priority": 74, "when": {"fact": "weedLevel", "min": 5}}
+      ]
+    }
+  },
+  "tones": {
+    "scenes": {"shop": {"label": "갑옷씨 상점"}}
+  },
+  "lines": {
+    "_comment": "사람 세상 말(회사·코인·로또…)이 나오는 대사 풀만 통째로 바꾼다.",
+    "tags": {
+      "route_career": ["일 잘하는 {name}, 승진 가즈아!", "토벌도 노동도 두렵지 않아 ⚔️", "일·커리어 루트다! 사스마타 챙겨", "공방장 되는 그날까지!", "보수 봉투만 기다린다"],
+      "route_money": ["돈 되는 길로 간다 💰", "보물 냄새가 나…", "반짝이 돌? 쿠지? 다 해보자!", "한 방 인생, 가보자고!", "커다란 인형의 꿈은 여기서 시작돼"],
+      "job": ["일자리다! 갑옷씨한테 가 보자!", "일하는 {name}, 오늘도 출발", "보수만큼은 열심히 할게…", "적성 찾기 어렵다~", "새 일터 생기면 제일 먼저 자랑할게"],
+      "hire": [
+        "{job}! 오늘부터 일하는 몸이다!",
+        "합격이야! {job} {name} 출발!",
+        "{job} 앞치마 받으면 제일 먼저 보여 줄게",
+        "나 {job} 됐어! 야하!",
+        "첫 출근 하루 전, 설렌다!",
+        "첫 보수 받으면 뭐부터 사지?"
+      ],
+      "parttime": ["일단 노동부터! 인생은 길다", "갑옷씨네 노동, 나름 괜찮아", "노동도 경력이다! 정식 일 가자!", "노동 견습 시작… 그래도 파이팅", "직업 칸에서 정식 일 도전한다!"],
+      "salary": [
+        "보수 받는 날! 지갑이 스쳐 간다…",
+        "{amount} 받았다! 보수 최고",
+        "보수 들어왔다! 라멘 먹으러 가자",
+        "이 맛에 일한다, 보수 받는 날!",
+        "외상값 빼면… 그래도 좋아!",
+        "지갑에 {amount}! 수고했어 나",
+        "보수 받는 날이다! 버티길 잘했어",
+        "지갑이 두툼해졌다!",
+        "이번에도 수고한 나에게 박수",
+        "보수 받으면 제일 먼저 뭐 하지?"
+      ],
+      "overtime": ["오늘도 늦게까지… 별 보며 귀가", "수당이라도 챙기자", "내일의 나에게 맡기고 싶다…", "공방 불 끄는 건 나야", "밤일은 몸에 해로워… 진짜로"],
+      "hoesik": ["뒤풀이 3차는 너무했잖아…", "선배 노래 또 나왔다", "라멘은 맛있는데 집에 가고 싶다", "뒤풀이도 일의 연장이래…", "건배사 준비 안 했는데?!"],
+      "job_offer": ["어디서 일하지? 다 좋아 보여", "면접 붙었어! 골라야 해!", "적성이냐 보수냐…", "내 첫 일터는 어디?!", "합격 소식이 여러 개! 행복한 고민"],
+      "lotto_win": ["당첨이다!!! 🎉", "쿠지 당첨! 실화야?", "{amount} 당첨! 대박!", "응모권 산 보람이 있다!", "오늘 꿈자리가 좋더라니", "커다란 인형이 내 품에!"],
+      "lotto_lose": ["꽝… 휴지만 받았다", "또 휴지야 ㅋㅋ", "다음엔 꼭 된다!", "한 칸 차이였는데…", "휴지는 쓸모라도 있지", "인생은 쿠지가 아니야…"],
+      "big_gain": [
+        "대박!! 이게 실화냐?!",
+        "{amount}!!! 나 성공했어!",
+        "이 정도면 집 한 채 각이다",
+        "손이 떨려서 지갑을 못 보겠어",
+        "쿠지 1등 맞은 기분이야!!",
+        "오늘부터 나를 {name} 사장님이라 불러라"
+      ],
+      "debt": [
+        "빚… 빚이라니… 😱",
+        "갑옷씨 제발 봐주세요",
+        "이제부터 나는 빚쟁이다…",
+        "역전은 지금부터야! …그렇지?",
+        "빚도 자산이라던데? (아님)",
+        "외상값 무서워서 가게 앞을 못 지나가겠어"
+      ],
+      "era_young": ["드디어 어른! 집세는 어떻게 내지?", "어른 생활 시작이다, 파이팅!", "청춘은 지금이야!", "인생 갈림길이 보인다…", "첫 보수 받으면 뭐 하지?"],
+      "promotion": [
+        "승진이다! 오늘부터 {rank}!",
+        "{rank} 앞치마 새로 받아야겠다!",
+        "{job} {rank}! 노력은 배신 안 해",
+        "승진 기념 라멘 쏜다! 다들 모여!",
+        "{name} {rank} 됐다! 다들 보고 있어?",
+        "보수 협상 들어간다~"
+      ],
+      "pass_job": ["새 일터로 옮기기 성공!", "{job}, 나랑 딱 맞을 것 같아", "앞치마 바꿔 매고 새 출발!", "옮기는 것도 실력이야!", "보수 협상은 이제부터지~", "새 일터 열쇠 받았다!"]
+    },
+    "mc": {
+      "job": {
+        "hoya": [
+          {"t": "{name} 일자리 생겼다! 축하멍!", "e": "joy", "p": "clap"},
+          {"t": "앞치마 멋있다! 나도 두를래멍!", "e": "proud"},
+          {"t": "보수 받는 날엔 간식 파티다멍!", "e": "joy"},
+          {"t": "일터 가서 꼬리… 아니 최선을 다해멍!", "e": "joy", "p": "wave"},
+          {"t": "출근 화이팅! 퇴근은 더 화이팅멍!", "e": "proud", "p": "clap"},
+          {"t": "일하는 모습 멋있다멍!", "e": "surprise"}
+        ],
+        "bomi": [
+          {"t": "{name}님, 일자리를 축하드립니다.", "p": "clap"},
+          "첫 출근입니다. 지각하지 마세요.",
+          {"t": "흥, 일터는 전쟁터입니다. 건투를 빕니다.", "e": "angry"},
+          "일은 인생의 큰 부분입니다. 그렇습니다.",
+          {"t": "성실함이 최고의 무기입니다.", "e": "proud"},
+          "승진은 실력과 운입니다. 둘 다 챙기세요."
+        ],
+        "duo": [
+          [{"s": "bomi", "t": "{name}님, 일자리를 구했습니다."}, {"s": "hoya", "t": "우와! 보수 받으면 간식 사줘멍!", "e": "joy", "p": "clap"}],
+          [{"s": "hoya", "t": "일터 가면 뭐 해?"}, {"s": "bomi", "t": "일을 합니다. 그리고 또 일을 합니다."}, {"s": "hoya", "t": "졸리겠다멍…", "e": "sleepy"}],
+          [{"s": "bomi", "t": "첫 출근은 아침 일찍입니다."}, {"s": "hoya", "t": "나는 아침엔 늦잠 자는데멍!", "e": "sleepy"}],
+          [{"s": "hoya", "t": "새 앞치마 멋있다멍!", "e": "proud"}, {"s": "bomi", "t": "오빠 턱받이랑 비슷하죠. …앞치마입니다."}],
+          [{"s": "bomi", "t": "일터 생활의 비결은 인사입니다."}, {"s": "hoya", "t": "꼬리 흔들기로 인사하면 되지멍!", "e": "joy", "p": "wave"}],
+          [{"s": "hoya", "t": "봄이는 무슨 일 해?"}, {"s": "bomi", "t": "지금 하고 있습니다. MC요.", "e": "proud", "p": "mic"}, {"s": "hoya", "t": "아 맞다멍!", "e": "surprise"}]
+        ]
+      },
+      "lotto": {
+        "hoya": [
+          {"t": "쿠지 뽑기다멍! 두근두근멍!", "e": "surprise", "p": "clap"},
+          {"t": "{name} 응모권 좋아 보인다멍!", "e": "joy"},
+          {"t": "상자 속에 손 넣는다멍! 바스락멍!", "e": "joy"},
+          {"t": "1등 인형 나와라멍!", "e": "joy", "p": "wave"},
+          {"t": "나도 한 장 뽑을래멍!", "e": "joy"},
+          {"t": "꽝이어도 휴지는 준다멍!", "e": "joy"}
+        ],
+        "bomi": [
+          {"t": "쿠지 뽑기를 시작합니다.", "p": "mic"},
+          "응모권 한 장에 한 번씩 뽑습니다.",
+          {"t": "{name}님의 결과는 과연?", "p": "mic"},
+          {"t": "흥, 기대는 금물입니다.", "e": "proud"},
+          "꽝은 휴지입니다. 쓸모는 있습니다.",
+          "추첨 상자는 조작 없이 공정합니다."
+        ],
+        "duo": [
+          [{"s": "bomi", "t": "쿠지 뽑기 시간입니다."}, {"s": "hoya", "t": "두근두근멍!", "e": "surprise"}],
+          [{"s": "hoya", "t": "{name} 1등 될까멍?", "e": "joy"}, {"s": "bomi", "t": "확률은 낮습니다. 그렇습니다."}],
+          [{"s": "bomi", "t": "첫 번째 쿠지를 펼칩니다."}, {"s": "hoya", "t": "바스락바스락멍!", "e": "joy"}],
+          [{"s": "hoya", "t": "1등 인형 나 줘멍!", "e": "joy"}, {"s": "bomi", "t": "당첨부터 되고 말씀하세요.", "e": "angry"}],
+          [{"s": "bomi", "t": "쿠지는 즐거움입니다. 투자가 아닙니다.", "e": "proud"}, {"s": "hoya", "t": "즐거우면 됐다멍!", "e": "joy"}],
+          [{"s": "hoya", "t": "커다란 인형 안고 자고 싶다멍!", "e": "joy"}, {"s": "bomi", "t": "오빠보다 인형이 더 큽니다.", "e": "angry"}]
+        ]
+      }
+    }
+  }
+}

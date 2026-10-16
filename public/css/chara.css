@@ -68,6 +68,8 @@ svg.ch-token { display: block; }
 
 /* lobby picker (reuses the .cz-* dialog shell of the legacy customizer) */
 .cp .cz-stage { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 16px 6px; }
+/* three chosen props wrap the chip row: the column scrolls instead of the 2D/3D tools overlapping the chips */
+.cp .cz-stage > * { flex-shrink: 0; }
 .cp .cz-stage-tools { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
 .cp .cz-name { width: 100%; }
 .cp .cz-editor { padding: 8px 12px 4px; }
@@ -110,7 +112,7 @@ svg.ch-token { display: block; }
 .cp-randoms { padding: 8px 0 4px; }
 .cp .cz-actions { z-index: 3; }
 @media (min-width: 769px) {
-  .cp .cz-stage { width: 300px; justify-content: flex-start; gap: 8px; padding: 16px; }
+  .cp .cz-stage { width: 300px; justify-content: flex-start; gap: 8px; padding: 16px; overflow-y: auto; min-height: 0; }
   .cp-preview { width: 250px; height: 280px; }
   .cp .cz-editor { padding: 10px 14px 6px; }
   .cp-card .chara { max-width: 84px; }

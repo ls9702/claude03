@@ -1,0 +1,24 @@
+{
+  "_comment": "세계 설정 · 토벌(討伐): 토벌 칸(hunt, 치이카와 모드의 칸 풀에만 있음)에 멈추면 키메라가 나타나 「⚔️ 싸운다 / 🏃 도망친다」(기본 도망). monsters = {id, name, icon, desc, power 1..4, reward {min, max} 만원(× balance.eraScale[시대] × 뉴스 huntRewardMult), eras?(생략 = 모든 성인 시대), weight}. 승리 확률 = base[power-1] + perStr × 체력 + perLuck × 운 (+ sasumata: 사스마타 아이템 보유, + hunterRank × 직급: 토벌대·전설의 토벌자 직업) ∈ [min, max]. 이기면 보상 + 토벌 횟수 +1 + strChance로 체력 +1 + 토벌대 직업이면 meritChance로 공적 카드, 지면 failLoss × eraScale 손해(갑옷 아이템이면 절반, 실손 보험·액땜 버프 적용) + injuryOnFail(× 뉴스 huntInjuryMult) 확률로 부상(갑옷·건강기원 부적·건강 부적이면 없음, 직업이 있을 때만).",
+  "monsters": [
+    { "id": "small_chimera", "name": "꼬마 키메라", "icon": "🐛", "desc": "풀숲에서 꼬물꼬물 기어 나온 작은 키메라. 그래도 방심은 금물!", "power": 1, "reward": { "min": 25, "max": 55 }, "weight": 5 },
+    { "id": "chimera", "name": "키메라", "icon": "👾", "desc": "이빨을 드러내고 으르렁거리는 보통 키메라", "power": 2, "reward": { "min": 55, "max": 105 }, "weight": 4 },
+    { "id": "big_chimera", "name": "커다란 키메라", "icon": "🦖", "desc": "나무만큼 커다란 키메라! 토벌대도 긴장한다", "power": 3, "reward": { "min": 100, "max": 190 }, "weight": 2 },
+    { "id": "dekatsuyo", "name": "데카츠요", "icon": "👹", "desc": "숲의 주인이라 불리는 전설의 거대 키메라. 이기면 영웅!", "power": 4, "reward": { "min": 260, "max": 460 }, "eras": ["middle_age"], "weight": 0.6 }
+  ],
+  "balance": {
+    "base": [0.85, 0.65, 0.45, 0.28],
+    "perStr": 0.03,
+    "perLuck": 0.015,
+    "sasumata": 0.1,
+    "hunterRank": 0.04,
+    "hunterJobs": ["hunter", "legend_hunter"],
+    "min": 0.05,
+    "max": 0.95,
+    "eraScale": { "young": 1, "middle_age": 1.4, "senior": 1.2 },
+    "failLoss": { "min": 20, "max": 50 },
+    "injuryOnFail": 0.6,
+    "strChance": 0.3,
+    "meritChance": 0.35
+  }
+}

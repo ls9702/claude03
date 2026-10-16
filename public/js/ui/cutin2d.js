@@ -26,6 +26,8 @@ import { familyOptionsHtml } from './familyArt.js';
 import { isSubmapBig, parseOptionId, racePlan, submapInfo, submapOf, submapSuccess, treasureInfo } from '../shared/submaps.js';
 import { raceGateHtml, raceHtml, submapOptionsHtml, submapSceneBody, treasureArtHtml, treasureChestSvg } from './submapArt.js';
 import { buffText, eraClock, eraClockText, passOptionExtras } from '../shared/loop.js';
+import { huntOutcome, isKujiDraw, kujiRows, kujiSummary, monsterInfo, weedGrade, weedOutcome, weedPrompt } from '../shared/worldPlay.js';
+import { gradeBadgeHtml, kujiBoxSvg, kujiPlushHtml, kujiTicketHtml, monsterArtHtml, passStampHtml, powerStars, worldOptionsHtml, worldSceneBody } from './worldArt.js';
 
 const REASON_ICON = {
   tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', passTile: '🎪', wish: '🙏', habit: '📚', tuition: '🎓', military: '🪖',
@@ -34,6 +36,8 @@ const REASON_ICON = {
   // Stage 8
   // (Chiikawa theme: wedding = 🎉 집들이 파티, birth = 🐣 반려동물 입양, allowance = 펫 광고 수입, spouse = 단짝 생활비)
   wedding: '🎉', weddingGift: '💌', dolGift: '🎂', date: '💑', house: '🏠', houseSold: '🔁', allowance: '💌', school: '🎒', childExam: '🏆', spouse: '🏠', birth: '🐣', birthBonus: '🐾', family: '🐾',
+  // 세계 설정 (🐹 치이카와 모드): 토벌 보수 / 손해, 풀뽑기 보수 / 검정 응시료, 쿠지 상금
+  hunt: '⚔️', weed: '🌿', weedFee: '📝', kuji: '🎟️',
 };
 /** Stage 6 anchors → presentation defaults (the server's tone / scene / emotion win when set). */
 const STAGE6_LOOK = {
@@ -153,6 +157,25 @@ function stage9Look(a) {
 }
 
 /**
+ * 세계 설정 anchors → presentation defaults (server tone / scene / emotion win): 토벌 win (cheer, the chimera poofs away + coins) /
+ * defeat (cry, the chimera gloats, 🤕 when injured), 풀뽑기 검정 pass (jump + 「합격!」 stamp) / fail (sweat) / work (wave).
+ */
+function worldLook(a) {
+  if (a?.type === 'huntResult') {
+    return a.success
+      ? { tone: 'good', scene: 'hunt-forest', pose: 'cheer', emotion: 'joy', sfx: 'fanfare', glyph: '⚔️', bigWin: false }
+      : { tone: 'bad', scene: 'hunt-forest', pose: 'cry', emotion: 'cry', sfx: 'thud', glyph: Number(a.injured) > 0 ? '🤕' : '💥' };
+  }
+  if (a?.type === 'weedResult') {
+    if (a.action !== 'exam') return { tone: 'good', scene: 'weed-field', pose: 'wave', emotion: 'joy', sfx: 'coin', glyph: '🌿' };
+    return a.success
+      ? { tone: 'good', scene: 'weed-field', pose: 'jump', emotion: 'joy', sfx: 'fanfare', glyph: '📝', bigWin: Number(a.level) >= 5 }
+      : { tone: 'neutral', scene: 'weed-field', pose: 'cry', emotion: 'sweat', sfx: 'thud', glyph: '📝' };
+  }
+  return null;
+}
+
+/**
  * Horizontal slot centres (%) for a cast: the classic 1–3 slots for full-size figures, else spread by figure width
  * (children are narrower) between 13 % and 87 %.
  */
@@ -233,7 +256,7 @@ function sceneSvg(scene, tone) {
       break;
     }
     default:
-      body = submapSceneBody(scene) ?? `<g fill="#fff" opacity=".7"><ellipse cx="300" cy="180" rx="140" ry="44"/><ellipse cx="1200" cy="140" rx="120" ry="38"/></g><rect y="700" width="1600" height="200" fill="#8ccf7e"/>`;
+      body = submapSceneBody(scene) ?? worldSceneBody(scene) ?? `<g fill="#fff" opacity=".7"><ellipse cx="300" cy="180" rx="140" ry="44"/><ellipse cx="1200" cy="140" rx="120" ry="38"/></g><rect y="700" width="1600" height="200" fill="#8ccf7e"/>`;
   }
   return `<svg class="ci-bg-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${base}${body}</svg>`;
 }
@@ -250,11 +273,14 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   let cur = null; // { spec, resolve, el, timers[] }
   const idle = new Set();
   const pres = () => getMeta()?.presentation ?? {};
-  /** Stage 7 art: card / item illustrations and job badges (`{kind:'icon', job}`) when accepted, else null. */
+  /**
+   * Stage 7 art: card / item illustrations and job badges (`{kind:'icon', job}`) when accepted, else null.
+   * 세계 설정: monsters are item-pipeline icons (`{kind: 'item', monster}`).
+   */
   const artFor = (kind, id) => {
     if (!id) return null;
     try {
-      return (kind === 'job' ? findAsset({ kind: 'icon', job: id }) : findAsset({ kind, [kind]: id }))?.url ?? null;
+      return (kind === 'job' ? findAsset({ kind: 'icon', job: id }) : kind === 'monster' ? findAsset({ kind: 'item', monster: id }) : findAsset({ kind, [kind]: id }))?.url ?? null;
     } catch {
       return null;
     }
@@ -298,9 +324,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   function specFromGroup(g, { characters = [], room = null } = {}) {
     const a = g.anchor;
     if (a.type === 'newsFlash') return newsSpec(g, { characters });
-    if (a.type === 'lottoDraw') return lottoSpec(g, { characters });
+    if (a.type === 'lottoDraw') return isKujiDraw(a) ? kujiSpec(g, { characters }) : lottoSpec(g, { characters });
     if (a.type === 'houseValueChanged') return marketSpec(g, { characters });
-    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? stage8Look(a) ?? stage9Look(a) ?? null;
+    const look = STAGE6_LOOK[a.type] ?? stage7Look(a) ?? stage8Look(a) ?? stage9Look(a) ?? worldLook(a) ?? null;
     const meta = getMeta();
     const main = characters.find((c) => c.id === g.charId) ?? null;
     const name = main?.name ?? '';
@@ -336,6 +362,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     for (const cd of g.cards ?? []) {
       if (a.type === 'gift' && cd.type === 'cardGained' && cd.source === 'gift') continue; // the 🎁 chip names the card
       if (cd.type === 'cardLost') continue; // merged below (🏅 ×n)
+      if (a.type === 'huntResult' && cd.cardId === 'injury') continue; // 세계 설정: the 🤕 부상 n턴 chip says it
       const info = cardInfo(cd.cardId, meta);
       const who = cd.charId && cd.charId !== g.charId ? `${nameOf(characters, cd.charId)} ` : '';
       chips.push(cd.type === 'cardGained' ? gainedChip(info, who) : { text: `${info.icon} ${who}${info.name} 사용`, kind: `card k-${info.kind} c-${info.color}` });
@@ -372,7 +399,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     }
     const fam = stage8Extras(g, { characters, chips, meta });
     const s9 = stage9Extras(g, { chips, meta });
-    const badge = jobBadgeFor(a) ?? stage7Badge(a, meta) ?? stage8Badge(a, g, { characters, meta }) ?? s9.badge;
+    const wx = worldExtras(g, { chips, meta });
+    const badge = jobBadgeFor(a) ?? stage7Badge(a, meta) ?? stage8Badge(a, g, { characters, meta }) ?? s9.badge ?? wx.badge;
     if (a.type === 'educationChanged' && educationLabel(a.education)) chips.unshift({ text: `🎓 ${educationLabel(a.education)}`, kind: 'plus' });
     if (a.type === 'militaryStart' && a.turns) chips.unshift({ text: `🪖 복무 ${a.turns}턴`, kind: '' });
     if (a.type === 'injured' && a.turns) chips.unshift({ text: `🤕 ${a.turns}턴 부상`, kind: 'minus' });
@@ -432,8 +460,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     if (holiday) autoMs = Math.max(autoMs, 5200 + holiday.rows.length * 450);
     if (s9.race) autoMs = Math.max(autoMs, s9.race.durationMs + 2600);
     if (s9.treasure) autoMs = Math.max(autoMs, 4600);
+    if (wx.hunt || wx.weed?.action === 'exam') autoMs = Math.max(autoMs, owner ? 5200 : 3400); // 토벌 / 검정 animations
     // other players' plain event cut-ins: ≤ 3 s even with MC lines (post-simulation waiting-time fix); shows keep theirs
-    const capMs = !owner && !holiday && !s9.race && !s9.treasure ? Math.min(autoMs, OTHERS_AUTO_MS) : null;
+    const capMs = !owner && !holiday && !s9.race && !s9.treasure && !wx.big ? Math.min(autoMs, wx.hunt ? 3400 : OTHERS_AUTO_MS) : null;
     if (capMs) autoMs = capMs;
     const texts = g.texts.length ? g.texts.slice(0, 3) : [fallbackText(a, name)];
     // sabotage: the victim's reaction line (server `targetLine`, pool `sabotaged`)
@@ -478,6 +507,8 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       ticket: s9.ticket, // 인생역전 로또 긁기
 
       submap: a.type === 'submapResult' ? submapOf(a) : null,
+      hunt: wx.hunt, // 세계 설정: 토벌 — the chimera in the window (poof / gloat)
+      weed: wx.weed, // 풀뽑기 검정 — stamp + grade badge / work basket
       characters,
       mc: g.mc ?? null, // Stage 5.6: small MC corner lines
     };
@@ -657,6 +688,74 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
       chips.push(c);
     }
     return out;
+  }
+
+  /**
+   * 세계 설정 chips / panels (mutates `chips`): 토벌 — the monster (⚔️ name 토벌! / 💥 defeat), 토벌 n회, 🔱 / 🛡️ helpers, 🤕 injury,
+   * the reward when no money follow-up names it; 풀뽑기 — 📝 합격 / 불합격 with the grade, work pay. → {badge, hunt, weed, big}
+   */
+  function worldExtras(g, { chips, meta }) {
+    const a = g.anchor;
+    const out = { badge: null, hunt: null, weed: null, big: false };
+    if (a.type === 'huntResult') {
+      const h = huntOutcome(a, { meta });
+      const m = h.monster;
+      out.hunt = { monsterId: m.id, name: m.name, icon: m.icon, power: m.power, win: h.win, injured: h.injured, art: artFor('monster', m.id) };
+      out.big = h.big;
+      chips.unshift(h.win ? { text: `⚔️ ${m.name} 토벌 성공!`, kind: 'plus' } : { text: `💥 ${m.name}에게 패배…`, kind: 'minus' });
+      const amt = h.amount;
+      if (amt && !g.money.some((x) => x.charId === g.charId)) chips.push({ text: `${amt > 0 ? '💰 +' : '💸 '}${won(amt)}`, kind: amt > 0 ? 'plus' : 'minus' });
+      if (h.win && h.hunts) chips.push({ text: `⚔️ 토벌 ${h.hunts}회`, kind: '' });
+      if (h.sasumata) chips.push({ text: '🔱 사스마타', kind: 'plus' });
+      if (h.armor) chips.push({ text: h.win ? '🛡️ 갑옷' : '🛡️ 갑옷 덕분에 손해 절반', kind: 'plus' });
+      if (h.injured > 0) chips.push({ text: `🤕 부상 ${h.injured}턴`, kind: 'minus' });
+    } else if (a.type === 'weedResult') {
+      const w = weedOutcome(a);
+      out.weed = { action: w.action, pass: w.pass, level: w.level, grade: w.grade, target: w.target, payday: w.payday };
+      out.big = w.big;
+      if (w.action === 'exam') {
+        chips.unshift(w.pass ? { text: `📝 풀뽑기 ${w.grade} 합격!${w.payday ? ' (일하면서)' : ''}`, kind: 'plus' } : { text: `📝 ${weedGrade(w.target)} 불합격…`, kind: 'minus' });
+      } else if (w.amount && !g.money.some((x) => x.charId === g.charId)) chips.push({ text: `🌿 +${won(w.amount)}`, kind: 'plus' });
+    }
+    return out;
+  }
+
+  /**
+   * 세계 설정: 쿠지 뽑기 (the Chiikawa world's lottoDraw) → studio cut-in (MCs when they have lines) or a kuji cut-in: the box,
+   * one ticket per holder peeled in turn (1등 … 꽝), the rows with prize chips in the box; 1등 = the big plush + confetti.
+   */
+  function kujiSpec(g, { characters = [] } = {}) {
+    const a = g.anchor;
+    const meta = getMeta();
+    const rows = kujiRows(a, { characters, meta, won });
+    const lines = g.studio?.length ? g.studio : g.mc?.length ? g.mc : null;
+    const text = [kujiSummary(rows)];
+    const mine = rows.some((r) => r.char?.isMe);
+    const jackpot = rows.find((r) => r.jackpot) ?? null;
+    const drawMs = 900 + rows.length * 700;
+    const base = {
+      key: `kuji:${a.eraId ?? ''}:${rows.map((r) => `${r.charId}${r.rank}`).join('-')}`,
+      tone: 'treasure',
+      scene: 'kuji',
+      tag: '🎟️ 쿠지 뽑기',
+      who: '🎟️ 쿠지 뽑기',
+      text,
+      line: null,
+      speaker: null,
+      chips: rows.filter((r) => r.won).map((r) => ({ text: `${r.icon} ${r.name} ${r.label}`, kind: 'plus' })),
+      cast: [],
+      bigWin: !!jackpot,
+      currentId: null,
+      era: '',
+      characters,
+      kuji: { rows, jackpot: jackpot ? { name: jackpot.name, title: jackpot.title } : null },
+      sfx: 'fanfare',
+    };
+    if (lines) {
+      const spec = studioSpec(lines, { key: base.key, tone: 'treasure', title: base.tag, characters });
+      return { ...spec, ...base, kind: 'mc', mcScript: lines, text: [], kujiText: text, autoMs: Math.max(spec.autoMs, drawMs + 3500) + (mine ? 1500 : 0), own: mine };
+    }
+    return { ...base, kind: 'kuji', autoMs: drawMs + (mine ? 6000 : 4200) + (jackpot ? 1200 : 0), own: mine };
   }
 
   /**
@@ -1118,6 +1217,123 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     }
   }
 
+  // ---------- 세계 설정 (🐹 치이카와 모드): 토벌 chimera, 풀뽑기 stamp / badge, 쿠지 box ----------
+  function renderWorld(item) {
+    const { spec } = item;
+    overlay.dataset.world = spec.hunt ? (spec.hunt.win ? 'hunt-win' : 'hunt-lose') : spec.weed ? `weed-${spec.weed.action === 'exam' ? (spec.weed.pass ? 'pass' : 'fail') : 'work'}` : spec.kuji ? 'kuji' : spec.prompt?.kind === 'hunt' || spec.prompt?.kind === 'weed' ? `${spec.prompt.kind}-prompt` : '';
+    const later = (fn, ms) => item.timers.push(setTimeout(() => cur === item && fn(), isReduced() ? 0 : ms));
+    // the hunt prompt: the chimera faces the character from the right side of the window
+    if (spec.prompt?.kind === 'hunt') {
+      const m = monsterInfo(spec.prompt.context?.monsterId ?? spec.prompt.options?.find((o) => o.id === 'fight')?.monsterId, getMeta());
+      const foe = document.createElement('div');
+      foe.className = `ci-foe p-${m.power}`;
+      foe.innerHTML = `${monsterArtHtml(m.id, { art: artFor('monster', m.id), mood: 'idle', name: m.name })}<b class="ci-foe-name">${esc(m.icon)} ${esc(m.name)}</b><small class="ci-foe-stars">${powerStars(m.power)}</small>`;
+      $.fx.appendChild(foe);
+    }
+    if (spec.prompt?.kind === 'weed') {
+      const v = weedPrompt(spec.prompt);
+      const panel = document.createElement('div');
+      panel.className = 'ci-weedpanel';
+      panel.innerHTML = gradeBadgeHtml(v.level);
+      $.fx.appendChild(panel);
+    }
+    if (spec.hunt) {
+      const h = spec.hunt;
+      const foe = document.createElement('div');
+      foe.className = `ci-foe p-${h.power} ${h.win ? 'win' : 'lose'}`;
+      foe.innerHTML = monsterArtHtml(h.monsterId, { art: h.art, mood: 'idle', name: h.name });
+      $.fx.appendChild(foe);
+      // the fight: a clash star, then the chimera poofs away (+ coins) or gloats over the tumbled character
+      const clash = document.createElement('div');
+      clash.className = 'ci-clash';
+      clash.textContent = '💥';
+      $.fx.appendChild(clash);
+      later(() => {
+        foe.classList.add('after'); // CSS: .win.after → the chimera poofs away, .lose.after → it gloats
+        if (h.win) {
+          const coins = document.createElement('div');
+          coins.className = 'ci-coins';
+          coins.innerHTML = Array.from({ length: 12 }, (_, i) => `<i style="--i:${i};--x:${(i * 47) % 100}%">${i % 3 ? '💰' : '✨'}</i>`).join('');
+          $.fx.appendChild(coins);
+        } else {
+          const main = item.els?.find((e) => e.m.char.id === spec.currentId) ?? item.els?.[0];
+          main?.slot?.classList.add('tumble');
+        }
+      }, 1100);
+    }
+    if (spec.weed) {
+      const w = spec.weed;
+      if (w.action === 'exam') {
+        const panel = document.createElement('div');
+        panel.className = `ci-weedpanel exam ${w.pass ? 'pass' : 'fail'}`;
+        panel.innerHTML = `${passStampHtml(w.pass, { grade: w.pass ? w.grade : weedGrade(w.target) })}${w.pass ? gradeBadgeHtml(w.level) : ''}`;
+        $.fx.appendChild(panel);
+        later(() => panel.classList.add('stamped'), 700);
+        if (w.pass && w.level >= 5) {
+          const fx = document.createElement('div');
+          fx.className = 'ci-wishfx wish';
+          fx.innerHTML = Array.from({ length: 14 }, (_, i) => `<i style="--i:${i};--x:${(i * 53) % 100}%">${['🌿', '✨', '🌾', '🎉'][i % 4]}</i>`).join('');
+          $.fx.appendChild(fx);
+        }
+      } else {
+        const fx = document.createElement('div');
+        fx.className = 'ci-weedwork';
+        fx.innerHTML = Array.from({ length: 8 }, (_, i) => `<i style="--i:${i};--x:${12 + ((i * 41) % 70)}%">🌿</i>`).join('');
+        $.fx.appendChild(fx);
+      }
+    }
+    if (spec.kuji) renderKuji(item);
+  }
+
+  /** 쿠지 box in the window: one ticket per holder peeled in turn; rows (rank, prize chips, line) in the box; 1등 → plush + confetti. */
+  function renderKuji(item) {
+    const { rows, jackpot } = item.spec.kuji;
+    const panel = document.createElement('div');
+    panel.className = 'ci-kuji';
+    panel.innerHTML = `<div class="ci-kuji-box">${kujiBoxSvg()}</div><div class="ci-kuji-tix">${rows
+      .map((r, i) => `<span class="ci-kuji-slot${r.char?.isMe ? ' me' : ''}">${kujiTicketHtml(r, { delay: 900 + i * 700 })}<b class="ci-kuji-n">${esc(r.name)}</b></span>`)
+      .join('')}${rows.length ? '' : '<span class="ci-hw-none">이번엔 응모권을 가진 사람이 없어요</span>'}</div>`;
+    $.fx.appendChild(panel);
+    const peel = () => cur === item && panel.classList.add('go');
+    if (isReduced()) peel();
+    else item.timers.push(setTimeout(peel, 60));
+    if (jackpot) {
+      const revealAt = 900 + rows.findIndex((r) => r.jackpot) * 700 + 700;
+      item.timers.push(
+        setTimeout(() => {
+          if (cur !== item) return;
+          const big = document.createElement('div');
+          big.innerHTML = kujiPlushHtml(jackpot.title);
+          const plush = big.firstElementChild;
+          $.fx.appendChild(plush);
+          const fx = document.createElement('div');
+          fx.className = 'ci-famfx wedding kuji';
+          fx.innerHTML = Array.from({ length: 16 }, (_, i) => `<i style="--i:${i};--x:${(i * 61) % 100}%;--d:${((i * 37) % 17) / 10}s">${['🎊', '🎉', '✨', '🧸', '🎊'][i % 5]}</i>`).join('');
+          $.fx.appendChild(fx);
+          audio?.play('fanfare');
+        }, isReduced() ? 0 : revealAt),
+      );
+    }
+    if (item.spec.kujiText?.length) {
+      const p = document.createElement('p');
+      p.className = 'ci-lotto-sum';
+      p.textContent = item.spec.kujiText.join(' ');
+      $.extra.appendChild(p);
+    }
+    if (rows.length) {
+      const list = document.createElement('div');
+      list.className = 'ci-lotto-rows ci-kuji-rows';
+      list.innerHTML = rows
+        .map(
+          (r, i) => `<div class="ci-lotto-row${r.won ? ' won' : ''}${r.char?.isMe ? ' me' : ''}" style="--d:${900 + rows.length * 700 + i * 250}ms"><span class="ci-hres-n">${esc(r.name)}</span><span class="ci-chip kuji-rank r-${esc(r.rank)}">${esc(r.icon)} ${esc(r.label)}</span><span class="ci-kuji-prize">${esc(r.title)}</span>${r.chips
+            .map((c) => `<span class="ci-chip ${esc(c.kind)}">${esc(c.text)}</span>`)
+            .join('')}${r.line ? `<small class="ci-hres-q">“${esc(r.line)}”</small>` : ''}</div>`,
+        )
+        .join('');
+      $.extra.appendChild(list);
+    }
+  }
+
   // ---------- MCs (Stage 5.6) ----------
   const mcSound = (l) => audio?.play('bark', { mc: l.speaker, force: true });
 
@@ -1212,7 +1428,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     overlay.classList.remove('leaving');
     overlay.classList.toggle('prompt', !!spec.prompt);
     overlay.classList.toggle('minimized', false);
-    overlay.classList.toggle('lotto', !!spec.lotto);
+    overlay.classList.toggle('lotto', !!spec.lotto || !!spec.kuji);
     overlay.classList.toggle('market', !!spec.market);
     overlay.classList.toggle('holiday-res', !!spec.holiday?.rows?.length); // 명절 정산: smaller window, rows scroll (A14)
     overlay.dataset.kind = spec.prompt ? 'prompt' : spec.kind ?? 'event';
@@ -1238,6 +1454,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     renderStage7(item);
     renderStage8(item);
     renderStage9(item);
+    renderWorld(item);
     if (spec.kind === 'mc') renderStudio(item);
     else if (spec.mc?.length) renderSmallMc(item);
     audio?.play(spec.sfx ?? pres().tones?.[spec.tone]?.sfx ?? 'pop');
@@ -1330,6 +1547,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
     const who = p.forMe[0];
     const sm = submapOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt', won }); // Stage 9 submaps
     if (sm != null) return sm;
+    // 세계 설정: 토벌 battle card (the chimera itself stands in the window) / 풀뽑기 field card
+    const wo = worldOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt', won, art: false, artFor });
+    if (wo != null) return wo;
     const head = p.forMe.length > 1 || who.id !== p.charId ? `<p class="ci-opt-who">${esc(who.name)}의 선택</p>` : '';
     if (p.kind === 'house') return `${head}${houseOptionsHtml(p, who, { meta: getMeta(), room: p.room ?? null, artFor, btnClass: 'ci-opt' })}`;
     const html = familyOptionsHtml(p, who, { meta: getMeta(), btnClass: 'ci-opt' });
@@ -1519,6 +1739,9 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
         passTile: { tone: 'good', scene: 'shop' },
         allIn: { tone: 'treasure', scene: 'casino' },
         club: { tone: 'good', scene: 'school' },
+        // 세계 설정 (치이카와 모드)
+        hunt: { tone: 'career', scene: 'hunt-forest' },
+        weed: { tone: 'good', scene: 'weed-field' },
       }[p.kind] ?? null;
     // Stage 8: the partner (date / propose) or the candidates (meet) stand next to the character
     if (subject && cast.length && ['meet', 'date', 'propose'].includes(p.kind)) {
@@ -1567,6 +1790,7 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
           return { ...o, icon, label: optionLabel({ ...o, icon }), desc, badges: optionBadgeList(x, px.badges, { won }) };
         }),
         forMe,
+        context: p.context ?? null, // 세계 설정: the hunt prompt's monster (window art)
         room, // Stage 8 house listings: owners / capacity
         deadlineAt: p.deadlineAt,
         waitingNames: waitingIds.map((id) => characters.find((c) => c.id === id)?.name ?? id),

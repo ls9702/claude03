@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { gameData, loadData } from '../server/data/index.js';
+import { dataForWorld } from '../server/game/world.js';
 import {
   ACCESSORY_PROPS,
   PROP_SLOTS,
@@ -92,7 +93,9 @@ test('props.json: 5 slots, ~30 choosable props, era / job props exist in their s
   assert.deepEqual([P.eraProps.young, P.eraProps.middle_age], [{ job: true }, { job: true }], 'job eras use job props');
   assert.deepEqual(P.eraProps.baby, { head: 'bonnet', face: 'pacifier' });
   assert.deepEqual(P.eraProps.senior, { head: 'knit_cap', hand: 'cane' });
-  const jobs = [...data.jobs.jobs, data.jobs.partTime];
+  // 세계 설정: props are world-independent — jobProps holds the jobs of BOTH worlds (real + 🐹 치이카와 모드 overlay)
+  const cw = dataForWorld('chiikawa');
+  const jobs = [...new Map([...data.jobs.jobs, data.jobs.partTime, ...cw.jobs.jobs, cw.jobs.partTime].map((j) => [j.id, j])).values()];
   assert.deepEqual(Object.keys(P.jobProps).sort(), jobs.map((j) => j.id).sort());
   for (const j of jobs) {
     assert.deepEqual(j.props, P.jobProps[j.id], `${j.id}: jobs.json props = props.json jobProps`);
@@ -406,6 +409,8 @@ test('wording: no marriage / birth / gender words in server/data (legacy avatars
   };
   const dataDir = path.join(import.meta.dirname, '..', 'server', 'data');
   for (const f of (await readdir(dataDir)).filter((x) => x.endsWith('.json') && x !== 'avatars.json')) walk(JSON.parse(await readFile(path.join(dataDir, f), 'utf8')), f);
+  // 세계 설정: the world overlays (server/data/worlds/*.json) follow the same wording
+  for (const f of (await readdir(path.join(dataDir, 'worlds'))).filter((x) => x.endsWith('.json'))) walk(JSON.parse(await readFile(path.join(dataDir, 'worlds', f), 'utf8')), `worlds/${f}`);
   const gameDir = path.join(import.meta.dirname, '..', 'server', 'game');
   const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
   for (const f of (await readdir(gameDir)).filter((x) => x.endsWith('.js'))) {

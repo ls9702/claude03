@@ -25,6 +25,8 @@ export const ANIMATED_EVENTS = new Set([
   'met', 'dated', 'proposed', 'married', 'schoolMeet', 'childBorn', 'childGrew', 'allowance', 'houseBought', 'houseSold', 'houseValueChanged',
   // Stage 9: submaps / treasures (pops over the pawn; anchors open their cut-in after the step)
   'submapEntered', 'submapResult', 'treasureFound',
+  // 세계 설정 (🐹 치이카와 모드): 토벌 / 풀뽑기 results (pops over the pawn; their cut-in follows the step)
+  'huntResult', 'weedResult',
 ]);
 
 /**

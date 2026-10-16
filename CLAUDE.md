@@ -2031,3 +2031,184 @@ synthetic MC overlays; screenshots `ch2-*.png`, animated `ch2-cutin-anim.webp`).
 - Test batch imported (2026-10-16, takes 1 except `ch-chiikawa-sheet-jump` take 2 and `bg-ch-park` take 2): chiikawa base / body /
   arms / eyes-closed / mouth-open / expr-cry / sheet-jump, hachiware base, npc-penguin-base (take 1, no reference → corrected),
   prop-chef-hat, bg-park — 305 KiB of art added (10 chara + prop WebPs 183 KiB, bg 122 KiB); the manifest grew by the 154 items.
+
+## World setting (치이카와 모드 / 현실 모드) — server
+Contract: session scratchpad `cworld-contract.md` (FIXED) + `cworld-deviations.md`. Tests: `test/cworld.test.js` (+ updated
+`chiikawa-server` (jobProps of both worlds, wording grep over `server/data/worlds/`), `presentation` (sample events, the scene
+fallback CHAIN), `assets-manifest` / `chara-pipeline` / `client-chara` counts). Roadmap row 14 in `docs/PLAN.md`.
+- Room config `world: 'chiikawa' | 'real'` (`config.js` `WORLDS`, 400 「세계는 치이카와 모드(chiikawa) 또는 현실 모드(real) 중 하나여야
+  합니다.」): `defaultRoomConfig()` / `validateRoomConfig({})` = **'chiikawa'** (new rooms); inside the engine a missing / unknown
+  `config.world` = **'real'** (`worldOf`) → old saves, `makeRoom` engine tests and every pre-world fixture play today's content.
+  Admin create form 「세계」 select (always sent) + hint, room detail 「세계」 line (`worldText`), `adminSummary.world`; lobby mode label
+  appends 「🐹 치이카와 모드」 / 「🏙️ 현실 모드」 (`worldLabel`). Only the CONTENT differs (rules, roster looks, family rules are shared).
+- Data: the data files ARE the real world. The Chiikawa world = overlay `server/data/worlds/chiikawa.json` `{<dataName>: patch}`
+  (loader: `loadData('worlds/<id>')` — one sub-folder allowed — `getWorldOverlays()` = `{chiikawa}`). Pure module
+  `public/js/shared/world.js` (no imports; `server/game/world.js` = `export *` + `dataForWorld(world, data?)` / `roomData(room,
+  data?)`): `WORLDS`, `DEFAULT_WORLD`, `ENGINE_WORLD` 'real', `WORLD_INFO` [{id, name, icon, desc}], `worldOf`, `worldInfo`,
+  `worldLabel`, `applyPatch(base, patch)` (an array of `{id}` objects patched by `{replace: {id: fields}, add: [entries], remove:
+  [ids]}` — replace shallow-merges, a null field deletes, add of an existing id replaces it; order remove → replace → add; plain
+  objects deep-merge, arrays / scalars replace, `null` deletes a key, `_` keys are comments; unchanged subtrees are shared),
+  `patchProblems(base, patch)` (unknown replace / remove ids, duplicate adds — the shipped overlay has none, tested),
+  `worldData(data, world, overlays)` (real → `data` itself; else memoized per (data object, world, overlays), deep-frozen; a merged
+  object is resolved from its base, never patched twice), `dataWorld(data)`. `gameData()` is now cached (one frozen object, the
+  memo key) and adds `hunts`.
+- Resolution: engine `makeCtx` (applyAction / startGame / migrateLoopBoard / result actions), `endGame`, `result.computeRanking` /
+  `applyResult`, every exported `cpu.js` entry point (`data = roomData(room, data)`), `scripts/*` — so all engine code reads the
+  world's jobs, items, cards, events, news, pools, lines, numbers without per-call checks; a test's `ctx.data` override is respected
+  (and gets the overlay in a Chiikawa room). `jobs.jobDef` falls back to the real-world job for an id missing in the world (old save).
+  presentation reads treasure / house / monster names from `data` (no `getTreasures()` defaults left in the MC paths).
+- `/api/meta` = the real meta + `worlds` (WORLD_INFO) + `worldOverlays` ({chiikawa: the overlay as stored}) + `hunts` + `balance.
+  lottoMode | kuji | weed`; `/admin/api/meta` + `worlds`. The client resolves `worldData(meta, room.config.world, meta.worldOverlays)`
+  (the overlay's `lines.mc` pools land on `meta.lines.mc`; the real meta keeps them under `meta.mc.lines`).
+- 치이카와 jobs (overlay `jobs`: remove the 21 human jobs, add 12 + 4 hidden; landlord / mountain_spirit kept; `partTime` 「갑옷씨네
+  노동」 🪖 노동 견습 / 반장 / 대장, scene workshop): weeder 풀뽑기 일꾼 (weed ≥ 1, `salaryPerWeedLevel` 0.1, `paydayWeedExam`), hunter
+  토벌대 (str 4 + iron_body, merit from rank 3 = `rankUp.meritFrom`, `paydayPatrol` small_chimera, injury 0.12), ramen 「郎」 (str 3 +
+  tongue), workshop 갑옷씨 공방 (int 4, merit for 공방장), bookstore 고서점 (int 5 + research), busker 길거리 가수 (charm 4 + charisma,
+  merit for the top), pancake, photographer, sento, delivery, fisher, cafe (salaries ≈ 25–55 → 90–170); hidden legend_hunter
+  (hunts ≥ 8 & str ≥ 8, patrols too), weed_sage (weed = 5), ramen_owner (max rank ramen & net worth ≥ 1500), armor_san (max rank
+  workshop & int ≥ 8). `jobs.js`: `requires.weed` / `requires.hunts`, `unlock.weed` / `unlock.hunts`, `meritNeeded(def, toRank)`,
+  news `jobSalaryMult {jobId}`, `PAYDAY_HOOKS` (hunt.js registers the payday patrol / 검정: a patrol win = hunts +1 (log only), a
+  payday 검정 pass = `weedResult {action: 'exam', payday: true}`, a fail = tries +1). props.json `jobProps` holds both worlds' jobs
+  (tested); `pledge` = busker in the overlay; CPU `dreamJobs` per personality from the world's list; clubs `jobs` re-pointed.
+- 토벌 (`server/game/hunt.js`; tile `hunt` ⚔️ in base `board.json.tileTypes`, only the overlay pools have it: young / middle_age
+  main 3, career route 3, money route 1; never kids eras / the final race): prompt `hunt` (resultCutin 'auto') — a monster drawn
+  when it opens (hunts.json `monsters` small_chimera 꼬마 키메라 p1 / chimera p2 / big_chimera p3 / dekatsuyo 데카츠요 p4 middle_age,
+  weighted by era), options `fight {chance, reward [lo, hi], monsterId, armor?, sasumata?}` / `run` (default); context {monsterId,
+  monster {id, name, icon, power}, chance, reward, armor, sasumata, era}. chance = base[power−1] (0.85 / 0.65 / 0.45 / 0.28) + 0.03
+  × 체력 + 0.015 × 운 (+0.1 사스마타 item `huntBonus`, +0.04 × rank for hunter jobs) ∈ [0.05, 0.95]; reward × eraScale (young 1,
+  middle_age 1.4) × news `huntRewardMult` × CPU income handicap. Win → `huntResult {charId, monsterId, chance, armor, sasumata,
+  success: true, amount, injured: 0, hunts}` then moneyChanged `hunt`, hunts +1, 체력 +1 at 30 %, a merit card at 35 % for 토벌대.
+  Lose → loss int(20..50) × eraScale (갑옷 `huntArmor` halves; 실손 보험 / 액땜 via applyLoss — `amount` = the actual loss) and,
+  with a job and no armor, an injury at 0.6 × news `huntInjuryMult` (건강기원 부적 / 건강 부적 prevent; `huntResult.injured` = turns
+  + the 🤕 status card, no separate `injured` event). Run → `promptResolved {kind: 'hunt', result: 'run', monsterId}` (cutin false,
+  tag hunt_run). Records `huntPrompts / huntRuns / huntLosses`; highlights (데카츠요 win 7+, big wins, a painful defeat).
+- 풀뽑기 검정 (hunt.js; tile `weed` 🌿: middle / high main 3 (kids eras: work + free exams), young / middle_age main 2, love route 2):
+  `character.weed {level 0..5, tries}` (1 = 5급 … 5 = 1급, `weedGrade`), prompt `weed` options `work {amount}` (default; base 20 ×
+  (1 + 0.5 × level) × eraScale (middle 0.5, high 0.6, young 1, middle_age 1.3) × 1.5 for weeder jobs × news `weedMult` × CPU
+  handicap; 체력 +1 at 25 %) / `exam {chance, fee, price, level (target), grade}` (fee [5,10,20,30,40] × eraScale, kids eras free;
+  disabled at 1급 or when short of cash; chance = base [0.7, 0.55, 0.42, 0.3, 0.2] + 0.025 지력 + 0.02 체력 + 0.01 운 + 0.05 per failed
+  try (≤ 0.15) ∈ [0.05, 0.9]). → `weedResult {charId, action: work|exam, level, grade, amount? | success, target, chance, fee?,
+  payday?}` (anchor) then moneyChanged `weed` / `weedFee`. `balance.json.weed` (base) holds the knobs.
+- 쿠지 (holidays.js `kujiDraw`, `balance.lottoMode` 'numbers' (base) | 'kuji' (overlay)): at the era opening every holder of a
+  `lotto` card (🎟️ 쿠지 응모권) draws one ticket (seeded) from `balance.kuji.prizes` (1등 0.02 money 150 + treasure `kuji_plush`
+  (overlay add, weight 0, 100–200), 2등 0.06 money 60, 3등 0.15 a random card, 4등 0.27 money 10 + 체력 +1, 꽝 휴지); news `kujiLuck`
+  multiplies the chances of `luckRanks` 1–3 (꽝 shrinks; Chiikawa `lotto_fever` 1.25). `lottoDraw {eraId, kuji: true, entries [{charId,
+  rank, prize {name, money?, cardId?, treasureId?, stats?}}]}` (no numbers; lines per entry) then moneyChanged `kuji` (CPU handicap),
+  statChanged `kuji`, cardGained `{source: 'kuji'}`, treasureFound `{source: 'kuji'}` (`treasures.giveTreasure`). `room.lotto.draws`
+  keeps `{eraId, kuji: true, entries, at}`. `kujiExpectedValue(data, {luck})` (money + card at 0.5 × mean price + plush mean) = 15.75
+  (19.01 with the fever) < price 20 (tested). Records count kuji money as `luckWin`; highlights for 1등 / 2등.
+- Presentation: `EVENT_TYPES` / `CUTIN_TYPES` / `BOUNDARY` / prompts `ANCHOR_TYPES` + huntResult, weedResult; `SCENES` + weed-field
+  hunt-forest ramen-shop workshop sento bookstore cafe kuji (tones.json scenes + `sceneFallbacks` park / mountain-trail / kitchen /
+  office / house (→ office chain) / office / kitchen / shop; manifest `bg-<scene>` todo); prompt looks hunt (career, shock,
+  hunt-forest) / weed (good, joy, weed-field); tags hunt hunt_win hunt_lose hunt_run weed weed_work weed_pass weed_fail (base lines,
+  placeholders + `{monster}` `{grade}`); lottoDraw kuji → scene kuji, best = the best won rank. MC situations (base mc.json + pools):
+  huntWin (medium, big for a power-4 monster), huntLose (medium), weedPass (medium, big at 1급) — `mcSituationFor` can promote a
+  situation to big per event. Awards metrics `hunts`, `weedLevel`; title facts `hunts huntPrompts huntRuns huntOnlyRan weedLevel`.
+- Overlay content (real files untouched): items (킥보드 · 고서점 책 꾸러미 (bookstore / photographer / busker +10 %) · 사스마타
+  (`huntBonus`) · 포셰트 · 네잎클로버 · 목욕탕 평생 회수권 + new `armor` 갑옷 250 (`huntArmor`) / `guitar` 하치와레표 기타 200 (charm
+  +1, busker +10 %)), cards (names / icons / desc; `texts {block | hit | miss | exp | fine}` re-word 사스마타 방어 / 나쁜 녀석 습격 /
+  일거리 뺏기 logs — real logs unchanged), treasures (22 renamed + kuji_plush), events (≈ 40 rewrites + 19 new: pancake_party sento_day
+  ramen_bowl chimera_flee usagi_yaha rain_umbrella picnic_day island_trip hachiware_song momonga_tantrum kurimanju_cheers rakko_training
+  labor_reward weed_job kuji_miss armor_shop_sale shisa_bakery pochette_fashion chimera_reward), money / loss labels, news (renamed +
+  chimera_surge / weed_boom / ramen_price; new effect keys huntRewardMult huntInjuryMult weedMult jobSalaryMult eventMult kujiLuck in
+  `NEWS_DEFAULTS`), habits labels, `balance.shop.title` 「🛍️ 갑옷씨 상점」, awards (+hunt_king 토벌왕 hunts ≥ 3 / 60 split, weed_master
+  풀뽑기 명인상 level ≥ 3 / 50 all), titles (만년 풀뽑기 일꾼, 쿠지 인생, + 사스마타 마스터 hunts ≥ 5, 평화주의자 (≥ 3 hunts, always ran),
+  풀뽑기 1급), line pools that named 회사 / 코인 / 로또 … and MC job / lotto (쿠지) pools.
+- Props (base props.json, world-independent; the client draws them): sasumata, armor_helmet, guitar, head_towel (choosable → 34),
+  weed_basket, ladle, hammer, turner, delivery_box, armor_plate; `shared/roster.js` DEFAULT_PROPS / DEFAULT_JOB_PROPS mirror them.
+  Manifest (todo): `prop-<id>` ×10 (`gen-chara-manifest.js`), `bg-<scene>` ×8, `monster-<id>` ×4 (kind item, `meta.monster` — the
+  item validator now takes `meta.item` OR `meta.monster`), `item-armor`, `item-guitar`, `treasure-kuji-plush`.
+- CPU (`cpu.js`): hard `answerHunt` (EV: chance × (mean reward + pursuit of 전설의 토벌자) − (1 − chance) × (mean loss + injury ≈
+  0.6 × salary), cautious margin 20 / bold −10) and `answerWeed` (exam when chance × level value (35 + 120 if the target job needs it
+  + 60 for weeders + 50 toward 1급) − fee > the work pay; kids eras → exam); real CPUs: overlay `balance.cpu.prefs.hunt|weed` +
+  personality tables (🐢 run 4 : fight 1, work 3 : exam 1; 🔥 fight 4 : run 1, exam 3 : work 1) + `dream` (weed exam toward 풀뽑기
+  일꾼, fight toward 토벌대). `jobDeficit` counts missing weed levels / hunts; `tileWorth` hunt 40 / weed 20; shop worth of 사스마타 / 갑옷.
+  The handicap covers hunt rewards, weed pay and kuji money (`effectsFor(...).incomeMult`).
+- Scripts: `simulate.js --world real|chiikawa` (default real; the header prints the world; block 「세계 설정」: 토벌 visits / fight
+  rates per policy / wins per monster / money per visit, 풀뽑기 visits / exam rates / pass rates per grade (검정소) + payday passes /
+  final levels, hidden jobs held, the kuji line replaces the lotto line), `cpu-game.js --world` (also `playCpuGame({world})`,
+  `targetMatrix({world})`).
+- Measured (final data; `simulate --games 300 --seed 11`, real world same harness 200 games in brackets): lifetime spins per
+  character random 49.1 / CPU 49.8 (real 49.5 / 50.3); decisions per lifetime character 37.7 / 36.6 (real 36.6 / 36.0; hunt 1.64 /
+  1.72, weed 1.55 / 1.51); payday share of income 22.7 / 31.9 % (real 20.5 / 30.1); final jobs random top 섬 낚시꾼 15.4 %, lowest
+  regular 풀뽑기 일꾼 1.7 %, CPU top 사진사 / 섬 낚시꾼 12.1 %, lowest 풀뽑기 일꾼 1.5 %, 알바 0 %; hidden held random 5.7 % (전설의
+  토벌자 0.2, 풀뽑기 1급 명인 0.3, 갑옷씨 0.5) / CPU 14.5 % (0.6 / 1.0 / 1.4, 산신령 4.8, 건물주 4.0); 토벌: 1.6–1.7 per adult character,
+  fight 51 % random / 57 % CPU, win 88–89 %, +39–42만원 per visit (+74–78 per fight), injuries ≈ 3 % of visits; 풀뽑기: 1.5–1.6 per
+  character, exam 48 % random / 54 % CPU, 검정소 pass 5급 ≈ 90 % · 4급 86–87 % · 3급 64–77 %, + 71–76 풀뽑기 일꾼 payday passes
+  per 300 games, +8.5만원 per visit, final level ≥ 1 ≈ 39 %, 1급 0.8–1.3 %; kuji 9–10만원 cash per ticket (EV
+  15.75 incl. card / plush); route 1st-place shares vs fair: random young love / career / money 22.6 / 16.0 / 19.2 (fair 19.2 / 19.4 /
+  18.6), middle_age 20.4 / 14.9 / 21.7 (19.8 / 19.0 / 18.6); CPU young 24.2 / 13.6 / 21.5, middle_age 20.8 / 15.2 / 22.3 (the real world
+  under the same harness: career −3 to −5 pt as well); all chiikawa titles reached (random). `--bias --world chiikawa --games 400
+  --seed 1`: 1st-place share 9.5–15.3 %, first→last average rank spread 0.12. `cpu-game --matrix --world chiikawa --games 200 --seed 1`:
+  casual 1 + 3 CPU human 1st 95.5 %, random 1 + 3 86.5 %, casual 2 + 2 99.5 %, casual 4 + 4 100 %, expert 1 + 3 100 %, adult 97.5 %,
+  kids 100 %, skill 97.5 / 91.5 %, vs all-🐢 / 🙂 / 🔥 97.0 / 99.5 / 98.5 % (every target ✅).
+- Client side: see "World setting — client" below.
+
+## World setting (치이카와 모드 / 현실 모드) — client
+Contract: session scratchpad `cworld-contract.md` §0 / §2–§8 + `cworld-deviations.md`. Tests: `test/client-world.test.js` (+ the prop
+painter / builder tests of `client-chara` / `client-pawn3d`). E2E: session scratchpad `cwb/` (`inject.cjs` injected state / events in a
+🐹 room on the real server: A 1280 3D, B 390 2D, C 390 2D `?cutins=off` (2D sheet), then a 🏙️ room; `game.cjs` natural chiikawa game
+with 2 CPUs; `lineup.cjs` 3D pawn lineup; `props2d.mjs` / `art.mjs` sharp contact sheets; screenshots `cwb/cwb-*.png`).
+- World meta: `shared/world.js` `worldMeta(meta, world)` = `worldData(meta, world, meta.worldOverlays)` + the two meta-shape aliases
+  (the overlay's `tones` patch also lands on `meta.presentation`, its `lines.mc` pools on `meta.mc.lines`), memoized, frozen; the real
+  world / no overlay = `meta` itself; a world meta passed again resolves to itself (and `'real'` back to the base). app.js
+  `roomMeta(room)` (lobby label + MC greeting, picker, the game UI's `getMeta`); game2d wraps its `getMeta` once more with the shown
+  room (`ui.rawRoom`, so injected / switched rooms resolve too) → cut-ins, banners, result show, 3D board (`meta` at creation), side
+  list all read the world's cards / items / jobs / treasures / news / awards / titles / scene labels / MC pools. `window.__game.getMeta`
+  (debug). Lobby `#lobby-world` line = `worldInfo(world)` icon · name · desc. Admin keeps the real admin meta (+ its world select /
+  room-detail line from CW-A). Fallbacks for ids only the 🐹 world has: `growth.WORLD_JOB_FALLBACK` (16 jobs, `jobInfo`),
+  cards.js `DEFAULT_ITEMS.armor / guitar`, submaps.js `WORLD_TREASURE_FALLBACK.kuji_plush`; other `DEFAULT_*` stay real-world.
+- Pure `shared/worldPlay.js` (imports growth.js only): `WORLD_TILE_TYPES` (hunt ⚔️ #c0392b / weed 🌿 #6ab04c = board.json, tested),
+  `DEFAULT_MONSTERS` / `MONSTER_IDS` / `monsterList` / `monsterInfo` (meta.hunts wins), `huntsOf`, `isHuntRun` (promptResolved hunt
+  run), `huntPrompt(p)` → {monster, fight {chance %, reward, armor, sasumata, badges}, run, danger easy|mid|hard}, `huntOutcome(e)`,
+  `isHuntBig` (a power-4 데카츠요 win), `WEED_MAX` / `weedGrade` (0 무자격, 1 = 5급 … 5 = 1급) / `weedLevelOf`, `worldTags(c)` (🌿 n급 when
+  level > 0, ⚔️ 토벌 n회 when hunts > 0), `weedPrompt(p)` → {level, grade, maxed, work {amount}, exam {target, grade, chance %, fee,
+  free, disabled, reason}}, `weedOutcome(e)`, `isWeedBig` (1급 pass), `isWeedWork`; kuji: `KUJI_RANKS` (1등 🧸 … 꽝 🧻), `kujiWon`,
+  `isKujiDraw` (lottoDraw `kuji: true`; the numbered payload stays `cards.js lottoRows`), `isKujiBig` (a 1등), `kujiRankInfo` (「1등 ·
+  …」 → label + title), `kujiRows(e, {characters, meta, won})` (best rank first; chips 💰 / 🃏 card name of the world / plush only when
+  the title doesn't name it / stat), `kujiSummary`.
+- `ui/worldArt.js` (string builders, no ids): `monsterSvg(id, {mood})` = 4 distinct silly-cute chimeras facing left (꼬마 키메라
+  lavender caterpillar, 키메라 purple horned fang grin, 커다란 키메라 orange dino, 데카츠요 three-eyed indigo boss with a horn crown);
+  `monsterArtHtml` (accepted `findAsset({kind: 'item', monster})` img wins — cutin2d / game2d `artFor('monster', id)`), `powerStars`,
+  `huntOptionsHtml` (battle card: foe art + ★ 위험도 (`art: false` in the cut-in, whose window shows the chimera), 「⚔️ 싸운다」 chance
+  meter + 💰 reward range + 🔱 / 🛡️ badges, 「🏃 도망친다」), `weedOptionsHtml` (field card: 지금 자격 + `gradeLadderHtml` 5→1 dots,
+  「🌿 풀뽑기 일하기 (+n만원)」, 「📝 n급 검정 응시」 meter + 💸 fee / 🆓 무료 (부모님 찬스) + red disabled reason), `worldOptionsHtml`
+  (dispatcher, null for other kinds; used by the cut-in prompt and the 2D sheet `.world-choices`), `passStampHtml` / `gradeBadgeHtml`,
+  `kujiBoxSvg` / `kujiTicketHtml` (flip card, `--d` delay) / `kujiPlushHtml`, `worldSceneBody(scene)` + `WORLD_SCENES` (풀밭 with the
+  풀뽑기 검정소 sign + basket, 토벌 숲 with 「⚔ 토벌 구역」 + eyes in the bushes, 라멘 가게 「郎」 noren + bowls, 쿠지 가게 prize shelf).
+- Cut-ins: cutinMap `WORLD_ANCHORS` huntResult / weedResult (anchors + boundaries), `isHuntRunEvent` → never an anchor, a lone
+  (banner) group; a `treasureFound {source: 'kuji'}` folds into its kuji draw (`g.treasure`, no second cut-in); `WORLD_TAGS` 「⚔️ 토벌 ·
+  승리 / 패배」「🌿 풀뽑기 검정 · 합격 / 불합격」「🌿 풀뽑기 일하기」「🏃 토벌 · 도망」, lottoDraw 「🎟️ 쿠지 뽑기」 vs 「🎱 전국 로또」;
+  fallback texts; `PREFER_SVG_SCENES` / `SVG_SCENES` + the four world scenes, `DEFAULT_SCENE_FALLBACKS` + the 8 world scenes (+ park /
+  house, mirroring tones.json). cutin2d: `worldLook` (hunt win cheer / lose cry + 💥/🤕, weed pass jump / fail sweat / work wave),
+  `worldExtras` (chips: ⚔️ name 토벌 성공! / 💥 패배, 토벌 n회, 🔱, 🛡️ (손해 절반), 🤕 부상 n턴 (the injury card chip is dropped), 📝 n급
+  합격 / 불합격, work pay; `REASON_ICON` hunt ⚔️ / weed 🌿 / weedFee 📝 / kuji 🎟️) → `spec.hunt` / `spec.weed`; `renderWorld`: hunt prompt =
+  the chimera on the right of the window (`.ci-foe`, idle bob), weed prompt = grade badge; hunt result = 💥 clash, then (`.after`) the
+  chimera poofs away + 💰 coins (win) or gloats while the character tumbles (`.ci-slot.tumble`); weed exam = 「합격!」 / 「불합격…」
+  stamp + grade badge (1급: 🌿✨ rising), work = plucked 🌿; `kujiSpec` (lottoDraw kuji → studio with the MCs when the group has lines,
+  else kind `kuji`; scene kuji): `.ci-kuji` box + one ticket per holder peeled in turn, rows in the box (rank chip, prize title, chips,
+  line), 1등 = `kuji-plush` + confetti + fanfare. `overlay.dataset.world` = hunt-win | hunt-lose | weed-pass | weed-fail | weed-work |
+  kuji | hunt-prompt | weed-prompt (E2E hook). Prompt looks hunt (career · hunt-forest) / weed (good · weed-field); the prompt spec
+  carries `context` (the monster).
+- Policy (cutinPolicy): huntResult big only by `isHuntBig`, weedResult by `isWeedBig`, lottoDraw kuji by `isKujiBig` (the numbered lotto
+  stays always big; a studio group is big anyway); a kuji draw with one of my tickets is mine (`isOwnGroup`); other players' plain 풀뽑기
+  work (`isWeedWorkGroup`) = a banner in every mode (mine: a short cut-in); running away (`isBannerGroup`) = a banner, also mine; merge
+  ranks huntResult 6 / weedResult 4.
+- game2d: `CLIENT_TILE_TYPES` + `WORLD_TILE_TYPES`; `WORLD_CUTIN_TYPES` (3D cut-in handlers + MC corner); side rows `gc-tag world weed |
+  hunts` (`worldTags`), detail facts 「풀뽑기 검정」「토벌」; 2D sheet `worldOptionsHtml`; floats / toasts (cut-ins off or 「끄기」):
+  huntResult (⚔️ 토벌! / 💥 패배, 🤕; the injury card toast is skipped after a hunt injury), weedResult (📝 합격 / 불합격, 🌿 +pay; a payday
+  검정 pass always toasts), 토벌 run 🏃, kuji (rank float per holder, a toast for my tickets). Requirement badges (`growth.requirementList`)
+  know `weed` (「🌿 풀뽑기 n급 필요」) and `hunts` (「⚔️ 토벌 n회 필요」), checked against the character (red ✗ when missing);
+  `growth.meritNeed` honours `rankUp.meritFrom` (no 🏅 need below that rank).
+- 3D: animator `ANIMATED_EVENTS` + huntResult / weedResult; board3d pops (⚔️ +n / 💥🤕 + coin / star burst; 📝 n급 합격! + confetti / 🌿 +n),
+  kuji `lottoDraw` = a rank pop per holder (`KUJI_POP` 🧸 1등! … 🧻 꽝); tile defaults hunt ⚔️ / 토벌 #c0392b, weed 🌿 / 풀 #6ab04c;
+  `buildMarkers` (same one merged marker mesh): hunt = a purple chimera peeking out of a bush + a sasumata stuck in the ground (≈ 250
+  tris), weed = a tuft of four weed cones + a basket. particles `BURST_FOR_TILE` hunt / weed star.
+- Props (§6): 2D painters in `ui/chara.js` (`DRAWN_PROPS`): armor_helmet (riveted grey dome, brim band, red plume), head_towel (striped
+  towel cap + side knot), sasumata (pole + U fork with outward tips), ladle (bowl + rim), hammer (wood handle, grey head), turner (black
+  handle, slotted blade), guitar (body beside the right hip, neck up past the head, strap in front), weed_basket (woven basket at the left
+  with weeds + a flower, diagonal strap), delivery_box (taped cardboard box at the right shoulder + straps), armor_plate (side plates
+  behind + a grey breastplate in front). 3D builders in `scene/pawnParts.js` (`PROP_BUILDERS` + `PROP_DEFAULT_COLORS`): head 122 / 126,
+  hand 48–92, back 60–112 triangles (≤ the heaviest prop of each slot → the per-pawn budget 2,000 holds); armor_helmet is a TALL_HAT.
+- CSS `public/css/world.css` (linked after chara.css): side tags, chimera moods / foe / clash / coins / tumble, stamp / badge / work
+  weeds, kuji box / tickets / plush, battle / field cards (cut-in + 2D sheet; 390 px: one column), lobby world line, reduced motion.

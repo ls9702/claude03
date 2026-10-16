@@ -24,6 +24,14 @@ export const NEWS_DEFAULTS = Object.freeze({
   tuitionMult: 1,
   housePriceMult: 1,
   birthBonus: 0,
+  // 세계 설정 (치이카와 모드 news): 토벌 reward / injury chance, 풀뽑기 work pay, a per-job salary multiplier {jobId: mult},
+  // per-event money multipliers {eventId: mult} (e.g. 라멘 값 인상) and the 쿠지 prize luck (ranks 1–3 chances × kujiLuck)
+  huntRewardMult: 1,
+  huntInjuryMult: 1,
+  weedMult: 1,
+  jobSalaryMult: {},
+  eventMult: {},
+  kujiLuck: 1,
 });
 
 export const newsById = (data, id) => data.news?.news?.find((n) => n.id === id) ?? null;

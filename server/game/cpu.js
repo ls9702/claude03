@@ -12,11 +12,11 @@
 // (the real CPUs in rooms) plays by personality preference tables (see "the real CPUs" below) and is much weaker.
 // CPUs never bet, never offer trades and never give gifts. Each CPU has a personality (cautious / normal / bold),
 // chosen when it is added (lobby `addCpuCharacter {personality}`) or seeded; `opts.personality` overrides it.
-import { gameData } from '../data/index.js';
+import { roomData } from './world.js';
 import { HALT_TYPES, nextPosition, tileAt } from './board.js';
 import { STAT_KEYS, statCap } from './effects.js';
 import { examChances } from './growth.js';
-import { PART_TIME_ID, clubDef, inJobEra, jobDef, jobRequirements, meritNeeded, missingJobCards, rankUpChance, regularJobs, salaryAmount } from './jobs.js';
+import { PART_TIME_ID, clubDef, huntCount, inJobEra, jobDef, jobRequirements, meritNeeded, missingJobCards, rankUpChance, regularJobs, salaryAmount, weedLevel } from './jobs.js';
 import { spouseSalary } from './family.js';
 import { nextPlace } from './finish.js';
 import { effectsFor } from './news.js';
@@ -107,6 +107,9 @@ export function jobDeficit(ctx, c, def) {
   const enrolled = rank[c.school?.tier] ?? 0; // graduates later with that degree
   if (edu && Math.max(rank[c.education] ?? 0, enrolled) < (rank[edu] ?? 0)) d += c.careerDone ? 99 : statOf(c, 'int') >= 6 ? 1 : 3;
   d += 2 * missingJobCards(c, def).length; // a requirement card (blue) still to find ≈ 2 stat points
+  // 세계 설정 (치이카와 모드): 풀뽑기 검정 levels / 토벌 wins still missing
+  if (def.requires?.weed != null) d += 1.5 * Math.max(0, def.requires.weed - weedLevel(c));
+  if (def.requires?.hunts != null) d += Math.max(0, def.requires.hunts - huntCount(c));
   return d;
 }
 
@@ -322,6 +325,7 @@ function shopWorth(ctx, c, o, leaderGap) {
     for (const st of Object.keys(def.stats ?? {})) v += statUseful(ctx, c, st) ? 90 : 15;
     const e = def.effect ?? {};
     if (e.salaryBonus && (!e.jobs || e.jobs.includes(c.job?.id))) v += e.salaryBonus * salaryAmount(ctx, c) * 5;
+    if (e.huntBonus || e.huntArmor) v += huntsAhead(ctx) * (e.huntArmor ? 25 : 20); // 세계 설정: 사스마타 / 갑옷
     return v;
   }
   const def = cardDef(ctx.data, o.cardId);
@@ -567,7 +571,8 @@ function answerPassTile(ctx, c, p) {
 }
 
 /** 찬스 광장 option scores [{id, v}] (enabled options the CPU would consider; see answerPassTile). */
-export function cpuPassScores(room, charId, data = gameData(), opts = {}) {
+export function cpuPassScores(room, charId, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   const p = room.turn?.pending;
   const c = room.characters.find((x) => x.id === charId);
   if (!p || p.kind !== 'passTile' || !c) return [];
@@ -632,6 +637,55 @@ function answerAllIn(ctx, c, p) {
   return opts.length ? opts[subRng(ctx.room, c, 'allIn').int(0, opts.length - 1)].id : null;
 }
 
+// 세계 설정 (치이카와 모드): 토벌 / 풀뽑기 검정
+
+/** Rough number of 토벌 tiles still ahead of a character this game (0 in a world without hunt tiles). */
+function huntsAhead(ctx) {
+  const pools = Object.values(ctx.data.board?.eras ?? {}).some((e) => (e.pool ?? []).some((t) => t.type === 'hunt'));
+  return pools ? 2 : 0;
+}
+
+/**
+ * 토벌: fight when the expected outcome beats running away — chance × (mean reward + a little for the 토벌 count / 체력
+ * chance / the 전설의 토벌자 pursuit) − (1 − chance) × (mean loss + the injury's cost: half a salary twice). Cautious CPUs
+ * want a margin, bold ones accept a small expected loss.
+ */
+function answerHunt(ctx, c, p) {
+  const fight = enabled(p).find((o) => o.id === 'fight');
+  if (!fight) return 'run';
+  const cfg = ctx.data.hunts?.balance ?? {};
+  const chance = num(fight.chance);
+  const [lo, hi] = Array.isArray(fight.reward) ? fight.reward : [0, 0];
+  const scale = cfg.eraScale?.[c.era] ?? 1;
+  const loss = (((cfg.failLoss?.min ?? 20) + (cfg.failLoss?.max ?? 50)) / 2) * scale * (fight.armor ? 0.5 : 1);
+  const hurt = fight.armor || !c.job ? 0 : (cfg.injuryOnFail ?? 0) * salaryAmount(ctx, c);
+  const legend = (ctx.data.jobs?.jobs ?? []).find((j) => j.hidden && j.unlock?.hunts != null);
+  const pursuit = legend && !c.hiddenUnlocked?.includes(legend.id) && huntCount(c) >= legend.unlock.hunts - 3 ? 40 : 10;
+  const ev = chance * ((lo + hi) / 2 + pursuit) - (1 - chance) * (loss + hurt);
+  const persona = personaOf(c, ctx);
+  const margin = persona === 'cautious' ? 20 : persona === 'bold' ? -10 : 0;
+  return ev > margin ? 'fight' : 'run';
+}
+
+/**
+ * 풀뽑기 검정소: take the exam when its expected worth beats a day of work — the value of one more level (work pay +50 %
+ * from then on, a 풀뽑기 일꾼 requirement / salary, the road to 1급 명인) × pass chance − fee. Kids eras: the exam is free.
+ */
+function answerWeed(ctx, c, p) {
+  const ops = enabled(p);
+  const exam = ops.find((o) => o.id === 'exam');
+  const work = ops.find((o) => o.id === 'work');
+  if (!exam) return work ? 'work' : null;
+  const level = weedLevel(c);
+  const t = targetJob(ctx, c);
+  const needs = t?.requires?.weed != null && level < t.requires.weed;
+  const weeder = (ctx.data.balance.weed?.work?.weederJobs ?? ['weeder', 'weed_sage']).includes(c.job?.id);
+  const sage = (ctx.data.jobs?.jobs ?? []).some((j) => j.hidden && j.unlock?.weed != null) && level >= 2 ? 50 : 0;
+  const value = 35 + (needs ? 120 : 0) + (weeder ? 60 : 0) + sage;
+  const evExam = num(exam.chance) * value - num(exam.fee);
+  return evExam > num(work?.amount) ? 'exam' : 'work';
+}
+
 /** kind → (ctx, c, pending) → optionId | null (null = the prompt's default). Unknown kinds use the default. */
 export const CPU_ANSWERS = {
   routeChoice: answerRoute,
@@ -658,6 +712,9 @@ export const CPU_ANSWERS = {
   passTile: answerPassTile,
   club: answerClub,
   allIn: answerAllIn,
+  // 세계 설정 (치이카와 모드)
+  hunt: answerHunt,
+  weed: answerWeed,
 };
 
 /**
@@ -665,7 +722,8 @@ export const CPU_ANSWERS = {
  * strong heuristic (CPU_ANSWERS) alone; anything else (the real CPUs) = the personality's preference table
  * (`easyAnswer`, balance.json `cpu`), which may lean on the heuristic's pick through its `best` key.
  */
-export function cpuAnswer(room, charId, data = gameData(), opts = {}) {
+export function cpuAnswer(room, charId, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   const p = room.turn?.pending;
   const c = room.characters.find((x) => x.id === charId);
   if (!p || !c) return null;
@@ -710,8 +768,8 @@ export function cpuAnswer(room, charId, data = gameData(), opts = {}) {
 const CPU_DEFAULTS = { prefs: { '*': { best: 3, '*': 1 } }, personalities: {} };
 
 /** The CPU difficulty config (`balance.cpu`). */
-export function cpuConfig(data = gameData()) {
-  return data.balance?.cpu ?? CPU_DEFAULTS;
+export function cpuConfig(data = null) {
+  return (data ?? roomData(null)).balance?.cpu ?? CPU_DEFAULTS;
 }
 
 /** A personality's knob (`cpu.personalities.<p>.<key>`), else the shared `cpu.<key>`, else `def`. */
@@ -767,7 +825,8 @@ function easyAnswer(ctx, c, p, bestFn) {
  * every regular job) — what it trains for (습관 / 동아리), takes when offered and switches to. Spreads the CPUs over
  * all jobs (the strong heuristic sent most of them to the best-paid ones).
  */
-export function cpuDreamJob(room, c, data = gameData(), opts = {}) {
+export function cpuDreamJob(room, c, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   const ctx = view(room, data, opts);
   const list = easyKnob(ctx, c, 'dreamJobs', null);
   const all = regularJobs(data).map((j) => j.id);
@@ -815,6 +874,9 @@ const DREAM_MATCH = {
     if (o.cardId) return missingJobCards(c, dream ?? {}).includes(o.cardId);
     return false;
   },
+  // 세계 설정: a dream job that asks for a 풀뽑기 검정 level → the exam; a 토벌 dream job → fight
+  weed: (ctx, c, o) => o.id === 'exam' && weedLevel(c) < (jobDef(ctx.data, cpuDreamJob(ctx.room, c, ctx.data, ctx))?.requires?.weed ?? 0),
+  hunt: (ctx, c, o) => o.id === 'fight' && (ctx.data.hunts?.balance?.hunterJobs ?? ['hunter']).includes(cpuDreamJob(ctx.room, c, ctx.data, ctx)),
 };
 
 /** Easy-level card play: maybe one red card (personality `cardPlay` chance), sabotage only by `sabotage` chance. */
@@ -840,7 +902,8 @@ function easyCardAction(ctx, c, hand, use) {
 // ---------- trades ----------
 
 /** Accept an offer when what the CPU receives is worth at least what it gives (× personality margin). */
-export function cpuTradeAccept(room, trade, data = gameData(), opts = {}) {
+export function cpuTradeAccept(room, trade, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   const to = room.characters.find((x) => x.id === trade.toId);
   if (!to) return false;
   const worth = (side, owner) => (side?.money != null ? side.money : cardValue(data, owner, side?.cardId, room));
@@ -892,6 +955,10 @@ function tileWorth(ctx, c, tile) {
     case 'hometown':
     case 'temple':
       return 30;
+    case 'hunt': // 세계 설정: 토벌 (a fight or a free escape)
+      return 40;
+    case 'weed': // 풀뽑기 work pay or a 검정
+      return 20;
     case 'goal':
       return (ctx.data.balance.goalPrizes?.[nextPlace(ctx.room) - 1] ?? 0) + 60;
     case 'event':
@@ -1000,7 +1067,8 @@ function progressWorth(ctx, c) {
  * 찬스 광장 passed (losses × the personality's `lossAversion`) + `aimSpeed` × the worth of a tile of progress per tile
  * moved (paydays / 찬스 광장 / the goal come closer; bold CPUs like distance more).
  */
-export function cpuAimScores(room, charId, data = gameData(), opts = {}) {
+export function cpuAimScores(room, charId, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   const c = room.characters.find((x) => x.id === charId);
   if (!c || !room.board) return {};
   const ctx = view(room, data, opts);
@@ -1029,7 +1097,8 @@ export function cpuAimScores(room, charId, data = gameData(), opts = {}) {
  * personality's aim error (`balance.roulette.cpu.aimNoise[personality]` = chance of ±1) from a hashed sub-RNG —
  * the game RNG is never consumed.
  */
-export function cpuSkillTarget(room, charId, data = gameData(), opts = {}) {
+export function cpuSkillTarget(room, charId, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   const c = room.characters.find((x) => x.id === charId);
   const { min, max } = data.balance.spin;
   if (!c) return Math.round((min + max) / 2);
@@ -1076,7 +1145,8 @@ export function sabotageTargets(room, c) {
  * stat that matters, energy / taxi when the expected landing improves or the goal is near. A full hand plays its
  * best card anyway.
  */
-export function cpuCardAction(room, charId, data = gameData(), opts = {}) {
+export function cpuCardAction(room, charId, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   const t = room.turn;
   const c = room.characters.find((x) => x.id === charId);
   if (!c || !t || t.cardUsed || t.phase !== 'awaitSpin' || t.pending) return null;
@@ -1186,7 +1256,8 @@ const unanswered = (p, id) => p.forCharacterIds.includes(id) && !Object.hasOwn(p
  * card / spin on its turn. Never bets, never offers trades, never gifts.
  * @returns {object|null} an engine action without `actor`
  */
-export function cpuDecide(room, charId, data = gameData(), opts = {}) {
+export function cpuDecide(room, charId, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   if (room?.status !== 'playing' || !room.turn) return null;
   const c = room.characters.find((x) => x.id === charId);
   if (!c) return null;
@@ -1206,7 +1277,8 @@ export function cpuDecide(room, charId, data = gameData(), opts = {}) {
 const decideOpts = (opts = {}) => ({ level: opts.level, personality: opts.personality });
 
 /** The spin itself: a plain spin, or in a skill-mode room the aimed one (`target`, `input: 'cpu'`). */
-export function cpuSpinAction(room, charId, data = gameData(), opts = {}) {
+export function cpuSpinAction(room, charId, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   return isSkillRoom(room) ? { type: 'spin', characterId: charId, target: cpuSkillTarget(room, charId, data, opts), input: 'cpu' } : { type: 'spin', characterId: charId };
 }
 
@@ -1232,7 +1304,8 @@ export function cpuDue(room, { isCpuChar = isCpu } = {}) {
 }
 
 /** `cpuDue` + `cpuDecide` in one call (headless games): `{charId, kind, action}` | null. */
-export function cpuNextAction(room, data = gameData(), opts = {}) {
+export function cpuNextAction(room, data = null, opts = {}) {
+  data = roomData(room, data); // the room's world (jobs, items, cards …)
   const due = cpuDue(room, opts);
   if (!due) return null;
   const action = cpuDecide(room, due.charId, data, opts);

@@ -65,6 +65,9 @@ export const AWARD_METRICS = {
   routeMedal: (ctx, c, def) => (routeMedal(c, def.route) ? 1 : 0),
   allRoutes: (ctx, c) => routesExperienced(c),
   luckWinnings: (ctx, c) => c.record?.luckWin ?? 0,
+  // 세계 설정 (치이카와 모드 awards): 토벌 wins, 풀뽑기 검정 level (1 = 5급 … 5 = 1급)
+  hunts: (ctx, c) => c.hunts ?? 0,
+  weedLevel: (ctx, c) => c.weed?.level ?? 0,
 };
 
 /** Tie-break: earlier goal arrival (the final race), then more assets (net worth + house + items), then creation order. */
@@ -167,6 +170,12 @@ export function titleFacts(room, c, { data, ranking = [] } = {}) {
     jeju: rec.submaps?.jeju ?? 0,
     wishes: c.wishes ?? 0,
     adultLife: ADULT_ERAS.includes(c.era) ? 1 : 0,
+    // 세계 설정 (치이카와 모드 titles): 토벌 wins / prompts / run-aways, 풀뽑기 검정 level
+    hunts: c.hunts ?? 0,
+    huntPrompts: rec.huntPrompts ?? 0,
+    huntRuns: rec.huntRuns ?? 0,
+    huntOnlyRan: (rec.huntPrompts ?? 0) > 0 && (rec.huntRuns ?? 0) === (rec.huntPrompts ?? 0) ? 1 : 0, // 평화주의자
+    weedLevel: c.weed?.level ?? 0,
   };
 }
 

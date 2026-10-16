@@ -288,7 +288,7 @@ test('manifest: chara / prop kinds and MC overlay parts validate; the shipped ma
   assert.equal(validateManifest(m).ok, true);
   assert.deepEqual(unmappedRequests(m), []);
   assert.equal(m.items.filter((i) => i.kind === 'chara').length, 8 * 9 + 10 + 8);
-  assert.equal(m.items.filter((i) => i.kind === 'prop').length, 60);
+  assert.equal(m.items.filter((i) => i.kind === 'prop').length, 70); // 60 + the 세계 설정 props (사스마타 …)
   for (const dog of ['hoya', 'bomi']) for (const part of ['eyes-closed', 'mouth-open']) assert.equal(getItem(m, `mc-${dog}-${part}`)?.meta.base, `mc-${dog}-neutral`);
   // the generator is idempotent on the shipped manifest; arms are derived from base + body
   const again = upsertCharaItems(structuredClone(m));

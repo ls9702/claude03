@@ -51,10 +51,10 @@ const TILE_TOP = 0.27;
 const NARROW_TAGS_PX = 700; // canvas CSS width below which only current / mine / moving pawns show name tags
 /** Asset-studio icon ids (manifest meta.tile) per tile type. */
 const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal', habit: 'school', salary: 'money', pass: 'shop' };
-const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '갈림길', merge: '합류', goal: '골', habit: '습관', salary: '월급날', pass: '광장', hometown: '고향', temple: '산사', jeju: '제주', reversal: '역전' };
-const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#2f9e57', pass: '#ff8a3d', hometown: '#7cb342', temple: '#8d6e63', jeju: '#26a69a', reversal: '#d4a017' };
+const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '갈림길', merge: '합류', goal: '골', habit: '습관', salary: '월급날', pass: '광장', hometown: '고향', temple: '산사', jeju: '제주', reversal: '역전', hunt: '토벌', weed: '풀' };
+const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#2f9e57', pass: '#ff8a3d', hometown: '#7cb342', temple: '#8d6e63', jeju: '#26a69a', reversal: '#d4a017', hunt: '#c0392b', weed: '#6ab04c' };
 /** Stage 6 tile glyphs before board.json knows the type (meta icon wins). Loop maps: 💵 월급날, 🎪 찬스 광장. */
-const DEFAULT_TILE_GLYPH = { start: '🚩', habit: '📚', salary: '💵', pass: '🎪', job: '💼', card: '🃏', shop: '🛍️', hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', treasure: '💎' };
+const DEFAULT_TILE_GLYPH = { start: '🚩', habit: '📚', salary: '💵', pass: '🎪', job: '💼', card: '🃏', shop: '🛍️', hometown: '🏡', temple: '🛕', jeju: '🌴', reversal: '🎰', treasure: '💎', hunt: '⚔️', weed: '🌿' };
 /** Ribbon text drawn under the icon of these tile types (atlas). */
 const RIBBON = { salary: '월급날', pass: '찬스 광장' };
 /** Loop maps: tiles that stand out (bigger tile + marker): forced-stop paydays, pass tiles, the fork. */
@@ -67,6 +67,8 @@ const STAT_FLOAT = { int: ['🧠', '#2446a8'], str: ['💪', '#a33a14'], charm: 
 
 /** Stage 7 board reactions over the pawn (sabotage / block pop over the target). */
 const STAGE7_POP = { cardGained: '🃏', itemBought: '🛍️', gift: '🎁', lottoDraw: '🎱' };
+/** 세계 설정: 쿠지 ranks over the holders' pawns. */
+const KUJI_POP = { 1: '🧸 1등!', 2: '🎁 2등', 3: '🃏 3등', 4: '🍜 4등', 5: '🧻 꽝' };
 /** Red roulette cards: their own pop when used (큰 수 / 작은 수 / 딱 그 칸 / 월급날 직행). */
 const ROLL_CARD_POP = { big_roll: '🔼', small_roll: '🔽', exact_roll: '🎯', payday_rush: '💨' };
 /** Stage 8 board reactions over the pawn (the cut-in follows). */
@@ -548,7 +550,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     }
   }
 
-  // markers (one merged mesh): 💵 payday = gold coin ring + sign post, 🎪 pass tile = a little striped tent
+  // markers (one merged mesh): 💵 payday = gold coin ring + sign post, 🎪 pass tile = a little striped tent, ⚔️ 토벌 = a
+  // chimera in a bush + a sasumata, 🌿 풀뽑기 = a weed tuft + basket (치이카와 모드 tiles)
   function buildMarkers(E) {
     const L = E.layout;
     const marks = [];
@@ -575,6 +578,29 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         for (const side of [-1, 1]) marks.push(colored(new THREE.CylinderGeometry(0.08, 0.08, 2.2, 6), '#2d2a32', mat4(lt.x + nx * 1.25 * side, 1.1, lt.z + nz * 1.25 * side)));
         marks.push(colored(new THREE.BoxGeometry(2.7, 0.36, 0.12), '#ffffff', mat4(lt.x, 2.1, lt.z, 0, lt.yaw + Math.PI / 2, 0)));
         marks.push(colored(new THREE.BoxGeometry(2.72, 0.12, 0.14), '#2d2a32', mat4(lt.x, 2.1, lt.z, 0, lt.yaw + Math.PI / 2, 0)));
+      } else if (t.type === 'hunt') {
+        // ⚔️ 토벌 (치이카와 모드): a little purple chimera peeking out of a bush + a sasumata stuck in the ground
+        const px = lt.x + nx * 1.45;
+        const pz = lt.z + nz * 1.45;
+        marks.push(colored(new THREE.SphereGeometry(0.5, 7, 4), '#4f8a3c', mat4(px, 0.22, pz, 0, 0, 0, [1.25, 0.6, 1.1])));
+        marks.push(colored(new THREE.SphereGeometry(0.34, 7, 5), '#8e5bb5', mat4(px, 0.62, pz)));
+        for (const s of [-1, 1]) {
+          marks.push(colored(new THREE.ConeGeometry(0.08, 0.26, 4), '#f4e6c8', mat4(px + s * 0.17, 0.98, pz, 0, 0, -s * 0.35)));
+          marks.push(colored(new THREE.SphereGeometry(0.075, 5, 3), '#ffffff', mat4(px + s * 0.13, 0.7, pz + 0.27)));
+          marks.push(colored(new THREE.SphereGeometry(0.04, 4, 2), '#2d2a32', mat4(px + s * 0.13, 0.7, pz + 0.33)));
+        }
+        const sx = px - nz * 0.75;
+        const sz = pz + nx * 0.75;
+        marks.push(colored(new THREE.CylinderGeometry(0.04, 0.04, 1.5, 4), '#8a6b4a', mat4(sx, 0.75, sz, 0, 0, 0.12)));
+        marks.push(colored(new THREE.TorusGeometry(0.17, 0.035, 3, 6, Math.PI), '#b9c2cc', mat4(sx - 0.09, 1.66, sz, 0, 0, Math.PI + 0.12)));
+      } else if (t.type === 'weed') {
+        // 🌿 풀뽑기 (치이카와 모드): a tuft of tall weeds + a small basket beside the tile
+        const px = lt.x + nx * 1.35;
+        const pz = lt.z + nz * 1.35;
+        [[-0.18, 0.62, '#5aa84a'], [0.05, 0.8, '#6cc070'], [0.24, 0.55, '#4f9a40'], [-0.02, 0.46, '#7bd06a']].forEach(([dx, h, col], i) => {
+          marks.push(colored(new THREE.ConeGeometry(0.11, h, 4), col, mat4(px + dx, h / 2, pz + (i % 2 ? 0.12 : -0.1), (i % 2 ? 0.15 : -0.15), 0, -dx * 0.8)));
+        });
+        marks.push(colored(new THREE.CylinderGeometry(0.3, 0.22, 0.32, 7), '#c8a165', mat4(px - nz * 0.75, 0.16, pz + nx * 0.75)));
       } else if (t.type === 'start') {
         marks.push(colored(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5), '#6b6f76', mat4(lt.x - nx * 1.2, 0.8, lt.z - nz * 1.2)));
         marks.push(colored(new THREE.BoxGeometry(0.6, 0.38, 0.04), '#e2504c', mat4(lt.x - nx * 1.2 + 0.3, 1.4, lt.z - nz * 1.2)));
@@ -1298,7 +1324,10 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
           hooks.onStep?.(e);
           if (ctx.instant) return;
           const id = type === 'gift' ? e.toId : e.charId;
-          if (type === 'lottoDraw') {
+          if (type === 'lottoDraw' && e.kuji) {
+            // 세계 설정: 쿠지 뽑기 — every holder pops their rank (1등 🧸 … 꽝 🧻)
+            for (const r of e.entries ?? []) emotion.pop(r.charId, KUJI_POP[r.rank] ?? '🎟️', { dur: 1.8 });
+          } else if (type === 'lottoDraw') {
             for (const r of e.entries ?? []) if (Number(r.prize) > 0) emotion.pop(r.charId, '🎱', { dur: 1.8 });
           } else if (id) emotion.pop(id, type === 'cardGained' && e.cardId === 'injury' ? '🤕' : glyph, { dur: 1.5 });
           await ctx.sleep(type === 'lottoDraw' ? 300 : 350);
@@ -1342,6 +1371,31 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         particles.burst('coin', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, 30), { up: 4, spread: 1.6, life: 1 });
       }
       await ctx.sleep(420);
+    },
+    // ---------- 세계 설정 (🐹 치이카와 모드) ----------
+    huntResult: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      const amt = Number(e.amount) || 0;
+      emotion.pop(e.charId, e.success ? `⚔️${amt > 0 ? ` +${won(amt)}` : ''}` : Number(e.injured) > 0 ? '💥🤕' : '💥', { dur: 1.7 });
+      const P = S.pawns.get(e.charId);
+      if (P && preset.particles > 0) {
+        const p = P.pawn.group.position;
+        particles.burst(e.success ? 'coin' : 'star', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, e.success ? 30 : 14), { up: 4, spread: 1.6, life: 1 });
+      }
+      await ctx.sleep(420);
+    },
+    weedResult: async (e, ctx) => {
+      hooks.onStep?.(e);
+      if (ctx.instant) return;
+      const exam = e.action === 'exam';
+      emotion.pop(e.charId, exam ? (e.success ? `📝 ${e.grade ?? ''} 합격!` : '📝 불합격…') : `🌿${Number(e.amount) > 0 ? ` +${won(Number(e.amount))}` : ''}`, { dur: 1.6 });
+      const P = S.pawns.get(e.charId);
+      if (P && exam && e.success && preset.particles > 0) {
+        const p = P.pawn.group.position;
+        particles.burst('confetti', { x: p.x, y: 0.5, z: p.z }, particleCount(preset.name, Number(e.level) >= 5 ? 50 : 24), { up: 4, spread: 1.6, life: 1, size: 0.3 });
+      }
+      await ctx.sleep(exam ? 420 : 250);
     },
     treasureFound: async (e, ctx) => {
       hooks.onStep?.(e);

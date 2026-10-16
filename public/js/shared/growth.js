@@ -54,11 +54,32 @@ function jobsOf(jobs) {
  * Job definition by id (jobs.json job or the part-time job) → {id, name, icon, ranks[], maxRank, hidden, partTime, …}
  * or null when unknown. A missing definition still yields a minimal entry for the part-time id.
  */
+/** Fallback names of the 🐹 치이카와 모드 jobs (server/data/worlds/chiikawa.json; the world meta wins). */
+export const WORLD_JOB_FALLBACK = Object.freeze({
+  weeder: { id: 'weeder', name: '풀뽑기 일꾼', icon: '🌿' },
+  hunter: { id: 'hunter', name: '토벌대', icon: '⚔️' },
+  ramen: { id: 'ramen', name: '라멘 가게 「郎」', icon: '🍜' },
+  workshop: { id: 'workshop', name: '갑옷씨 공방', icon: '🛠️' },
+  bookstore: { id: 'bookstore', name: '고서점 직원', icon: '📚' },
+  busker: { id: 'busker', name: '길거리 가수', icon: '🎸' },
+  pancake: { id: 'pancake', name: '팬케이크 가게', icon: '🥞' },
+  photographer: { id: 'photographer', name: '사진사', icon: '📷' },
+  sento: { id: 'sento', name: '목욕탕지기', icon: '♨️' },
+  delivery: { id: 'delivery', name: '배달부', icon: '📦' },
+  fisher: { id: 'fisher', name: '섬 낚시꾼', icon: '🎣' },
+  cafe: { id: 'cafe', name: '카페 점원', icon: '☕' },
+  legend_hunter: { id: 'legend_hunter', name: '전설의 토벌자', icon: '🗡️', hidden: true },
+  weed_sage: { id: 'weed_sage', name: '풀뽑기 1급 명인', icon: '🌾', hidden: true },
+  ramen_owner: { id: 'ramen_owner', name: '「郎」 2호점 사장', icon: '🍜', hidden: true },
+  armor_san: { id: 'armor_san', name: '갑옷씨', icon: '🛡️', hidden: true },
+});
+
 export function jobInfo(jobId, jobs) {
   if (!jobId) return null;
   const { list, partTime } = jobsOf(jobs);
   const pt = jobId === PART_TIME_ID || (partTime && partTime.id === jobId);
-  const def = pt ? partTime ?? { id: PART_TIME_ID, name: '알바', icon: '🧾' } : list.find((j) => j?.id === jobId);
+  // 세계 설정: a 🐹 치이카와 모드 job looked up in a meta without the overlay (admin, an old client cache) still has a name
+  const def = pt ? partTime ?? { id: PART_TIME_ID, name: '알바', icon: '🧾' } : list.find((j) => j?.id === jobId) ?? WORLD_JOB_FALLBACK[jobId] ?? null;
   if (!def) return null;
   const ranks = Array.isArray(def.ranks) ? def.ranks : [];
   return { ...def, id: def.id ?? jobId, name: def.name ?? jobId, icon: def.icon ?? '💼', ranks, maxRank: Math.max(1, ranks.length), hidden: !!def.hidden, partTime: pt };
@@ -250,6 +271,11 @@ export function requirementList(requires, { character = null, cards = null } = {
       else if (k === 'education' && REQ_EDU_LABEL[v]) {
         out.push({ text: `🎓 ${REQ_EDU_LABEL[v]}`, kind: 'edu', id: v, need: v, ok: character ? (EDU_RANK[character.education] ?? 0) >= (EDU_RANK[v] ?? 0) : null });
       } else if (k === 'military' && (v === true || v === 'done')) out.push({ text: '🪖 군필', kind: 'military', id: 'military', need: 'done', ok: character ? character.military?.status === 'done' : null });
+      // 세계 설정 (🐹 치이카와 모드): 풀뽑기 검정 level (1 = 5급 … 5 = 1급) / 토벌 성공 횟수
+      else if (k === 'weed' && Number(v) > 0) {
+        const need = Math.min(5, Number(v));
+        out.push({ text: `🌿 풀뽑기 ${6 - need}급 필요`, kind: 'weed', id: 'weed', need, ok: character ? (Number(character.weed?.level) || 0) >= need : null });
+      } else if (k === 'hunts' && Number(v) > 0) out.push({ text: `⚔️ 토벌 ${Number(v)}회 필요`, kind: 'hunts', id: 'hunts', need: Number(v), ok: character ? (Number(character.hunts) || 0) >= Number(v) : null });
       else if (k === 'cards' || k === 'card') {
         for (const id of cardIdsOf(v)) {
           const c = requirementCard(id, cards);
@@ -280,6 +306,10 @@ export function meritNeed(character, jobs) {
   const m = info?.rankUp?.merit ?? info?.merit;
   const rank = Math.max(1, Number(j.rank) || 1);
   if (info && rank >= info.maxRank) return null;
+  // 세계 설정: `rankUp.meritFrom` = only rank-ups INTO ranks ≥ meritFrom need them (토벌대 조장 / 대장, 공방장, 전설의 가수;
+  // the server's meritNeeded(def, toRank))
+  const from = Number(info?.rankUp?.meritFrom);
+  if (Number.isFinite(from) && from > 0 && rank + 1 < from) return null;
   const need = Array.isArray(m) ? Number(m[rank - 1]) : Number(m);
   if (!Number.isFinite(need) || need <= 0) return null;
   const have = (Array.isArray(character.cards) ? character.cards : []).filter((c) => (typeof c === 'string' ? c : c?.id) === 'merit').length;
