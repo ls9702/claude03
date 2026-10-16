@@ -350,6 +350,7 @@ test('side bets: payout math, validation, masking until resolved', () => {
 
 test('역전 보정: at the transition into senior the bottom-2 get 기초연금 at once (≥3 characters)', () => {
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2']] });
+  room.characters.forEach((c, i) => (c.ownerSessionId = `solo${i}`)); // one character per player (families: fixes-e2e4)
   const mid = room.board.eras.findIndex((e) => e.id === 'middle_age');
   toEra(room, mid);
   plainEra(room, mid);

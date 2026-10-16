@@ -18,6 +18,14 @@ export const NAME_MAX_UNITS = 64;
 // joiner, BOM, soft hyphen, tag characters…), other controls (Cc) and the Hangul / braille fillers that render blank.
 const INVISIBLE_RE = /[\p{Cc}\p{Cf}\u115F\u1160\u3164\uFFA0\u2800]/gu;
 const ZWJ = '\u200D';
+// Invisible marks that are not format controls: combining grapheme joiner, Khmer inherent vowels, Mongolian free
+// variation selectors — dropped everywhere. Variation selectors (VS1–16, VS17–256) survive only right after a visible
+// base character (❤️ = U+2764 U+FE0F, 1️⃣, ideographic variants); a name needs at least one visible base character.
+const INVISIBLE_MARK_RE = /[\u034F\u17B4\u17B5\u180B-\u180F]/u;
+const VARIATION_SELECTOR_RE = /[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u;
+const LONE_SURROGATE_RE = /[\uD800-\uDFFF]/u;
+/** A character that shows something on its own (not whitespace, not a combining / enclosing mark). */
+const VISIBLE_BASE_RE = /[^\s\p{M}]/u;
 const PICTO_RE = /\p{Extended_Pictographic}/u;
 const EMOJI_MOD_RE = /[\uFE0E\uFE0F\u{1F3FB}-\u{1F3FF}]/u; // variation selectors / skin tones inside an emoji
 
@@ -43,18 +51,37 @@ export function cleanName(name) {
   if (typeof name !== 'string') return null;
   const cps = [...name.normalize('NFC')];
   let out = '';
+  let last = ''; // the last kept code point
   for (let i = 0; i < cps.length; i++) {
     const ch = cps[i];
+    if (ch.length === 1 && LONE_SURROGATE_RE.test(ch)) continue; // half of a broken surrogate pair
+    if (INVISIBLE_MARK_RE.test(ch)) continue;
+    if (VARIATION_SELECTOR_RE.test(ch)) {
+      // only on a visible base character (not after a space, a mark or another selector)
+      if (last && VISIBLE_BASE_RE.test(last) && !VARIATION_SELECTOR_RE.test(last)) {
+        out += ch;
+        last = ch;
+      }
+      continue;
+    }
     if (ch === ZWJ) {
       const prev = [...out].findLast((x) => !EMOJI_MOD_RE.test(x)) ?? '';
       const next = cps[i + 1] ?? '';
-      if (PICTO_RE.test(prev) && PICTO_RE.test(next)) out += ch;
+      if (PICTO_RE.test(prev) && PICTO_RE.test(next)) {
+        out += ch;
+        last = ch;
+      }
       continue;
     }
-    out += ch.replace(INVISIBLE_RE, '');
+    const kept = ch.replace(INVISIBLE_RE, '');
+    if (kept) {
+      out += kept;
+      last = kept;
+    }
   }
   const n = out.replace(/\s+/g, ' ').trim();
   if (!n || n.length > NAME_MAX_UNITS) return null;
+  if (!VISIBLE_BASE_RE.test(n.replace(VARIATION_SELECTOR_RE, ''))) return null; // only marks / selectors left
   const len = graphemeCount(n);
   return len >= 1 && len <= NAME_MAX ? n : null;
 }

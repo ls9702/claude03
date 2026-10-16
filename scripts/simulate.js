@@ -55,7 +55,7 @@ import { createRng } from '../server/game/rng.js';
 import { kujiExpectedValue, lottoExpectedValue } from '../server/game/holidays.js';
 import { cpuDecide, cpuPassScores, cpuSkillTarget, cpuTradeAccept } from '../server/game/cpu.js';
 import { ROULETTE_MODES } from '../server/game/roulette.js';
-import { cardBlockReason, spinFixed, transferable } from '../server/game/cards.js';
+import { betsVoided, cardBlockReason, transferable } from '../server/game/cards.js';
 
 /** CH-1: player looks are roster characters (no gender); a random one per character. */
 const ROSTER_IDS = getRoster().characters.map((x) => x.id);
@@ -201,6 +201,7 @@ const stats = {
   // Stage 6
   spins: {}, // mode → [spins, games]
   lifePrompts: { chars: 0, total: 0, own: 0, byKind: {} }, // lifetime: decisions per character (own = single-character prompts)
+  modePrompts: {}, // mode → {chars, total, pass} decisions per character in every mode (pass = 찬스 광장)
   finalJobs: {}, // jobId|none → count (lifetime + adult)
   jobChars: 0,
   hiddenUnlocked: 0,
@@ -403,6 +404,11 @@ function playGame(g) {
       if (ev.type === 'landed' && ROULETTE === 'skill') {
         const who = cpuPolicy(room.characters.find((x) => x.id === ev.charId)) ? 'cpu' : 'random';
         stats.aim.landings[who][ev.tileType] = (stats.aim.landings[who][ev.tileType] ?? 0) + 1;
+      }
+      if (ev.type === 'prompt') {
+        const mp = (stats.modePrompts[room.config.mode] ??= { chars: 0, total: 0, pass: 0 });
+        mp.total += ev.forCharacterIds.length;
+        if (ev.kind === 'passTile') mp.pass += ev.forCharacterIds.length;
       }
       if (ev.type === 'prompt' && room.config.mode === 'lifetime') {
         const n = ev.forCharacterIds.length;
@@ -609,7 +615,7 @@ function playGame(g) {
     if (cardAction) apply(cardAction);
     for (const c of room.characters) {
       if (ROULETTE === 'skill') break; // no side bets in skill mode (the server refuses them)
-      if (spinFixed(room.characters.find((x) => x.id === cur.id))) break; // a red roulette card fixed this spin
+      if (betsVoided(room.characters.find((x) => x.id === cur.id))) break; // a roulette card fixed / skewed this spin
       if (cpuPolicy(c) || c.finished) continue; // CPU-policy / finished characters never bet
       if (c.ownerSessionId === cur.ownerSessionId || c.money < 5 || meta.next() > 0.3) continue;
       const kind = meta.pick(['oddEven', 'range']);
@@ -721,6 +727,7 @@ function playGame(g) {
   lm.rounds += room.turn.round;
   lm.laps += room.characters.reduce((a, c) => a + (c.laps ?? 0), 0);
   if (mode === 'lifetime') stats.lifePrompts.chars += room.characters.length;
+  (stats.modePrompts[mode] ??= { chars: 0, total: 0, pass: 0 }).chars += room.characters.length;
   const total = new Map(room.result.ranking.map((r) => [r.charId, r.total]));
   // route metrics relative to the SAME game (start money / game length differ a lot between games)
   const gameMean = room.result.ranking.reduce((a, r) => a + r.total, 0) / Math.max(1, room.result.ranking.length);
@@ -1167,6 +1174,11 @@ function mainRandom() {
   console.log(`\n--- 6단계: 능력치·직업·성장 ---`);
   console.log(`평균 룰렛 횟수(판당 · 캐릭터당): ${Object.entries(stats.spins).map(([m, [s, n, c]]) => `${m} ${(s / n).toFixed(1)} · ${(s / Math.max(1, c)).toFixed(1)}`).join(' | ')}`);
   const lp = stats.lifePrompts;
+  console.log(
+    `모드별 캐릭터당 선택: ${Object.entries(stats.modePrompts)
+      .map(([m, x]) => `${m} ${(x.total / Math.max(1, x.chars)).toFixed(2)} (찬스 광장 ${(x.pass / Math.max(1, x.chars)).toFixed(2)})`)
+      .join(' · ')}`,
+  );
   console.log(
     `인생 전체 캐릭터당 선택 ${(lp.total / Math.max(1, lp.chars)).toFixed(2)}회 (자기 선택 ${(lp.own / Math.max(1, lp.chars)).toFixed(2)} + 남의 생일 등 동시 선택): ${Object.entries(lp.byKind)
       .sort((a, b) => b[1] - a[1])

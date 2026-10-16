@@ -495,7 +495,9 @@ test('overlay lines / MC pools follow the lines.json schema (5–10 lines ≤ 40
   const ov = getWorldOverlays().chiikawa.lines;
   for (const [tag, pool] of Object.entries(ov.tags)) {
     assert.ok(real.lines.tags[tag], `${tag}: replaces an existing pool`);
-    assert.ok(pool.length >= 5 && pool.length <= 10, `${tag}: ${pool.length}`);
+    const big = ['pass_tile', 'house', 'card', 'job', 'stat_up', 'route_choice', 'club', 'promotion'].includes(tag); // E2E-4: ≥ 20
+    assert.ok(big ? pool.length >= 20 && pool.length <= 30 : pool.length >= 5 && pool.length <= 10, `${tag}: ${pool.length}`);
+    assert.equal(new Set(pool).size, pool.length, `${tag}: duplicate lines`);
     for (const l of pool) {
       assert.ok(l.length <= 40, `${tag}: "${l}"`);
       for (const [, k] of l.matchAll(/\{(\w+)\}/g)) assert.ok(allowed.has(k), `${tag}: {${k}}`);

@@ -20,6 +20,7 @@
   },
   "prompts": {"multiTimeoutMs": 40000, "decisionTimeoutMs": null},
   "pension": {"era": "senior", "minCharacters": 3, "bottomN": 2, "base": 200, "gapRatio": 0.1, "max": 1000},
+  "groupGift": {"_comment": "생일 파티(groupGift) 답례: 선물한 캐릭터마다 chance 확률로 stat +gain (선물이 순수한 손해라 고수는 늘 모른 척했다).", "thanks": {"stat": "charm", "gain": 1, "chance": 0.5}},
   "charArt": {"perSession": 2, "perCharacter": 1, "perRoom": 8},
   "exam": {
     "_comment": "수능: r = rng.next(); r < elite → 명문대, r < college → 일반대, else 불합격. 확률 = base + int×지력 + luck×운 (+ 뉴스 examBonus, 재수 retakeBonus), [min,max]로 제한",
@@ -156,9 +157,9 @@
     "pocketMoney": {"baby": 10, "elem": 20, "middle": 30, "high": 40}
   },
   "passTile": {
-    "_comment": "찬스 광장(지나가기만 해도 발동): wish 나를 위한 소원 = 시주 offering × scale[시대], 확률 base + luck×운 ∈ [min,max] → 성공 시 운 +luckGain + money × scale, 소원 횟수 +1(산신령). wishAll 모두를 위한 소원 = 시주 offering × scale, 다른 캐릭터 모두에게 gift × scale, 내 운 +luckGain(반드시), 소원 횟수 +1. scale 없으면 submaps.scale.",
+    "_comment": "찬스 광장(지나가기만 해도 발동): wish 나를 위한 소원 = 시주 offering × scale[시대], 확률 base + luck×운 ∈ [min,max] → 성공 시 운 +luckGain + (moneyByEra[시대] ?? money) × scale, 소원 횟수 +1(산신령). moneyByEra = 아이 시대(아기~고등) 상금 35: 아이 모드에서 「그냥 지나가기」(공짜 버프)만 고르는 게 늘 이기던 문제(E2E-4). wishAll 모두를 위한 소원 = 시주 offering × scale, 다른 캐릭터 모두에게 gift × scale, 내 운 +luckGain(반드시) — 소원 횟수에는 안 들어간다(이뤄진 소원만). scale 없으면 submaps.scale.",
     "scale": {"baby": 0.5, "elem": 1, "middle": 1.5, "high": 2, "young": 4, "middle_age": 5, "senior": 4},
-    "wish": {"offering": 10, "money": 25, "base": 0.3, "luck": 0.04, "min": 0.1, "max": 0.7, "luckGain": 1},
+    "wish": {"offering": 10, "money": 25, "moneyByEra": {"baby": 35, "elem": 35, "middle": 35, "high": 35}, "base": 0.3, "luck": 0.04, "min": 0.1, "max": 0.7, "luckGain": 1},
     "wishAll": {"offering": 8, "gift": 2, "luckGain": 1}
   },
   "chanceBuffs": [

@@ -187,3 +187,11 @@ test('scroll lock: a lock class without its open overlay is stale (result page n
   assert.deepEqual(repairScrollLock(doc), ['rshow-open']);
   assert.deepEqual([...classes].sort(), ['photo-open', 'spectator']);
 });
+
+test('cleanName mirrors the server for invisible marks / variation selectors (E2E-4)', async () => {
+  const { cleanName: serverClean } = await import('../server/game/lobby.js');
+  const samples = ['민수', '❤️', '1️⃣', '️', '͏឵', '᠋', 'a͏b', '️민수', '👨‍👩‍👧', 'ㅤ',
+    'x\uD800y', '민수 ️', '́', '漢\u{E0100}', '\u{E0100}'];
+  for (const s of samples) assert.equal(cleanName(s), serverClean(s) ?? '', JSON.stringify(s));
+  assert.equal(nameLength('️͏'), 0); // nothing visible → the counter shows 0 and join refuses it
+});

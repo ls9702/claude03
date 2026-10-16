@@ -399,7 +399,7 @@ test('friends & pets: prompt titles / options in the new wording; adoption makes
 });
 
 test('wording: no marriage / birth / gender words in server/data (legacy avatars.json aside) or server/game strings', async () => {
-  const BANNED = /결혼|신랑|신부|아내|남편|아들|딸(?!랑)|육아|출산|임신|남자|여자|프러포즈|축의금|돌잔치|배우자|맞벌이|호감도|데이트|자녀|연애|연인|영재|소개팅|청혼|손주|첫사랑|부케|애인|커플|효자|효녀|신혼/;
+  const BANNED = /결혼|신랑|신부|아내|남편|아들|딸(?!랑)|육아|출산|임신|남자|여자|프러포즈|축의금|돌잔치|돌잡이|배우자|맞벌이|호감도|데이트|자녀|연애|연인|영재|소개팅|청혼|손주|첫사랑|부케|애인|커플|효자|효녀|신혼/;
   const hits = [];
   const walk = (v, where) => {
     if (typeof v === 'string') {

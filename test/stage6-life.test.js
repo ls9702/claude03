@@ -286,7 +286,8 @@ test('진로: college → tuition debt, collegeTurns of school, graduation (+int
 
 test('진로: 바로 취업 → job offer → the spin; 재수 once (skip a turn, retake, pass → enroll); elite has no 재수', () => {
   const room = started({ chars: [['A', 'A1', LOOK_B], ['B', 'B1', LOOK_B]] }).room;
-  const id = atYoungStart(room);
+  // fixed stats: the seeded starting stats depend on the board RNG, and with nothing eligible 바로 취업 hires an 알바 at once
+  const id = atYoungStart(room, { stats: { int: 5, str: 5, charm: 5, luck: 5 }, military: { status: 'exempt', turnsLeft: 0 } });
   const r0 = nextTurn(room);
   const job = choose(r0.room, 'job');
   assert.equal(job.room.turn.pending.kind, 'jobOffer');

@@ -7,6 +7,7 @@
 //   jobChange 이직 — one eligible alternate job (like the job tile's 전직, `option.jobId`); kids eras / students /
 //             soldiers / the jobless / no candidate → disabled with the reason
 //   wishAll   모두를 위한 소원 — a (cheaper) offering; every other unfinished character gets a small gift, own 운 +1
+//             (never counts toward `wishes`: only a granted wish does)
 //             guaranteed, no money prize; counts as a wish
 //   pass      그냥 지나가기 (default) — grants the buff rolled when the prompt opened (`option.buff`, balance
 //             `chanceBuffs`: 월급 두 배 / 행운 주머니 / 액땜 / 성장 버프) → `character.chanceBuff` until the next 찬스 광장
@@ -71,7 +72,8 @@ export function passTileSpec(tx, c, tile = null) {
 
   // 소원빌기
   const offering = round5((cfg.wish?.offering ?? 10) * scale);
-  const wishMoney = round5((cfg.wish?.money ?? 20) * scale);
+  // `wish.moneyByEra[era]` overrides the base prize per era (kids eras: a wish beats 「그냥 지나가기」 there, E2E-4 B9)
+  const wishMoney = round5((cfg.wish?.moneyByEra?.[c.era] ?? cfg.wish?.money ?? 20) * scale);
   const chance = passWishChance(c, tx.data);
   const wish = {
     id: 'wish',
@@ -86,7 +88,7 @@ export function passTileSpec(tx, c, tile = null) {
   if (offering > cash) Object.assign(wish, { disabled: true, desc: `${wish.desc} · 시주할 돈이 부족해요` });
   options.push(wish);
 
-  // 모두를 위한 소원 (every other unfinished character gets a small gift; 운 +1 guaranteed; counts as a wish)
+  // 모두를 위한 소원 (every other unfinished character gets a small gift; 운 +1 guaranteed; never counts as a wish)
   const allOffering = round5((cfg.wishAll?.offering ?? 5) * scale);
   const gift = round5((cfg.wishAll?.gift ?? 5) * scale);
   const others = tx.room.characters.filter((x) => x.id !== c.id && !x.finished).length;
@@ -202,10 +204,10 @@ registerPrompts({
         if (offering) changeMoney(tx, c, -offering, 'passWish', { tone: 'neutral', emotion: 'neutral' });
         const others = tx.room.characters.filter((x) => x.id !== c.id && !x.finished);
         for (const o of others) if (ctx.gift > 0) changeMoney(tx, o, ctx.gift, 'wishGift', { from: c.id, tone: 'love', emotion: 'joy' });
-        c.wishes = (c.wishes ?? 0) + 1;
+        // not a granted wish: `wishes` (산신령 unlock) counts only wishes that came true (E2E: wishAll spam = 35 % 1st)
         addStats(tx, c, { luck: cfg.wishAll?.luckGain ?? 1 }, 'passWish');
-        addLog(tx, `🙏 ${josa(c.name, '이/가')} 모두를 위해 소원을 빌었다! 다들 ${won(ctx.gift ?? 0)}씩 선물 · 운이 트인다 (소원 ${c.wishes}번)`, { tone: 'good', charId: c.id, emotion: 'joy' });
-        return { result: 'wishAll', amount: -offering, gift: ctx.gift ?? 0, others: others.length, wishes: c.wishes, stat: 'luck' };
+        addLog(tx, `🙏 ${josa(c.name, '이/가')} 모두를 위해 소원을 빌었다! 다들 ${won(ctx.gift ?? 0)}씩 선물 · 운이 트인다`, { tone: 'good', charId: c.id, emotion: 'joy' });
+        return { result: 'wishAll', amount: -offering, gift: ctx.gift ?? 0, others: others.length, wishes: c.wishes ?? 0, stat: 'luck' };
       }
       if (answer === 'buy') {
         openPrompt(tx, 'shop', c, { offers: ctx.offers });

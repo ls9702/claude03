@@ -9,10 +9,10 @@
 </head>
 <body>
   <header class="topbar">
-    <h1 class="logo">🛠 인생게임 관리자</h1>
+    <h1 class="logo">🛠 <span class="logo-long">인생게임 </span>관리자</h1>
     <div class="topbar-right">
-      <a class="btn small ghost" href="/admin/assets">에셋 스튜디오</a>
-      <a class="btn small ghost" href="/" target="_blank" rel="noopener">게임 페이지</a>
+      <a class="btn small ghost" href="/admin/assets" title="에셋 스튜디오">🎨 에셋<span class="tb-long">&nbsp;스튜디오</span></a>
+      <a class="btn small ghost" href="/" target="_blank" rel="noopener" title="게임 페이지 (새 탭)">🎲 게임<span class="tb-long">&nbsp;페이지</span></a>
       <button id="logout-btn" class="btn small ghost" hidden>로그아웃</button>
     </div>
   </header>
@@ -39,7 +39,8 @@
         <p class="small muted growth-hint">치이카와 모드: 직업·아이템·카드·보물·이벤트가 치이카와 세상 것으로 바뀌고 토벌·풀뽑기 검정·쿠지 뽑기가 열려요. 현실 모드: 공무원·의사·경차·전국 로또 같은 현실 세계 그대로. 규칙과 캐릭터는 같아요.</p>
         <label class="field"><span>모드</span><select name="mode" id="mode-select"></select></label>
         <fieldset class="era-set">
-          <legend>시대 길이(턴) <small class="muted">(시대마다 룰렛 횟수 · 지도 크기는 턴 수에 맞춰 자동, 기본값 표시)</small></legend>
+          <legend>시대 길이(턴)</legend>
+          <p class="small muted era-note">시대마다 룰렛 횟수예요. 지도 크기는 턴 수에 맞춰 자동으로 정해지고, 기본값이 함께 보여요.</p>
           <div id="era-rows" class="era-rows"></div>
           <p id="era-est" class="era-est small muted" aria-live="polite"></p>
           <p id="era-hint" class="era-hint small" role="status" aria-live="polite"></p>
@@ -70,7 +71,7 @@
             <option value="skill">실력 모드 (흔들기·타이밍)</option>
           </select>
         </label>
-        <p class="small muted growth-hint">실력 모드: 노린 숫자 50% · ±1 40% · ±2 10%. 한 번 노린 숫자는 1~10을 다 쓸 때까지 다시 못 노리고, 훈수 베팅은 없어요. 흔들기는 HTTPS 주소에서만 돼요.</p>
+        <p class="small muted growth-hint">실력 모드: 노린 숫자 50% · ±1 40% · ±2 10%. 매 턴 1~10 중 아무 숫자나 노릴 수 있고, 훈수 베팅은 없어요. 흔들기는 HTTPS 주소에서만 돼요.</p>
         <label class="field"><span>MC 등장 빈도 <small class="muted">(🐶 호야 &amp; 봄이)</small></span>
           <select name="mcFrequency">
             <option value="many">많이</option>
@@ -82,7 +83,7 @@
         <label class="check"><input type="checkbox" name="growthOutfits" checked> 성장 소품</label>
         <p class="small muted growth-hint">켜면 게임 중 시대·직업에 따라 소품이 바뀌어요 (아기 보닛·쪽쪽이 → 노란 모자·책가방 → 학생 모자·넥타이 → 직업 소품 → 털모자·지팡이). 같은 자리의 소품만 바뀌고 나머지 자리는 각자 고른 소품 그대로예요.</p>
         <label class="check"><input type="checkbox" name="holidays" checked> 명절 대잔치</label>
-        <p class="small muted growth-hint">켜면 중등·청년·중년·노년 시대가 열릴 때 설날/추석 미니게임(세뱃돈·잔소리·고스톱)이 한 번씩 열려요.</p>
+        <p class="small muted growth-hint">켜면 중학생·중년 시대가 열릴 때 설날/추석 미니게임(세뱃돈·잔소리·고스톱)이 한 번씩 열려요.</p>
         <label class="check"><input type="checkbox" name="allowCpu"> CPU 허용</label>
         <p class="small muted growth-hint">켜면 방장(처음 들어온 플레이어)도 로비에서 🤖 CPU 캐릭터를 넣고 뺄 수 있어요. 관리자는 언제나 넣을 수 있고, CPU만 있는 방도 시작할 수 있어요 (TV 데모).</p>
         <p class="form-error" role="alert"></p>

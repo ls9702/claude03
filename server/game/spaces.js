@@ -20,6 +20,12 @@ export { PROMPTS, openPrompt, promptComplete, resolvePrompt };
 
 const TONE_BY_ROUTE = { love: 'love', career: 'career', money: 'money' };
 
+/** 생일 파티 답례 for each giver (`balance.groupGift.thanks` {stat, gain, chance}), or null when off. */
+export function giftThanks(data) {
+  const t = data.balance?.groupGift?.thanks;
+  return t && t.stat && t.gain > 0 && t.chance > 0 ? { stat: t.stat, gain: t.gain, chance: Math.min(1, t.chance) } : null;
+}
+
 /** Guests of a 생일 파티 (groupGift): every other character still on the board (골인한 캐릭터 never wait / gift). */
 export const giftGuests = (room, c) => room.turn.order.filter((id) => id !== c.id && !charById(room, id)?.finished);
 
@@ -54,12 +60,15 @@ registerPrompts({
     resultCutin: true,
     build(tx, c, { event }) {
       const others = giftGuests(tx.room, c);
+      const thanks = giftThanks(tx.data);
+      const thanksText = thanks ? ` · 답례로 ${statText(tx.data, [{ stat: thanks.stat, delta: thanks.gain }])} (${Math.round(thanks.chance * 100)}%)` : '';
       return {
         forCharacterIds: others,
         title: '🎂 생일 파티',
         text: `${event.text.replaceAll('{name}', c.name)} (선물 ${won(event.gift)})`,
         options: [
-          { id: 'gift', label: `선물 주기 (${won(event.gift)})`, icon: '🎁' },
+          // option fields for the CPU / UI: price = the gift, thanks = the giver's return {stat, gain, chance}
+          { id: 'gift', label: `선물 주기 (${won(event.gift)})`, icon: '🎁', desc: `${won(event.gift)} 선물${thanksText}`, price: event.gift, ...(thanks ? { thanks } : {}) },
           { id: 'skip', label: '모른 척하기', icon: '🙈' },
         ],
         defaultOptionId: 'skip',
@@ -79,6 +88,12 @@ registerPrompts({
         changeMoney(tx, target, amount, 'gift', { from: giver.id, emotion: 'love', tone: 'love' });
         addLog(tx, `🎁 ${josa(giver.name, '이/가')} ${target.name}에게 ${won(amount)} 선물!`, { tone: 'love', charId: giver.id });
         count++;
+        // 답례 (E2E-4: gifting was a pure cost, so strong play always skipped): a small chance of a stat point
+        const thanks = giftThanks(tx.data);
+        if (thanks && tx.rng.next() < thanks.chance) {
+          const changes = addStats(tx, giver, { [thanks.stat]: thanks.gain }, 'thanks');
+          if (changes.length) addLog(tx, `💝 ${target.name}의 답례 인사! ${giver.name} ${statText(tx.data, changes)}`, { tone: 'good', charId: giver.id, emotion: 'joy' });
+        }
       }
       if (!count) addLog(tx, `🥲 아무도 ${target.name}에게 선물을 주지 않았다…`, { tone: 'bad', charId: target.id, emotion: 'cry' });
     },

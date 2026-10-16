@@ -145,7 +145,8 @@ test('찬스 광장 wishes: 나를 위한 소원 (chance → 운 +1 + money, wis
   const ev = all.events.find((e) => e.type === 'promptResolved');
   assert.deepEqual([ev.result, ev.others, ev.cutin], ['wishAll', 2, true]);
   assert.equal(ch(all.room, id).stats.luck, Math.min(10, c0.stats.luck + 1));
-  assert.equal(ch(all.room, id).wishes, 1);
+  assert.equal(ch(all.room, id).wishes, 0, 'a wish for everyone is not a granted wish (산신령 counts granted wishes only)');
+  assert.equal(ev.wishes, 0);
   assert.equal(ch(all.room, id).money, c0.money - wa.cost);
   for (const o of all.room.characters.filter((x) => x.id !== id)) assert.equal(o.money, ch(r.room, o.id).money + wa.gift);
   assert.ok(all.events.filter((e) => e.type === 'moneyChanged' && e.reason === 'wishGift').length === 2);

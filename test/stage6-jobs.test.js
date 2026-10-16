@@ -564,7 +564,7 @@ test('MC: job / promotion / hiddenJob / injury / military / news only on real ou
 
 test('full random lifetime games: every event type / line tag is known; no unfilled placeholders', () => {
   const seen = new Set();
-  for (const seed of [2, 11]) { // (Stage 9 board pools: seed 3 → 2 keeps a graduation in the sample)
+  for (const seed of [2, 6]) { // (Stage 9 board pools: seed 3 → 2 keeps a graduation; E2E-4 board data: 11 → 6 keeps a volunteer 입대)
     let room = started({ seed, eraTurns: SHORT, chars: [['A', 'A1', { character: 'usagi' }], ['B', 'B1', { character: 'hachiware', props: { head: 'ribbon' } }], ['A', 'A2', { character: 'chiikawa' }]] });
     for (let i = 0; i < 2000 && room.status === 'playing'; i++) {
       const p = room.turn.pending;

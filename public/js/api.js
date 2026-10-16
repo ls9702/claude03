@@ -154,16 +154,70 @@ let lastMessageAt = 0;
 /** Local ms of the last SSE message (connection watchdog, A9). */
 export const lastSseMessageAt = () => lastMessageAt;
 
+// ---------- SSE board cache (bandwidth) ----------
+// A `state` frame carries `boardKey`; the static board itself goes out only on the first frame of a stream and when
+// the board changes (game start, a loop-map migration). `attachBoard` keeps the last board per stream and puts it
+// back, so everything after api.js still sees `room.board`. HTTP responses always carry the full board.
+/**
+ * Pure: re-attach the cached board to a `state` payload. `cache` = {key, board} (mutated: a payload with a board
+ * refills it). @returns {{state, ok}} — ok false = the frame has no board and the cache holds a different key (the
+ * caller refetches the room over HTTP); a payload without `boardKey` (lobby / old server) passes through unchanged.
+ */
+export function attachBoard(cache, state) {
+  if (!state || typeof state !== 'object') return { state, ok: true };
+  if (Object.hasOwn(state, 'board')) {
+    cache.key = state.boardKey ?? null;
+    cache.board = state.board ?? null;
+    return { state, ok: true };
+  }
+  if (state.boardKey == null) return { state: { ...state, board: null }, ok: true };
+  if (cache.key === state.boardKey && cache.board) return { state: { ...state, board: cache.board }, ok: true };
+  return { state, ok: false };
+}
+
+// ---------- superseded streams (≥ 4 tabs of one session in a room) ----------
+// The server keeps at most 3 streams per session per room; the oldest gets `superseded {roomId, reason, max}` and is
+// closed. EventSource would reconnect on its own and evict the next tab (a ping-pong), so the stream stops for good
+// here: `sseSuperseded()` returns the payload, `onSuperseded(fn)` / `handlers.superseded` fire once. The UI offers
+// 「다시 연결」 = call `connectEvents` again (app.js `enterRoom`), which supersedes the oldest other tab instead.
+const supersededListeners = new Set();
+let superseded = null;
+/** fn({roomId, reason, max}) when this page's room stream was superseded by newer tabs. → unsubscribe */
+export function onSuperseded(fn) {
+  supersededListeners.add(fn);
+  return () => supersededListeners.delete(fn);
+}
+/** The `superseded` payload of the current room stream, or null (cleared by the next `connectEvents`). */
+export const sseSuperseded = () => superseded;
+
 /**
  * Open the room SSE stream.
- * handlers: { state, events, reaction, log, deleted, charArt, open, error }
+ * handlers: { state, events, reaction, log, deleted, charArt, open, error, superseded }
+ * `state` always gets a room with `board` (re-attached from the stream's cache; on a cache miss the room is refetched
+ * over HTTP first). After `superseded` the stream is closed and does NOT reconnect (see above).
  * @returns {() => void} close function
  */
 export function connectEvents(roomId, handlers) {
   const url = `/api/rooms/${encodeURIComponent(roomId)}/events?token=${encodeURIComponent(token)}`;
   const es = new EventSource(url);
-  for (const name of ['state', 'events', 'reaction', 'log', 'deleted', 'charArt']) {
+  const boardCache = { key: null, board: null };
+  let stopped = false;
+  superseded = null;
+  const deliverState = (data) => {
+    const { state, ok } = attachBoard(boardCache, data);
+    if (ok) return handlers.state?.(state);
+    // a frame without the board this stream never got (should not happen): take the full room over HTTP instead
+    api('GET', `/api/rooms/${encodeURIComponent(roomId)}`)
+      .then((room) => {
+        if (stopped || !room) return;
+        attachBoard(boardCache, room);
+        handlers.state?.(room);
+      })
+      .catch(() => {});
+  };
+  for (const name of ['state', 'events', 'reaction', 'log', 'deleted', 'charArt', 'superseded']) {
     es.addEventListener(name, (ev) => {
+      if (stopped) return;
       let data = null;
       try {
         data = JSON.parse(stripBidiJson(ev.data));
@@ -171,21 +225,34 @@ export function connectEvents(roomId, handlers) {
         return;
       }
       lastMessageAt = Date.now();
+      if (name === 'state') return deliverState(data);
+      if (name === 'superseded') {
+        stopped = true;
+        sseOpen = false;
+        es.close(); // no auto-reconnect: that would evict the next tab
+        superseded = data ?? { roomId };
+        handlers.superseded?.(superseded);
+        for (const fn of [...supersededListeners]) fn(superseded);
+        return;
+      }
       handlers[name]?.(data);
       if (name === 'charArt') for (const fn of [...artListeners]) fn(data);
     });
   }
   es.onopen = () => {
+    if (stopped) return;
     sseOpen = true;
     lastMessageAt = Date.now();
     handlers.open?.();
     for (const fn of [...artListeners]) fn({ reconnected: true });
   };
   es.onerror = () => {
+    if (stopped) return;
     sseOpen = false;
     handlers.error?.(es.readyState === EventSource.CLOSED);
   };
   return () => {
+    stopped = true;
     sseOpen = false;
     es.close();
   };

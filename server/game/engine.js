@@ -21,6 +21,7 @@ import { endGame as lobbyEndGame, startGame as lobbyStartGame } from './lobby.js
 import { applyResult, castVote, closeVote, emitMvpDecided } from './result.js';
 import { createRng } from './rng.js';
 import { cloneState } from './clone.js';
+import { boardKeyFor } from './view.js';
 import { startMoneyFor } from './cpuHandicap.js';
 import { decorateEvents } from './presentation.js';
 import { promptComplete, resolvePrompt, resolveTile } from './spaces.js';
@@ -42,6 +43,8 @@ import {
   rollPlan,
   rushDistance,
   spinFixed,
+  betsVoided,
+  betVoidReason,
   useCard,
 } from './cards.js';
 import { queueEraOpening, runEraOpenings } from './holidays.js';
@@ -94,6 +97,7 @@ export function startGame(room, ctx = {}) {
   const next = r.room;
   migrateRoomLooks(next, data); // CH-1: a lobby saved with human avatars
   next.board = buildBoard(next.config, boardRng, data);
+  next.boardKey = boardKeyFor(next.board); // SSE streams resend the static board only when this changes
   const firstEra = next.board.eras[0];
   // Stage 6 life records (stats, education, military, job…). Starting stats are public like the board, so they
   // come from the board RNG before the secret is mixed in. A game without 고등학생 (adult mode) starts grown up.
@@ -146,7 +150,8 @@ export function startGame(room, ctx = {}) {
   // Stage 9: treasure uids + hidden appraisal values, highlights per character
   Object.assign(next, { nextTreasureSeq: 0, treasureValues: {}, treasureFakes: {}, highlights: {}, highlightSeq: 0 });
   const tx = createTx(next, { rng, now, data });
-  emit(tx, 'gameStarted', { eras: next.board.eras.map((e) => e.id), turns: next.board.eras.map((e) => e.turns), laps: next.board.eras.map((e) => e.lap) });
+  // turns: null for the final race (no era clock); laps: tiles of each era's track (a loop lap, the final race length)
+  emit(tx, 'gameStarted', { eras: next.board.eras.map((e) => e.id), turns: next.board.eras.map((e) => e.turns ?? null), laps: next.board.eras.map((e) => e.lap ?? e.length ?? e.tiles?.length ?? null) });
   // blue cards: a game starting grown up (adult mode) gives graduates their best stat's job-requirement card
   if (adult) for (const c of next.characters) if (c.education && c.education !== 'none') grantSkillCard(tx, c, 'start');
   drawStartNews(tx);
@@ -282,19 +287,45 @@ export function pensionWorth(c, data) {
   return netWorth(c) + houseValue(c) + itemsValue(data, c);
 }
 
+/** The pension "family" of a character: its owner's session (a player's characters share one); every CPU alone. */
+export const pensionFamily = (c) => (c.ownerSessionId && c.ownerSessionId !== 'cpu' ? `s:${c.ownerSessionId}` : `c:${c.id}`);
+
 /**
- * 역전 보정 (기초연금) at the transition into the pension era: the bottom `bottomN` by total assets (`pensionWorth`;
- * games with ≥ `minCharacters`) → `room.pension = {recipients, decidedAt, turnNo}`, each paid at once (amount = base +
- * the asset gap to the richest × gapRatio, ≤ max). Never more than `bottomN` payouts.
+ * 기초연금 ranking worth per character = the AVERAGE `pensionWorth` of its family (`pensionFamily`). Money moved
+ * between one player's own characters (a family gift right before the transition, a birthday party among them) can't
+ * change it, so a player can't park their cash on one character to make another look poor. @returns Map id → worth
+ */
+export function pensionRankWorth(room, data) {
+  const sum = new Map();
+  for (const c of room.characters) {
+    const f = pensionFamily(c);
+    const acc = sum.get(f) ?? { total: 0, n: 0 };
+    acc.total += pensionWorth(c, data);
+    acc.n += 1;
+    sum.set(f, acc);
+  }
+  return new Map(room.characters.map((c) => {
+    const acc = sum.get(pensionFamily(c));
+    return [c.id, acc.total / acc.n];
+  }));
+}
+
+/**
+ * 역전 보정 (기초연금) at the transition into the pension era: the bottom `bottomN` characters by family-average total
+ * assets (`pensionRankWorth`; ties → the poorer character itself, then creation order; games with ≥ `minCharacters`)
+ * → `room.pension = {recipients, decidedAt, turnNo}`, each paid at once (amount = base + the gap between the richest
+ * family average and the recipient's × gapRatio, ≤ max). Never more than `bottomN` payouts.
  */
 function grantPensions(tx) {
   const cfg = tx.data.balance.pension;
   const room = tx.room;
   const chars = room.characters;
   if (chars.length < cfg.minCharacters || room.pension) return;
-  const worth = (x) => pensionWorth(x, tx.data);
+  const rank = pensionRankWorth(room, tx.data);
+  const worth = (x) => rank.get(x.id);
+  const own = (x) => pensionWorth(x, tx.data);
   const given = chars.filter((x) => x.pensionGiven).map((x) => x.id);
-  const sorted = [...chars].filter((x) => !given.includes(x.id)).sort((a, b) => worth(a) - worth(b) || (a.seq ?? 0) - (b.seq ?? 0));
+  const sorted = [...chars].filter((x) => !given.includes(x.id)).sort((a, b) => worth(a) - worth(b) || own(a) - own(b) || (a.seq ?? 0) - (b.seq ?? 0));
   const recipients = [...given, ...sorted.map((x) => x.id)].slice(0, Math.max(given.length, cfg.bottomN));
   room.pension = { recipients, decidedAt: tx.now, turnNo: room.turn?.turnNo ?? 0 };
   const top = Math.max(...chars.map(worth));
@@ -542,6 +573,7 @@ export function migrateLoopBoard(room, ctx = {}) {
   const next = cloneState(room);
   const oldEras = next.board.eras.map((e) => e.id);
   next.board = buildBoard(next.config, createRng(next.seed ?? 0), data);
+  next.boardKey = boardKeyFor(next.board);
   const eraIds = next.board.eras.map((e) => e.id);
   const idx = Math.max(0, ...next.characters.map((c) => eraIds.indexOf(c.era ?? oldEras[c.position?.eraIndex ?? 0])));
   const era = next.board.eras[idx];
@@ -607,7 +639,8 @@ function placeBet(tx, action) {
   if (bettor.finished) fail(409, '골인한 캐릭터는 훈수 베팅을 할 수 없어요.');
   if (bettor.ownerSessionId === 'cpu') fail(409, 'CPU는 베팅하지 않아요.');
   if (bettor.ownerSessionId === current.ownerSessionId) fail(403, '내 캐릭터의 턴에는 훈수 베팅을 할 수 없어요.');
-  if (spinFixed(current)) fail(409, '이번 룰렛은 카드로 정해져서 훈수 베팅을 할 수 없어요.');
+  const voidReason = betVoidReason(current);
+  if (voidReason) fail(409, voidReason);
   const cfg = tx.data.balance.bets;
   const { kind, pick } = action;
   if (!BET_KINDS.includes(kind)) fail(400, '베팅 종류가 올바르지 않습니다.');
@@ -821,13 +854,15 @@ const HANDLERS = Object.assign(Object.create(null), {
   // Stage 7 — the card one needs the turn; trades / gifts happen any time and never touch the turn state
   useCard: (tx, action) => {
     useCard(tx, action, currentCharId(tx.room));
-    // a red roulette card fixes / bounds this spin: side bets already placed on it are void (stakes back)
+    // a red roulette card fixes / bounds this spin, or a taxi rolls twice: side bets already placed on it are void
+    // (stakes back) — they settle on the roulette value, which these mods skew (see `BET_VOID_MODS`)
     const c = charById(tx.room, currentCharId(tx.room));
     const slot = tx.room.bets?.[tx.room.turn.turnNo];
-    if (spinFixed(c) && slot && Object.keys(slot).length) {
+    if (betsVoided(c) && slot && Object.keys(slot).length) {
       refundBets(tx, slot);
       delete tx.room.bets[tx.room.turn.turnNo];
-      addLog(tx, `🙅 ${c.name}의 룰렛이 카드로 정해져서 이번 훈수 베팅은 무효예요 (판돈 반환)`, { tone: 'info', charId: c.id });
+      const why = spinFixed(c) ? '카드로 정해져서' : '카드로 두 번 돌려서';
+      addLog(tx, `🙅 ${c.name}의 룰렛이 ${why} 이번 훈수 베팅은 무효예요 (판돈 반환)`, { tone: 'info', charId: c.id });
     }
   },
   offerTrade,
@@ -865,6 +900,7 @@ export function applyAction(room, action, ctx = {}) {
   const next = mig ? mig.room : cloneState(room);
   migrateRoomLooks(next, c.data); // CH-1: human avatars / partners / children of old saves → roster / NPC friends / pets
   next.eraIndex ??= 0;
+  next.boardKey ??= boardKeyFor(next.board); // saves from before the SSE board cache
   for (const ch of next.characters) {
     ch.laps ??= 0;
     ensureLife(ch, c.data); // games saved before Stage 6

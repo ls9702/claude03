@@ -1,11 +1,38 @@
 // Lobby 3D preview: the same Chiikawa-style pawn the board uses (CH-1), slowly turning with idle breathing, a squashy
 // pop when the look changes and optional `play('hop' | 'cheer')`. One small WebGL canvas.
 import * as THREE from 'three';
-import { buildPawnGeometry, pawnHeight } from './pawn.js';
+import { buildPawnGeometry } from './pawn.js';
 import { pawnLook } from './pawnParts.js';
 import { hopPose, landPose, breathePose } from './math.js';
 
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const BASE_R = 0.8; // the round stand under the pawn
+const BASE_Y = -0.04;
+
+/**
+ * Camera framing of the turning preview pawn (pure, node-tested). The canvas is a CIRCLE (border-radius 50%) and the pawn
+ * turns about its y axis, so every vertex is fitted by its distance from the view centre: √(distance from the y axis² +
+ * (y − centre)²) — wide back items (wings) and long hand items (fishing rod, balloon, sasumata) stay inside the circle.
+ * @param {ArrayLike<number>} positions  xyz triples (the merged pawn geometry)
+ * @returns {{target: number[], position: number[], radius: number}}
+ */
+export function previewFrame(positions, { fov = 30, margin = 1.1, elev = 0.12 } = {}) {
+  let minY = BASE_Y - 0.04;
+  let maxY = 1.2;
+  for (let i = 1; i < positions.length; i += 3) {
+    if (positions[i] < minY) minY = positions[i];
+    if (positions[i] > maxY) maxY = positions[i];
+  }
+  const cy = (minY + maxY) / 2;
+  let r = Math.hypot(BASE_R, cy - BASE_Y);
+  for (let i = 0; i + 2 < positions.length; i += 3) {
+    const d = Math.hypot(Math.hypot(positions[i], positions[i + 2]), positions[i + 1] - cy);
+    if (d > r) r = d;
+  }
+  const dist = (r * margin) / Math.tan((fov * Math.PI) / 360);
+  return { target: [0, cy, 0], position: [0, cy + dist * Math.sin(elev), dist * Math.cos(elev)], radius: r };
+}
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -25,8 +52,8 @@ export function createPawnPreview(canvas, { defs: defsOpt = null, meta = null, s
   scene.add(sun);
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.08, 28), new THREE.MeshLambertMaterial({ color: 0xffd9b8 }));
-  base.position.y = -0.04;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(BASE_R - 0.05, BASE_R, 0.08, 28), new THREE.MeshLambertMaterial({ color: 0xffd9b8 }));
+  base.position.y = BASE_Y;
   scene.add(base);
   const holder = new THREE.Group(); // squash / hop pivot at the feet
   scene.add(holder);
@@ -56,13 +83,13 @@ export function createPawnPreview(canvas, { defs: defsOpt = null, meta = null, s
     renderer.render(scene, camera);
   };
   raf = requestAnimationFrame(frame);
-  /** Frame the whole figure (taller characters / hats / long ears need more room). */
-  const frameCamera = (h) => {
-    const top = Math.max(1.5, h + 0.15);
-    camera.position.set(0, top * 0.62 + 0.35, 3.2 + top * 1.05);
-    camera.lookAt(0, top * 0.48, 0);
+  /** Frame the whole figure incl. hats, long ears, wings and long hand items (see previewFrame). */
+  const frameCamera = (geo) => {
+    const f = previewFrame(geo?.attributes?.position?.array ?? []);
+    camera.position.set(...f.position);
+    camera.lookAt(...f.target);
   };
-  frameCamera(1.45);
+  frameCamera(null);
   return {
     set(avatar) {
       const look = pawnLook(avatar, defs);
@@ -74,7 +101,7 @@ export function createPawnPreview(canvas, { defs: defsOpt = null, meta = null, s
         mesh.geometry = geo; // geometries are cached per look (shared with the board)
         action = { kind: 'pop', t0: performance.now() };
       }
-      frameCamera(pawnHeight(look, defs));
+      frameCamera(geo);
       t0 = performance.now();
     },
     /** A cosmetic little hop ('hop') or three happy bounces ('cheer'). */

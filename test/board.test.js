@@ -57,7 +57,7 @@ test('loop maps: era set follows mode; every loop era is its own ring of lap = c
   assert.equal(lapSize(40), 100);
 });
 
-test('paydays: every lap path (each route, across the wrap) has a payday every 18–25 tiles; 2–4 pass tiles, never next to one', () => {
+test('paydays: every lap path (each route, across the wrap) has a payday every 18–25 tiles; 1–3 pass tiles, never next to one', () => {
   const rng = createRng(7);
   for (let k = 0; k < 60; k++) {
     const eraTurns = defaultEraTurns();

@@ -11,6 +11,19 @@ import { randomBytes } from 'node:crypto';
 import { EngineError, applyAction, endGame, isLoopBoard, migrateLoopBoard, startGame } from '../game/engine.js';
 import { CPU_OWNER, cpuDecide, cpuDue } from '../game/cpu.js';
 
+/**
+ * Why a restored PLAYING room cannot be run by the engine (Korean), or null (other statuses: null). Checks the shape
+ * every game step relies on: characters, a board with eras and a turn with an order.
+ */
+export function playingRoomProblem(room) {
+  if (room?.status !== 'playing') return null;
+  if (!Array.isArray(room.characters) || !room.characters.length) return '캐릭터 정보가 없어요';
+  if (!room.board || !Array.isArray(room.board.eras) || !room.board.eras.length) return '게임판 정보가 없어요';
+  if (!room.turn || !Array.isArray(room.turn.order) || !room.turn.order.length) return '차례 정보가 없어요';
+  if (!room.config || typeof room.config !== 'object') return '방 설정이 없어요';
+  return null;
+}
+
 /** Random uint32 mixed into the RNG after the (public) board is built, so the board can't reveal spins. */
 export const randomSecret = () => randomBytes(4).readUInt32LE(0);
 
@@ -18,7 +31,7 @@ export const randomSecret = () => randomBytes(4).readUInt32LE(0);
  * CPU pacing (ms): a human-watchable delay before a CPU spins (or plays a card), answers a prompt or an offer;
  * `cutin` is added when the action that led there produced a cut-in (`event.cutin`), so screens can show it first.
  */
-export const CPU_DELAY_MS = Object.freeze({ spin: 1600, prompt: 1200, trade: 1200, cutin: 2500 });
+export const CPU_DELAY_MS = Object.freeze({ spin: 1000, prompt: 800, trade: 800, cutin: 1200 });
 
 /** `cpuDelayMs` option → {spin, prompt, trade, cutin} (a number sets all four; 0 in tests). */
 export function cpuDelays(opt) {
@@ -35,6 +48,7 @@ export class GameRunner {
     this.timers = new Map(); // roomId -> { timer, key }
     this.cpuTimers = new Map(); // roomId -> { timer, key } (Stage 9-C)
     this.cpuDelay = cpuDelays(cpuDelayMs);
+    this.broken = new Map(); // roomId -> Korean reason: a restored save the engine cannot run (no timers / actions)
     // a deleted room (admin / TTL prune) drops its deadline + CPU timers
     store.onRoomDeleted?.((roomId) => {
       this.#clear(roomId);
@@ -42,18 +56,45 @@ export class GameRunner {
     });
   }
 
+  /**
+   * `store.transact` that never throws: an unexpected engine error (a bug, a damaged save) is logged and answered
+   * with 500 — it must not escape into a timer callback (CPU / deadline), where it would take the server down.
+   */
+  #transact(roomId, label, fn, now) {
+    try {
+      return this.store.transact(roomId, fn, now);
+    } catch (err) {
+      this.log(`게임 처리 중 오류 (방 ${roomId}, ${label}): ${err?.stack ?? err}`);
+      return { ok: false, status: 500, error: '게임을 처리하다 오류가 났어요. 관리자에게 알려 주세요.' };
+    }
+  }
+
+  /** A broken restored room (see `restore`) refuses every game step with this result. */
+  #brokenFail(roomId) {
+    return { ok: false, status: 409, error: `이 방은 저장 파일이 손상돼서 진행할 수 없어요. 관리자가 삭제해 주세요. (${this.broken.get(roomId)})` };
+  }
+
+  /** Why a restored room cannot run (Korean), or null. */
+  brokenReason(roomId) {
+    return this.broken.get(roomId) ?? null;
+  }
+
   /** Admin start: build board + init characters. */
   start(roomId) {
     const now = this.clock();
-    const r = this.store.transact(roomId, (room) => startGame(room, { now, secret: this.secret() }), now);
-    if (r.ok) this.schedule(r.room, r.events);
+    const r = this.#transact(roomId, 'start', (room) => startGame(room, { now, secret: this.secret() }), now);
+    if (r.ok) {
+      this.broken.delete(roomId);
+      this.schedule(r.room, r.events);
+    }
     return r;
   }
 
-  /** Admin force end (keeps a ranking). */
+  /** Admin force end (keeps a ranking). A broken room cannot be ranked: the admin deletes it instead. */
   end(roomId) {
+    if (this.broken.has(roomId)) return this.#brokenFail(roomId);
     const now = this.clock();
-    const r = this.store.transact(roomId, (room) => endGame(room, { now }), now);
+    const r = this.#transact(roomId, 'end', (room) => endGame(room, { now }), now);
     if (r.ok) {
       this.#clear(roomId);
       this.#clearCpu(roomId);
@@ -67,9 +108,11 @@ export class GameRunner {
    * @returns {{ok:true, room, events} | {ok:false, status, error}}
    */
   dispatch(roomId, action) {
+    if (this.broken.has(roomId)) return this.#brokenFail(roomId);
     const now = this.clock();
-    const r = this.store.transact(
+    const r = this.#transact(
       roomId,
+      String(action?.type),
       (room) => {
         try {
           return { ok: true, ...applyAction(room, action, { now }) };
@@ -105,7 +148,7 @@ export class GameRunner {
 
   /** (Re)arm the deadline timer of a room. */
   schedule(room, events = null) {
-    if (!room) return;
+    if (!room || this.broken.has(room.id)) return;
     this.scheduleCpu(room, events);
     const d = GameRunner.deadlineOf(room);
     const cur = this.timers.get(room.id);
@@ -115,28 +158,36 @@ export class GameRunner {
     const delay = Math.max(0, d.at - this.clock()) + 2;
     const timer = setTimeout(() => {
       this.timers.delete(room.id);
-      const live = this.store.getRoom(room.id);
-      if (GameRunner.deadlineOf(live)?.key !== d.key) return;
-      // Node timers may fire a millisecond before the wall clock reaches the deadline → re-arm.
-      if (this.clock() < d.at) return this.schedule(live);
-      const action =
-        d.kind === 'prompt'
-          ? { type: 'timeout', promptId: d.promptId, actor: { system: true } }
-          : d.kind === 'vote'
-            ? { type: 'closeVote', actor: { system: true } }
-            : d.kind === 'trades'
-              ? { type: 'expireTrades', actor: { system: true } }
-              : { type: 'spin', characterId: live.turn.order[live.turn.currentIndex], auto: true, actor: { system: true } };
-      const r = this.dispatch(room.id, action);
-      if (!r.ok) this.log(`${{ prompt: '타임아웃', trades: '거래 만료', spin: '자동 룰렛', vote: 'MVP 투표 마감' }[d.kind]} 처리 실패 (${room.id}): ${r.error}`);
+      try {
+        this.#fireDeadline(room.id, d);
+      } catch (err) {
+        this.log(`시간 제한 처리 중 오류 (방 ${room.id}): ${err?.stack ?? err}`); // never escapes the timer
+      }
     }, delay);
     timer.unref?.();
     this.timers.set(room.id, { timer, key: d.key });
   }
 
+  #fireDeadline(roomId, d) {
+    const live = this.store.getRoom(roomId);
+    if (GameRunner.deadlineOf(live)?.key !== d.key) return;
+    // Node timers may fire a millisecond before the wall clock reaches the deadline → re-arm.
+    if (this.clock() < d.at) return this.schedule(live);
+    const action =
+      d.kind === 'prompt'
+        ? { type: 'timeout', promptId: d.promptId, actor: { system: true } }
+        : d.kind === 'vote'
+          ? { type: 'closeVote', actor: { system: true } }
+          : d.kind === 'trades'
+            ? { type: 'expireTrades', actor: { system: true } }
+            : { type: 'spin', characterId: live.turn.order[live.turn.currentIndex], auto: true, actor: { system: true } };
+    const r = this.dispatch(roomId, action);
+    if (!r.ok) this.log(`${{ prompt: '타임아웃', trades: '거래 만료', spin: '자동 룰렛', vote: 'MVP 투표 마감' }[d.kind]} 처리 실패 (${roomId}): ${r.error}`);
+  }
+
   /** (Re)arm the CPU timer of a room: act for the CPU the room waits on after the pacing delay. */
   scheduleCpu(room, events = null) {
-    if (!room) return;
+    if (!room || this.broken.has(room.id)) return;
     const due = cpuDue(room);
     const cur = this.cpuTimers.get(room.id);
     if (cur && due && cur.key === due.key) return;
@@ -157,6 +208,16 @@ export class GameRunner {
    * @returns the dispatch result | null
    */
   runCpu(roomId, key = null) {
+    try {
+      return this.#runCpu(roomId, key);
+    } catch (err) {
+      // a heuristic bug must never escape into the timer callback (it would stop the server)
+      this.log(`CPU 처리 중 오류 (방 ${roomId}): ${err?.stack ?? err}`);
+      return null;
+    }
+  }
+
+  #runCpu(roomId, key) {
     const live = this.store.getRoom(roomId);
     const due = cpuDue(live);
     if (!due || (key && due.key !== key)) {
@@ -194,12 +255,24 @@ export class GameRunner {
    */
   restore() {
     for (const room of this.store.listRooms()) {
-      if (room.status === 'playing' && room.board && !isLoopBoard(room.board)) {
-        const now = this.clock();
-        const r = this.store.transact(room.id, (live) => ({ ok: true, ...migrateLoopBoard(live, { now }) }), now);
-        if (r.ok) this.log(`순환 맵으로 옮긴 방: ${room.id}`);
+      try {
+        const problem = playingRoomProblem(room);
+        if (problem) throw new Error(problem);
+        if (room.status === 'playing' && !isLoopBoard(room.board)) {
+          const now = this.clock();
+          const r = this.store.transact(room.id, (live) => ({ ok: true, ...migrateLoopBoard(live, { now }) }), now);
+          if (r.ok) this.log(`순환 맵으로 옮긴 방: ${room.id}`);
+        }
+        this.schedule(this.store.getRoom(room.id) ?? room);
+      } catch (err) {
+        // one damaged save must not stop the server from booting: the room stays listed (the admin can delete it)
+        // but gets no timers and refuses game actions
+        const reason = String(err?.message ?? err).slice(0, 200);
+        this.broken.set(room.id, reason);
+        this.#clear(room.id);
+        this.#clearCpu(room.id);
+        this.log(`방 ${room.id}을(를) 복원하지 못해 멈춰 둡니다 (관리자 화면에서 삭제할 수 있어요): ${reason}`);
       }
-      this.schedule(this.store.getRoom(room.id) ?? room);
     }
   }
 

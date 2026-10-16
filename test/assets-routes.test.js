@@ -145,6 +145,12 @@ test('full studio flow over HTTP; the key never appears in responses or logs', a
   assert.equal(rawUp.status, 200, rawUp.text);
   assert.equal((await call('POST', '/admin/api/assets/upload/icon-money', { body: { data: '!!!' } })).status, 400);
   assert.equal((await call('POST', '/admin/api/assets/upload/icon-money', { raw: 'hello', headers: { 'content-type': 'text/plain' } })).status, 400);
+  // a truncated PNG (the header parses, the pixels don't) → 400 like any unreadable image, not a 500
+  for (const process of ['0', '1']) {
+    const cut = await call('POST', `/admin/api/assets/upload/icon-money?process=${process}`, { raw: big.subarray(0, Math.floor(big.length / 2)), headers: { 'content-type': 'image/png' } });
+    assert.equal(cut.status, 400, cut.text);
+    assert.equal(cut.json.error, '이미지 파일을 읽을 수 없습니다.');
+  }
 
   const del = await call('DELETE', '/admin/api/assets/candidates/style-anchor');
   assert.equal(del.status, 200);

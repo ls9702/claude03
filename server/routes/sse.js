@@ -1,8 +1,6 @@
 // GET /api/rooms/:id/events?token= — Server-Sent Events channel per room.
 import express from 'express';
 import { findPlayer, setConnected } from '../game/lobby.js';
-import { viewFor } from '../game/view.js';
-import { sseFrame } from '../store/roomStore.js';
 import { sessionMiddleware } from './common.js';
 
 export function createSseRouter({ store, heartbeatMs = 15000 }) {
@@ -22,9 +20,9 @@ export function createSseRouter({ store, heartbeatMs = 15000 }) {
       'X-Accel-Buffering': 'no',
     });
     res.write('retry: 3000\n\n');
-    res.write(sseFrame('state', viewFor(room, sessionId)));
-
-    const unsubscribe = store.subscribe(roomId, sessionId, res);
+    // the first `state` frame (with the board) goes through the store: it starts this stream's board cache, and the
+    // oldest of this session's streams beyond the cap gets `superseded` before it ends
+    const unsubscribe = store.subscribe(roomId, sessionId, res, { state: true });
     const presence = (connected) => {
       const current = store.getRoom(roomId);
       if (!current) return;

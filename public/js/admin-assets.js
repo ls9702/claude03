@@ -1,4 +1,5 @@
 // Asset studio page: key status, usage, manifest items, generate → candidates → accept / upload.
+import { acceptedCaption } from './ui/assetText.js';
 const API = '/admin/api/assets';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) =>
@@ -107,7 +108,7 @@ function renderList() {
             `<h3>${esc(arr[0].kindLabel)} <span class="muted">(${arr.filter((i) => i.status === 'accepted').length}/${arr.length})</span></h3>` +
             arr
               .map(
-                (i) => `<button type="button" class="item ${state.selected === i.id ? 'sel' : ''}" data-id="${esc(i.id)}">
+                (i) => `<button type="button" class="item ${state.selected === i.id ? 'sel' : ''}" data-id="${esc(i.id)}" title="${esc(`${i.label} · ${i.id}`)}">
                   ${thumbHtml(i)}
                   <span><div class="name">${esc(i.label)}</div><div class="id">${esc(i.id)}${i.candidateCount ? ` · 후보 ${i.candidateCount}` : ''}</div></span>
                   <span class="st ${esc(i.status)}">${esc(STATUS_LABEL[i.status])}</span>
@@ -159,9 +160,9 @@ function renderDetail(prevPrompt) {
     }
     ${
       accepted
-        ? `<div class="accepted-box">
+        ? `<div class="accepted-box${isAnimKind ? ' two' : ''}">
             <figure>${`<img class="thumb preview" src="${esc(item.url)}" alt="채택된 에셋">`}
-              <figcaption>채택: ${esc(acc.source === 'upload' ? '업로드' : `후보 #${acc.candidate} · ${acc.model}`)} · ${esc(new Date(acc.acceptedAt || acc.generatedAt).toLocaleString('ko-KR'))}${acc.width ? ` · ${acc.width}×${acc.height}` : ''}</figcaption></figure>
+              <figcaption>채택: ${acceptedCaption(acc).map((t) => `<span class="cap-part">${esc(t)}</span>`).join(' · ')}</figcaption></figure>
             ${
               isAnimKind
                 ? `<figure>${

@@ -255,13 +255,18 @@ test('prompt presentation is copied onto turn.pending (reload-safe) and survives
   assert.ok(['elite', 'college', 'fail'].includes(pr.result), 'exam result rides on promptResolved');
 });
 
-test('lines.json schema: 5–10 반말 lines per tag, valid placeholders, era tags for every era', () => {
+// E2E-4 (line repetition): tags shown more than ~15× per 8-character game carry ≥ 20 lines (≤ 30)
+const BIG_LINE_POOLS = ['pass_tile', 'house', 'card', 'job', 'stat_up', 'route_choice', 'club', 'promotion'];
+
+test('lines.json schema: 5–10 반말 lines per tag (≥ 20 for the frequent tags), valid placeholders, era tags for every era', () => {
   const allowed = new Set(lines.placeholders);
   const tags = Object.entries(lines.tags);
   assert.ok(tags.length >= 20);
   for (const [tag, pool] of tags) {
     assert.match(tag, /^[a-z0-9_]+$/);
-    assert.ok(Array.isArray(pool) && pool.length >= 5 && pool.length <= 10, `${tag}: ${pool.length} lines`);
+    const [lo, hi] = BIG_LINE_POOLS.includes(tag) ? [20, 30] : [5, 10];
+    assert.ok(Array.isArray(pool) && pool.length >= lo && pool.length <= hi, `${tag}: ${pool.length} lines`);
+    assert.equal(new Set(pool).size, pool.length, `${tag}: duplicate lines`);
     for (const l of pool) {
       assert.equal(typeof l, 'string');
       assert.ok(l.trim().length > 0 && l.length <= 40, `${tag}: "${l}"`);

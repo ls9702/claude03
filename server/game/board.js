@@ -31,7 +31,7 @@ export function loopConfig(bd = gameData().board) {
     lapMin: l.lapMin ?? 18,
     lapMax: l.lapMax ?? 100,
     payday: { min: l.payday?.min ?? 18, max: l.payday?.max ?? 25 },
-    pass: { every: l.pass?.every ?? 27, min: l.pass?.min ?? 2, max: l.pass?.max ?? 4 },
+    pass: { every: l.pass?.every ?? 45, min: l.pass?.min ?? 1, max: l.pass?.max ?? 3 },
     routeShare: l.routeShare ?? 0.45,
     forkAt: l.forkAt ?? 0.3,
   };

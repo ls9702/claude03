@@ -22,6 +22,8 @@ table.rooms { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .status.lobby { background: #e4efff; color: #2e62b0; }
 .status.playing { background: #d8f3e3; color: #1f7a45; }
 .status.finished { background: #eee8e1; color: var(--muted); }
+.status.broken { background: #ffe1dc; color: #b3261e; }
+.broken-note { margin: 4px 0 8px; padding: 8px 10px; border-radius: 10px; background: #fff1ee; color: #8a1f17; font-size: 0.85rem; word-break: keep-all; }
 .detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
 .detail-chars { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .detail-char { text-align: center; font-size: 0.85rem; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 4px; }
@@ -84,3 +86,34 @@ pre.json { max-width: 100%; }
 .era-row .map { color: #2446a8; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
 .era-row.final-row { border-top: 1px dashed var(--line); padding-top: 6px; }
 .era-est.warn { color: #b45309; }
+
+/* ---------- Fix-B2 layout pass ---------- */
+/* top bar: link buttons look like buttons (no underline), content lines up with the 1200 px page column */
+.topbar a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+@media (min-width: 1232px) { .topbar { padding-inline: calc((100% - 1200px) / 2 + 16px); } }
+@media (max-width: 480px) {
+  .logo-long, .tb-long { display: none; }
+}
+/* the era fieldset: a short legend (the border never cuts a wrapped legend), the explanation as a note */
+.era-set legend { white-space: nowrap; }
+.era-note { margin: 0 0 8px; }
+/* era rows: name · 기본 n턴 · 🗺️ n칸 순환 · 최소 n wrap between chips, never inside one */
+.era-row { grid-template-columns: minmax(0, 1fr) 90px; }
+.era-row > span:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; min-width: 0; word-break: keep-all; }
+.era-row .def, .era-row .map, .era-row .min { white-space: nowrap; }
+/* CPU tools: one row height for picker / add / ✕ (the global select min-height is 44 px) */
+.cpu-chip select, .cpu-add select { min-height: 30px; height: 30px; padding: 0 6px; border-radius: 999px; line-height: 1; }
+.cpu-add .btn { min-height: 30px; }
+.cpu-chip { padding: 2px 3px 2px 10px; min-height: 36px; }
+.cpu-chip .btn { width: 30px; height: 30px; min-height: 30px; padding: 0; border-radius: 50%; flex: none; }
+/* touch screens: 40 px targets everywhere on the admin pages */
+@media (pointer: coarse) {
+  .btn.small, .btn.tiny { min-height: 40px; }
+  .era-row input { min-height: 44px; }
+  .cpu-chip select, .cpu-add select { min-height: 40px; height: 40px; }
+  .cpu-add .btn { min-height: 40px; }
+  .cpu-chip { min-height: 46px; }
+  .cpu-chip .btn { width: 40px; height: 40px; min-height: 40px; }
+  .rooms td .btn { min-width: 48px; }
+}
+@media (max-width: 400px) { .era-row { grid-template-columns: minmax(0, 1fr) 72px; } }

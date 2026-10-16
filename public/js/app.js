@@ -8,6 +8,7 @@ import {
   onNetwork,
   savedName,
   sseConnected,
+  sseSuperseded,
   storageMode,
   savedRoomId,
   setSavedName,
@@ -15,7 +16,8 @@ import {
 } from './api.js';
 import { NAME_MAX, cleanName, cpuHandicapText, cpuPersonalityHtml, cpuPersonalityOptions, josa, nameFits, ownerHtml } from './format.js';
 import { bindNameInput } from './ui/nameInput.js';
-import { worldInfo, worldLabel, worldMeta, worldOf } from './shared/world.js';
+import { worldInfo, worldMeta, worldOf } from './shared/world.js';
+import { modeSummary, scrollCue } from './ui/lobbyText.js';
 import { createGameUI } from './game2d.js';
 // Chiikawa conversion (CH-1): roster characters + props (ui/chara.js renderer, ui/picker.js); the human paper-doll /
 // AI-art modules (ui/avatar2d.js, avatarCompose.js, customize.js, charArt.js) are legacy and no longer called here.
@@ -92,9 +94,26 @@ function showScreen(name) {
 function setConn(kind) {
   const el = $('#conn');
   const off = typeof navigator !== 'undefined' && navigator.onLine === false;
-  const k = kind === 'ok' && off ? 'bad' : kind;
+  // superseded (≥ 4 tabs of this session in the room): this tab's stream stopped for good until 「다시 연결」
+  const gone = kind === 'gone' || (kind !== 'ok' && !!sseSuperseded());
+  const k = gone ? 'bad' : kind === 'ok' && off ? 'bad' : kind;
   el.dataset.kind = k;
-  el.textContent = k === 'ok' ? '● 연결됨' : off ? '● 오프라인 · 재연결 중…' : '● 재연결 중…';
+  el.textContent = gone ? '● 다시 연결' : k === 'ok' ? '● 연결됨' : off ? '● 오프라인 · 재연결 중…' : '● 재연결 중…';
+  el.classList.toggle('gone', gone);
+  if (gone) {
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
+    el.title = '다른 탭에서 열려 있어 연결을 멈췄어요 · 눌러서 이 탭으로 다시 연결';
+  } else {
+    el.removeAttribute('role');
+    el.removeAttribute('tabindex');
+    el.removeAttribute('title');
+  }
+}
+/** 「다시 연결」: this tab takes the room stream back (the server then retires the oldest other tab of this session). */
+function reclaimStream() {
+  if (!sseSuperseded() || !state.room) return;
+  enterRoom(state.room);
 }
 
 // ---------- connection watchdog (A9) ----------
@@ -105,7 +124,7 @@ const WATCHDOG_QUIET_MS = 35000;
 const WATCHDOG_PROBE_EVERY_MS = 30000;
 let lastProbeAt = 0;
 async function watchdogTick() {
-  if (!state.room || state.screen === 'join') return;
+  if (!state.room || state.screen === 'join' || sseSuperseded()) return;
   if (navigator.onLine === false) return setConn('bad');
   const quiet = Date.now() - Math.max(lastSseMessageAt(), state.connectedAt ?? 0);
   if (quiet < WATCHDOG_QUIET_MS || Date.now() - lastProbeAt < WATCHDOG_PROBE_EVERY_MS) return;
@@ -137,7 +156,7 @@ function markAlive() {
   if ($('#conn')?.dataset.kind !== 'ok' && navigator.onLine !== false && sseConnected()) setConn('ok');
 }
 window.addEventListener('online', () => {
-  if (!state.room) return;
+  if (!state.room || sseSuperseded()) return;
   setConn('bad');
   reconnect(); // a fresh stream (its first message is the current state)
 });
@@ -232,6 +251,10 @@ function enterRoom(room) {
     log: () => {},
     reaction: (r) => floatReaction(r),
     deleted: () => leaveRoom('방이 삭제되었습니다.'),
+    superseded: () => {
+      setConn('gone');
+      toast('이 방이 같은 브라우저의 다른 탭 여러 개에서 열려 있어서 이 탭의 실시간 연결을 멈췄어요. 위의 「● 다시 연결」을 누르면 이 탭에서 이어서 봐요.', 'error', 7000);
+    },
     error: async (closed) => {
       setConn('bad');
       if (!closed) return; // EventSource auto-retries
@@ -282,19 +305,15 @@ function render() {
 }
 
 // ---------- lobby ----------
-function modeLabel(room) {
-  const eras = roomMeta(room)?.eras;
-  const mode = eras?.modes?.[room.config.mode];
-  if (!mode) return room.config.mode;
-  // loop maps: turns per era; the final 노년 era of lifetime / adult mode is a goal race of `finalLength` tiles
-  const parts = mode.eras.map((id, i) => {
-    const era = eras.eras.find((e) => e.id === id);
-    const race = i === mode.eras.length - 1 && id === 'senior' && Number.isInteger(room.config.finalLength);
-    return race ? `${era?.name ?? id} 🏁 ${room.config.finalLength}칸` : `${era?.name ?? id} ${room.config.eraTurns?.[id] ?? '-'}턴`;
-  });
-  const skill = room.config.rouletteMode === 'skill' ? ' · 🎯 룰렛 실력 모드 (흔들기·버튼으로 목표 숫자)' : '';
-  // 세계 설정: 🐹 치이카와 모드 / 🏙️ 현실 모드 (a room without `world` = an old save = 현실 모드)
-  return `${mode.name} · ${parts.join(' / ')} · 초기 자금 ${room.config.startingMoney.toLocaleString()}만원${skill} · ${worldLabel(worldOf(room))}`;
+/**
+ * Lobby mode line (Fix-B2): 「<b>인생 전체</b> · 초기 자금 1,000만원 · 🎯 룰렛 실력 모드」 + a small era line 「아기 3턴 · … · 노년
+ * 🏁 40칸」. The world (🐹 치이카와 모드 / 🏙️ 현실 모드) has its own line right below (#lobby-world).
+ */
+function modeLabelHtml(room) {
+  const m = modeSummary(room, roomMeta(room));
+  const head = [`<b>${esc(m.title)}</b>`, ...m.extras.map((x) => `<span class="lm-x">${esc(x)}</span>`)].join(' · ');
+  const eras = m.eras.length ? `<span class="lm-eras">${m.eras.map((e) => `<span class="lm-era">${esc(e)}</span>`).join(' · ')}</span>` : '';
+  return head + eras;
 }
 
 function charCard(c, { mine = false } = {}) {
@@ -366,14 +385,19 @@ function renderMcWelcome(room) {
 function renderLobby(room) {
   renderMcWelcome(room);
   $('#lobby-code').textContent = room.code;
-  $('#lobby-mode').textContent = modeLabel(room);
+  const modeEl = $('#lobby-mode');
+  const modeHtml = modeLabelHtml(room);
+  if (modeEl.dataset.html !== modeHtml) {
+    modeEl.dataset.html = modeHtml;
+    modeEl.innerHTML = modeHtml;
+  }
   // 세계 설정: one line about the room's world (🐹 치이카와 모드: 토벌·풀뽑기 검정·쿠지 / 🏙️ 현실 모드)
   const wl = $('#lobby-world');
   if (wl) {
     const w = worldInfo(worldOf(room));
     wl.hidden = false;
     wl.dataset.world = w.id;
-    wl.textContent = `${w.icon} ${w.name} · ${w.desc}`;
+    wl.innerHTML = `<b>${esc(w.icon)} ${esc(w.name)}</b> · ${esc(w.desc)}`;
   }
 
   const players = playersOnly(room);
@@ -384,7 +408,7 @@ function renderLobby(room) {
       (p) => `
       <li class="player${p.isMe ? ' me' : ''}">
         <span class="dot ${p.connected ? 'on' : 'off'}" title="${p.connected ? '접속 중' : '오프라인'}"></span>
-        <span class="pname">${esc(p.name)}</span>
+        <span class="pname" title="${esc(p.name)}">${esc(p.name)}</span>
         ${p.isMe ? '<span class="tag">나</span>' : ''}
         <span class="pchars">${room.characters.filter((c) => c.ownerId === p.id).length}명</span>
         ${p.ready ? '<span class="tag ready">준비</span>' : '<span class="tag wait">대기</span>'}
@@ -399,12 +423,12 @@ function renderLobby(room) {
   $('#char-count').textContent = `${room.characters.length}/${max}`;
   $('#char-grid').innerHTML = room.characters.length
     ? room.characters.map((c) => charCard(c)).join('')
-    : '<p class="muted">아직 캐릭터가 없어요.</p>';
+    : '<p class="muted empty-hint">아직 캐릭터가 없어요.</p>';
 
   const mine = room.characters.filter((c) => c.isMe);
   $('#my-chars').innerHTML = mine.length
     ? mine.map((c) => charCard(c, { mine: true })).join('')
-    : '<p class="muted">내 캐릭터를 만들어 보세요. 여러 명을 조종할 수 있어요!</p>';
+    : '<p class="muted empty-hint">내 캐릭터를 만들어 보세요. 여러 명을 조종할 수 있어요!</p>';
   hydratePortraits($('#char-grid'));
   hydratePortraits($('#my-chars'));
   renderCpuTools(room);
@@ -596,6 +620,18 @@ const REACTION_MAX = 4;
 function buildReactionBar() {
   const bar = $('#reaction-bar');
   bar.innerHTML = (state.meta?.reactions ?? []).map((e) => `<button type="button" class="react" data-emoji="${esc(e)}">${esc(e)}</button>`).join('');
+  // a row that doesn't fit scrolls; the hidden side fades out (data-more → CSS mask) so the last emoji isn't just cut
+  const cue = () => {
+    const more = scrollCue(bar);
+    if ((bar.dataset.more ?? '') !== more) {
+      if (more) bar.dataset.more = more;
+      else delete bar.dataset.more;
+    }
+  };
+  bar.addEventListener('scroll', cue, { passive: true });
+  window.addEventListener('resize', cue);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(cue).observe(bar);
+  requestAnimationFrame(cue);
   // client-side pacing below the server limit (5 per 2 s per session): extra taps just wiggle the button
   const sent = [];
   bar.addEventListener('click', async (ev) => {
@@ -683,6 +719,13 @@ async function boot() {
   });
   $('#sheet-toggle').addEventListener('click', () => setSheet(!$('#my-panel').classList.contains('open')));
   $('#leave-btn').addEventListener('click', () => leaveRoom('방에서 나왔어요. 코드로 다시 들어올 수 있어요.'));
+  $('#conn').addEventListener('click', reclaimStream);
+  $('#conn').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      reclaimStream();
+    }
+  });
   $('#result-leave').addEventListener('click', () => leaveRoom());
 
   try {

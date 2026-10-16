@@ -339,8 +339,8 @@
       "scene": "office",
       "tone": "treasure",
       "unlock": {
-        "anyOf": [{"houseSwaps": 4}, {"house": ["penthouse", "jeju_villa"]}],
-        "desc": "부동산 갈아타기 4회 이상, 또는 펜트하우스·제주 별장 보유"
+        "anyOf": [{"houseSwaps": 3}, {"house": ["penthouse", "jeju_villa"]}],
+        "desc": "부동산 갈아타기 3회 이상, 또는 펜트하우스·제주 별장 보유"
       }
     },
     {
@@ -405,7 +405,7 @@
       "props": {"head": "crown"},
       "scene": "office",
       "tone": "result",
-      "unlock": {"maxRankOf": ["office_worker"], "netWorth": 2000, "desc": "대기업 회사원 최고 랭크(임원) + 순자산 2,000만원 이상"}
+      "unlock": {"maxRankOf": ["office_worker"], "netWorth": 1200, "desc": "대기업 회사원 최고 랭크(임원) + 순자산 1,200만원 이상"}
     },
     {
       "id": "national_mc",

@@ -232,6 +232,9 @@ test('turn-order balance: small seeded 8-character lifetime simulation stays eve
   // Σ win share = 1 (+ the rare exact tie for 1st: both characters get rank 1)
   const share = r.winShare.reduce((a, b) => a + b, 0);
   assert.ok(share >= 1 - 1e-9 && share <= 1 + 2 / 6 + 1e-9, `win share sum ${share}`);
-  assert.ok(Math.abs(r.avgRank[0] - r.avgRank.at(-1)) <= 1.5, `spread ${r.avgRank[0] - r.avgRank.at(-1)}`);
+  // first half vs second half of the turn order (one position's 6-game average is too noisy: ±1.3 by chance alone)
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const half = mean(r.avgRank.slice(0, 4)) - mean(r.avgRank.slice(4));
+  assert.ok(Math.abs(half) <= 1.5, `first-half vs second-half average rank ${half}`);
   assert.ok(Math.max(...r.winShare) <= 0.67, `max win share ${Math.max(...r.winShare)}`);
 });

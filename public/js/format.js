@@ -78,20 +78,47 @@ const INVISIBLE_RE = /[\p{Cc}\p{Cf}\u115F\u1160\u3164\uFFA0\u2800]/gu;
 const ZWJ = '\u200D';
 const PICTO_RE = /\p{Extended_Pictographic}/u;
 const EMOJI_MOD_RE = /[\uFE0E\uFE0F\u{1F3FB}-\u{1F3FF}]/u;
+// Mirrors server/game/lobby.js (E2E-4): invisible marks are dropped, variation selectors survive only on a visible
+// base character, lone surrogates are dropped, a name needs at least one visible base character.
+const INVISIBLE_MARK_RE = /[\u034F\u17B4\u17B5\u180B-\u180F]/u;
+const VARIATION_SELECTOR_RE = /[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u;
+const VARIATION_SELECTOR_RE_G = /[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;
+const LONE_SURROGATE_RE = /[\uD800-\uDFFF]/u;
+const VISIBLE_BASE_RE = /[^\s\p{M}]/u;
 /** A typed name as the server will store it (NFC, invisible characters removed, whitespace collapsed, trimmed). */
 export function cleanName(name) {
   const cps = [...String(name ?? '').normalize('NFC')];
   let out = '';
+  let last = ''; // the last kept code point
   for (let i = 0; i < cps.length; i++) {
     const ch = cps[i];
-    if (ch === ZWJ) {
-      const prev = [...out].reverse().find((x) => !EMOJI_MOD_RE.test(x)) ?? '';
-      if (PICTO_RE.test(prev) && PICTO_RE.test(cps[i + 1] ?? '')) out += ch;
+    if (ch.length === 1 && LONE_SURROGATE_RE.test(ch)) continue; // half of a broken surrogate pair
+    if (INVISIBLE_MARK_RE.test(ch)) continue;
+    if (VARIATION_SELECTOR_RE.test(ch)) {
+      // only on a visible base character (❤️, 1️⃣), never after a space, a mark or another selector
+      if (last && VISIBLE_BASE_RE.test(last) && !VARIATION_SELECTOR_RE.test(last)) {
+        out += ch;
+        last = ch;
+      }
       continue;
     }
-    out += ch.replace(INVISIBLE_RE, '');
+    if (ch === ZWJ) {
+      const prev = [...out].reverse().find((x) => !EMOJI_MOD_RE.test(x)) ?? '';
+      if (PICTO_RE.test(prev) && PICTO_RE.test(cps[i + 1] ?? '')) {
+        out += ch;
+        last = ch;
+      }
+      continue;
+    }
+    const kept = ch.replace(INVISIBLE_RE, '');
+    if (kept) {
+      out += kept;
+      last = kept;
+    }
   }
-  return out.replace(/\s+/g, ' ').trim();
+  const n = out.replace(/\s+/g, ' ').trim();
+  // only marks / selectors left → nothing visible (the server refuses it): ''
+  return VISIBLE_BASE_RE.test(n.replace(VARIATION_SELECTOR_RE_G, '')) ? n : '';
 }
 /** Graphemes the server counts (after its cleaning): the n/12 counter shows exactly this (A10). */
 export const nameLength = (s) => graphemes(cleanName(s)).length;

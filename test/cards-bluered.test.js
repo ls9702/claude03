@@ -190,7 +190,7 @@ test('월급날 직행: straight to the next payday (찬스 광장 on the way ig
   let r = applyAction(room, { type: 'useCard', characterId: me.id, cardUid: uid }, { now: 1000 });
   r = applyAction(r.room, { type: 'spin', characterId: me.id }, { now: 1100 });
   const spun = r.events.find((e) => e.type === 'spun');
-  assert.deepEqual([spun.rush, spun.steps, spun.halved], [true, 6, undefined]);
+  assert.deepEqual([spun.rush, spun.steps ?? spun.value, spun.halved], [true, 6, undefined]); // `steps` only when ≠ the roulette value
   const moved = r.events.find((e) => e.type === 'moved');
   assert.deepEqual([moved.steps, moved.halted, moved.rush], [6, 'salary', true]);
   assert.ok(!r.events.some((e) => e.type === 'prompt' && e.kind === 'passTile'), 'no 찬스 광장 on the way');

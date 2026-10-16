@@ -462,7 +462,12 @@ export function createStudio({ dataDir, manifestPath = MANIFEST_PATH, outputDir 
     if (!meta.width || !meta.height || meta.width > UPLOAD_MAX_PX || meta.height > UPLOAD_MAX_PX) {
       throw new StudioError(`이미지 크기는 ${UPLOAD_MAX_PX}px 이하여야 합니다.`);
     }
-    let png = await sharp(buffer).png().toBuffer();
+    let png;
+    try {
+      png = await sharp(buffer).png().toBuffer(); // a truncated / corrupt file passes metadata() but fails to decode
+    } catch {
+      throw new StudioError('이미지 파일을 읽을 수 없습니다.');
+    }
     let removed = null;
     if (watermark) {
       // un-blend the sparkle first (no-op without one), then backgrounds are flattened so the resize always covers

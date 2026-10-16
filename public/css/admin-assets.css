@@ -57,9 +57,12 @@ code { background: #f6efe6; padding: 1px 5px; border-radius: 5px; font-size: 0.8
 .refs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; font-size: 0.82rem; }
 .refs .ref { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
 .accepted-box { display: grid; gap: 12px; margin-bottom: 12px; }
-@media (min-width: 640px) { .accepted-box { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+/* one figure → one column (no empty half); a pose / sprite item shows its animation preview beside it */
+@media (min-width: 640px) { .accepted-box.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.accepted-box:not(.two) figure { max-width: 520px; }
 .accepted-box figure { margin: 0; }
-.accepted-box figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 4px; word-break: break-all; }
+.accepted-box figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 4px; word-break: keep-all; overflow-wrap: anywhere; }
+.accepted-box .cap-part { white-space: nowrap; }
 .preview { width: 100%; max-height: 360px; }
 .preview.anim { animation: bob 1.2s ease-in-out infinite; transform-origin: 50% 100%; }
 @keyframes bob {
@@ -92,3 +95,9 @@ details.rendered p { background: #faf5ee; padding: 8px; border-radius: 8px; whit
 .cand .thumb.anim { animation: bob 1.2s ease-in-out infinite; transform-origin: 50% 100%; }
 .cand-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 @media (prefers-reduced-motion: reduce) { .preview.anim, .cand .thumb.anim { animation: none; } }
+
+/* Fix-B2: touch targets (filters, status select) */
+@media (pointer: coarse) {
+  .chip-btn { min-height: 40px; padding: 4px 12px; }
+  .field.inline select, .gen-row select { min-height: 40px; }
+}

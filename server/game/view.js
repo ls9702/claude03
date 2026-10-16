@@ -68,8 +68,41 @@ function publicBets(room, mine) {
   return out;
 }
 
-/** Snapshot for one session (null sessionId = spectator/no flags). */
-export function viewFor(room, sessionId = null) {
+/** FNV-1a 32 of a string (board keys). */
+function fnv32(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+const boardKeys = new WeakMap(); // board object -> key (rooms saved before `room.boardKey`)
+
+/** Content key of a board (stable for the same board; `<hash>-<json length>` in base 36). */
+export function boardKeyFor(board) {
+  if (!board || typeof board !== 'object') return null;
+  let key = boardKeys.get(board);
+  if (!key) {
+    const json = JSON.stringify(board);
+    key = `${fnv32(json).toString(36)}-${json.length.toString(36)}`;
+    boardKeys.set(board, key);
+  }
+  return key;
+}
+
+/** The room's board key (`room.boardKey`, set by the engine whenever it builds a board), null without a board. */
+export function boardKeyOf(room) {
+  if (!room?.board) return null;
+  return room.boardKey ?? boardKeyFor(room.board);
+}
+
+/**
+ * Snapshot for one session (null sessionId = spectator/no flags). `boardKey` names the static board; `opts.board:
+ * false` leaves the `board` key out (SSE streams that already got that board — see roomStore `stateFrame`).
+ */
+export function viewFor(room, sessionId = null, opts = {}) {
   const me = sessionId != null ? room.players.find((p) => p.sessionId === sessionId) : null;
   const mine = ownedIds(room, sessionId);
   return {
@@ -81,7 +114,8 @@ export function viewFor(room, sessionId = null) {
     players: publicPlayers(room, sessionId),
     characters: publicCharacters(room, sessionId),
     turn: publicTurn(room, mine),
-    board: room.board ? cloneState(room.board) : null, // public; static per game
+    ...(opts.board === false ? {} : { board: room.board ? cloneState(room.board) : null }), // public; static per board
+    boardKey: boardKeyOf(room), // changes only when the board is (re)built (game start, loop-map migration)
     eraIndex: room.eraIndex ?? null, // loop maps: the shared era (turn.eraRound / eraTurns = its clock; null in the final race)
     bets: publicBets(room, mine),
     news: cloneState(room.news ?? {}), // Stage 6: {eraId: newsId} (public, news.json in /api/meta)

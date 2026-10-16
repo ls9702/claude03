@@ -135,7 +135,7 @@ function buildCreateForm() {
   $('#era-rows').insertAdjacentHTML(
     'beforeend',
     `<label class="era-row final-row" data-final>
-      <span>🏁 노년 길이(칸) <span class="def">기본 ${fc.default}칸 · 턴 제한 없는 골인 경쟁</span></span>
+      <span>🏁 노년 길이(칸) <span class="def">기본 ${fc.default}칸</span> <span class="def">턴 제한 없는 골인 경쟁</span></span>
       <input type="number" name="finalLength" min="${fc.min}" max="${fc.max}" step="1" value="${fc.default}">
     </label>`,
   );
@@ -320,7 +320,7 @@ async function refresh() {
       <tr data-id="${esc(r.id)}" class="${r.id === selectedId ? 'sel' : ''}">
         <td class="code">${esc(r.code)}</td>
         <td>${esc(modes[r.mode]?.name ?? r.mode)}</td>
-        <td><span class="status ${esc(r.status)}">${STATUS[r.status] ?? esc(r.status)}</span></td>
+        <td><span class="status ${esc(r.status)}">${STATUS[r.status] ?? esc(r.status)}</span>${r.broken ? ` <span class="status broken" title="${esc(r.broken)}">⚠️ 손상</span>` : ''}</td>
         <td>${r.connected}/${r.players + (r.spectators ?? 0)}${r.spectators ? ` <small class="muted">👀${r.spectators}</small>` : ''}</td>
         <td>${r.characters}/${r.maxCharacters}</td>
         <td>${new Date(r.createdAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
@@ -366,7 +366,8 @@ async function renderDetail() {
   const spectators = room.players.filter((p) => p.role === 'spectator');
   box.hidden = false;
   box.innerHTML = `
-    <h2>방 ${esc(room.code)} <span class="status ${esc(room.status)}">${STATUS[room.status]}</span></h2>
+    <h2>방 ${esc(room.code)} <span class="status ${esc(room.status)}">${STATUS[room.status]}</span>${room.broken ? ' <span class="status broken">⚠️ 손상</span>' : ''}</h2>
+    ${room.broken ? `<p class="broken-note">⚠️ 저장 파일이 손상돼서 이 방은 진행할 수 없어요. 삭제해 주세요. <small class="muted">(${esc(room.broken)})</small></p>` : ''}
     <div class="detail-actions">
       <button class="btn primary small" data-act="start" ${room.status !== 'lobby' || room.characters.length < 2 ? 'disabled' : ''}>게임 시작</button>
       <button class="btn small" data-act="end" ${room.status === 'finished' ? 'disabled' : ''}>강제 종료</button>

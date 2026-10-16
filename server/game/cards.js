@@ -104,8 +104,11 @@ export function discardIndex(data, cards) {
   return best;
 }
 
-/** `cardLost {charId, cardId, uid, reason: married|healed|discarded|merit}` */
-function emitLost(tx, c, card, reason) {
+/**
+ * `cardLost {charId, cardId, uid, reason: married|healed|discarded|merit|used}` — `used` = a 로또 복권 / 쿠지 응모권
+ * spent in an era-opening draw (emitted right after its `lottoDraw`, a chip of that group; never a line).
+ */
+export function emitLost(tx, c, card, reason) {
   emit(tx, 'cardLost', { charId: c.id, cardId: card.id, uid: card.uid, reason, tone: reason === 'healed' || reason === 'merit' ? 'good' : 'neutral', emotion: reason === 'discarded' ? 'sweat' : 'joy' });
 }
 
@@ -316,8 +319,22 @@ export function rollPlan(c) {
   };
 }
 
-/** Is this turn's roulette fixed / bounded by a red roulette card (side bets are void / refused then)? */
+/** Is this turn's roulette fixed / bounded by a red roulette card? */
 export const spinFixed = (c) => (c?.spinMods ?? []).some((m) => m.kind === 'exact' || m.kind === 'range' || m.kind === 'rush');
+
+/** Spin mods that change the roulette value side bets settle on: fixed / bounded (red roulette cards) or a second roll
+ *  (택시 max2 / 층간소음 min2 — a visible one would hand bettors a positive-EV pick). */
+export const BET_VOID_MODS = Object.freeze(['exact', 'range', 'rush', 'max2', 'min2']);
+
+/** Are side bets on this character's roulette refused / void (a pending mod of `BET_VOID_MODS`)? */
+export const betsVoided = (c) => (c?.spinMods ?? []).some((m) => BET_VOID_MODS.includes(m.kind));
+
+/** Why side bets on `c`'s roulette are refused (Korean) — null when they are allowed. */
+export function betVoidReason(c) {
+  if (spinFixed(c)) return '이번 룰렛은 카드로 정해져서 훈수 베팅을 할 수 없어요.';
+  if (betsVoided(c)) return '이번 룰렛은 카드로 두 번 돌려서 훈수 베팅을 할 수 없어요.';
+  return null;
+}
 
 /**
  * Apply (and clear) a character's pending spin modifiers to a roulette result.

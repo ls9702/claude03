@@ -78,7 +78,8 @@ export function createApp({ store, runner = new GameRunner(store), adminPassword
   app.use((err, req, res, next) => {
     const status = err.status || err.statusCode || 500;
     if (status >= 500) console.error(err);
-    res.status(status).json({ error: status === 400 ? '요청 형식이 올바르지 않습니다.' : '서버 오류가 발생했습니다.' });
+    const error = status === 413 ? '요청이 너무 커요.' : status < 500 ? '요청 형식이 올바르지 않습니다.' : '서버 오류가 발생했습니다.';
+    res.status(status).json({ error });
   });
   return app;
 }

@@ -289,6 +289,7 @@ test('decorateEvents: a small money follow-up is quiet; a plain money landing sp
 
 test('pension: recipients and the gap use total assets (cash − debt + house + items), not cash', () => {
   let room = started({ chars: [['A', 'A1'], ['B', 'B1'], ['A', 'A2'], ['B', 'B2']] });
+  room.characters.forEach((c, i) => (c.ownerSessionId = `solo${i}`)); // one character per player (families: fixes-e2e4)
   const cfg = data.balance.pension;
   const seniorIdx = room.board.eras.findIndex((e) => e.id === cfg.era);
   const [rich, poorA, poorB, mid] = room.turn.order;

@@ -27,14 +27,14 @@ async function until(pred, ms = 5000) {
   }
 }
 
-test('cpuDelays: defaults 1600 / 1200 / 1200 (+2500 after a cut-in), a number sets all', () => {
+test('cpuDelays: defaults 1000 / 800 / 800 (+1200 after a cut-in), a number sets all', () => {
   assert.deepEqual(cpuDelays(undefined), { ...CPU_DELAY_MS });
-  assert.deepEqual(CPU_DELAY_MS, { spin: 1600, prompt: 1200, trade: 1200, cutin: 2500 });
+  assert.deepEqual(CPU_DELAY_MS, { spin: 1000, prompt: 800, trade: 800, cutin: 1200 });
   assert.deepEqual(cpuDelays(0), { spin: 0, prompt: 0, trade: 0, cutin: 0 });
-  assert.deepEqual(cpuDelays({ spin: 5 }), { spin: 5, prompt: 1200, trade: 1200, cutin: 2500 });
+  assert.deepEqual(cpuDelays({ spin: 5 }), { spin: 5, prompt: 800, trade: 800, cutin: 1200 });
 });
 
-test('runner: a CPU spins after 1.6 s, answers its prompt after 1.2 s and a trade offer after 1.2 s (actor system+cpu)', async (t) => {
+test('runner: a CPU spins after 1 s, answers its prompt after 0.8 s and a trade offer after 0.8 s (actor system+cpu)', async (t) => {
   const tmp = await tempDir();
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
   try {
@@ -52,22 +52,22 @@ test('runner: a CPU spins after 1.6 s, answers its prompt after 1.2 s and a trad
     const first = store.getRoom(room.id);
     assert.equal(first.turn.pending?.kind, 'jobOffer');
     assert.deepEqual(first.turn.pending.answers, {});
-    t.mock.timers.tick(1150);
+    t.mock.timers.tick(750);
     assert.equal(store.getRoom(room.id).turn.pending?.kind, 'jobOffer');
     t.mock.timers.tick(100);
     const hired = store.getRoom(room.id);
     assert.ok(hired.characters.find((c) => c.id === 'c1').job, 'hired');
     assert.equal(hired.turn.phase, 'awaitSpin');
     assert.equal(hired.turn.lastSpin, null);
-    t.mock.timers.tick(1500);
+    t.mock.timers.tick(900);
     assert.equal(store.getRoom(room.id).turn.lastSpin, null, 'not before the spin delay');
     t.mock.timers.tick(150);
     const spun = store.getRoom(room.id);
     assert.equal(spun.turn.lastSpin?.charId, 'c1', 'the CPU spun');
     assert.ok(!spun.log.some((l) => /자동으로 돌렸어요|관리자가/.test(l.text)), 'no timeout / admin log for a CPU spin');
-    // whatever the move opened (찬스 광장 / tile prompts) is answered 1.2 s apart, then the human's turn: nothing is
+    // whatever the move opened (찬스 광장 / tile prompts) is answered 0.8 s apart, then the human's turn: nothing is
     // scheduled for a human
-    for (let i = 0; i < 12 && store.getRoom(room.id).turn.order[store.getRoom(room.id).turn.currentIndex] === 'c1'; i++) t.mock.timers.tick(1250);
+    for (let i = 0; i < 12 && store.getRoom(room.id).turn.order[store.getRoom(room.id).turn.currentIndex] === 'c1'; i++) t.mock.timers.tick(850);
     const human = store.getRoom(room.id);
     assert.equal(human.turn.order[human.turn.currentIndex], 'c2');
     // (the human's own pre-spin job offer may be open; it is not the CPU's)
@@ -80,7 +80,7 @@ test('runner: a CPU spins after 1.6 s, answers its prompt after 1.2 s and a trad
     store.put(live);
     const off = runner.dispatch(room.id, { type: 'offerTrade', characterId: 'c2', toId: 'c1', give: { money: 90 }, want: { cardUid: 'k70' }, actor: { sessionId: 'H' } });
     assert.equal(off.ok, true, off.error);
-    t.mock.timers.tick(1100);
+    t.mock.timers.tick(700);
     assert.equal(store.getRoom(room.id).trades.length, 1);
     t.mock.timers.tick(150);
     const traded = store.getRoom(room.id);
@@ -108,17 +108,17 @@ test('runner: after a cut-in event the CPU waits the extra cut-in delay', async 
     room = addCpuCharacter(room, {}, 0).room;
     store.put(room);
     const r = runner.start(room.id);
-    // the first turn opens the CPU's job offer (a prompt = a cut-in anchor) → 1200 + 2500 before the answer
+    // the first turn opens the CPU's job offer (a prompt = a cut-in anchor) → 800 + 1200 before the answer
     const pending = store.getRoom(room.id).turn.pending;
     assert.equal(pending?.kind, 'jobOffer');
     assert.ok(r.events.some((e) => e.cutin));
-    t.mock.timers.tick(3600);
+    t.mock.timers.tick(1900);
     assert.equal(store.getRoom(room.id).turn.pending?.promptId, pending.promptId, 'still showing the prompt cut-in');
     t.mock.timers.tick(200);
     const hired = store.getRoom(room.id);
     assert.notEqual(hired.turn.pending?.promptId, pending.promptId, 'answered');
     // the hire (jobChanged, a cut-in) → spin delay + cut-in delay
-    t.mock.timers.tick(1600 + 2500 - 150);
+    t.mock.timers.tick(1000 + 1200 - 150);
     assert.equal(store.getRoom(room.id).turn.lastSpin, null);
     t.mock.timers.tick(200);
     assert.ok(store.getRoom(room.id).turn.lastSpin, 'spun after spin + cut-in delay');

@@ -2,7 +2,7 @@
 import { randomBytes, randomInt } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { viewFor } from '../game/view.js';
+import { boardKeyOf, viewFor } from '../game/view.js';
 import { migrateRoomLooks } from '../game/avatar.js';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
@@ -10,8 +10,12 @@ const ROOM_ID_RE = /^[a-f0-9]{8,32}$/;
 /** Player sessions unused for this long and not in any room are pruned (boot + hourly). */
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const SESSION_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
-/** Open SSE streams per session per room; a new one closes the oldest beyond this. */
+/** Open SSE streams per session per room; a new one closes the oldest beyond this (it gets `superseded` first). */
 export const MAX_STREAMS_PER_SESSION = 3;
+/** A snapshot is written at least this often while commits keep arriving faster than the debounce. */
+export const SAVE_MAX_WAIT_MS = 2000;
+/** An SSE stream whose unsent buffer grows past this (a client that stopped reading) is dropped. */
+export const SSE_MAX_BUFFERED_BYTES = 1.5 * 1024 * 1024;
 const TOUCH_SAVE_MS = 60 * 60 * 1000; // persist lastSeenAt at most hourly per session
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Finished rooms are deleted (memory + save file) this long after the game ended (env FINISHED_ROOM_TTL_MS). */
@@ -19,14 +23,52 @@ export const FINISHED_ROOM_TTL_MS = 3 * DAY_MS;
 /** Lobby rooms nobody touched for this long are deleted too (env LOBBY_ROOM_TTL_MS). Playing rooms never expire. */
 export const LOBBY_ROOM_TTL_MS = 7 * DAY_MS;
 
+const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** Why a saved room file cannot even be listed (Korean), or null. A playing room the engine cannot run is still
+ *  listed — GameRunner.restore marks it broken (no timers, the admin can delete it). */
+export function savedRoomProblem(room) {
+  if (!Array.isArray(room.players) || !room.players.every(isPlainObject)) return '참가자 목록이 올바르지 않아요';
+  if (room.characters != null && (!Array.isArray(room.characters) || !room.characters.every(isPlainObject))) return '캐릭터 목록이 올바르지 않아요';
+  if (!['lobby', 'playing', 'finished'].includes(room.status)) return '방 상태가 올바르지 않아요';
+  return null;
+}
+
+/** Fill the fields every view / admin row reads (old or hand-edited saves). Mutates. */
+export function normalizeSavedRoom(room) {
+  room.characters ??= [];
+  if (!Array.isArray(room.log)) room.log = [];
+  if (!isPlainObject(room.config)) room.config = {};
+  if (typeof room.code !== 'string') room.code = '';
+  room.createdAt = Number.isFinite(room.createdAt) ? room.createdAt : 0;
+  room.version = Number.isFinite(room.version) ? room.version : 1;
+  return room;
+}
+
 export function sseFrame(event, data) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+/**
+ * The `state` frame for one SSE stream (`sub` = {sessionId, boardKey}). The static board goes out only when this stream
+ * has not got that `boardKey` yet (first frame, game start, a board migration); otherwise the payload has `boardKey`
+ * but no `board` key and the client re-attaches its cached board (public/js/api.js `attachBoard`). Updates
+ * `sub.boardKey`.
+ */
+export function stateFrame(room, sub) {
+  const key = boardKeyOf(room);
+  const withBoard = key == null || sub.boardKey !== key;
+  const view = viewFor(room, sub.sessionId, { board: withBoard });
+  sub.boardKey = key;
+  return sseFrame('state', view);
 }
 
 export class RoomStore {
   constructor({
     dataDir,
     debounceMs = 300,
+    maxWaitMs = SAVE_MAX_WAIT_MS,
+    maxBufferedBytes = SSE_MAX_BUFFERED_BYTES,
     log = () => {},
     sessionTtlMs = SESSION_TTL_MS,
     maxStreamsPerSession = MAX_STREAMS_PER_SESSION,
@@ -38,6 +80,9 @@ export class RoomStore {
     this.dataDir = dataDir;
     this.savesDir = path.join(dataDir, 'saves');
     this.debounceMs = debounceMs;
+    this.maxWaitMs = maxWaitMs; // ≤ 0 / null = no max wait (pure debounce)
+    this.maxBufferedBytes = maxBufferedBytes; // ≤ 0 / null = never drop slow SSE streams
+    this.firstScheduled = new Map(); // key -> clock() of the first unsaved change (max-wait anchor)
     this.log = log;
     this.sessionTtlMs = sessionTtlMs;
     this.maxStreamsPerSession = maxStreamsPerSession;
@@ -67,7 +112,13 @@ export class RoomStore {
       if (!file.endsWith('.json')) continue;
       try {
         const room = JSON.parse(await readFile(path.join(this.savesDir, file), 'utf8'));
-        if (!room || !ROOM_ID_RE.test(room.id)) continue;
+        if (!room || typeof room !== 'object' || !ROOM_ID_RE.test(room.id)) continue;
+        const problem = savedRoomProblem(room);
+        if (problem) {
+          this.log(`방 복원 실패 (${file}): ${problem} — 이 저장 파일은 건너뜁니다.`);
+          continue;
+        }
+        normalizeSavedRoom(room);
         for (const p of room.players) p.connected = false;
         migrateRoomLooks(room); // CH-1: human avatars → roster characters, partners → NPC friends, children → pets
         this.rooms.set(room.id, room);
@@ -111,16 +162,29 @@ export class RoomStore {
     return p;
   }
 
-  scheduleSave(roomId) {
+  /**
+   * Debounce `save` under `key`: it runs `debounceMs` after the last call, but at most `maxWaitMs` after the first
+   * unsaved one — a room committing faster than the debounce (fast CPU turns) is still written every couple of seconds.
+   */
+  #debounce(key, save) {
     if (this.closed) return; // shutdown: late presence updates (SSE closing) are not persisted
-    clearTimeout(this.timers.get(roomId));
+    clearTimeout(this.timers.get(key));
+    const now = this.clock();
+    if (!this.firstScheduled.has(key)) this.firstScheduled.set(key, now);
+    let delay = this.debounceMs;
+    if (Number.isFinite(this.maxWaitMs) && this.maxWaitMs > 0) delay = Math.max(0, Math.min(delay, this.firstScheduled.get(key) + this.maxWaitMs - now));
     this.timers.set(
-      roomId,
+      key,
       setTimeout(() => {
-        this.timers.delete(roomId);
-        this.saveNow(roomId);
-      }, this.debounceMs),
+        this.timers.delete(key);
+        this.firstScheduled.delete(key);
+        save();
+      }, delay),
     );
+  }
+
+  scheduleSave(roomId) {
+    this.#debounce(roomId, () => this.saveNow(roomId));
   }
 
   saveNow(roomId) {
@@ -130,16 +194,7 @@ export class RoomStore {
   }
 
   #scheduleSessionsSave() {
-    if (this.closed) return;
-    const key = '__sessions';
-    clearTimeout(this.timers.get(key));
-    this.timers.set(
-      key,
-      setTimeout(() => {
-        this.timers.delete(key);
-        this.#saveSessions();
-      }, this.debounceMs),
-    );
+    this.#debounce('__sessions', () => this.#saveSessions());
   }
 
   #saveSessions() {
@@ -151,6 +206,7 @@ export class RoomStore {
     for (const [key, t] of this.timers) {
       clearTimeout(t);
       this.timers.delete(key);
+      this.firstScheduled.delete(key);
       if (key === '__sessions') this.#saveSessions();
       else this.saveNow(key);
     }
@@ -343,6 +399,7 @@ export class RoomStore {
     this.subs.delete(id);
     clearTimeout(this.timers.get(id));
     this.timers.delete(id);
+    this.firstScheduled.delete(id);
     this.rooms.delete(id);
     for (const fn of this.deleteListeners) {
       try {
@@ -357,7 +414,14 @@ export class RoomStore {
   }
 
   // ---------- SSE ----------
-  subscribe(roomId, sessionId, res) {
+  /**
+   * Register an SSE response for a room. `opts.state` = write the current `state` first (through `stateFrame`, so the
+   * stream's board cache starts here). Streams beyond `maxStreamsPerSession` for this session: the oldest gets
+   * `superseded {roomId, reason: 'tabs', max}` and is ended (the client must not auto-reconnect — public/js/api.js
+   * stops its EventSource on that event; reconnecting would evict the next tab, a ping-pong).
+   * @returns {() => void} unsubscribe
+   */
+  subscribe(roomId, sessionId, res, opts = {}) {
     if (!this.subs.has(roomId)) this.subs.set(roomId, new Set());
     const set = this.subs.get(roomId);
     // Cap streams per session per room: close the oldest (tabs left open, reconnect storms).
@@ -365,19 +429,50 @@ export class RoomStore {
     for (const old of mine.slice(0, Math.max(0, mine.length - this.maxStreamsPerSession + 1))) {
       set.delete(old);
       try {
+        old.res.write(sseFrame('superseded', { roomId, reason: 'tabs', max: this.maxStreamsPerSession }));
         old.res.end();
       } catch {
         /* already closed */
       }
     }
-    const sub = { sessionId, res };
+    const sub = { sessionId, res, boardKey: undefined };
     set.add(sub);
+    if (opts.state) {
+      const room = this.rooms.get(roomId);
+      if (room) this.#send(roomId, sub, stateFrame(room, sub));
+    }
     return () => {
       const set = this.subs.get(roomId);
       if (!set) return;
       set.delete(sub);
       if (!set.size) this.subs.delete(roomId);
     };
+  }
+
+  /**
+   * Write one frame to a subscriber. A client that stopped reading (frozen tab, dead link that still looks open) makes
+   * Node buffer every frame in memory: past `maxBufferedBytes` unsent the stream is dropped (destroyed; the route's
+   * close handler unsubscribes and updates presence). A live client's EventSource reconnects and gets a fresh state.
+   * @returns {boolean} false when the stream was dropped
+   */
+  #send(roomId, sub, frame) {
+    try {
+      sub.res.write(frame);
+    } catch {
+      /* closed under us */
+    }
+    const limit = this.maxBufferedBytes;
+    if (!(Number.isFinite(limit) && limit > 0) || !((sub.res.writableLength ?? 0) > limit)) return true;
+    this.subs.get(roomId)?.delete(sub);
+    if (this.subs.get(roomId)?.size === 0) this.subs.delete(roomId);
+    this.log(`느린 SSE 연결을 끊었습니다 (방 ${roomId}, 밀린 데이터 ${Math.round(sub.res.writableLength / 1024)}KB).`);
+    try {
+      if (typeof sub.res.destroy === 'function') sub.res.destroy();
+      else sub.res.end();
+    } catch {
+      /* already gone */
+    }
+    return false;
   }
 
   subscriberCount(roomId, sessionId) {
@@ -391,14 +486,14 @@ export class RoomStore {
   /** Same payload to every subscriber of a room. */
   broadcast(roomId, event, payload) {
     const frame = sseFrame(event, payload);
-    for (const sub of this.subs.get(roomId) ?? []) sub.res.write(frame);
+    for (const sub of [...(this.subs.get(roomId) ?? [])]) this.#send(roomId, sub, frame);
   }
 
-  /** Per-session masked `state` snapshot to every subscriber. */
+  /** Per-session masked `state` snapshot to every subscriber (the board only to streams without its key). */
   broadcastState(roomId) {
     const room = this.rooms.get(roomId);
     if (!room) return;
-    for (const sub of this.subs.get(roomId) ?? []) sub.res.write(sseFrame('state', viewFor(room, sub.sessionId)));
+    for (const sub of [...(this.subs.get(roomId) ?? [])]) this.#send(roomId, sub, stateFrame(room, sub));
   }
 
   async close() {

@@ -591,7 +591,7 @@ function passScores(ctx, c, p) {
   for (const o of opts) {
     let v = null;
     if (o.id === 'wish' && cash - priceOf(o) >= k.reserve * 0.2) v = num(o.chance) * (num(o.money) + luckWorth + pursuit) - priceOf(o) + (persona === 'bold' ? 10 : 0);
-    else if (o.id === 'wishAll' && cash - priceOf(o) >= k.reserve * 0.2) v = luckWorth + pursuit - priceOf(o) - num(o.gift) * num(o.others) * 0.5;
+    else if (o.id === 'wishAll' && cash - priceOf(o) >= k.reserve * 0.2) v = luckWorth - priceOf(o) - num(o.gift) * num(o.others) * 0.5; // never a wish toward 산신령
     else if (o.id === 'buy') {
       const tot = totals(ctx.room, ctx.data);
       const mine = tot.get(c.id) ?? 0;
@@ -686,10 +686,21 @@ function answerWeed(ctx, c, p) {
   return evExam > num(work?.amount) ? 'exam' : 'work';
 }
 
+/**
+ * 생일 파티: gift only when the 답례 stat is useful (job / target job / 수능) and the expected stat worth beats the gift plus
+ * half of it (the money goes to a rival); otherwise the default (모른 척하기).
+ */
+function answerGroupGift(ctx, c, p) {
+  const o = enabled(p).find((x) => x.id === 'gift');
+  const t = o?.thanks;
+  if (!t || !statUseful(ctx, c, t.stat) || (c.money ?? 0) - priceOf(o) < knobs(c, ctx).reserve * 0.2) return null;
+  return num(t.chance) * 60 > priceOf(o) * 1.5 ? 'gift' : null;
+}
+
 /** kind → (ctx, c, pending) → optionId | null (null = the prompt's default). Unknown kinds use the default. */
 export const CPU_ANSWERS = {
   routeChoice: answerRoute,
-  groupGift: () => null, // default (모른 척하기): gifts only move money away
+  groupGift: answerGroupGift,
   habit: answerHabit,
   exam: answerExam,
   career: answerCareer,

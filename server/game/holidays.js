@@ -6,7 +6,7 @@
 // room.erasOpened [eraId] · room.eraQueue [eraId] · room.holidayCount · room.holidays {eraId: seol|chuseok}
 // room.lotto {draws: [{eraId, numbers, entries, at}]} (last balance.lotto.keepDraws)
 import { STAT_KEYS, addLog, addStat, addStats, changeMoney, charById, emit, round5, statName, statText, won } from './effects.js';
-import { cardDef, drawCardId, drawableCards, ensureCards, gainCard } from './cards.js';
+import { cardDef, drawCardId, drawableCards, emitLost, ensureCards, gainCard } from './cards.js';
 import { openPrompt, registerPrompts } from './prompts.js';
 import { effectsFor } from './news.js';
 import { giveTreasure, treasureDef } from './treasures.js';
@@ -55,6 +55,12 @@ const choose = (n, k) => {
   return r;
 };
 
+/** Take one `lotto` card (로또 복권 / 🎟️ 쿠지 응모권) out of a hand for a draw. @returns the card object */
+function takeTicket(c) {
+  const i = c.cards.findIndex((k) => k.id === 'lotto');
+  return c.cards.splice(i, 1)[0];
+}
+
 /** Exact expected prize (만원) of one lotto ticket under `balance.lotto` (hypergeometric). */
 export function lottoExpectedValue(cfg) {
   const { pool, pick } = cfg;
@@ -75,9 +81,9 @@ export function lottoDraw(tx, eraId) {
   const holders = room.characters.filter((c) => ensureCards(c).cards.some((k) => k.id === 'lotto'));
   if (!holders.length) return null;
   const cfg = tx.data.balance.lotto ?? { pool: 20, pick: 3, prizes: { 3: 1000, 2: 100, 1: 10 } };
+  const used = [];
   const entries = holders.map((c) => {
-    const i = c.cards.findIndex((k) => k.id === 'lotto');
-    c.cards.splice(i, 1);
+    used.push([c, takeTicket(c)]);
     return { charId: c.id, numbers: lottoNumbers(tx.rng, cfg.pool, cfg.pick) };
   });
   const numbers = lottoNumbers(tx.rng, cfg.pool, cfg.pick);
@@ -87,6 +93,7 @@ export function lottoDraw(tx, eraId) {
   }
   const winners = entries.filter((e) => e.prize > 0);
   emit(tx, 'lottoDraw', { eraId, numbers, entries: entries.map((e) => ({ ...e, numbers: [...e.numbers] })), tone: winners.length ? 'treasure' : 'neutral', emotion: winners.length ? 'joy' : 'sweat' });
+  for (const [c, card] of used) emitLost(tx, c, card, 'used');
   addLog(tx, `🎱 전국 로또 추첨! 당첨 번호 ${numbers.join(' · ')} (참가 ${entries.length}명)`, { tone: 'treasure' });
   for (const e of entries) {
     const c = charById(room, e.charId);
@@ -161,9 +168,9 @@ export function kujiDraw(tx, eraId) {
   const holders = room.characters.filter((c) => ensureCards(c).cards.some((k) => k.id === 'lotto'));
   if (!holders.length) return null;
   const cfg = tx.data.balance.kuji ?? { prizes: [] };
+  const used = [];
   const entries = holders.map((c) => {
-    const i = c.cards.findIndex((k) => k.id === 'lotto');
-    c.cards.splice(i, 1);
+    used.push([c, takeTicket(c)]);
     const eff = effectsFor(tx, c);
     const box = kujiPrizes(cfg, eff.kujiLuck ?? 1);
     let r = tx.rng.next();
@@ -188,6 +195,7 @@ export function kujiDraw(tx, eraId) {
   const top = entries.reduce((a, e) => (a == null || e.rank < a.rank ? e : a), null);
   const won1 = entries.some((e) => kujiWon(e.prize));
   emit(tx, 'lottoDraw', { eraId, kuji: true, entries: entries.map((e) => ({ ...e, prize: { ...e.prize } })), tone: won1 ? 'treasure' : 'neutral', emotion: top?.rank === 1 ? 'shock' : won1 ? 'joy' : 'sweat' });
+  for (const [c, card] of used) emitLost(tx, c, card, 'used');
   addLog(tx, `🎟️ 쿠지 뽑기! 응모권을 가진 ${entries.length}명이 한 장씩 뽑아요`, { tone: 'treasure' });
   for (const e of entries) {
     const c = charById(room, e.charId);

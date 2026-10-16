@@ -150,7 +150,8 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
 
   router.get('/rooms', requireAdmin, (req, res) => {
     // expiresAt = when the hourly prune deletes the room (finished / idle lobby), null = kept
-    res.json({ rooms: store.listRooms().map((r) => ({ ...adminSummary(r), expiresAt: store.roomExpiresAt?.(r) ?? null })) });
+    // broken = a restored save the engine cannot run (GameRunner.restore; delete it), else null
+    res.json({ rooms: store.listRooms().map((r) => ({ ...adminSummary(r), expiresAt: store.roomExpiresAt?.(r) ?? null, broken: runner.brokenReason?.(r.id) ?? null })) });
   });
 
   router.post('/rooms', requireAdmin, (req, res) => {
@@ -168,7 +169,7 @@ export function createAdminRouter({ store, runner, adminPassword, charArt = null
   };
 
   router.get('/rooms/:id', requireAdmin, withRoom, (req, res) => {
-    res.json({ room: { ...adminView(req.room), expiresAt: store.roomExpiresAt?.(req.room) ?? null } });
+    res.json({ room: { ...adminView(req.room), expiresAt: store.roomExpiresAt?.(req.room) ?? null, broken: runner.brokenReason?.(req.room.id) ?? null } });
   });
 
   router.post('/rooms/:id/start', requireAdmin, withRoom, (req, res) => {

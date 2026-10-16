@@ -175,8 +175,8 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
       <div class="rs">
         ${room.result.forced ? '<p class="small muted">관리자가 게임을 종료했어요. 현재 자산 기준 순위입니다.</p>' : ''}
         <div class="rs-tools">
-          <button type="button" class="btn small" data-rs="replay">▶ 결산 방송 다시 보기</button>
-          <button type="button" class="btn small primary" data-rs="photo">📸 단체 사진 찍기</button>
+          <button type="button" class="btn small" data-rs="replay" aria-label="결산 방송 다시 보기">▶ <span class="rs-tl-long">결산 방송 </span>다시 보기</button>
+          <button type="button" class="btn small primary" data-rs="photo" aria-label="단체 사진 찍기">📸 단체 사진<span class="rs-tl-long"> 찍기</span></button>
         </div>
         <section class="rs-sec rs-podium" data-rs="podium" aria-label="시상대"></section>
         <section class="rs-sec rs-mvp" data-rs="mvp" aria-label="MVP 투표" hidden></section>
@@ -251,13 +251,13 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
         return `<li class="rank-row${r.rank === 1 ? ' first' : ''}${c?.isMe ? ' me' : ''}${mvp ? ' mvp' : ''}${full && i >= 3 ? ' rk-fold' : ''}" style="--k:${rows.length - 1 - i}" data-char="${esc(r.charId)}">
           <span class="rk">${medal(r.rank)}</span>
           <span class="rk-portrait">${c ? portraitHtml(c, { size: 52 }) : ''}</span>
-          <span class="rk-body"><b>${esc(r.name)}</b>${mvp ? ' <span class="rs-crown" title="MVP">👑 MVP</span>' : ''} <small class="muted">${c ? ownerName(c) : ''}</small>${
+          <div class="rk-body"><div class="rk-head"><b>${esc(r.name)}</b>${mvp ? ' <span class="rs-crown" title="MVP">👑 MVP</span>' : ''} <small class="muted">${c ? ownerName(c) : ''}</small></div>${
             ts.length ? `<span class="rs-titles">${ts.map((t) => `<span class="rs-title" title="${esc(t.desc)}">${esc(t.icon)} ${esc(t.name)}</span>`).join('')}</span>` : ''
           }
             <span class="rs-bar" role="img" aria-label="${esc(b.segments.map((s) => `${s.label} ${won(s.value)}`).join(', ') || '자산 없음')}">${b.segments
               .map((s) => `<i class="seg" style="--w:${s.pct}%;--c:${s.color}" title="${esc(`${s.icon} ${s.label} ${won(s.value)}`)}"></i>`)
               .join('')}${b.negative ? `<i class="seg neg" style="--w:${b.negPct}%" title="${esc(`빚 -${won(b.negative)}`)}"></i>` : ''}</span>
-            ${extra}</span>
+            ${extra}</div>
           <span class="rk-total">${won(r.total)}</span>
         </li>`;
       })
@@ -475,6 +475,7 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
     const st = mvpState(S.room, { now: t });
     const showVote = !!S.show && !!st?.canVote && !st.myVote;
     voteBtn.hidden = !showVote;
+    overlay.classList.toggle('has-vote', showVote); // phones: the pill sits at the bottom → the MC booth moves above it
     if (showVote) {
       voteBtn.textContent = `👑 MVP 투표하기${st.closesAt ? ` · ${countdownText(st.closesAt - t)}` : ''}`;
       voteBtn.classList.toggle('urgent', !!st.closesAt && st.closesAt - t < 20000);
@@ -756,6 +757,7 @@ export function createResultScreen({ getMeta, cutin, act, toast = () => {}, rowE
     S.show = null;
     skipBtn.hidden = true;
     voteBtn.hidden = true;
+    overlay.classList.remove('has-vote');
     if (tk) cutin.hide();
     overlay.hidden = true;
     $o.body.innerHTML = '';

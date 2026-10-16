@@ -37,7 +37,7 @@
     "lapMin": 18,
     "lapMax": 100,
     "payday": {"min": 18, "max": 25},
-    "pass": {"every": 27, "min": 2, "max": 4},
+    "pass": {"every": 45, "min": 1, "max": 3},
     "routeShare": 0.45,
     "forkAt": 0.3
   },
@@ -184,7 +184,7 @@
         {"type": "heart", "weight": 1},
         {"type": "house", "weight": 1}
       ],
-      "eraOverrides": {"_comment": "시대별 루트 칸 가중치·금액 배수 덮어쓰기 {시대: {칸 종류: {weight?, scale?}}}"},
+      "eraOverrides": {"_comment": "시대별 루트 칸 가중치·금액 배수 덮어쓰기 {시대: {칸 종류: {weight?, scale?}}}", "young": {"money": {"scale": 1.6}, "loss": {"weight": 1}}},
       "labels": {"money": ["특허 보상금", "승진 보너스", "야근 수당", "스톡옵션"], "loss": ["회식 2차", "자기계발비", "야근 택시비"]}
     },
     "money": {
@@ -198,6 +198,7 @@
         {"type": "temple", "weight": 2},
         {"type": "jeju", "weight": 1}
       ],
+      "eraOverrides": {"_comment": "E2E-4 루트 균형: 청년 금전 루트 돈 칸 가중치 3, 중년 금전 루트 보물 0.5 · 부동산 2 (금전 루트가 중년 1위를 독차지하던 문제).", "young": {"money": {"weight": 3}}, "middle_age": {"treasure": {"weight": 0.5}, "house": {"weight": 2}}},
       "labels": {"money": ["코인 떡상", "주식 배당", "로또 3등", "경매 낙찰 차익"], "loss": ["코인 떡락", "세무조사", "사기 투자", "주식 물타기"]}
     }
   },

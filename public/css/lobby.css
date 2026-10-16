@@ -90,7 +90,9 @@ body.cz-open .reaction-bar { display: none; }
   appearance: none; border: 0; background: var(--bg-2); color: var(--ink); width: 36px; height: 36px;
   border-radius: 50%; font-size: 1rem; cursor: pointer;
 }
-.cz-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+/* phones: the dialog (.customizer) is the scroller and the body keeps its content height (never shrinks under the
+   content) → the sticky footer stays pinned to the bottom of the screen at every scroll position (Fix-B2 #1) */
+.cz-body { display: flex; flex-direction: column; flex: 1 0 auto; }
 .cz-stage {
   display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'pv tools' 'pv name';
   gap: 6px 12px; align-items: center; padding: 12px 16px 4px;
@@ -188,7 +190,7 @@ body.cz-open .reaction-bar { display: none; }
     width: min(940px, 100%); height: min(680px, 100%); border-radius: var(--radius); overflow: hidden;
     box-shadow: 0 20px 60px rgba(60, 30, 10, 0.35);
   }
-  .cz-body { flex-direction: row; overflow: hidden; }
+  .cz-body { flex: 1 1 auto; min-height: 0; flex-direction: row; overflow: hidden; }
   .cz-stage {
     width: 320px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     gap: 12px; padding: 20px; border-right: 1px solid var(--line); overflow: auto;
@@ -306,3 +308,73 @@ body.spectator .lobby-grid { padding-bottom: 90px; }
 .cpu-pers.p-normal { background: #e0f2fe; color: #075985; }
 .cpu-pers.p-bold { background: #ffe4e6; color: #9f1239; }
 
+
+/* ---------- Fix-B2 layout pass (join / lobby / picker shell / reaction bar) ---------- */
+/* join: an empty error line takes no room (the gap above 입장하기 = the field gap) */
+.join-card .form-error { margin: 0 0 8px; min-height: 0; }
+.join-card .form-error:empty { display: none; }
+/* top bar content lines up with the 1200 px page column on wide screens (the game screen keeps its own width) */
+@media (min-width: 1232px) {
+  body:not([data-screen='game']) .topbar { padding-inline: calc((100% - 1200px) / 2 + 16px); }
+}
+/* lobby info: mode summary = one bold line + a small era line; the world line = bold name + plain description */
+.lobby-info h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.lobby-info .code-chip { margin-left: 0; }
+.lobby-mode { margin: 0 0 6px; font-size: 0.92rem; line-height: 1.4; color: var(--muted); word-break: keep-all; overflow-wrap: anywhere; }
+.lobby-mode b { color: var(--ink); font-weight: 800; }
+.lobby-mode .lm-eras { display: block; font-size: 0.8rem; margin-top: 2px; }
+.lobby-mode .lm-era, .lobby-mode .lm-x { white-space: nowrap; }
+.lobby-info .world-line { font-weight: 600; font-size: 0.82rem; word-break: keep-all; }
+.lobby-info .world-line b { font-weight: 800; white-space: nowrap; margin-right: 2px; }
+/* players: one shrinkable column (a 12-char name never widens the page at 320 px) */
+.player-list { grid-template-columns: minmax(0, 1fr); }
+.player > :not(.pname) { flex: none; }
+.player .pchars, .player .tag { white-space: nowrap; }
+/* empty states span the whole grid, centred */
+.char-grid > .empty-hint, .my-chars > .empty-hint { grid-column: 1 / -1; text-align: center; margin: 0; padding: 14px 8px; word-break: keep-all; }
+/* 편집 / 삭제: never one syllable per line */
+.char-actions .btn { flex: 1 1 0; min-width: 0; max-width: 64px; padding-inline: 4px; white-space: nowrap; word-break: keep-all; }
+/* my panel: the character list scrolls inside, 「+ 캐릭터 만들기」 / 「준비 완료」 always stay visible */
+.sheet-body { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; overflow: hidden; }
+#my-list-wrap { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+#my-list-wrap > h2, .my-actions { flex: none; }
+.my-chars { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px; margin: -2px -2px 10px; }
+@media (min-width: 769px) {
+  /* the sticky sidebar ends above the reaction bar (≈ 60 px incl. its 16 px offset) */
+  .my-panel { max-height: calc(100vh - var(--topbar-h) - 32px - 60px); }
+  /* 👀 spectators / TV: no sidebar → the lobby column is centred instead of leaving the right column empty */
+  body.spectator .lobby-grid { grid-template-columns: minmax(0, 1fr); max-width: 880px; margin-inline: auto; }
+}
+/* phone landscape (short screens): compact sidebar, the two buttons side by side */
+@media (min-width: 769px) and (max-height: 520px) {
+  .lobby-grid { grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; }
+  .sheet-body { padding: 10px 12px; }
+  #my-list-wrap > h2 { font-size: 0.95rem; margin-bottom: 6px; }
+  .my-actions { grid-template-columns: 1fr 1fr; }
+  .my-actions .btn { padding-inline: 8px; font-size: 0.85rem; line-height: 1.2; word-break: keep-all; }
+  .my-chars { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+}
+/* CPU tools: one row height for picker / add / ✕ (the global select min-height is 44 px) */
+.cpu-chip select, .cpu-add select { min-height: 30px; height: 30px; padding: 0 6px; border-radius: 999px; line-height: 1; }
+.cpu-add .btn { min-height: 30px; }
+.cpu-chip { padding: 2px 3px 2px 10px; min-height: 36px; }
+.cpu-chip .btn { width: 30px; height: 30px; min-height: 30px; padding: 0; border-radius: 50%; flex: none; }
+@media (pointer: coarse) {
+  .cpu-chip select, .cpu-add select { min-height: 40px; height: 40px; }
+  .cpu-add .btn, .char-actions .btn { min-height: 40px; }
+  .cpu-chip { min-height: 46px; }
+  .cpu-chip .btn { width: 40px; height: 40px; min-height: 40px; }
+}
+/* reaction bar: 40 px targets on touch screens; when the row doesn't fit it scrolls and the hidden side fades out (lobby;
+   the game screen has its own fade classes in game.css) */
+.reaction-bar { overscroll-behavior-x: contain; }
+body:not([data-screen='game']) .reaction-bar[data-more='right'] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+body:not([data-screen='game']) .reaction-bar[data-more='left'] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px); mask-image: linear-gradient(90deg, transparent, #000 28px); }
+body:not([data-screen='game']) .reaction-bar[data-more='both'] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+@media (pointer: coarse) {
+  .react { min-width: 40px; height: 40px; padding: 0 6px; }
+}
+/* superseded stream (this session has the room open in ≥ 4 tabs): the connection badge becomes a 「● 다시 연결」 button */
+.conn.gone { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; font-weight: 800; }
+@media (max-width: 430px) { .conn.gone { width: auto; } }
+@media (pointer: coarse) { .conn.gone { display: inline-flex; align-items: center; min-height: 40px; } }
