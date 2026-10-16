@@ -1,11 +1,19 @@
 // Three.js board scene (Stage 4): town + track + route ribbons, pawns, roulette overlay, event animations.
-// Loop maps (원작식 순환 맵): only the current shared era's loop is built (`setBoard(board, {eraIndex})`); an
-// `eraTransition` event fades out, rebuilds the static board for the new era (the old geometry is disposed), puts every
-// pawn on the start tile and tours the new loop with the camera. Hops follow wraps (last tile → start), route branches,
-// the pass pause (`moved.halted: 'pass'` then a second `moved {resumed: true}`) and forced stops (payday / fork).
+// Loop maps (원작식 순환 맵): only the current shared era's loop is shown (`setBoard(board, {eraIndex})`); an
+// `eraTransition` event fades out, swaps in the new era's static board (prebuilt in idle time during the era's last
+// rounds — `prepareEra(i)` — else built on the spot), puts every pawn on the start tile and shows the whole new loop
+// (camera overview) before following the current pawn again. The old era's group is disposed after the fade.
+// Hops follow wraps (last tile → start), route branches, the pass pause (`moved.halted: 'pass'` then a second
+// `moved {resumed: true}`) and forced stops (payday / fork).
+//
+// Camera (camfit.js): `setView('follow' | 'overview')` — follow = a close orbit on the current pawn, overview = the
+// whole shown era fitted into the canvas (exact perspective fit of tiles + lanes, pawns, signs and labels for the
+// canvas aspect and vertical FOV, refitted on resize / rotation). TV quality always shows the overview.
 //
 //   const b3 = createBoard3D(canvas, { quality: 'high'|'low'|'tv', meta, hooks });
 //   b3.setBoard(room.board, {eraIndex}); b3.setCharacters(room.characters); b3.setCurrent(charId, {mine, subtitle});
+//   b3.prepareEra(i)               // build era i's static board in idle time (the next era, during the last rounds)
+//   b3.setView('overview')         // 🗺️ whole-map view (hooks.onViewChange(mode) reports every change)
 //   await b3.playEvents(events);   // SSE `events` → animator queue (returns when the queue drains)
 //   b3.onIdle(cb) / b3.isBusy()    // the 2D UI shows decision modals only after animations finish
 //   b3.animator.pause()/resume()/enqueue(fn)  // Stage 5 cut-ins take over the screen between steps
@@ -14,7 +22,9 @@
 // pixelRatio 1, HemisphereLight + 1 DirectionalLight, MeshLambertMaterial + vertex colors.
 // Throws when WebGL is unavailable (the caller falls back to the 2D board).
 import * as THREE from 'three';
-import { layoutBoard, planProps, slotOffset, eraSweepPoints, ROUTE_ORDER, ROUTE_COLORS, themeFor, boundsOf } from './layout.js';
+import { layoutBoard, planProps, slotOffset, ROUTE_ORDER, ROUTE_COLORS, themeFor, boundsOf } from './layout.js';
+import { overviewView, zoneView, viewPoints, viewExtent, quantizeAngle, fogRange, defaultOrbit as orbitDefaults, followRadius, isPortrait, TV_ORBIT, LOOK_Y, CAMERA_FOV, coverInset, ndcBox } from './camfit.js';
+import { runSteps, stepStats } from './chunks.js';
 import { haltNote, tileIdForPosition as loopTileId } from '../shared/loop.js';
 import { QUALITY_PRESETS, renderSize, particleCount } from './quality.js';
 import { createMascots } from './mascots.js';
@@ -23,11 +33,11 @@ import { createPawn, loadPawnTemplate } from './pawn.js';
 import { createRoulette3D } from './roulette3d.js';
 import { createEmotionLayer, createThrottle } from './emotion.js';
 import { createParticles, BURST_FOR_TILE } from './particles.js';
-import { createOrbitControls } from './controls.js';
+import { createOrbitControls, ORBIT_LIMITS } from './controls.js';
 import { buildProps } from './props.js';
 import { stripGeometry, mergeColored, colored, mat4 } from './geo.js';
-import { makeTextSprite, disposeSprite, canvasHasEmoji, canvasTexture, FONT_STACK } from './sprites.js';
-import { clamp, lerp, easeInOutCubic, catmullRom, arcLengths, pointAt, rouletteRegion, hopPose, landPose, bobPose, breathePose } from './math.js';
+import { textCanvas, canvasHasEmoji, canvasTexture, FONT_STACK } from './sprites.js';
+import { clamp, lerp, easeInOutCubic, rouletteRegion, hopPose, landPose, bobPose, breathePose } from './math.js';
 import { loadAssetIndex, findAsset } from '../assets.js';
 import { won } from '../format.js';
 import { cardLostInfo, modRange, spinNote } from '../shared/cards.js';
@@ -108,6 +118,7 @@ function createTweens() {
  * @param {{ quality?: string, meta?: object, hooks?: {
  *   onStep?: (event) => void,          // engine event reached in the animation (toasts / side panel floats)
  *   onRouletteTap?: () => void,        // tap on the idle roulette (spin shortcut)
+ *   onViewChange?: (mode) => void,     // camera view switched ('follow' | 'overview')
  *   onError?: (err) => void }}} opts
  */
 export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {} } = {}) {
@@ -131,14 +142,24 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   const SKY = new THREE.Color('#bfe6ff');
   scene.background = SKY;
   scene.fog = new THREE.Fog(SKY, 55, 140);
-  scene.add(new THREE.HemisphereLight(0xf4fbff, 0x7f9a60, 2.1));
+  const hemi = new THREE.HemisphereLight(0xf4fbff, 0x7f9a60, 2.1);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff1d6, 1.5);
   sun.position.set(-12, 30, 18);
   scene.add(sun);
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 260);
+  const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.5, 260);
+  // warm-up scene: same lights + fog (→ the same shader programs) for uploading a prebuilt era off screen
+  const warmScene = new THREE.Scene();
+  warmScene.fog = scene.fog;
+  warmScene.add(hemi.clone(), sun.clone());
 
+  // shared by every era of a board (never disposed with an era's group): vertex-colour / tile / ground materials, the
+  // board-wide icon atlas and the cached label textures
   const vcMat = new THREE.MeshLambertMaterial({ vertexColors: true });
   const tileMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const SHARED = new Set([vcMat, tileMat, groundMat]);
+  const shared = { atlas: null, labels: new Map(), grass: null };
   const tweens = createTweens();
   const roulette = createRoulette3D();
   const emotionThrottle = createThrottle(900);
@@ -152,6 +173,12 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     wantEra: null, // the state's era (switched when the eraTransition animation plays, else once idle)
     staticGroup: null,
     labels: { routes: {}, eras: [] },
+    eras: new Map(), // eraIndex → built (or building) era entry of the current board (the shown one + a prebuilt next)
+    shown: null, // the shown era entry
+    layoutSeq: 0, // bumps on every swap
+    extent: 0, // shown era: farthest drawn point from its centre (fog / far plane)
+    warmQueue: [], // prebuilt entries waiting for their off-screen upload pass
+    lastBuild: null, // timings of the last shown era (stats().build)
     pawns: new Map(), // charId → { pawn, tileId, moving, order, target: Vector3, finished, settleAt? }
     reduced: reducedMotion(), // prefers-reduced-motion: no idle breathing / settle wobble (hops stay)
     chars: [],
@@ -172,20 +199,20 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     disposed: false,
   };
 
-  // camera rig (orbit state mutated by controls)
-  const defaultOrbit = () => {
-    const w = canvas.clientWidth || 1;
-    const h = canvas.clientHeight || 1;
-    const portrait = w < h * 0.9;
-    return { azimuth: portrait ? -1.15 : -0.3, polar: portrait ? 0.9 : 0.95, radius: portrait ? 19 : 17, panX: 0, panZ: 0 };
-  };
+  // camera rig (orbit state mutated by controls; camfit.js has the pure defaults / fit math)
+  const defaultOrbit = () => orbitDefaults(canvas.clientWidth || 1, canvas.clientHeight || 1);
   const orbit = defaultOrbit();
+  orbit.maxRadius = ORBIT_LIMITS.maxRadius; // raised to the whole-map radius (controls clamp the zoom with it)
   const rig = {
     target: new THREE.Vector3(),
     goal: new THREE.Vector3(),
     follow: null, // charId
-    focus: null, // Vector3 (era focus)
-    sweep: null, // { poly, acc, t, sec, resolve, radius }
+    view: 'follow', // 'follow' (current pawn) | 'overview' (the whole shown era)
+    hold: null, // timed camera shot: { kind: 'overview' | 'zone', view?, t, sec, swing, resolve }
+    ov: null, // the last whole-map fit used
+    ovCache: new Map(), // fit key → whole-map fit (a few angles: the transition swing, a drag)
+    cover: { top: 0, bottom: 0 }, // canvas fractions hidden under page overlays (sticky spin dock, reaction bar, top bar)
+    avoid: [], // canvas CSS-px rects of buttons over the board (🗺️ view toggle) the whole map should stay clear of
     userZoom: false,
     userPan: false,
     userRotate: false,
@@ -265,19 +292,53 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     return t ? out.set(t.x, TILE_TOP, t.z) : out.set(0, TILE_TOP, 0);
   }
 
-  function disposeStatic() {
-    if (!S.staticGroup) return;
-    S.staticGroup.traverse((o) => {
-      if (o.isSprite) return disposeSprite(o);
-      o.geometry?.dispose();
-      if (o.material && o.material !== vcMat && o.material !== tileMat) {
-        o.material.map?.dispose();
-        o.material.dispose();
+  // ---------- board building ----------
+  // One entry per era of the current board ({index, group, layout, labels, …}): the shown era plus, during the era's
+  // last rounds, the next one built step by step in idle time (`prepareEra`) and uploaded off screen (`warmUp`), so the
+  // era transition only swaps groups. Materials, the board-wide icon atlas and label textures are shared by every era
+  // (no shader recompiles, no texture re-uploads); an era's own geometry is disposed after the transition's fade.
+  const eraTilesOf = (era) => [...(era?.tiles ?? []), ...Object.values(era?.routes ?? {}).flatMap((r) => r.tiles ?? [])];
+  const idle = (cb) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(cb, { timeout: 400 }) : setTimeout(() => cb(null), 30));
+
+  /** Dispose an era group's own GPU resources (shared materials, the atlas and label textures stay). */
+  function disposeGroup(g) {
+    if (!g) return;
+    g.removeFromParent();
+    g.traverse((o) => {
+      // sprites share three's internal quad geometry: only their own (uncached) material goes
+      if (!o.isSprite) o.geometry?.dispose();
+      if (o.isInstancedMesh) o.dispose(); // its instance matrix / colour buffers
+      const m = o.material;
+      if (m && !SHARED.has(m)) {
+        m.map?.dispose();
+        m.dispose();
       }
     });
-    S.staticGroup.removeFromParent();
+  }
+
+  /** Drop every era build (board / quality change) plus the board-wide atlas and label textures. */
+  function clearEras() {
+    for (const E of S.eras.values()) {
+      E.job?.cancel();
+      disposeGroup(E.group);
+    }
+    S.eras.clear();
+    S.warmQueue = [];
+    S.shown = null;
     S.staticGroup = null;
     S.labels = { routes: {}, eras: [] };
+    if (shared.atlas) {
+      shared.atlas.texture.dispose();
+      shared.atlas.material.dispose();
+      SHARED.delete(shared.atlas.material);
+      shared.atlas = null;
+    }
+    for (const l of shared.labels.values()) {
+      l.material.map?.dispose();
+      l.material.dispose();
+      SHARED.delete(l.material);
+    }
+    shared.labels.clear();
   }
 
   function iconKey(t) {
@@ -332,8 +393,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         ctx.fillText(ribbon, x + CELL / 2, y + CELL * 0.815);
       }
     };
-    const typeOf = new Map(entries.map((e) => [e.key, e.type]));
-    keys.forEach((k, i) => draw(i, k, typeOf.get(k)));
+    const info = new Map(entries.map((e) => [e.key, e]));
+    keys.forEach((k, i) => draw(i, info.get(k).glyph, info.get(k).type));
     const texture = canvasTexture(c);
     const cellOf = (key) => {
       const i = keys.indexOf(key);
@@ -346,14 +407,14 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     loadAssetIndex()
       .then(() => {
         keys.forEach((k, i) => {
-          const type = typeOf.get(k);
-          const tile = k === '📝' ? 'school' : ICON_ASSET_TILE[type];
+          const { glyph, type } = info.get(k);
+          const tile = glyph === '📝' ? 'school' : ICON_ASSET_TILE[type];
           const a = tile ? findAsset({ kind: 'icon', tile }) : null;
           if (!a?.url) return;
           const img = new Image();
           img.onload = () => {
-            if (S.disposed) return;
-            draw(i, k, type, img);
+            if (S.disposed || shared.atlas?.texture !== texture) return;
+            draw(i, glyph, type, img);
             texture.needsUpdate = true;
           };
           img.src = a.url;
@@ -363,63 +424,96 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     return { texture, cellOf };
   }
 
-  function buildStatic() {
-    const L = S.layout;
-    const g = new THREE.Group();
-    const props = planProps(L, { density: preset.props, seed: 11 + S.eraIndex });
-    const pb = boundsOf([...Object.values(L.tiles), ...props], 0);
-    const eraId = L.era.id;
+  /** The board-wide icon atlas (every era's tile glyphs; one texture + material shared by all eras). */
+  function ensureAtlas() {
+    if (shared.atlas?.boardKey === S.boardKey) return shared.atlas;
+    const entries = [];
+    for (const era of S.board?.eras ?? []) for (const t of eraTilesOf(era)) entries.push({ key: `${iconKey(t)}|${t.type}`, glyph: iconKey(t), type: t.type });
+    const atlas = buildAtlas(entries);
+    atlas.material = new THREE.MeshBasicMaterial({ map: atlas.texture, transparent: true, depthWrite: false });
+    atlas.boardKey = S.boardKey;
+    SHARED.add(atlas.material);
+    shared.atlas = atlas;
+    return atlas;
+  }
 
-    // ground: one tinted plane under this era's town (vertex colours → the grass texture only shifts the hue)
+  /** Billboard label whose texture + material are cached per text / style (identical payday signs share one). */
+  function labelSprite(text, { height = 0.6, renderOrder = 20, ...style } = {}) {
+    const key = JSON.stringify([text, style]);
+    let l = shared.labels.get(key);
+    if (!l) {
+      const c = textCanvas(text, style);
+      const material = new THREE.SpriteMaterial({ map: canvasTexture(c), transparent: true, depthTest: false, depthWrite: false });
+      SHARED.add(material);
+      l = { material, aspect: c.width / c.height };
+      shared.labels.set(key, l);
+    }
+    const sp = new THREE.Sprite(l.material);
+    sp.scale.set(height * l.aspect, height, 1);
+    sp.renderOrder = renderOrder;
+    sp.userData.aspect = l.aspect;
+    sp.userData.baseHeight = height;
+    return sp;
+  }
+
+  /** Ground vertex colours: the era tint, lightened under the grass texture once it is loaded. */
+  function tintGround(geo, eraId) {
+    const col = geo.attributes.color;
+    const c = new THREE.Color(themeFor(eraId).ground);
+    if (shared.grass) c.lerp(new THREE.Color(1, 1, 1), 0.55);
+    for (let i = 0; i < col.count; i++) col.setXYZ(i, c.r, c.g, c.b);
+    col.needsUpdate = true;
+  }
+
+  // the generated grass texture: loaded once, shared by every era's ground (UVs in world units / 9)
+  loadAssetIndex()
+    .then(() => {
+      const a = findAsset({ kind: 'texture', surface: 'grass' });
+      if (!a?.url || S.disposed) return;
+      const img = new Image();
+      img.onload = () => {
+        if (S.disposed) return;
+        // soften the generated texture (low contrast "detail" layer under the era tint)
+        const cv = document.createElement('canvas');
+        cv.width = img.naturalWidth || 512;
+        cv.height = img.naturalHeight || 512;
+        const cx = cv.getContext('2d');
+        cx.drawImage(img, 0, 0, cv.width, cv.height);
+        cx.fillStyle = 'rgba(196, 222, 170, 0.55)';
+        cx.fillRect(0, 0, cv.width, cv.height);
+        const tex = canvasTexture(cv);
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        shared.grass = tex;
+        groundMat.map = tex;
+        groundMat.needsUpdate = true;
+        for (const E of S.eras.values()) if (E.ground) tintGround(E.ground, E.eraId);
+      };
+      img.src = a.url;
+    })
+    .catch(() => {});
+
+  // ground: one tinted plane under this era's town (vertex colours → the grass texture only shifts the hue)
+  function buildGround(E) {
+    const pb = boundsOf([...Object.values(E.layout.tiles), ...E.props], 0);
     const margin = 46;
     const W = pb.maxX - pb.minX + margin * 2;
     const D = pb.maxZ - pb.minZ + margin * 2;
     const ground = new THREE.PlaneGeometry(W, D, 1, 1);
     ground.rotateX(-Math.PI / 2);
     ground.translate((pb.minX + pb.maxX) / 2, 0, (pb.minZ + pb.maxZ) / 2);
-    const gp = ground.attributes.position;
-    const gc = new Float32Array(gp.count * 3);
-    const tmp = new THREE.Color(themeFor(eraId).ground);
-    for (let i = 0; i < gp.count; i++) gc.set([tmp.r, tmp.g, tmp.b], i * 3);
-    ground.setAttribute('color', new THREE.BufferAttribute(gc, 3));
-    const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-    const white3 = new THREE.Color(1, 1, 1);
-    const groundMesh = new THREE.Mesh(ground, groundMat);
-    g.add(groundMesh);
-    loadAssetIndex()
-      .then(() => {
-        const a = findAsset({ kind: 'texture', surface: 'grass' });
-        if (!a?.url || S.disposed || S.staticGroup !== g) return;
-        const img = new Image();
-        img.onload = () => {
-          if (S.disposed || S.staticGroup !== g) return;
-          // soften the generated texture (low contrast "detail" layer under the era tint)
-          const cv = document.createElement('canvas');
-          cv.width = img.naturalWidth || 512;
-          cv.height = img.naturalHeight || 512;
-          const cx = cv.getContext('2d');
-          cx.drawImage(img, 0, 0, cv.width, cv.height);
-          cx.fillStyle = 'rgba(196, 222, 170, 0.55)';
-          cx.fillRect(0, 0, cv.width, cv.height);
-          const tex = canvasTexture(cv);
-          tex.generateMipmaps = true;
-          tex.minFilter = THREE.LinearMipmapLinearFilter;
-          tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-          tex.repeat.set(W / 9, D / 9);
-          const col = ground.attributes.color;
-          for (let i = 0; i < col.count; i++) {
-            tmp.setRGB(col.getX(i), col.getY(i), col.getZ(i)).lerp(white3, 0.55);
-            col.setXYZ(i, tmp.r, tmp.g, tmp.b);
-          }
-          col.needsUpdate = true;
-          groundMat.map = tex;
-          groundMat.needsUpdate = true;
-        };
-        img.src = a.url;
-      })
-      .catch(() => {});
+    const uv = ground.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * W) / 9, (uv.getY(i) * D) / 9); // = repeat (W/9, D/9)
+    ground.setAttribute('color', new THREE.BufferAttribute(new Float32Array(ground.attributes.position.count * 3), 3));
+    tintGround(ground, E.eraId);
+    E.ground = ground;
+    E.group.add(new THREE.Mesh(ground, groundMat));
+  }
 
-    // roads: the closed ring (curb + sand) and the route ribbons — one merged mesh
+  // roads: the closed ring (curb + sand) and the route ribbons — one merged mesh
+  function buildRoads(E) {
+    const L = E.layout;
     const ring = [];
     for (let i = 0; i < L.ring.length - 1; i += 2) ring.push(L.ring[i]);
     if (L.closed !== false) ring.push(L.ring[0], L.ring[2] ?? L.ring[0]); // closed: overlap the seam
@@ -430,10 +524,12 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       if (!r) continue;
       roadParts.push(stripGeometry(r.ribbon, 2.3, 0.03, '#ffffff'), stripGeometry(r.ribbon, 1.9, 0.038, ROUTE_COLORS[key]));
     }
-    g.add(new THREE.Mesh(mergeColored(roadParts), vcMat));
+    E.group.add(new THREE.Mesh(mergeColored(roadParts), vcMat));
+  }
 
-    // tiles: instanced base + coloured top (paydays / pass tiles / the fork a bit bigger)
-    const list = Object.values(L.tiles);
+  // tiles: instanced base + coloured top (paydays / pass tiles / the fork a bit bigger)
+  function buildTiles(E) {
+    const list = Object.values(E.layout.tiles);
     const base = new THREE.InstancedMesh(new THREE.BoxGeometry(TILE_SIZE + 0.2, 0.12, TILE_SIZE + 0.2), tileMat, list.length);
     const top = new THREE.InstancedMesh(new THREE.BoxGeometry(TILE_SIZE, 0.16, TILE_SIZE), tileMat, list.length);
     const c = new THREE.Color();
@@ -448,13 +544,15 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     for (const m of [base, top]) {
       m.instanceMatrix.needsUpdate = true;
       m.computeBoundingSphere();
-      g.add(m);
+      E.group.add(m);
     }
+  }
 
-    // markers (one merged mesh): 💵 payday = gold coin ring + sign post, 🎪 pass tile = a little striped tent
-    const flat = [...(S.board.eras[S.eraIndex]?.tiles ?? []), ...Object.values(S.board.eras[S.eraIndex]?.routes ?? {}).flatMap((r) => r.tiles)];
+  // markers (one merged mesh): 💵 payday = gold coin ring + sign post, 🎪 pass tile = a little striped tent
+  function buildMarkers(E) {
+    const L = E.layout;
     const marks = [];
-    for (const t of flat) {
+    for (const t of eraTilesOf(S.board.eras[E.index])) {
       const lt = L.tiles[t.id];
       if (!lt) continue;
       const nx = -Math.cos(lt.yaw); // outwards (+normal of the walking direction)
@@ -482,18 +580,20 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         marks.push(colored(new THREE.BoxGeometry(0.6, 0.38, 0.04), '#e2504c', mat4(lt.x - nx * 1.2 + 0.3, 1.4, lt.z - nz * 1.2)));
       }
     }
-    if (marks.length) g.add(new THREE.Mesh(mergeColored(marks), vcMat));
+    if (marks.length) E.group.add(new THREE.Mesh(mergeColored(marks), vcMat));
+  }
 
-    // icons: one merged quad mesh on an atlas
-    const entries = flat.map((t) => ({ id: t.id, key: iconKey(t), type: t.type }));
-    const atlas = buildAtlas(entries);
+  // icons: one merged quad mesh on the board-wide atlas
+  function buildIcons(E) {
+    const L = E.layout;
+    const atlas = ensureAtlas();
     const pos = [];
     const uv = [];
-    for (const e of entries) {
-      const t = L.tiles[e.id];
+    for (const t0 of eraTilesOf(S.board.eras[E.index])) {
+      const t = L.tiles[t0.id];
       if (!t) continue;
-      const Q = 0.58 * (BIG_TILE[e.type] ?? 1);
-      const [u0, v0, u1, v1] = atlas.cellOf(e.key);
+      const Q = 0.58 * (BIG_TILE[t0.type] ?? 1);
+      const [u0, v0, u1, v1] = atlas.cellOf(`${iconKey(t0)}|${t0.type}`);
       // world-aligned quads (u → +x, v → −z) so icons read upright from the default camera
       const y = TILE_TOP + 0.005;
       const a = [t.x - Q, y, t.z + Q];
@@ -506,27 +606,27 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     const iconGeo = new THREE.BufferGeometry();
     iconGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     iconGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    g.add(new THREE.Mesh(iconGeo, new THREE.MeshBasicMaterial({ map: atlas.texture, transparent: true, depthWrite: false })));
+    E.group.add(new THREE.Mesh(iconGeo, atlas.material));
+  }
 
-    // props
-    g.add(buildProps(props, vcMat));
-
-    // labels: era sign at the start, fork / rejoin, paydays, route names
+  // labels: era sign at the start, fork / rejoin, paydays, the goal, route names (cached label textures)
+  function buildLabels(E) {
+    const L = E.layout;
     const st = L.tiles[L.startId];
     if (st) {
-      const th = themeFor(eraId);
-      const sp = makeTextSprite(`${th.sign} ${L.era.name} 시대 · ${L.closed === false ? '🏁 골인 경쟁' : '🚩 출발'}`, { height: 0.8, size: 44, color: '#ffffff', bg: 'rgba(45,42,50,0.88)', pad: 18, renderOrder: 14 });
+      const th = themeFor(E.eraId);
+      const sp = labelSprite(`${th.sign} ${L.era.name} 시대 · ${L.closed === false ? '🏁 골인 경쟁' : '🚩 출발'}`, { height: 0.8, size: 44, color: '#ffffff', bg: 'rgba(45,42,50,0.88)', pad: 18, renderOrder: 14 });
       sp.position.set(st.x, 3.4, st.z);
-      g.add(sp);
-      S.labels.eras.push(sp);
+      E.group.add(sp);
+      E.labels.eras.push(sp);
     }
-    for (const t of flat) {
+    for (const t of eraTilesOf(S.board.eras[E.index])) {
       if (!['stop', 'merge', 'salary', 'goal'].includes(t.type)) continue;
       const lt = L.tiles[t.id];
       if (!lt) continue;
       const kind = t.type;
       const text = kind === 'salary' ? `💵 ${t.label || '월급날'}` : `${t.icon ?? ''} ${t.label}`.trim();
-      const sp = makeTextSprite(text, {
+      const sp = labelSprite(text, {
         height: kind === 'merge' ? 0.42 : kind === 'salary' ? 0.46 : kind === 'goal' ? 0.7 : 0.52,
         size: 40,
         color: '#ffffff',
@@ -535,29 +635,132 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
         renderOrder: 13,
       });
       sp.position.set(lt.x, kind === 'merge' ? 1.4 : kind === 'salary' ? 1.9 : kind === 'goal' ? 2.9 : 2.1, lt.z);
-      g.add(sp);
+      E.group.add(sp);
     }
     for (const key of ROUTE_ORDER) {
       const r = L.era.routes?.[key];
       if (!r) continue;
       const info = routeInfo(key);
-      const sp = makeTextSprite(`${info.icon} ${info.name}`, { height: 0.8, size: 42, color: '#ffffff', bg: ROUTE_COLORS[key], pad: 16, renderOrder: 13, border: '#ffffff' });
+      const sp = labelSprite(`${info.icon} ${info.name}`, { height: 0.8, size: 42, color: '#ffffff', bg: ROUTE_COLORS[key], pad: 16, renderOrder: 13, border: '#ffffff' });
       sp.position.set(r.label.x, 2.3, r.label.z);
-      g.add(sp);
-      (S.labels.routes[S.eraIndex] ??= {})[key] = sp;
+      E.group.add(sp);
+      (E.labels.routes[E.index] ??= {})[key] = sp;
     }
-    scene.add(g);
-    S.staticGroup = g;
   }
 
-  /** (Re)build the static board for era `i` of S.board; every pawn stands on the start tile. */
+  /** The build of one era as idle-sized steps (each a few ms … ~30 ms in SwiftShader). */
+  function eraSteps(E) {
+    return [
+      {
+        name: 'layout',
+        fn: () => {
+          E.layout = layoutBoard(S.board, { eraIndex: E.index });
+          E.viewPts = viewPoints(E.layout); // camera fit points (whole-map view)
+          E.extent = viewExtent(E.layout, E.viewPts);
+        },
+      },
+      { name: 'planProps', fn: () => (E.props = planProps(E.layout, { density: preset.props, seed: 11 + E.index })) },
+      { name: 'ground', fn: () => buildGround(E) },
+      { name: 'roads', fn: () => buildRoads(E) },
+      { name: 'tiles', fn: () => buildTiles(E) },
+      { name: 'markers', fn: () => buildMarkers(E) },
+      { name: 'icons', fn: () => buildIcons(E) },
+      { name: 'props', fn: () => E.group.add(buildProps(E.props, vcMat)) },
+      { name: 'labels', fn: () => buildLabels(E) },
+    ];
+  }
+
+  function finishEntry(E) {
+    if (E.built || !E.job?.done) return;
+    E.built = true;
+    E.stats = stepStats(E.job.times);
+    E.builtAt = performance.now();
+    // a prebuilt era is uploaded off screen next frame (no buffer / texture uploads at the swap)
+    if (E !== S.shown && E.mode === 'idle') S.warmQueue.push(E);
+  }
+
+  /** Start building era `index` of the current board in idle time (or, with `sync`, finish it now). */
+  function prepare(index, { sync = false } = {}) {
+    const n = S.board?.eras?.length ?? 0;
+    if (!S.board || !Number.isInteger(index) || index < 0 || index >= n) return null;
+    let E = S.eras.get(index);
+    if (!E) {
+      E = { index, eraId: S.board.eras[index]?.id, group: new THREE.Group(), labels: { routes: {}, eras: [] }, layout: null, props: null, ground: null, extent: 0, built: false, warm: false, mode: sync ? 'sync' : 'idle', job: null };
+      E.group.name = `era-${index}`;
+      S.eras.set(index, E);
+      E.job = runSteps(eraSteps(E), { schedule: sync ? () => {} : idle, now: () => performance.now() });
+      E.job.promise.then((ok) => ok && !S.disposed && finishEntry(E));
+    }
+    if (sync && !E.job.done) E.job.flush();
+    finishEntry(E);
+    return E;
+  }
+
+  /** Upload a prebuilt era off screen (1×1 scissor before the frame's clear) so swapping it in costs no uploads. */
+  function warmUp(E) {
+    if (!E?.built || E.warm || E === S.shown || S.eras.get(E.index) !== E) return;
+    const t0 = performance.now();
+    warmScene.add(E.group);
+    const culled = [];
+    E.group.traverse((o) => {
+      if (o.frustumCulled) {
+        o.frustumCulled = false;
+        culled.push(o);
+      }
+    });
+    renderer.setScissorTest(true);
+    renderer.setScissor(0, 0, 1, 1);
+    renderer.setViewport(0, 0, 1, 1);
+    renderer.render(warmScene, camera);
+    renderer.setScissorTest(false);
+    for (const o of culled) o.frustumCulled = true;
+    warmScene.remove(E.group);
+    E.warm = true;
+    E.warmMs = performance.now() - t0;
+  }
+
+  /** Show a built era: its group replaces the shown one (disposed in idle time, after the fade). */
+  function showEntry(E) {
+    const old = S.shown;
+    if (old && old !== E) {
+      old.group.removeFromParent();
+      old.job?.cancel();
+      if (S.eras.get(old.index) === old) S.eras.delete(old.index);
+      const g = old.group;
+      idle(() => disposeGroup(g));
+    }
+    // keep only the shown era and a prebuilt next one
+    for (const [i, x] of [...S.eras]) {
+      if (x === E || i === E.index + 1) continue;
+      S.eras.delete(i);
+      x.job?.cancel();
+      if (x !== old) disposeGroup(x.group);
+    }
+    S.warmQueue = S.warmQueue.filter((x) => S.eras.get(x.index) === x && x !== E);
+    scene.add(E.group);
+    S.shown = E;
+    S.staticGroup = E.group;
+    S.layout = E.layout;
+    S.labels = E.labels;
+    S.eraIndex = E.index;
+    S.extent = E.extent;
+    S.viewPts = E.viewPts;
+    S.layoutSeq++;
+    rig.ovCache.clear();
+    rig.ov = null;
+  }
+
+  /** Show era `i` of S.board (prebuilt → a swap; else built on the spot); every pawn stands on the start tile. */
   function buildEra(i) {
-    disposeStatic();
+    const t0 = performance.now();
     const n = S.board?.eras?.length ?? 1;
-    S.eraIndex = clamp(Number.isInteger(i) ? i : 0, 0, Math.max(0, n - 1));
+    const idx = clamp(Number.isInteger(i) ? i : 0, 0, Math.max(0, n - 1));
     S.wantEra = null;
-    S.layout = layoutBoard(S.board, { eraIndex: S.eraIndex });
-    buildStatic();
+    const before = S.eras.get(idx);
+    const prebuilt = !!before?.built;
+    const E = prepare(idx, { sync: true });
+    if (!E) return;
+    showEntry(E);
     mascotState.era = null;
     for (const P of S.pawns.values()) {
       P.moving = false;
@@ -565,9 +768,19 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     }
     const st = S.layout.tiles[S.layout.startId] ?? { x: 0, z: 0 };
     rig.target.set(st.x, 0, st.z);
+    const t1 = performance.now();
+    const steps = Object.fromEntries(E.job.times.map((t) => [t.name, Math.round(t.ms * 10) / 10]));
+    // timings (stats().build): `swapMs` = main-thread time of this call; a prebuilt era spent `buildMs` in idle slices
+    S.lastBuild = { era: idx, prebuilt, partial: !prebuilt && !!before, warm: !!E.warm, swapMs: t1 - t0, buildMs: E.stats.total, maxStepMs: E.stats.max, maxStep: E.stats.maxName, slices: E.job.slices, warmMs: E.warmMs ?? null, steps };
+    S.measureRender = true;
+    try {
+      performance.measure(prebuilt ? 'b3:swap' : 'b3:build', { start: t0, end: t1 });
+    } catch {
+      /* old browsers */
+    }
   }
 
-  /** Era transition: fade out → rebuild for the new era → fade in → camera tour of the new loop. */
+  /** Era transition: fade out → swap in the new era → fade in on the whole new map → back to the view mode. */
   async function switchEra(i, { animate = true } = {}) {
     const fade = animate && !document.hidden;
     if (fade) {
@@ -575,12 +788,15 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       await new Promise((r) => setTimeout(r, 380));
     }
     if (S.disposed) return;
+    const t0 = performance.now();
     buildEra(i);
     reconcile();
     if (!fade) return;
+    snapOverview(preset.fixedCamera ? 0 : TOUR_SWING); // behind the fade: no glide across the old map
+    if (S.lastBuild) S.lastBuild.switchMs = performance.now() - t0; // swap + pawns + the whole-map fit
     elFade.classList.remove('on');
     if (preset.fixedCamera) return new Promise((r) => setTimeout(r, 900));
-    await sweep(eraSweepPoints(S.layout), 2.6, clamp(fitRadius(S.layout.era.bounds) * 0.62, 18, 46));
+    await holdShot({ kind: 'overview', sec: TOUR_SEC, swing: TOUR_SWING });
   }
 
   // ---------- pawns ----------
@@ -613,83 +829,143 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   }
 
   // ---------- camera ----------
-  function fitRadius(bounds) {
-    const w = bounds.maxX - bounds.minX;
-    const d = bounds.maxZ - bounds.minZ;
-    const aspect = camera.aspect || 1.6;
-    const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const needW = w / 2 / (half * aspect);
-    const needD = (d * 1.2) / 2 / half;
-    return clamp(Math.max(needW, needD) * 1.05, 12, 90);
-  }
+  // Two view modes (`setView`): 'follow' = a close orbit on the current pawn (spectators get a closer spotlight),
+  // 'overview' = the whole shown era fitted exactly into the canvas (camfit.js: tiles + lanes, pawns / name tags, signs,
+  // labels; refitted whenever the canvas aspect or the orbit angle changes). TV quality always shows the overview from
+  // its fixed overhead angle. Timed shots (`holdShot`) — the era-transition tour on the whole new map, the route-zone
+  // look — run on top and then hand back to the mode.
+  const TOUR_SEC = 2.4; // era transition: hold on the whole new map …
+  const TOUR_SWING = 0.16; // … while the azimuth eases back from this offset (a slow orbit)
 
-  /** Loop maps: every character is in the shown era. */
-  const eraBounds = () => S.layout?.era?.bounds ?? { minX: -10, maxX: 10, minZ: -6, maxZ: 6 };
+  /** Orbit angles in use (TV: the fixed overhead camera). */
+  const viewAngles = () => (preset.fixedCamera ? TV_ORBIT : { azimuth: orbit.azimuth, polar: orbit.polar });
+
+  /**
+   * Whole-map fit of the shown era for these angles and the canvas (cached per quantized angle / aspect / cover —
+   * a drag or the transition swing refits about every degree, not every frame).
+   */
+  function overviewFor(azimuth, polar) {
+    if (!S.layout) return null;
+    const az = quantizeAngle(azimuth);
+    const pol = quantizeAngle(polar);
+    const aspect = camera.aspect || 1.6;
+    const cv = rig.cover;
+    const w = cssW || canvas.clientWidth || 1;
+    const h = cssH || canvas.clientHeight || 1;
+    const key = `${az.toFixed(2)}|${pol.toFixed(2)}|${aspect.toFixed(4)}|${camera.fov}|${cv.top}|${cv.bottom}|${w}x${h}|${rig.avoidKey ?? ''}`;
+    let ov = rig.ovCache.get(key);
+    if (!ov) {
+      const inset = coverInset(cv);
+      // stay clear of the idle roulette (top-right; always, so the view doesn't move when it shows / hides) and buttons
+      const r = rouletteRegion('idle', w, h);
+      const avoid = [ndcBox({ x: r.x, y: r.y, w: r.size, h: r.size }, w, h), ...rig.avoid.map((b) => ndcBox(b, w, h))].filter(Boolean);
+      ov = overviewView(S.layout, { azimuth: az, polar: pol, aspect, fov: camera.fov, inset, avoid, points: S.viewPts });
+      if (rig.ovCache.size >= 8) rig.ovCache.delete(rig.ovCache.keys().next().value);
+      rig.ovCache.set(key, ov);
+    }
+    rig.ov = ov;
+    return ov;
+  }
 
   function followChar(charId) {
     rig.follow = charId;
-    rig.focus = null;
   }
 
-  function autoRadius() {
-    if (preset.fixedCamera) return Math.max(24, fitRadius(eraBounds()));
-    if (rig.focus) return rig.focusRadius ?? 24;
-    const base = defaultOrbit().radius;
-    return S.mine ? base : base * 0.68; // spectator spotlight: close-up on the current pawn
+  /** 'follow' | 'overview' — a fresh framing (zoom / pan reset); hooks.onViewChange reports changes. */
+  function setView(mode) {
+    const next = mode === 'overview' ? 'overview' : 'follow';
+    const changed = next !== rig.view;
+    rig.view = next;
+    rig.userZoom = false;
+    rig.userPan = false;
+    orbit.panX = orbit.panZ = 0;
+    if (changed) hooks.onViewChange?.(next);
+  }
+
+  /** Put the camera straight onto the whole-map view (behind the era-transition fade). */
+  function snapOverview(swing = 0) {
+    const a = viewAngles();
+    const ov = overviewFor(a.azimuth + swing, a.polar);
+    if (!ov) return;
+    rig.target.set(ov.target.x, 0, ov.target.z);
+    orbit.radius = ov.radius;
+  }
+
+  /** A timed camera shot ({kind: 'overview', swing} | {kind: 'zone', view}); resolves when it ends. */
+  function holdShot(shot) {
+    rig.hold?.resolve();
+    return new Promise((resolve) => {
+      const H = { t: 0, swing: 0, ...shot, resolve };
+      rig.hold = H;
+      setTimeout(() => {
+        if (rig.hold === H) {
+          rig.hold = null;
+          resolve();
+        }
+      }, shot.sec * 1000 + 800);
+    });
   }
 
   function updateCamera(dt) {
-    let desired;
-    if (rig.sweep) {
-      const sw = rig.sweep;
-      sw.t += dt;
-      const k = easeInOutCubic(Math.min(1, sw.t / sw.sec));
-      const p = pointAt(sw.poly, k * sw.acc.at(-1), sw.acc);
-      desired = rig.goal.set(p.x, 0, p.z);
-      rig.target.lerp(desired, 1 - Math.exp(-dt * 9));
-      orbit.radius = lerp(orbit.radius, sw.radius, 1 - Math.exp(-dt * 3));
-      if (sw.t >= sw.sec) {
-        rig.sweep = null;
-        sw.resolve();
+    const ang = viewAngles();
+    let az = ang.azimuth;
+    const pol = ang.polar;
+    const H = rig.hold;
+    let desired = null;
+    if (H) {
+      H.t += dt;
+      const k = Math.min(1, H.t / H.sec);
+      if (H.kind === 'overview') {
+        az += H.swing * (1 - easeInOutCubic(k));
+        const ov = overviewFor(az, pol);
+        if (ov) {
+          desired = rig.goal.set(ov.target.x, 0, ov.target.z);
+          orbit.radius = lerp(orbit.radius, ov.radius, 1 - Math.exp(-dt * 8));
+        }
+      } else if (H.view) {
+        desired = rig.goal.set(H.view.target.x, 0, H.view.target.z);
+        orbit.radius = lerp(orbit.radius, H.view.radius, 1 - Math.exp(-dt * 3));
+      }
+      if (desired) rig.target.lerp(desired, 1 - Math.exp(-dt * (H.kind === 'overview' ? 12 : 4)));
+      if (H.t >= H.sec) {
+        rig.hold = null;
+        H.resolve();
+      }
+    } else if (preset.fixedCamera || rig.view === 'overview') {
+      const ov = overviewFor(az, pol);
+      if (ov) {
+        desired = rig.goal.set(ov.target.x, 0, ov.target.z);
+        if (!preset.fixedCamera) {
+          desired.x += orbit.panX;
+          desired.z += orbit.panZ;
+        }
+        rig.target.lerp(desired, 1 - Math.exp(-dt * 4.5));
+        if (!rig.userZoom || preset.fixedCamera) orbit.radius = lerp(orbit.radius, ov.radius, 1 - Math.exp(-dt * 2.5));
       }
     } else {
-      if (preset.fixedCamera) {
-        const e = S.layout?.era;
-        desired = e ? rig.goal.set(e.center.x, 0, e.center.z) : rig.goal.set(0, 0, 0);
-      } else if (rig.focus) {
-        desired = rig.goal.copy(rig.focus);
-      } else if (rig.follow && S.pawns.get(rig.follow)) {
-        desired = rig.goal.copy(S.pawns.get(rig.follow).pawn.group.position);
+      const P = rig.follow ? S.pawns.get(rig.follow) : null;
+      if (P) {
+        desired = rig.goal.copy(P.pawn.group.position);
         desired.y = 0;
-      } else {
-        desired = rig.goal.copy(rig.target);
+        desired.x += orbit.panX;
+        desired.z += orbit.panZ;
+        rig.target.lerp(desired, 1 - Math.exp(-dt * 4.5));
       }
-      desired.x += orbit.panX;
-      desired.z += orbit.panZ;
-      rig.target.lerp(desired, 1 - Math.exp(-dt * 4.5));
-      if (!rig.userZoom || preset.fixedCamera) orbit.radius = lerp(orbit.radius, autoRadius(), 1 - Math.exp(-dt * 2.5));
+      if (!rig.userZoom) orbit.radius = lerp(orbit.radius, followRadius(cssW || canvas.clientWidth, cssH || canvas.clientHeight, { mine: S.mine }), 1 - Math.exp(-dt * 2.5));
     }
-    const az = preset.fixedCamera ? 0 : orbit.azimuth;
-    const pol = preset.fixedCamera ? 0.62 : orbit.polar;
+    // a far overview: fog behind the board's far edge, far plane beyond it, zoom limit above the whole-map radius
+    const fog = fogRange(orbit.radius, S.extent);
+    scene.fog.near = fog.near;
+    scene.fog.far = fog.far;
+    if (Math.abs(camera.far - fog.cameraFar) > 0.5) {
+      camera.far = fog.cameraFar;
+      camera.updateProjectionMatrix();
+    }
+    orbit.maxRadius = Math.max(ORBIT_LIMITS.maxRadius, (rig.ov?.radius ?? 0) * 1.3, S.extent * 2.6);
     const r = orbit.radius;
-    camera.position.set(rig.target.x + Math.sin(az) * Math.sin(pol) * r, rig.target.y + Math.cos(pol) * r, rig.target.z + Math.cos(az) * Math.sin(pol) * r);
-    camera.lookAt(rig.target.x, rig.target.y + 0.6, rig.target.z);
-  }
-
-  /** Camera flies along world points [{x,z}] over `sec` seconds, then resumes following. */
-  function sweep(points, sec, radius) {
-    if (!points.length) return Promise.resolve();
-    rig.sweep?.resolve();
-    const poly = points.length > 1 ? catmullRom(points.map((p) => ({ x: p.x, z: p.z })), 10) : [points[0], points[0]];
-    return new Promise((resolve) => {
-      rig.sweep = { poly, acc: arcLengths(poly), t: 0, sec, radius, resolve };
-      setTimeout(() => {
-        if (rig.sweep?.resolve === resolve) {
-          rig.sweep = null;
-          resolve();
-        }
-      }, sec * 1000 + 800);
-    });
+    const sp = Math.sin(pol);
+    camera.position.set(rig.target.x + Math.sin(az) * sp * r, rig.target.y + LOOK_Y + Math.cos(pol) * r, rig.target.z + Math.cos(az) * sp * r);
+    camera.lookAt(rig.target.x, rig.target.y + LOOK_Y, rig.target.z);
   }
 
   // ---------- overlays ----------
@@ -735,8 +1011,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       S.shownCurrent = id;
       S.animSubtitle = '';
       renderSubtitle();
-      if (rig.focus) rig.follow = id; // user is browsing an era (tabs) → keep that view
-      else followChar(id);
+      followChar(id); // (the overview view keeps showing the whole map)
       setRouletteMode(S.rouletteIdleWanted ? 'idle' : 'hidden');
       reconcile();
     }
@@ -923,8 +1198,10 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       const r = L.era.routes[e.route];
       const fork = L.tiles[S.board.eras[S.eraIndex]?.tiles?.[L.era.fork]?.id];
       const rejoin = L.tiles[S.board.eras[S.eraIndex]?.tiles?.[L.era.rejoin]?.id];
-      const pts = [fork, r?.label, rejoin].filter(Boolean);
-      await sweep(pts, 1.8, clamp(fitRadius(L.era.bounds) * 0.4, 16, 30));
+      const pts = [fork, rejoin, ...(r?.ribbon ?? [])].filter(Boolean).map((p) => ({ x: p.x, y: 0.3, z: p.z }));
+      if (r?.label) pts.push({ x: r.label.x, y: 2.8, z: r.label.z });
+      const zone = zoneView(pts, { ...viewAngles(), aspect: camera.aspect || 1.6, fov: camera.fov });
+      await holdShot({ kind: 'zone', view: zone, sec: 1.8 });
       followChar(e.charId);
     },
     finished: async (e, ctx) => {
@@ -1159,8 +1436,9 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     if (!w || !h) return;
     cssW = w;
     cssH = h;
-    // pick the default view for the orientation (path runs up the screen on portrait phones)
-    const portrait = w < h * 0.9;
+    // pick the default view for the orientation (path runs up the screen on portrait phones); the whole-map fit
+    // follows the new aspect by itself (camfit key)
+    const portrait = isPortrait(w, h);
     if (portrait !== rig.portrait && !rig.userRotate) {
       rig.portrait = portrait;
       const d = defaultOrbit();
@@ -1223,12 +1501,20 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     }
     updateCamera(dt);
 
+    // a prebuilt era waiting for its upload: drawn once into a 1×1 scissor before this frame's clear (idle frames only)
+    if (S.warmQueue.length && !animator.busy()) warmUp(S.warmQueue.shift());
     const size = renderer.getSize(bufSize);
     renderer.info.reset();
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, size.x, size.y);
     renderer.clear();
+    const tr0 = S.measureRender ? performance.now() : 0;
     renderer.render(scene, camera);
+    if (S.measureRender) {
+      // first frame of a newly shown era (buffer / texture uploads unless it was warmed up)
+      S.measureRender = false;
+      if (S.lastBuild) S.lastBuild.firstRenderMs = performance.now() - tr0;
+    }
     if (S.rouletteMode !== 'hidden') {
       S.rouletteK = lerp(S.rouletteK, S.rouletteMode === 'active' ? 1 : 0, 1 - Math.exp(-dt * 10));
       const a = rouletteRegion('idle', cssW, cssH);
@@ -1295,6 +1581,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       const k = o.key ?? JSON.stringify(board.eras.map((e) => [e.id, e.tiles.map((t) => t.type), Object.values(e.routes ?? {}).map((r) => r.tiles.map((t) => t.type))]));
       const era = Number.isInteger(o.eraIndex) ? o.eraIndex : 0;
       if (k !== S.boardKey) {
+        clearEras();
         S.boardKey = k;
         S.board = board;
         animator.clear();
@@ -1376,24 +1663,52 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       followChar(charId);
     },
 
-    /** Look at the whole shown era (loop maps: other eras aren't built). The next turn / reset returns to following. */
+    /** Whole-map view of the shown era (loop maps: other eras aren't built) = setView('overview'). */
     focusEra(eraIndex = S.eraIndex) {
-      const e = eraIndex === S.eraIndex ? S.layout?.era : null;
-      if (!e) return;
-      rig.follow = null;
-      rig.focus = new THREE.Vector3(e.center.x, 0, e.center.z);
-      rig.focusRadius = clamp(fitRadius(e.bounds) * 0.8, 14, 60);
-      rig.userZoom = false;
-      orbit.panX = orbit.panZ = 0;
+      if (eraIndex !== S.eraIndex || !S.layout) return;
+      setView('overview');
     },
 
+    /** Default orbit angle / zoom, back to following the current pawn. */
     resetCamera() {
-      Object.assign(orbit, defaultOrbit());
-      rig.userZoom = false;
-      rig.userPan = false;
+      const max = orbit.maxRadius;
+      Object.assign(orbit, defaultOrbit(), { maxRadius: max });
       rig.userRotate = false;
-      rig.focus = null;
+      setView('follow');
       followChar(S.shownCurrent ?? S.current);
+    },
+
+    /**
+     * Camera view: 'follow' (close orbit on the current pawn) | 'overview' (the whole shown era fitted to the canvas).
+     * The overview stays until switched back (turns / hops don't leave it); TV quality always shows the overview.
+     */
+    setView,
+    get view() {
+      return preset.fixedCamera ? 'overview' : rig.view;
+    },
+    /**
+     * Parts of the canvas hidden under page overlays (fractions: the sticky spin dock / reaction bar below, the top bar
+     * above) — the whole-map view keeps the loop in the visible part.
+     */
+    setViewInsets({ top = 0, bottom = 0, avoid = [] } = {}) {
+      const f = (v) => clamp(Math.round((Number(v) || 0) * 100) / 100, 0, 0.6);
+      rig.cover = { top: f(top), bottom: f(bottom) };
+      rig.avoid = (Array.isArray(avoid) ? avoid : []).filter((b) => b && Number.isFinite(b.x) && Number.isFinite(b.y) && b.w > 0 && b.h > 0).map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h) }));
+      rig.avoidKey = rig.avoid.map((b) => `${b.x},${b.y},${b.w},${b.h}`).join(';');
+    },
+    /** Whole-map fit for the current canvas + orbit angle: {target, radius, extent, axis} (debug / tests). */
+    overview() {
+      const a = viewAngles();
+      return overviewFor(a.azimuth, a.polar);
+    },
+
+    /**
+     * Build era `i`'s static board in idle time (game2d: the next era during the era's last rounds) so its
+     * eraTransition is a swap. No-op when it is shown, built or building.
+     */
+    prepareEra(i) {
+      if (!S.board || i === S.eraIndex) return false;
+      return !!prepare(i);
     },
 
     /** Queue engine events for animation; resolves when the queue drains. */
@@ -1434,10 +1749,9 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       controls.enabled = preset.controls;
       resize();
       if (S.board) {
-        const board = S.board;
         const shown = new Map([...S.pawns].map(([id, P]) => [id, P.tileId]));
         const want = S.wantEra;
-        S.board = board;
+        clearEras(); // prop density differs per preset
         buildEra(S.eraIndex);
         S.wantEra = want;
         for (const [id, P] of S.pawns) placeAt(P, shown.get(id), true);
@@ -1448,7 +1762,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
     stats() {
       return { ...S.stats, fps: Math.round(S.fps * 10) / 10, quality: preset.name, popups: emotion.count, bursts: particles.count, busy: animator.busy(),
         mascots: { visible: mascots.group.visible, triangles: mascots.triangles, x: mascots.group.position.x, z: mascots.group.position.z },
-        buffer: { width: canvas.width, height: canvas.height }, css: { width: canvas.clientWidth, height: canvas.clientHeight }, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, frames: S.frames };
+        buffer: { width: canvas.width, height: canvas.height }, css: { width: canvas.clientWidth, height: canvas.clientHeight }, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, frames: S.frames, build: S.lastBuild ?? null,
+        view: rig.view, shot: rig.hold?.kind ?? null, radius: Math.round(orbit.radius * 10) / 10, cover: { ...rig.cover }, eras: [...S.eras.values()].map((E) => ({ index: E.index, built: E.built, warm: E.warm, next: E.job?.next ?? 0 })) };
     },
 
     /** Average fps over the next `ms` milliseconds of rendering. */
@@ -1470,7 +1785,9 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       particles.clear();
       for (const P of S.pawns.values()) P.pawn.dispose();
       S.pawns.clear();
-      disposeStatic();
+      clearEras();
+      groundMat.dispose();
+      shared.grass?.dispose();
       roulette.dispose();
       mascots.dispose();
       renderer.dispose();

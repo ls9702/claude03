@@ -10,8 +10,23 @@
   `server/routes/*` and `server/store/*`.
 - Rule content lives in `server/data/*.json`; code reads it via the `server/data/index.js` loader (`loadData(name)`,
   cached + deep-frozen). Don't `import` JSON files directly.
-- Tests: `npm test` runs `node --test` over `test/*.test.js` (Node 22 no longer accepts a bare directory argument).
-  Use `node:test` + `node:assert/strict`, temp dirs for any disk I/O. Keep the whole suite fast (<10s).
+- Tests: `npm test` = `node scripts/run-tests.js`: `test/*.test.js` in parallel shards — one Node process per CPU core
+  (≤ 8), each running its files one after another in that process (`--test-isolation=none`, `--test-force-exit`) →
+  ≈ 6–8 s on 4 idle cores (10–15 s while other agents load the machine), ≈ 60 % of the CPU of one process per
+  file. Shards are balanced (longest first) on the last runs' per-file times (`node_modules/.cache/
+  jinsei-test-times.json`; tracked seed `scripts/test-times.json`, refresh with `TEST_SAVE_TIMES=1 npm test`); each
+  shard's output is printed when it ends, then one summary
+  (`# tests/pass/fail …`, `# failed:` with file:line). Args: files / `dir/*.test.js` / `--test-name-pattern=…`; env
+  `TEST_SHARDS=n`, `TEST_ISOLATION=process`. **Files of a shard share globals**: a top-level `before/after/beforeEach/
+  afterEach` is a root hook there (it also wraps the other files' tests of that shard — prefer per-test setup or
+  `t.after`), and mock timers / `process.env` / module-level state (e.g. `setAssetIndex`, `setCharaMeta`) must be
+  restored by the test that changes them. `npm run test:isolated` = `node --test test/*.test.js` (one process per file,
+  ≈ 2× slower; rules out leaks between files — Node 22 no longer accepts a bare directory argument). `npm run
+  test:legacy` = `test/legacy/*.test.js` (≈ 5 s): the slow full-size pixel work of LEGACY features (11-step AI art jobs
+  + 402 resume + paper-doll reference composition, paper-doll diffExtract / front-back / erase masks + the part studio
+  round trip) — not part of `npm test`; their cheap contracts stay in `test/charArt.test.js` / `test/assets-parts.test.js`.
+  Use `node:test` + `node:assert/strict`, temp dirs for any disk I/O. Keep `npm test` fast (<10s): share expensive
+  fixtures per file, keep full games short (small eraTurns / finalLength), no real sleeps where a mock timer works.
 - Never commit secrets; keys via env or `data/secrets.json` (gitignored along with all of `data/`).
 - **Gemini API is OFF in this repo's tooling by the user's decision (billing).** Never set a key, never call the API or run
   `scripts/gen-assets.js` / `part-qa.js --fix`. Exception: the user's OWN local Gemini skill (on their PC) may generate images
@@ -64,7 +79,10 @@
 - `server/game/engine.js` — `startGame(room, ctx)`, `endGame(room, ctx)`, `applyAction(room, action, ctx) →
   {room, events, logs}`; ctx = `{rng?, now?, data?}` (rng defaults to `createRng(room.rngState)`). Throws
   `EngineError{status}` (400/403/404/409). `action.actor` = `{sessionId}` | `{admin:true}` | `{system:true}`;
-  omitted = trusted (tests/simulator, no ownership check).
+  omitted = trusted (tests/simulator, no ownership check). Every action copies the whole room with
+  `server/game/clone.js` `cloneState` (deep copy of plain objects / arrays, ≈ 5× faster than structuredClone on a
+  120 KB lifetime room; other types fall back to structuredClone; like a JSON save → restore, shared references become
+  separate copies) — also used by lobby.js and view.js. Room state must stay JSON-like (no cycles).
 - `server/game/spaces.js` — tile resolution (`resolveTile`) + the `routeChoice` / `groupGift` prompts; the `PROMPTS`
   registry lives in `prompts.js` (`registerPrompts`, each kind `{build(tx, c, extra) → spec, resolve(tx, pending)}`; Stage 6
   kinds in `growth.js` / `jobs.js`). Add new decisions/minigames by registering a kind.
@@ -192,17 +210,45 @@
   centerline, route eras fork love(+normal, near camera)/career(centerline)/money(−normal) between stop and merge;
   `planProps` deterministic town props, tall ones only behind the track; `slotOffset`, `eraSweepPoints`, `ERA_THEMES`),
   `quality.js` (`QUALITY_PRESETS` high|low|tv, `pickQuality`, `renderSize`, `shouldFallback`), `animator.js`
-  (`createAnimator` event queue, `planSteps`), `pawnParts.js` (avatar part ids → primitive specs + colors).
-  three-based: `board3d.js` (`createBoard3D(canvas, {quality, meta, hooks:{onStep,onRouletteTap,onError}})` →
-  `setBoard/setCharacters/setCurrent/focus/focusEra/resetCamera/playEvents/onIdle/isBusy/whenIdle/reaction/resize/
-  setQuality/stats/measureFps/dispose`, `.animator`), `pawn.js` (merged vertex-colored pawn = 1 draw call, name tag;
+  (`createAnimator` event queue, `planSteps`), `pawnParts.js` (avatar part ids → primitive specs + colors), `camfit.js`
+  (camera fit math, see "Camera views" below), `chunks.js` (`runSteps(steps, {schedule, now, sliceMs})` idle step runner →
+  `{promise, flush, cancel, done, next, times, slices}`, `stepStats`; `test/scene-camfit.test.js`).
+  three-based: `board3d.js` (`createBoard3D(canvas, {quality, meta, hooks:{onStep,onRouletteTap,onViewChange,onError}})` →
+  `setBoard/setCharacters/setCurrent/focus/focusEra/resetCamera/setView/view/overview/setViewInsets/prepareEra/playEvents/
+  onIdle/isBusy/whenIdle/reaction/resize/setQuality/stats/measureFps/dispose`, `.animator`), `pawn.js` (merged vertex-colored pawn = 1 draw call, name tag;
   `/api/models` lists `public/assets/models/*.glb` → `pawn.glb` drop-in via GLTFLoader), `roulette3d.js` (own scene
   drawn into a scissored viewport of the same renderer), `emotion.js` (emoji/text popups), `particles.js`,
   `controls.js` (orbit: drag/pinch/two-finger pan/wheel, taps), `props.js`, `geo.js`, `sprites.js`,
   `pawnPreview.js` (lobby customizer 3D preview, shares pawn geometry).
 - Budget: ≤100 draw calls, ≤50k triangles (8-char lifetime board ≈ 32 calls / 21k tris incl. roulette), no shadows/
   post/AA, pixelRatio 1, Hemisphere + 1 Directional, Lambert + vertex colors; tiles are InstancedMeshes, icons one atlas
-  mesh, roads/buildings merged, trees instanced. Keep new scenery inside `buildStatic` merges.
+  mesh, roads/buildings merged, trees instanced. Keep new scenery inside the era build steps' merges (`eraSteps`).
+  Whole-map views measured (SwiftShader): kids eras 30–31 calls / ≈ 13–15k tris, young / middle_age 40–43 calls /
+  ≈ 26–29k tris, the final race 31–33 calls / ≈ 13–15k tris.
+- Camera views (`camfit.js`, pure): the orbit camera looks at `target + (0, LOOK_Y 0.6, 0)` from `radius · back(az, polar)`;
+  `defaultOrbit(w, h)` (landscape az −0.3 / polar 0.95 / r 17, portrait (`w < 0.9 h`) −1.15 / 0.9 / 19), `followRadius`
+  (spectators × 0.68). `fitPoints(points, {azimuth, polar, fov 40, aspect, inset, align, avoid})` = exact perspective fit with a
+  fixed orientation (the frustum side planes are linear in the camera position → the tightest camera along the view axis in one
+  pass, the binding axis touches its inset edge; `align` places the slack (0 = left / bottom … 1 = right / top), `avoid` NDC
+  boxes are cleared by sliding along the slack, never zooming; returns `{target, radius, camera, axis, hidden, hiddenKey,
+  depth}`). `viewPoints(layout)` = tile footprints (lanes incl.), pawn + name-tag tops, payday / 🎪 / start-flag / goal-gate
+  markers, the era sign above the start, route labels (goal points `key: true`); `overviewView(layout, {…, avoid, maxGrow 1.2,
+  keyGrow 1.5, points})` = whole-map fit (`OVERVIEW_INSET` top .05 / bottom .1 / sides .03, `OVERVIEW_ALIGN` y .35); when
+  sliding can't clear a corner box it tries a farther camera that keeps the map beside it (≤ ×1.2 of the view-axis depth, ≤ ×1.5
+  while the final race's goal would be hidden). `coverInset(cover)` (page overlays replace the base inset on their side),
+  `zoneView` (route branch look), `fogRange(radius, extent)` (follow view keeps fog 55 → 140 / far 260; far overviews push the
+  fog behind the board's far edge), `ndcBox`, `quantizeAngle` (fits cached per ~1°), `projectPoint`, `orbitBasis`.
+  board3d: `setView('follow' | 'overview')` (`view` getter, `hooks.onViewChange`; TV quality = always the overview at
+  `TV_ORBIT` az 0 / polar 0.62), the overview is refitted on resize / rotation / orbit drags (cached per quantized angle,
+  aspect, cover) and stays until switched back (hops don't leave it); `focusEra(i)` = overview, `resetCamera()` = default
+  orbit + follow. It always avoids the idle roulette's corner (`rouletteRegion('idle')`) and, via `setViewInsets({top, bottom,
+  avoid: [{x, y, w, h} css px]})` from game2d, page overlays over the canvas (the sticky spin dock covers ≈ 30 % of a 1280×720
+  board on my turn) and the 🗺️ button. Controls: `state.maxRadius` lifts the zoom-out limit to the whole-map radius × 1.3.
+  game2d: 「🗺️ 전체 보기」 / 「🎯 따라가기」 toggle `data-el="viewbtn"` (`.b3-view-btn`, top-left of the canvas, 36 px,
+  `aria-pressed`, hidden in TV / 2D; localStorage `jinsei.boardView` = 'overview'), `boardCover()` → `setViewInsets` on
+  scroll / resize / render (5 % steps). The quality select now re-runs `applyModeUi` (TV ↔ others).
+  E2E (session scratchpad `cam/`: `shots.cjs` every era 1280×720 + 390×844 overview / follow + transition + resize + landscape,
+  in-page projection check 0 tiles outside; `tv.cjs`; `measure.cjs` A/B lag; screenshots `cam-*.png`).
 - Sync model: SSE `state` arrives before its `events`. `setCharacters` never teleports a pawn while an animation may
   follow — pawns glide to the authoritative tile only when the animator is idle (380 ms grace). `moved` hops from
   `event.from` along `event.path`. `setCurrent` is applied when idle. game2d opens decision modals only when
@@ -326,6 +372,8 @@
   (idempotent upsert, keeps accepted) → `node scripts/gen-assets.js --kind part --accept-first --parallel 2` →
   `node scripts/part-qa.js [--fix]` (alignment/coverage QA, regenerates outliers) → `node scripts/part-sheets.js --out
   <dir>` (contact sheets) for a visual check.
+- Tests: schema / gen-part-manifest / layerStack / tint math in `test/assets-parts.test.js`; the pixel extraction tests and
+  the studio round trip in `test/legacy/assets-parts-pixels.test.js` (`npm run test:legacy`).
 
 ## AI character art (Stage 5.5-D) — LEGACY since CH-1 (human paper-doll avatars; player looks are roster characters + props, see "Chiikawa conversion (CH-1)")
 - Optional per-character illustration set generated with Gemini that matches the customization exactly. Room state:
@@ -366,7 +414,9 @@
   room once a second while pending. Hidden when `features.charArt` is false or the look is unsaved.
 - TEST-ONLY smoke hook: env `CHAR_ART_FAKE=1` (fake Gemini echoing the reference on magenta; `402` = credits
   exhausted; `CHAR_ART_FAKE_DELAY_MS`, default 250) → `server/assets/fakeGemini.js`. Never set it in production.
-  Tests (`test/charArt*.test.js`) inject `assets.studioOptions.fetchImpl` / `charArtOptions` / `charArtThrottleMs`.
+  Tests (`test/charArt*.test.js`) inject `assets.studioOptions.fetchImpl` / `charArtOptions` / `charArtThrottleMs`; the
+  full image jobs (11 steps, 402 resume, reference composition) are in `test/legacy/charArt-pipeline.test.js`
+  (`npm run test:legacy`).
 
 ## Layered avatars (Stage 5.5-C) — LEGACY since CH-1 (human paper-doll avatars; player looks are roster characters + props, see "Chiikawa conversion (CH-1)")
 - Shared pure modules: `public/js/shared/partStack.js` + `public/js/shared/tintMath.js` are the ONLY implementations
@@ -514,6 +564,7 @@
   cut-in/result), `game.cjs` (natural-pace 4-client game, `BOARDS=`, `SPECTATE=1`), `prompts.cjs` (API spin spam +
   reactions; prompt visibility per owner), `misc.cjs` (routes, admin host tools, TV spectator, CTA), `probe2.cjs`, `art.cjs`.
   Note: in SwiftShader the 3D board build blocks the main thread ≈ 8 s at game start (prompts in that window show late).
+  (Re-measured after the camera / lag pass: the longest game-start task ≈ 0.3–0.45 s; see the "Camera views" bullet of "3D board (Stage 4)".)
 
 ## Stage 6 — stats, careers, jobs (server)
 - Data: `server/data/jobs.json` (`jobs[]` 17 regular + 6 hidden `{id, name, icon, hidden, desc, requires: {stats?, education?},
@@ -961,19 +1012,33 @@
 ## Stage 9 — CPU players (9-C)
 - Owner id `'cpu'` (`lobby.CPU_OWNER`, `cpu.CPU_OWNER`): `viewFor` shows `ownerId 'cpu'`, `ownerName 'CPU'`; order.js puts
   CPUs after the players' characters (family order). CPU characters carry `cpuPersonality` cautious|normal|bold (public).
-- Lobby (pure, `server/game/lobby.js`): `addCpuCharacter(room, {name?, avatar?}, now, {by})` (lobby only, max characters,
-  name = first unused `CPU_NAMES` entry unless given, look = `randomAvatar(seed)` (CH-1: `avatar.randomLook` = roster character +
-  0–2 props) seeded by room seed + id + seq,
-  personality seeded the same way), `removeCpuCharacter(room, charId, now, {by})` (CPU only → 409, lobby only),
+- Lobby (pure, `server/game/lobby.js`): `addCpuCharacter(room, {name?, avatar?, personality?}, now, {by})` (lobby only, max
+  characters, name = first unused `CPU_NAMES` entry unless given, look = `randomAvatar(seed)` (CH-1: `avatar.randomLook` = roster
+  character + 0–2 props) seeded by room seed + id + seq, personality cautious|normal|bold, absent / '' / 'random' → seeded the
+  same way, anything else → 400 「CPU 성향은 신중·보통·대담 중 하나여야 해요.」 (`parseCpuPersonality`)),
+  `setCpuPersonality(room, charId, personality, now, {by})` (lobby only 409, CPU only 409, unknown 404, invalid / missing 400;
+  'random' = a different seeded one; same value → `{changed: false}`; log 「🤖 ○○ 님이 CPU 「…」의 성향을 🔥 대담으로 바꿨습니다.」,
+  `CPU_PERSONALITY_LABELS`), `removeCpuCharacter(room, charId, now, {by})` (CPU only → 409, lobby only),
   `roomHost(room)` (= first joined non-spectator), `canManageCpu(room, sessionId)` (409 without `config.allowCpu`, 403
   for non-hosts / spectators). A CPU-only room starts like any other (≥ 2 characters, no ready check) — admin only.
-- Routes: admin `POST /admin/api/rooms/:id/cpu {name?, avatar?}` → 201 `{characterId, room}` (always allowed in a lobby),
-  `DELETE /admin/api/rooms/:id/cpu/:charId`; host player `POST /api/rooms/:id/cpu` → 201 / `DELETE /api/rooms/:id/cpu/:charId`
-  (only with 「CPU 허용」). Admin page: 「CPU 허용」 create checkbox (sent only when on), room detail 「🤖 CPU 추가」 + one
-  「🤖 name ✕」 button per CPU in the lobby. Lobby (`app.js` `renderCpuTools`): the same chips under the character grid
-  for the host when `allowCpu` (`#cpu-tools`).
+- Routes: admin `POST /admin/api/rooms/:id/cpu {name?, avatar?, personality?}` → 201 `{characterId, room}` (always allowed in
+  a lobby), `PATCH /admin/api/rooms/:id/cpu/:charId {personality}` → `{room}`, `DELETE /admin/api/rooms/:id/cpu/:charId`; host
+  player `POST /api/rooms/:id/cpu {personality?}` → 201 / `PATCH /api/rooms/:id/cpu/:charId {personality}` / `DELETE
+  /api/rooms/:id/cpu/:charId` (only with 「CPU 허용」, `canManageCpu`). `/api/meta.cpu` and `/admin/api/meta.cpu` =
+  `cpuHandicap.cpuMeta` `{personalities, handicap: {startMoneyMult, incomeMult, treasureMult} | null}`. Client (`format.js`):
+  `CPU_PERSONALITY_INFO` 🐢 신중 「돈을 아끼고 모험을 피해요」 / 🙂 보통 / 🔥 대담 「도박·투자를 좋아해요」 + `CPU_RANDOM_INFO` 🎲 무작위,
+  `cpuPersonalityHtml(c, {short, desc})` (`.cpu-pers.p-<id>` chip), `cpuPersonalityOptions(value, {random})`,
+  `cpuHandicapText(meta)`. Admin page: 「CPU 허용」 create checkbox (sent only when on); room detail: a `.cpu-chip` per CPU
+  (🤖 name + personality `<select data-cpu-pers>` → PATCH at once + ✕), a 🎲/🐢/🙂/🔥 `<select data-cpu-new>` (kept across the 3 s
+  polling; the detail is not re-rendered while a picker has focus) + 「🤖 CPU 추가」, the style hint and the handicap line; detail
+  cards show the chip. Lobby (`app.js` `renderCpuTools`, host only when `allowCpu`, `#cpu-tools`): the same chips / pickers
+  (re-rendered only when the markup changes); lobby cards 「🤖 CPU 🐢」 (icon chip, 390 px); in game the side row 「🤖 CPU 🔥」 and
+  the detail card row 「CPU 성향 🔥 대담 도박·투자를 좋아해요」. E2E: session scratchpad `cpu2/ui.cjs` (`cpu2-*.png`).
 - `server/game/cpu.js` (pure; never consumes the game RNG — ties use a sub-RNG hashed from seed/rngState/turn/prompt/char):
-  `cpuDecide(room, charId, data) → action | null` (order: answer a trade offer made to it → answer the pending prompt →
+  every entry point takes `opts = {level, personality}` (last argument): `level: 'hard'` = the strong heuristic below (the expert
+  human proxy, the aim / 찬스 광장 duels and `--bias --aim cpu` of simulate.js), anything else = the REAL CPUs (see "Weak CPUs"
+  below); `personality` overrides the character's. `cpuDecide(room, charId, data, opts) → action | null` (order: answer a trade
+  offer made to it → answer the pending prompt →
   on its awaitSpin turn `cpuCardAction` or `spin`); `cpuDue(room) → {kind: trade|prompt|spin, charId, key}` (what the
   room waits on from a CPU; the key changes per step, e.g. `s:<turnNo>:<cardUsed>`); `cpuNextAction` (both, headless);
   `cpuAnswer`, `CPU_ANSWERS[kind](ctx, c, pending) → optionId | null` (null / unknown kind / disabled → the prompt default,
@@ -982,7 +1047,7 @@
   card pushed out of a full hand counts); `jobScore` (rank salary + odds of the next two ranks − injury), `targetJob`,
   `jobDeficit`; `PERSONALITY` knobs (promotion / retake / propose thresholds, cash reserve, shop multiplier, sabotage
   ratio, trade margin, holiday stake style, route bias). CPUs never bet, offer trades or gift.
-- Heuristics: route = max of love (charm ×0.4 + family: single 1.5 (+1 charm ≥ 6, 소개팅), dating 1.5 + affection/proposeAt,
+- Strong heuristics (level hard): route = max of love (charm ×0.4 + family: single 1.5 (+1 charm ≥ 6, 소개팅), dating 1.5 + affection/proposeAt,
   married 1.5 while < max children else 0.5) / career (1.5 + min(3, regular salary/150) + int ×0.2) / money (min(3, 1.5 ×
   cash / the room's average cash) + luck ×0.2 + 1 without a house) + personality bias (post-simulation fixes); habit → the biggest requirement gap
   of `targetJob`, else int before a degree job, else its rank-up stat; exam = higher `college + elite/2` of study/guess;
@@ -998,6 +1063,34 @@
   targeted by anyone this / last round) when it is ≥ own total × `sabotage` ratio (tax audit ≥ 300 cash > complaint with a
   job > cut_line > noise > gossip for charm jobs); stat cards for a useful stat; taxi / energy within 12 tiles of the goal
   or when the expected landing (tile worth over rolls 1..10, stops halt) gains ≥ 25; a (nearly) full hand plays anyway.
+- **Weak CPUs (the real CPUs, default level; user decision 「사람이 웬만하면 9할 이상 이기게」)** — all knobs in
+  `balance.json` `cpu` (`_comment` / `_knobs` keys explain them): per prompt kind the personality's preference table
+  (`cpu.personalities.<p>.prefs.<kind>`, else `cpu.prefs.<kind>`, else `cpu.prefs['*']` = `{best: 3, '*': 1}`) weights every
+  ENABLED option — keys: option id, prefix (`"train:"`, `"buy:"`, `"meet:"`, `"date:"`), `"*"` (any), `"best"` (the strong
+  heuristic's pick), `"default"`, `"dream"` (leads to the CPU's dream job) — weights add up, one pick by the hashed sub-RNG
+  (`easyAnswer`, `prefWeight` exported). Styles: 🐢 cautious = timid (college 1 : job 3, overtime 3 : promotion 1, never buys a
+  house, 「조금 더 친하게」 3 : propose 1, rests at home, temple training, 찬스 광장 「그냥 지나가기」 6, retire early, never
+  sabotages, aims at a liked number 100 %); 🔥 bold = reckless (재수, job hopping 3, shopping, house swaps, expensive dates,
+  propose at once, 소원 / 모두를 위한 소원 at 찬스 광장, jeju trips, favourite-horse bets + lotto — never 전 재산 올인 / 5배 / 10배:
+  a jackpot would hand a weak CPU the game); 🙂 normal = a mixture. Shared: random routes (`best` 1 : any 2), birthday gifts 2 : 1,
+  hidden jobs accepted. Dream job (`cpuDreamJob`): seeded per CPU (room seed + id) from `dreamJobs` (🐢 stable jobs, 🙂 all with
+  doctor / politician / chef / researcher / teacher doubled, 🔥 flashy jobs + doctor / politician / chef) → habits / clubs train its
+  missing stats (and the stat whose graduation card it needs, e.g. luck → 절대미각 for chef), 진로 leans to 대학 for degree jobs,
+  job offers / 전직 / 이직 / shop requirement cards that lead there weigh `dream`. Cards (`easyCardAction`): a red card with
+  `cardPlay` chance (🐢 0.2 / 🙂 0.35 / 🔥 0.5; always with a full hand), sabotage only with `sabotage` chance (0 / 0.3 / 0.5) at a
+  RANDOM eligible rival, 딱 그 칸 a random number. Skill rooms: `aimRandom` 1 (a uniformly random target like an average person).
+  Trades: accept when value got ≥ value given × `tradeMargin` (1 / 0.85 / 0.7).
+- **CPU handicap against people** (`server/game/cpuHandicap.js`, `balance.cpu.handicap`, only in rooms with at least one
+  non-CPU character — CPU-only demo rooms play as before): `startMoneyMult` 0.2 (engine `startGame` → `startMoneyFor`, rounded to
+  10만원), `incomeMult` 0.45 (folded into `news.effectsFor` for CPUs: `salaryMult` (salary, 용돈, 단짝 생활비, 알바) and
+  `moneyTileMult` × it, plus `incomeMult` that spaces.js applies to POSITIVE event money — amounts are reduced where they are
+  computed, before logging, so every number on screen matches), `treasureMult` 0.3 (`treasures.findTreasure` →
+  `treasureValueFor`: a CPU's real treasure is appraised × it after the same RNG draws; fakes stay fakes; values are hidden until
+  the result show). Losses, prizes, transfers, houses and awards untouched. Why: totals spread ±700만원 (SD) around ≈ 2,500만원, so
+  decision-level weakening alone (even extreme tables) left a casual human at 33–42 % vs 3 CPUs; halving every CPU gain gave 81 %;
+  starting money (a large common base) and treasures (what lifted most lucky CPUs over people) are the efficient levers. The lobby /
+  admin CPU tools print it (`cpuHandicapText`: 「🤖 CPU 핸디캡(사람이 이기기 쉽게): 시작 자금 20% · 월급·돈 칸 수입 45% · 보물 감정가
+  30% — CPU끼리만 하는 방은 그대로」).
 - Runner (`GameRunner`): sibling CPU timer per room (`cpuTimers`), armed by `schedule(room, events)` from start / dispatch /
   restore with `cpuDue`; delay `cpuDelayMs` (`CPU_DELAY_MS` spin 1600 / prompt 1200 / trade 1200, + `cutin` 2500 when the
   last batch had an `event.cutin`; a number sets all four — tests pass 0 or `{cutin: 0}`), fires `runCpu(roomId, key)` →
@@ -1006,17 +1099,41 @@
   each CPU answers on its own timer. `startServer({cpuDelayMs})` passes it through.
 - Engine edits: `prompts.js` `openPrompt` no longer pre-answers CPU characters with the default (the runner answers);
   `cards.js` `offerTrade` accepts CPU targets (the runner answers). A system actor may already act for any character.
-- Scripts: `node scripts/cpu-game.js --cpus 4 [--random R] --mode lifetime --seed S [--games N] [--verbose]` (headless,
-  CPU and random characters alternate, `index` order; per game winner / routes / jobs / totals, summary by personality;
-  `playCpuGame`, `cpuVsRandom` exported). `scripts/simulate.js --policy random|cpu|mixed` (mixed = odd seq CPU, prints
-  1st-place share per policy). Measured (4 CPU + 4 random, lifetime, 300 games): CPU win share 62.3 / 64.3 / 66.3 %
-  (seeds 1 / 2 / 3), average rank 4.1 vs 4.9, average total ≈ 1610 vs 1435 만원; `simulate --policy mixed --games 300
-  --seed 11`: CPU 66.3 % of wins with 54.6 % of the characters.
-- Tests: `test/cpu.test.js` (lobby rules, every registered prompt kind answered with an enabled option the engine
-  accepts — kinds without a fixture get a synthetic prompt, heuristics, Stage 8 option fields, sabotage targeting, card
-  legality, trade answers, CPU-only games in 3 modes with no bets / offers / gifts), `test/cpu-server.test.js` (delays,
-  mocked-timer pacing incl. the cut-in extra and a trade answer, a CPU-only runner game to the end, admin / host routes,
-  admin start of a CPU-only room watched by a spectator). E2E: session scratchpad `s9c/e2e.cjs` (`s9c-*.png`).
+- Scripts: `node scripts/cpu-game.js --cpus M --humans N --human-policy casual|random|expert [--mode lifetime|adult|kids]
+  [--roulette skill] [--cpu-personality cautious|normal|bold|mix|random] [--cpu-level easy|hard] [--games G --seed S]
+  [--workers W] [--verbose]` — human proxies: `random` = a random enabled option + a playable card half the time (worst case),
+  `casual` = the prompt default 70 % / a random enabled option 30 % (a random route at forks), a red card ~30 % of its turns
+  (random target / number), skill rooms a uniformly random target; `expert` = the strong heuristic (`level: 'hard'`, normal);
+  nobody bets / trades / gifts; seats rotate per game (`seatPlan`, turn order `index`); summary = human 1st-place share, CPU 1st
+  by personality + a style line (대학 / 단짝 / 집 shares, 소원 / 도박 / 야근 / 승진 / 뒤통수 / 아이템 per CPU), jobs, routes.
+  `--matrix` = `TARGETS` (casual1 ≥ 90 %, random1 ≥ 75 %, casual2 / casual4 ≥ 97 %, expert1 ≥ 95 %) in lifetime + casual1 in
+  adult / kids / skill + random1 skill + casual1 vs each personality. `--random R` still works (= R random humans). Exports
+  `playCpuGame`, `cpuVsHumans` (async; `workers` threads), `cpuVsRandom` (legacy), `targetMatrix`, `humanAction`, `seatPlan`,
+  `summarize`, `TARGETS`, `HUMAN_POLICIES`. `scripts/simulate.js --policy random|cpu|mixed [--cpu-level easy|hard]` (its
+  characters are not owned by 'cpu' → no handicap; mixed prints the 1st-place share per policy).
+- Measured (300 games each, seeds 1 / 2, lifetime default config unless noted; before = the old heuristic, `--cpu-level hard`,
+  200 games × seed 1): casual 1 + 3 CPU human 1st 15.0 % → 97.0 / 97.7 %; random 1 + 3 10.0 → 90.0 / 88.7 %; casual 2 + 2 28.5 →
+  99.7 / 99.0 %; casual 4 + 4 29.0 → 100 / 99.7 %; expert 1 + 3 26.5 → 99.7 / 100 %; adult casual 10.0 → 98.0 / 97.7 %; kids
+  casual 25.0 → 100 / 100 % (CPUs ≈ 300 vs 1,220만원: the start money is most of a kids total); skill roulette casual 1.5 → 97.3 /
+  98.0 %, random 3.5 → 88.0 / 86.3 %; vs all-🐢 / 🙂 / 🔥 CPUs 14.0 / 9.5 / 11.5 → 99.0 / 97.3 / 98.3 % (seed 2: 97.0 / 97.0 /
+  98.7 %). Average totals (casual 1 + 3) human ≈ 2,500 vs CPU ≈ 900 (before 2,579 vs 2,864). Legacy `--cpus 4 --random 4` × 300
+  (seed 1): CPU wins 87–92 % → 1.0 %. Without the handicap (decision level only) casual 1 + 3 = 33 % (extreme tables 42 %).
+  CPU-only rooms (no handicap, 4 CPUs × 300, seed 9): every game finishes; 1st place 🐢 21.1 / 🙂 26.4 / 🔥 27.8 %; style 🐢
+  college 30 % · 단짝 36 % · house 0 % · 0.8 소원 · 2.0 overtime vs 🔥 62 % · 79 % · 78 % · 6.7 · 0.3. Jobs (chef fix): `simulate
+  --policy cpu --games 300 --seed 11` chef 0.1 → 1.7 %, top job 의사 11.2 % → 트로트 스타 11.1 % (hidden), every regular job ≥
+  0.9 % (국회의원), 알바 0 %; CPU-only harness chef 2.6 %, top 트로트 스타 18.8 %, every regular job ≥ 1.7 %. `simulate --policy
+  mixed` (easy decisions, no handicap): CPU-policy characters 64.3 % of 1st places with 54.3 % of the characters (the easy
+  tables still beat RANDOM play; the handicap does the rest).
+- Tests: `test/cpu.test.js` (lobby rules incl. personality add / change, every registered prompt kind answered with an
+  enabled option the engine accepts for both levels × every personality without touching the game RNG — kinds without a
+  fixture get a synthetic prompt, strong heuristics (`level: 'hard'`), Stage 8 option fields, sabotage targeting, card legality
+  (hard + the real CPUs' red-card play), `prefWeight`, personality styles, dream jobs, the handicap (start money, effect
+  multipliers, a money tile's log = its delta, treasure appraisal, CPU-only rooms untouched, off switch, `cpuMeta`), trade
+  answers, CPU-only games in 3 modes with no bets / offers / gifts, the harness: proxies / seats / summaries),
+  `test/cpu-server.test.js` (delays, mocked-timer pacing incl. the cut-in extra and a trade answer, a CPU-only runner game to the
+  end, admin / host routes incl. personality POST / PATCH + permissions + /api/meta.cpu + the handicapped start money, admin start
+  of a CPU-only room watched by a spectator). Tests that assert the strong heuristic's exact picks pass `{level: 'hard'}`
+  (roulette-skill, cards-bluered, stage9-submaps). E2E: session scratchpad `s9c/e2e.cjs` (`s9c-*.png`), `cpu2/ui.cjs` (`cpu2-*.png`).
 
 ## Stage 9 — submaps, treasures, awards, result show (server)
 - Data (`gameData().treasures|awards|titles`, `/api/meta.treasures|awards|titles`, `/api/meta.balance.submaps|result`):
@@ -1089,7 +1206,7 @@
   mvpDecided), and the result show parts: intro → `appraisal` (best real treasure, else a fake) → `awards` (biggest award) → winner →
   last → penalty → `mvp` (situation `mvpVote`, only while the vote is open). Manifest kind `treasure` (meta.treasure required, icon
   pipeline) with 22 todo items `treasure-<id with _→->` → `treasures/<…>.png`.
-- CPU (`cpu.js`): hometown = rest only when 체력 helps, the goal is > 12 tiles away and the gift beats a lost landing (bold: visit);
+- CPU (`cpu.js`, strong heuristic = `level: 'hard'`; the real CPUs use the personality tables of "Weak CPUs" in 9-C): hometown = rest only when 체력 helps, the goal is > 12 tiles away and the gift beats a lost landing (bold: visit);
   temple = wish when already granted one (or bold with ≥ 40 %), else train a useful stat (not bold, goal far), else wish at ≥ 50 %
   within the reserve, else leave; jeju = trip within the reserve (bold looser); reversal = cautious skip, normal lotto only when
   trailing, bold horse:10 when far behind the leader, else horse:2 with ample cash, else lotto. `tileWorth` knows treasure / submaps.
@@ -1337,7 +1454,8 @@ the data files) and the MC sibling test in `test/mc.test.js`.
   1.4th, but poor), no target (plain roulette) 0.8 / 0.6 %. Hit rate 50–52 %. Jitter cannot fix it (it doesn't change the mean); the old
   deck brought always-1 down to ~9 % and CPU aim to ~25 %. The CPU heuristic (expected worth + `aimSpeed`) does not exploit this.
   Jitter stays 50/40/10 (`balance.roulette.skill.jitter`).
-- CPU (`cpu.js`): `cpuSpinAction` (skill rooms → `{target: cpuSkillTarget, input: 'cpu'}`), `cpuAimScores(room, charId)` = expected worth per
+- CPU (`cpu.js`): `cpuSpinAction` (skill rooms → `{target: cpuSkillTarget, input: 'cpu'}`; the real CPUs aim at a uniformly random number with
+  `cpu.personalities.<p>.aimRandom` (1), the rest below = `level: 'hard'`), `cpuAimScores(room, charId)` = expected worth per
   target under the jitter: `landingFor` mirrors the engine (plus / minus mods, 경차, military halving, stops / goal halt) × `aimTileWorth`
   (tileWorth + heart / house / shop / jeju / reversal / merge) with losses × `lossAversion` + `aimSpeed` per tile moved (PERSONALITY:
   cautious 1 / 1.5, normal 2 / 1.2, bold 4 / 0.8); best of all ten numbers (ties → bigger), then `balance.roulette.cpu.aimNoise[personality]`
@@ -1435,7 +1553,7 @@ Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A, which wins); devi
   love heart 6 / money 4 ×1.2 (middle_age ×1.5 via `eraOverrides`), career job 3 / money 2 ×1.0 / loss 2, money route unchanged; `submaps.scale` / event scale adult ×0.5 / ×0.4, `partners.children.growTurns` 6, `birth.perSpin` 0.03,
   `military.turns` 4, `career.collegeTurns` 3; hidden unlocks raised (see Stage 6); titles thresholds + 「여유로운 은퇴러」 / 「빈곤 농장
   주인」 (retired / bust).
-- CPU (`cpu.js`): `walkFor` / `expectedLanding` follow HALT tiles and pass tiles, `tileWorth` knows salary (`paydayWorth`) / pass
+- CPU (`cpu.js`, strong heuristic = `level: 'hard'`): `walkFor` / `expectedLanding` follow HALT tiles and pass tiles, `tileWorth` knows salary (`paydayWorth`) / pass
   (`PASS_WORTH` 35) / goal / start, `progressWorth` in aim scores (final race only); `answerPassTile` (`cpuPassScores`: wish EV,
   wishAll, shop EV, job change by `jobScore`, pass = buff worth), `answerClub` (the target job's stat), `answerAllIn` (any number),
   reversal: `retire` when comfortably ahead of the runner-up (not bold), `allIn` only when far behind the leader within 25 tiles
@@ -1474,20 +1592,37 @@ Contract: session scratchpad `loop-contract.md` (+ ADDENDUM A, which wins); devi
   love outside (+routeWidth), money inside, equal lengths (ribbons between fork and rejoin). `era.loop === false` → `layoutLinear`
   (open winding road, `closed: false`, `goalId`). Result `{loop, closed, eraIndex, ring (closed dense polyline or the road), origin,
   perimeter, tiles, startId, start, era {id, shape, lap, fork, rejoin, center, bounds, tileIds, routes?}, eras: [era], bounds}`.
-  `eraSweepPoints(layout)` = camera tour (once around / start → goal). `planProps`: landmark in the middle of the loop when it fits
+  `eraSweepPoints(layout)` = points once around the loop / start → goal (the transition tour is now the whole-map hold). `planProps`: landmark in the middle of the loop when it fits
   (else behind the far side), scatter on both sides (inside = low props only), a park grid inside, a second belt for small loops,
   mountains far behind; tall props never stand where `shadowPoints` (away from the camera for the default azimuths `VIEW_AZIMUTHS`,
   height × 1.45) would hide the track (`PROP_HEIGHT`). `insideRing`, `lapSlots`.
 - `board3d.js`: `setBoard(board, {eraIndex, key?})` (a string = old key) — a new board builds at once (`buildEra`); a new era of the
   same board waits for its `eraTransition` animation (`S.wantEra`; switched in `applyCurrent` once idle when no transition plays).
-  `eraTransition` handler = banner → `switchEra`: `.b3-fade` on → dispose + rebuild the static group → every pawn on the start tile →
-  fade off → camera tour. `eraChanged` = a ✨ pop only. `moved`: hops follow the path ids (wraps, lanes); `hooks.onStep(moved)` after
+  Era builds are cached entries (`S.eras`: the shown era + a prebuilt next one, `{index, group, layout, labels, viewPts, extent,
+  job, built, warm}`) made of idle-sized steps (`eraSteps`: layout · planProps · ground · roads · tiles · markers · icons · props ·
+  labels). `prepareEra(i)` (game2d: the next era once `eraClock(room).left ≤ 1`) runs them one by one in `requestIdleCallback`
+  slices (timeout 400 ms), then `warmUp` draws the finished group once into a 1×1 scissor before a frame's clear (warm scene
+  with the same lights + fog → buffers / textures uploaded, no new programs). Shared by every era (never disposed with one):
+  the vertex-colour / tile / ground materials, ONE board-wide icon atlas (`ensureAtlas`, key `glyph|type`), label sprites with
+  textures + materials cached per text / style (`labelSprite`), the grass texture loaded once (ground UVs in world units / 9).
+  `eraTransition` handler = banner → `switchEra`: `.b3-fade` on → `buildEra` (prebuilt → a swap; else the remaining steps run
+  now) → every pawn on the start tile → the camera snaps onto the whole new map behind the fade → fade off → `holdShot` overview
+  for 2.4 s (azimuth eases in from +0.16) → back to the view mode (follow glides to the current pawn). The old group is disposed
+  in an idle callback after the swap (InstancedMesh buffers too). `stats().build` = `{era, prebuilt, swapMs, switchMs, buildMs,
+  maxStepMs, maxStep, slices, warmMs, firstRenderMs, steps}`, `stats().eras / view / shot / radius / cover`; DevTools marks
+  `b3:swap` / `b3:build`. Measured (SwiftShader 1280×720, real server board, 8 transitions per variant, A/B interleaved with the
+  old file routed in): main-thread work at the swap 17–103 ms (median 57) + first frame 5–19 ms → swap 0.1–0.3 ms, whole switch
+  incl. the overview fit 0.4–5.7 ms, first frame 0.4–2 ms; the prebuild costs 15–63 ms in 9 idle slices (longest slice median
+  13 ms, max 42), warm-up 2–5 ms; longest main-thread task in the 6 s after the transition 88–155 ms (median 117) → 0–108 ms
+  (median 60), max frame gap median 159 → 67 ms — now the same as the SwiftShader per-frame readback baseline of a quiet last
+  round (0–136 ms; headless software compositing reads every WebGL frame back on the main thread). The game-start build stays
+  synchronous (≈ 70–100 ms + first frame shader compile ≈ 70–110 ms). `eraChanged` = a ✨ pop only. `moved`: hops follow the path ids (wraps, lanes); `hooks.onStep(moved)` after
   the hop; `halted` → pop + banner (💵 / 🎪 / 🔀), 🔁 pop when passing the start; `resumed` subtitle 「이어서 n칸」. Static board per
   era: one ground plane (era tint), ring strip (+ lanes), instanced tiles (payday / pass / fork / start / goal scaled up), one merged
   marker mesh (payday gold coin ring + sign, 🎪 striped tent, start flag, goal gate), atlas icons with ribbons 「월급날」/「찬스 광장」,
   sprites (era sign at the start, fork / merge, payday labels, goal, route names). Measured (SwiftShader): kids eras 29 calls /
   ≈ 11.7k tris, young / middle_age (81 tiles + lanes) 37 calls / ≈ 25.7k tris, final race 19–21 calls / ≈ 7–8k tris.
-  `b3.eraIndex`; `focusEra(i)` only for the shown era. `finished` banner: 골인 / 🏖️ 조기 은퇴 (`retired: 'early'`) / 🌾 빈곤 농장
+  `b3.eraIndex`; `focusEra(i)` only for the shown era (= the whole-map view). `finished` banner: 골인 / 🏖️ 조기 은퇴 (`retired: 'early'`) / 🌾 빈곤 농장
   (`'bust'`); `bonusSpin` kept for the final race.
 - 2D (`game2d.js` `renderTrack` + `public/css/loop.css`): `racetrack(era)` → a hairpin racetrack on a CSS grid (top row →, right
   turn cap, bottom row ←, left cap back to 🚩; a route era puts [fork (3 rows) | 💕/💼/💰 labels | three lanes | rejoin] centred
@@ -1555,7 +1690,7 @@ Contract: session scratchpad `cards-contract.md` (FIXED CONTRACT) + `cards-devia
   below max rank; bonus off) and from events (`project_win` for merit jobs, `crisis_save` any job).
 - Events.json: `conditions.injured`, `conditions.lacksCard`, `heal: true` (`rehab`); 14 new events (card rewards, merit, heal).
   `/api/meta.balance` adds `cardSources` and `merit`.
-- CPU: `cardValue(data, c, id, room?)` values blue cards (`blueWorth`: wanted requirement card 130 while jobless, 부적 by injury risk,
+- CPU (strong heuristic = `level: 'hard'`; the real CPUs play a random red card by personality chance): `cardValue(data, c, id, room?)` values blue cards (`blueWorth`: wanted requirement card 130 while jobless, 부적 by injury risk,
   월급 부적 by salary, romance cards while unmarried, merit for merit jobs); `jobDeficit` +2 per missing requirement card; plays only
   red cards (`cardBlockReason`); `rollCardChoice` = expected landing worth (tile + 찬스 광장 + aimSpeed × progress, losses ×
   lossAversion) of 딱 그 칸 (best number) / 큰 수 / 작은 수 / 월급날 직행 vs the plain roulette (skill rooms: its aim), thresholds 40 /

@@ -1,5 +1,6 @@
 // Lightweight orbit controls for the board camera (no three.js dependency).
 //   1 finger / left drag: rotate · pinch or wheel: zoom · 2-finger drag / right or shift drag: pan
+// `state.maxRadius` (optional) raises the zoom-out limit (the board's whole-map view can be farther than 80).
 // A short press without movement is reported as a tap (canvas coords) — used for the roulette; taps
 // keep working while orbiting is disabled (tv mode).
 import { clamp } from './math.js';
@@ -15,6 +16,8 @@ export function createOrbitControls(dom, { state, onInput = () => {}, onTap = ()
   let enabled = true;
   let start = null; // { x, y, t, moved }
   let lastPinch = null;
+
+  const maxRadius = () => Math.max(ORBIT_LIMITS.maxRadius, Number(state.maxRadius) || 0);
 
   const rel = (ev) => {
     const r = dom.getBoundingClientRect();
@@ -67,7 +70,7 @@ export function createOrbitControls(dom, { state, onInput = () => {}, onTap = ()
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       if (lastPinch) {
         if (dist > 0 && lastPinch.dist > 0) {
-          state.radius = clamp(state.radius * (lastPinch.dist / dist), ORBIT_LIMITS.minRadius, ORBIT_LIMITS.maxRadius);
+          state.radius = clamp(state.radius * (lastPinch.dist / dist), ORBIT_LIMITS.minRadius, maxRadius());
           onInput('zoom');
         }
         pan(mid.x - lastPinch.mid.x, mid.y - lastPinch.mid.y);
@@ -90,7 +93,7 @@ export function createOrbitControls(dom, { state, onInput = () => {}, onTap = ()
   function wheel(ev) {
     if (!enabled) return;
     ev.preventDefault();
-    state.radius = clamp(state.radius * Math.exp(ev.deltaY * 0.0012), ORBIT_LIMITS.minRadius, ORBIT_LIMITS.maxRadius);
+    state.radius = clamp(state.radius * Math.exp(ev.deltaY * 0.0012), ORBIT_LIMITS.minRadius, maxRadius());
     onInput('zoom');
   }
 

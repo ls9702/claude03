@@ -30,6 +30,17 @@
 .board3d-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .board3d-canvas:active { cursor: grabbing; }
 .b3-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/* 🗺️ 전체 보기 ↔ 🎯 따라가기 (camera view toggle, top-left of the board; the idle roulette sits top-right) */
+.b3-view-btn {
+  position: absolute; left: 8px; top: 8px; z-index: 2; min-height: 36px; padding: 4px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 999px; background: rgba(45, 42, 50, 0.82); color: #fff;
+  font: inherit; font-size: 0.85rem; font-weight: 800; line-height: 1.2; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.b3-view-btn:hover { background: rgba(45, 42, 50, 0.92); }
+.b3-view-btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.b3-view-btn[aria-pressed='true'] { background: var(--primary); }
+.b3-view-btn[hidden] { display: none; }
 /* loop maps: era transition fade (the static board is rebuilt for the next era underneath) */
 .b3-fade { position: absolute; inset: 0; background: #fff6df; opacity: 0; transition: opacity 0.35s ease; }
 .b3-fade.on { opacity: 1; }

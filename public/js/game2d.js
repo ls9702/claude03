@@ -67,7 +67,7 @@ import { submapOptionsHtml, treasureListHtml } from './ui/submapArt.js';
 import { createResultScreen } from './ui/resultShow.js';
 import { audio } from './audio.js';
 import { loadAssetIndex, findAsset, assetUrl } from './assets.js';
-import { won, esc, secondsLeft, ownerHtml, josa, nameHtml } from './format.js';
+import { won, esc, secondsLeft, ownerHtml, josa, nameHtml, cpuPersonalityHtml } from './format.js';
 import { aimShort, aimText, isSkillRoom } from './ui/rouletteSkill.js';
 import { createSkillPanel } from './ui/skillPanel.js';
 import { pickQuality, QUALITY_PRESETS, shouldFallback } from './scene/quality.js';
@@ -110,6 +110,9 @@ const QUALITY_KEY = 'jinsei.quality';
 const CUTIN_KEY = 'jinsei.cutins'; // legacy 'off' (→ spectator mode off); `?cutins=off` = every cut-in off
 const SPECTATOR_KEY = 'jinsei.spectatorCutins'; // 「관전 컷인」 full | compact | off (default compact)
 const FAST_KEY = 'jinsei.fastForward'; // 「⏩ 빨리 감기」: other players' cut-ins → banners only ('1' = on)
+const VIEW_KEY = 'jinsei.boardView'; // 3D camera: 'overview' (🗺️ 전체 보기) | 'follow' (default)
+const VIEW_LABEL = { follow: '🗺️ 전체 보기', overview: '🎯 따라가기' };
+const VIEW_TITLE = { follow: '지금 시대 지도 전체를 한 화면에 보여 줘요', overview: '지금 차례인 캐릭터를 가까이 따라가요' };
 /** Stage 6 cut-in anchors (3D: shown after their board step). */
 const STAGE6_CUTIN_TYPES = ['jobChanged', 'rankUp', 'hiddenJobUnlocked', 'injured', 'newsFlash', 'militaryStart', 'militaryEnd', 'educationChanged'];
 /** Stage 7 cut-in anchors / lone banner events (3D: shown after their board step). */
@@ -220,7 +223,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
             </div>
           </div>
           <div class="news-flash" data-el="newsflash" hidden aria-live="polite"></div>
-          <div class="board3d" data-el="wrap3d" hidden><canvas class="board3d-canvas" data-el="canvas3d" aria-label="3D 말판"></canvas></div>
+          <div class="board3d" data-el="wrap3d" hidden><canvas class="board3d-canvas" data-el="canvas3d" aria-label="3D 말판"></canvas>
+            <button type="button" class="b3-view-btn" data-el="viewbtn" aria-pressed="false" title="${VIEW_TITLE.follow}">${VIEW_LABEL.follow}</button></div>
           <div class="track-scroll" data-el="scroll"><div class="track" data-el="track"></div></div>
         </div>
         <div class="card g-action spin-dock" data-el="dock">
@@ -1249,7 +1253,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       setHtml(pt, portraitHtml(c, { size: 40 }), true);
       setHtml(
         body,
-        `<span class="gc-name">${nameHtml(c.name)} <small class="muted">${ownerHtml(c)}${c.isMe ? ' · 나' : ''}</small></span>
+        `<span class="gc-name">${nameHtml(c.name)} <small class="muted">${ownerHtml(c)}${cpuPersonalityHtml(c, { short: true }) ? ` ${cpuPersonalityHtml(c, { short: true })}` : ''}${c.isMe ? ' · 나' : ''}</small></span>
             <span class="gc-status small">${status}</span>
             ${tags ? `<span class="gc-tags">${tags}</span>` : ''}
             ${stats.length ? `<span class="gc-mini" aria-hidden="true">${stats.map((st) => `<i style="--p:${st.pct}%;--c:${st.color}" title="${esc(st.label)} ${st.value}"></i>`).join('')}</span>` : ''}`,
@@ -1366,6 +1370,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       );
     }
     const facts = [];
+    const pers = cpuPersonalityHtml(c, { desc: true }); // CPU characters: 🐢 신중 / 🙂 보통 / 🔥 대담
+    if (pers) facts.push(`<div class="gd-fact"><span class="gd-k">CPU 성향</span><span class="gd-v">${pers}</span></div>`);
     if (jb) {
       facts.push(
         `<div class="gd-fact"><span class="gd-k">직업</span><span class="gd-v"><span class="job-badge big${jb.partTime ? ' parttime' : ''}"><span class="jb-ic">${jbIcon(jb)}</span><span class="jb-n">${esc(jb.name)}</span>${
@@ -1657,6 +1663,40 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
   };
   window.addEventListener('scroll', onScrollFab, { passive: true });
   window.addEventListener('resize', onScrollFab, { passive: true });
+
+  // ---------- 3D 🗺️ whole-map view: keep the loop out from under the sticky spin dock / reaction bar / top bar ----------
+  function boardCover() {
+    if (!ui.b3 || el.wrap3d.hidden) return null;
+    const c = el.wrap3d.getBoundingClientRect();
+    if (c.height < 40) return null;
+    const over = (r) => r.width > 0 && r.height > 0 && r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top;
+    let top = 0;
+    let bottom = 0;
+    for (const n of [el.dock, document.getElementById('reaction-bar')]) {
+      if (!n || n.hidden) continue;
+      const r = n.getBoundingClientRect();
+      if (over(r) && r.top > c.top + c.height * 0.25) bottom = Math.max(bottom, c.bottom - r.top);
+    }
+    const bar = document.querySelector('.topbar');
+    const rb = bar?.getBoundingClientRect();
+    if (rb && over(rb) && rb.bottom < c.bottom - c.height * 0.25) top = Math.max(0, rb.bottom - c.top);
+    const q = (px) => Math.round(Math.min(0.45, Math.max(0, px / c.height)) * 20) / 20; // 5 % steps: no jitter while scrolling
+    // the 🗺️ toggle floats over the top-left corner of the canvas
+    const vb = el.viewbtn.hidden ? null : el.viewbtn.getBoundingClientRect();
+    const avoid = vb?.width ? [{ x: vb.left - c.left, y: vb.top - c.top, w: vb.width, h: vb.height }] : [];
+    return { top: q(top), bottom: q(bottom), avoid };
+  }
+  let coverRaf = 0;
+  function applyBoardCover() {
+    if (coverRaf) return;
+    coverRaf = requestAnimationFrame(() => {
+      coverRaf = 0;
+      const cv = boardCover();
+      if (cv) ui.b3?.setViewInsets?.(cv);
+    });
+  }
+  window.addEventListener('scroll', applyBoardCover, { passive: true });
+  window.addEventListener('resize', applyBoardCover, { passive: true });
   queueMicrotask(() => applyModeUi());
 
   // ---------- interactions ----------
@@ -1716,6 +1756,11 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       ui.b3?.resetCamera();
       return render(ui.room);
     }
+    if (t.closest('[data-el="viewbtn"]')) {
+      // 🗺️ 전체 보기 ↔ 🎯 따라가기 (remembered per browser)
+      if (ui.b3) ui.b3.setView(ui.b3.view === 'overview' ? 'follow' : 'overview');
+      return;
+    }
     if (t.closest('[data-el="spin"], [data-el="spinfab"]')) {
       spinNow();
       return;
@@ -1771,6 +1816,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       ui.quality = ev.target.value;
       sSet(QUALITY_KEY, ui.quality);
       ui.b3?.setQuality(ui.quality);
+      applyModeUi(); // TV ↔ others: camera tools (🎥 / 🗺️) and the TV body class follow the preset
       return;
     }
     if (ev.target.dataset.bet === 'bettor') {
@@ -2017,6 +2063,8 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     el.wrap3d.hidden = !on;
     el.scroll.hidden = on;
     el.camreset.hidden = !on || !QUALITY_PRESETS[ui.quality]?.controls;
+    el.viewbtn.hidden = !on || !QUALITY_PRESETS[ui.quality]?.controls; // TV: always the whole map
+    updateViewBtn(ui.b3?.view ?? 'follow');
     el.quality.hidden = !on;
     el.quality.value = ui.quality;
     el.modebtn.textContent = on ? '2D 보기' : '3D 보기';
@@ -2029,6 +2077,14 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     applyModeUi();
     if (ui.room) render(ui.room);
     if (message) toast(message, 'error');
+  }
+
+  /** 「🗺️ 전체 보기」 / 「🎯 따라가기」 toggle state (3D camera view). */
+  function updateViewBtn(mode) {
+    const over = mode === 'overview';
+    el.viewbtn.textContent = over ? VIEW_LABEL.overview : VIEW_LABEL.follow;
+    el.viewbtn.title = over ? VIEW_TITLE.overview : VIEW_TITLE.follow;
+    el.viewbtn.setAttribute('aria-pressed', String(over));
   }
 
   function disposeBoard3D() {
@@ -2062,6 +2118,10 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           hooks: {
             onStep: (e) => feedback(e, true),
             onRouletteTap: () => spinNow(),
+            onViewChange: (mode) => {
+              sSet(VIEW_KEY, mode === 'overview' ? 'overview' : null);
+              updateViewBtn(mode);
+            },
             onSpinResult: (e) => {
               const c = e.skill ? byId(e.charId) : null;
               if (c?.isMe) toast(`${c.name}: ${aimText(e)}`, 'info');
@@ -2070,6 +2130,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
           },
         });
         ui.b3 = b3;
+        if (sGet(VIEW_KEY) === 'overview') b3.setView('overview');
         installCutinHandlers(b3);
         b3.onIdle(() => ui.room && ui.room.status === 'playing' && render(ui.room));
         if (typeof window !== 'undefined' && params.has('debug')) window.__board3d = b3;
@@ -2178,6 +2239,9 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
     const b3 = ui.b3;
     const cur = currentChar();
     b3.setBoard(room.board, { eraIndex: currentEraIndex(room) }); // loop maps: only the shared era's loop
+    // the era's last rounds: build the next era's map in idle time so the transition is a swap (no hitch)
+    const clock = eraClock(room);
+    if (!clock.race && clock.left != null && clock.left <= 1 && clock.index + 1 < clock.count) b3.prepareEra?.(clock.index + 1);
     // Stage 7: roulette modifiers ride on the pawn's name tag (「✂️−3」「⚡+2」)
     // Stage 8: 💍 / 👶n / 🏠 ride on it too (no extra draw calls: the name tag is one sprite); loop maps: 찬스 버프 icon
     b3.setCharacters(
@@ -2194,6 +2258,7 @@ export function createGameUI(root, { getMeta, act, toast, resync = null }) {
       rouletteTappable: canSpin,
     });
     b3.setMascots?.(mcOn());
+    applyBoardCover(); // the dock turns sticky on my turn
     if (ui.viewEra == null && ui.lastFocusEra != null) b3.resetCamera();
     ui.lastFocusEra = ui.viewEra;
   }
