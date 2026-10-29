@@ -16652,10 +16652,29 @@
       ],
       "output": "chara/ch/chiikawa/expr-joy.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "chiikawa",
-        "part": "expr-joy"
+        "part": "expr-joy",
+        "res": 0.75,
+        "rect": [
+          345.3,
+          656,
+          333.3,
+          220
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/expr-joy.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:30.566Z",
+        "acceptedAt": "2026-10-29T08:45:30.566Z",
+        "source": "import",
+        "width": 250,
+        "height": 165,
+        "from": "ch-chiikawa-expr-joy.png"
       }
     },
     {
@@ -16713,10 +16732,29 @@
       ],
       "output": "chara/ch/chiikawa/expr-shock.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "chiikawa",
-        "part": "expr-shock"
+        "part": "expr-shock",
+        "res": 0.75,
+        "rect": [
+          262.7,
+          257.3,
+          492,
+          620
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/chiikawa/expr-shock.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:31.277Z",
+        "acceptedAt": "2026-10-29T08:45:31.277Z",
+        "source": "import",
+        "width": 369,
+        "height": 465,
+        "from": "ch-chiikawa-expr-shock.png"
       }
     },
     {
@@ -16814,9 +16852,9 @@
         "res": 0.75,
         "rect": [
           145.3,
-          376,
-          746.7,
-          932
+          378.7,
+          742.7,
+          928
         ],
         "placement": {
           "unit": 1625.1534,
@@ -16825,68 +16863,68 @@
         },
         "anchors": {
           "head": [
-            516.7,
+            516,
             444
           ],
           "face": [
-            516.7,
-            703.3
+            516,
+            704
           ],
           "neck": [
-            516.7,
-            916
+            516,
+            917.3
           ],
           "handL": [
-            193.4,
-            988
+            171.9,
+            996.5
           ],
           "handR": [
-            839.9,
-            990.7
+            862.3,
+            992.3
           ],
           "back": [
-            516.7,
-            1108.7
+            516,
+            1109.3
           ]
         },
         "eyes": [
           [
-            406.3,
-            703.2
+            406.4,
+            704
           ],
           [
-            620.5,
-            703.3
+            620.4,
+            704
           ]
         ],
         "headBox": {
-          "left": 172,
+          "left": 173.3,
           "right": 858.7,
           "top": 444,
-          "bottom": 916,
-          "wideY": 749.3
+          "bottom": 917.3,
+          "wideY": 730.7
         },
-        "headWidth": 686.7,
+        "headWidth": 685.3,
         "bbox": {
           "x": 149.3,
-          "y": 381.3,
+          "y": 382.7,
           "w": 736,
-          "h": 921.3
+          "h": 920
         },
         "source": [
-          848,
-          1264
+          896,
+          1200
         ]
       },
       "accepted": {
         "file": "chara/ch/hachiware/base.webp",
         "model": "import",
         "promptUsed": null,
-        "generatedAt": "2026-10-16T05:26:47.819Z",
-        "acceptedAt": "2026-10-16T05:26:47.819Z",
+        "generatedAt": "2026-10-29T08:45:23.029Z",
+        "acceptedAt": "2026-10-29T08:45:23.029Z",
         "source": "import",
-        "width": 560,
-        "height": 699,
+        "width": 557,
+        "height": 696,
         "from": "ch-hachiware-base.png"
       }
     },
@@ -16905,10 +16943,38 @@
       ],
       "output": "chara/ch/hachiware/body.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "hachiware",
-        "part": "body"
+        "part": "body",
+        "res": 0.75,
+        "rect": [
+          169.3,
+          378.7,
+          692,
+          928
+        ],
+        "pivots": {
+          "armL": [
+            256.5,
+            955.9
+          ],
+          "armR": [
+            775.2,
+            956.1
+          ]
+        }
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/body.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:27.778Z",
+        "acceptedAt": "2026-10-29T08:45:27.778Z",
+        "source": "import",
+        "width": 519,
+        "height": 696,
+        "from": "ch-hachiware-noarms.png"
       }
     },
     {
@@ -16927,10 +16993,48 @@
       ],
       "output": "chara/ch/hachiware/arms.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "hachiware",
-        "part": "arms"
+        "part": "arms",
+        "res": 0.75,
+        "rect": [
+          145.3,
+          917.3,
+          742.7,
+          112
+        ],
+        "pivots": {
+          "armL": [
+            256.5,
+            955.9
+          ],
+          "armR": [
+            775.2,
+            956.1
+          ]
+        },
+        "hands": {
+          "handL": [
+            171.9,
+            996.5
+          ],
+          "handR": [
+            862.3,
+            992.3
+          ]
+        }
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/arms.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:27.921Z",
+        "acceptedAt": "2026-10-29T08:45:27.921Z",
+        "source": "import",
+        "width": 557,
+        "height": 84,
+        "from": "ch-hachiware-noarms.png (기본 − 팔 없음)"
       }
     },
     {
@@ -16948,10 +17052,29 @@
       ],
       "output": "chara/ch/hachiware/eyes-closed.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "hachiware",
-        "part": "eyes-closed"
+        "part": "eyes-closed",
+        "res": 0.75,
+        "rect": [
+          358.7,
+          656,
+          314.7,
+          94.7
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/eyes-closed.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:33.801Z",
+        "acceptedAt": "2026-10-29T08:45:33.801Z",
+        "source": "import",
+        "width": 236,
+        "height": 71,
+        "from": "ch-hachiware-eyes-closed.png"
       }
     },
     {
@@ -16969,10 +17092,29 @@
       ],
       "output": "chara/ch/hachiware/mouth-open.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "hachiware",
-        "part": "mouth-open"
+        "part": "mouth-open",
+        "res": 0.75,
+        "rect": [
+          473.3,
+          784,
+          86.7,
+          109.3
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/mouth-open.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:34.315Z",
+        "acceptedAt": "2026-10-29T08:45:34.315Z",
+        "source": "import",
+        "width": 65,
+        "height": 82,
+        "from": "ch-hachiware-mouth-open.png"
       }
     },
     {
@@ -16990,10 +17132,29 @@
       ],
       "output": "chara/ch/hachiware/expr-joy.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "hachiware",
-        "part": "expr-joy"
+        "part": "expr-joy",
+        "res": 0.75,
+        "rect": [
+          348,
+          612,
+          336,
+          282.7
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/expr-joy.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:32.566Z",
+        "acceptedAt": "2026-10-29T08:45:32.566Z",
+        "source": "import",
+        "width": 252,
+        "height": 212,
+        "from": "ch-hachiware-expr-joy.png"
       }
     },
     {
@@ -17011,10 +17172,29 @@
       ],
       "output": "chara/ch/hachiware/expr-cry.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "hachiware",
-        "part": "expr-cry"
+        "part": "expr-cry",
+        "res": 0.75,
+        "rect": [
+          258.7,
+          609.3,
+          505.3,
+          368
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/expr-cry.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:31.936Z",
+        "acceptedAt": "2026-10-29T08:45:31.936Z",
+        "source": "import",
+        "width": 379,
+        "height": 276,
+        "from": "ch-hachiware-expr-cry.png"
       }
     },
     {
@@ -17032,10 +17212,29 @@
       ],
       "output": "chara/ch/hachiware/expr-shock.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "hachiware",
-        "part": "expr-shock"
+        "part": "expr-shock",
+        "res": 0.75,
+        "rect": [
+          266.7,
+          280,
+          490.7,
+          592
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/expr-shock.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:33.244Z",
+        "acceptedAt": "2026-10-29T08:45:33.244Z",
+        "source": "import",
+        "width": 368,
+        "height": 444,
+        "from": "ch-hachiware-expr-shock.png"
       }
     },
     {
@@ -17049,10 +17248,66 @@
       ],
       "output": "chara/ch/hachiware/sheet-jump.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "hachiware",
-        "part": "sheet-jump"
+        "part": "sheet-jump",
+        "res": 0.5,
+        "rect": [
+          142,
+          370,
+          738,
+          942
+        ],
+        "grid": [
+          2,
+          2
+        ],
+        "frames": 4,
+        "loop": false,
+        "seq": [
+          0,
+          1,
+          2,
+          1,
+          3
+        ],
+        "frameMs": [
+          180,
+          150,
+          190,
+          100,
+          230
+        ],
+        "heads": [
+          [
+            -13,
+            142
+          ],
+          [
+            -6,
+            -4
+          ],
+          [
+            -5,
+            30
+          ],
+          [
+            -5,
+            210
+          ]
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/hachiware/sheet-jump.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:38.946Z",
+        "acceptedAt": "2026-10-29T08:45:38.946Z",
+        "source": "import",
+        "width": 738,
+        "height": 942,
+        "from": "ch-hachiware-sheet-jump.png"
       }
     },
     {
@@ -17070,10 +17325,87 @@
       ],
       "output": "chara/ch/usagi/base.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "base"
+        "part": "base",
+        "res": 0.75,
+        "rect": [
+          140,
+          176,
+          745.3,
+          1130.7
+        ],
+        "placement": {
+          "unit": 1625.1534,
+          "cx": 0.0008,
+          "feet": 0.7858
+        },
+        "anchors": {
+          "head": [
+            512.7,
+            444
+          ],
+          "face": [
+            512.7,
+            703.7
+          ],
+          "neck": [
+            512.7,
+            916
+          ],
+          "handL": [
+            166.4,
+            996.5
+          ],
+          "handR": [
+            857.9,
+            997.7
+          ],
+          "back": [
+            512.7,
+            1108.7
+          ]
+        },
+        "eyes": [
+          [
+            402.1,
+            703.8
+          ],
+          [
+            617.4,
+            703.7
+          ]
+        ],
+        "headBox": {
+          "left": 166.7,
+          "right": 856,
+          "top": 444,
+          "bottom": 916,
+          "wideY": 746.7
+        },
+        "headWidth": 688,
+        "bbox": {
+          "x": 142.7,
+          "y": 178.7,
+          "w": 740,
+          "h": 1124
+        },
+        "source": [
+          896,
+          1200
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/base.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:27.069Z",
+        "acceptedAt": "2026-10-29T08:45:27.069Z",
+        "source": "import",
+        "width": 559,
+        "height": 848,
+        "from": "ch-usagi-base.png"
       }
     },
     {
@@ -17091,10 +17423,38 @@
       ],
       "output": "chara/ch/usagi/body.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "body"
+        "part": "body",
+        "res": 0.75,
+        "rect": [
+          164,
+          176,
+          697.3,
+          1130.7
+        ],
+        "pivots": {
+          "armL": [
+            250.8,
+            956
+          ],
+          "armR": [
+            774.8,
+            956.8
+          ]
+        }
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/body.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:29.799Z",
+        "acceptedAt": "2026-10-29T08:45:29.799Z",
+        "source": "import",
+        "width": 523,
+        "height": 848,
+        "from": "ch-usagi-noarms.png"
       }
     },
     {
@@ -17113,10 +17473,48 @@
       ],
       "output": "chara/ch/usagi/arms.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "arms"
+        "part": "arms",
+        "res": 0.75,
+        "rect": [
+          140,
+          916,
+          745.3,
+          112
+        ],
+        "pivots": {
+          "armL": [
+            250.8,
+            956
+          ],
+          "armR": [
+            774.8,
+            956.8
+          ]
+        },
+        "hands": {
+          "handL": [
+            166.4,
+            996.5
+          ],
+          "handR": [
+            857.9,
+            997.7
+          ]
+        }
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/arms.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:29.903Z",
+        "acceptedAt": "2026-10-29T08:45:29.903Z",
+        "source": "import",
+        "width": 559,
+        "height": 84,
+        "from": "ch-usagi-noarms.png (기본 − 팔 없음)"
       }
     },
     {
@@ -17134,10 +17532,29 @@
       ],
       "output": "chara/ch/usagi/eyes-closed.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "eyes-closed"
+        "part": "eyes-closed",
+        "res": 0.75,
+        "rect": [
+          354.7,
+          656,
+          312,
+          94.7
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/eyes-closed.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:37.586Z",
+        "acceptedAt": "2026-10-29T08:45:37.586Z",
+        "source": "import",
+        "width": 234,
+        "height": 71,
+        "from": "ch-usagi-eyes-closed.png"
       }
     },
     {
@@ -17155,10 +17572,29 @@
       ],
       "output": "chara/ch/usagi/mouth-open.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "mouth-open"
+        "part": "mouth-open",
+        "res": 0.75,
+        "rect": [
+          450.7,
+          748,
+          122.7,
+          158.7
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/mouth-open.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:38.258Z",
+        "acceptedAt": "2026-10-29T08:45:38.258Z",
+        "source": "import",
+        "width": 92,
+        "height": 119,
+        "from": "ch-usagi-mouth-open.png"
       }
     },
     {
@@ -17176,10 +17612,29 @@
       ],
       "output": "chara/ch/usagi/expr-joy.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "expr-joy"
+        "part": "expr-joy",
+        "res": 0.75,
+        "rect": [
+          340,
+          656,
+          341.3,
+          236
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/expr-joy.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:36.231Z",
+        "acceptedAt": "2026-10-29T08:45:36.231Z",
+        "source": "import",
+        "width": 256,
+        "height": 177,
+        "from": "ch-usagi-expr-joy.png"
       }
     },
     {
@@ -17197,10 +17652,29 @@
       ],
       "output": "chara/ch/usagi/expr-cry.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "expr-cry"
+        "part": "expr-cry",
+        "res": 0.75,
+        "rect": [
+          269.3,
+          540,
+          484,
+          416
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/expr-cry.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:35.597Z",
+        "acceptedAt": "2026-10-29T08:45:35.597Z",
+        "source": "import",
+        "width": 363,
+        "height": 312,
+        "from": "ch-usagi-expr-cry.png"
       }
     },
     {
@@ -17218,10 +17692,29 @@
       ],
       "output": "chara/ch/usagi/expr-shock.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "expr-shock"
+        "part": "expr-shock",
+        "res": 0.75,
+        "rect": [
+          262.7,
+          96,
+          492,
+          816
+        ],
+        "overlay": true
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/expr-shock.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:36.925Z",
+        "acceptedAt": "2026-10-29T08:45:36.925Z",
+        "source": "import",
+        "width": 369,
+        "height": 612,
+        "from": "ch-usagi-expr-shock.png"
       }
     },
     {
@@ -17235,10 +17728,66 @@
       ],
       "output": "chara/ch/usagi/sheet-jump.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "usagi",
-        "part": "sheet-jump"
+        "part": "sheet-jump",
+        "res": 0.5,
+        "rect": [
+          116,
+          124,
+          790,
+          1184
+        ],
+        "grid": [
+          2,
+          2
+        ],
+        "frames": 4,
+        "loop": false,
+        "seq": [
+          0,
+          1,
+          2,
+          1,
+          3
+        ],
+        "frameMs": [
+          180,
+          150,
+          190,
+          100,
+          230
+        ],
+        "heads": [
+          [
+            -1,
+            100
+          ],
+          [
+            1,
+            -72
+          ],
+          [
+            -1,
+            12
+          ],
+          [
+            -2,
+            74
+          ]
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/usagi/sheet-jump.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:39.814Z",
+        "acceptedAt": "2026-10-29T08:45:39.814Z",
+        "source": "import",
+        "width": 790,
+        "height": 1184,
+        "from": "ch-usagi-sheet-jump.png"
       }
     },
     {
@@ -17442,10 +17991,87 @@
       ],
       "output": "chara/ch/kurimanju/base.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "kurimanju",
-        "part": "base"
+        "part": "base",
+        "res": 0.75,
+        "rect": [
+          141.3,
+          417.3,
+          744,
+          889.3
+        ],
+        "placement": {
+          "unit": 1625.1534,
+          "cx": 0.0008,
+          "feet": 0.7858
+        },
+        "anchors": {
+          "head": [
+            513.3,
+            444
+          ],
+          "face": [
+            513.3,
+            770.6
+          ],
+          "neck": [
+            513.3,
+            916
+          ],
+          "handL": [
+            188.3,
+            988
+          ],
+          "handR": [
+            837.2,
+            989.3
+          ],
+          "back": [
+            513.3,
+            1108.7
+          ]
+        },
+        "eyes": [
+          [
+            316.7,
+            770.6
+          ],
+          [
+            655.6,
+            770.6
+          ]
+        ],
+        "headBox": {
+          "left": 168,
+          "right": 856,
+          "top": 444,
+          "bottom": 916,
+          "wideY": 734.7
+        },
+        "headWidth": 688,
+        "bbox": {
+          "x": 144,
+          "y": 421.3,
+          "w": 738.7,
+          "h": 881.3
+        },
+        "source": [
+          896,
+          1200
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/kurimanju/base.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:23.968Z",
+        "acceptedAt": "2026-10-29T08:45:23.968Z",
+        "source": "import",
+        "width": 558,
+        "height": 667,
+        "from": "ch-kurimanju-base.png"
       }
     },
     {
@@ -17628,10 +18254,87 @@
       ],
       "output": "chara/ch/rakko/base.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "rakko",
-        "part": "base"
+        "part": "base",
+        "res": 0.75,
+        "rect": [
+          140,
+          440,
+          745.3,
+          866.7
+        ],
+        "placement": {
+          "unit": 1625.1534,
+          "cx": 0.0008,
+          "feet": 0.7858
+        },
+        "anchors": {
+          "head": [
+            512.7,
+            444
+          ],
+          "face": [
+            512.7,
+            703.8
+          ],
+          "neck": [
+            512.7,
+            917.3
+          ],
+          "handL": [
+            188.2,
+            988
+          ],
+          "handR": [
+            837.1,
+            989.3
+          ],
+          "back": [
+            512.7,
+            1109.3
+          ]
+        },
+        "eyes": [
+          [
+            402.1,
+            703.9
+          ],
+          [
+            617.3,
+            703.8
+          ]
+        ],
+        "headBox": {
+          "left": 168,
+          "right": 856,
+          "top": 444,
+          "bottom": 917.3,
+          "wideY": 740
+        },
+        "headWidth": 688,
+        "bbox": {
+          "x": 144,
+          "y": 444,
+          "w": 738.7,
+          "h": 858.7
+        },
+        "source": [
+          896,
+          1200
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/rakko/base.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:25.689Z",
+        "acceptedAt": "2026-10-29T08:45:25.689Z",
+        "source": "import",
+        "width": 559,
+        "height": 650,
+        "from": "ch-rakko-base.png"
       }
     },
     {
@@ -17814,10 +18517,87 @@
       ],
       "output": "chara/ch/shisa/base.webp",
       "postprocess": [],
-      "status": "todo",
+      "status": "accepted",
       "meta": {
         "character": "shisa",
-        "part": "base"
+        "part": "base",
+        "res": 0.75,
+        "rect": [
+          86.7,
+          360,
+          849.3,
+          946.7
+        ],
+        "placement": {
+          "unit": 1625.1534,
+          "cx": 0.0008,
+          "feet": 0.7858
+        },
+        "anchors": {
+          "head": [
+            512.7,
+            373.3
+          ],
+          "face": [
+            512.7,
+            703.8
+          ],
+          "neck": [
+            512.7,
+            1189.3
+          ],
+          "handL": [
+            323.2,
+            1189.3
+          ],
+          "handR": [
+            702.2,
+            1189.3
+          ],
+          "back": [
+            512.7,
+            1245.3
+          ]
+        },
+        "eyes": [
+          [
+            402.2,
+            703.9
+          ],
+          [
+            617.4,
+            703.8
+          ]
+        ],
+        "headBox": {
+          "left": 90.7,
+          "right": 932,
+          "top": 373.3,
+          "bottom": 1189.3,
+          "wideY": 762.7
+        },
+        "headWidth": 841.3,
+        "bbox": {
+          "x": 90.7,
+          "y": 362.7,
+          "w": 841.3,
+          "h": 940
+        },
+        "source": [
+          896,
+          1200
+        ]
+      },
+      "accepted": {
+        "file": "chara/ch/shisa/base.webp",
+        "model": "import",
+        "promptUsed": null,
+        "generatedAt": "2026-10-29T08:45:26.434Z",
+        "acceptedAt": "2026-10-29T08:45:26.434Z",
+        "source": "import",
+        "width": 637,
+        "height": 710,
+        "from": "ch-shisa-base.png"
       }
     },
     {
