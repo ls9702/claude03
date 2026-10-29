@@ -17799,7 +17799,7 @@
         "w": 768,
         "h": 1152
       },
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small white chibi flying squirrel with big sparkly eyes, small rounded squirrel ears, a fluffy curled tail and a pale blue-grey gliding membrane, pink blush, Chiikawa style, standing front view with a calm little smile. Both short arms held slightly away from the body (not touching the body) so they are clearly separate shapes. Use the attached image ONLY as the size, position and style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Draw this new character instead of the attached one. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Momonga from Chiikawa: a small round white chibi flying squirrel. EYES (most important — unlike the other Chiikawa characters): BIG round glossy dark eyes, clearly much larger than Chiikawa's dot eyes, looking slightly UPWARD with a pleading \"please notice me\" look, each eye with one large and one small white sparkle highlight. LARGE tall pointed ears standing upright and slanting a little outward, pale sky-blue inside. A small pale sky-blue oval nose between the eyes. Pink blush ovals on the cheeks and a tiny ω-shaped mouth. A BIG fluffy pale sky-blue tail (light baby blue with a few darker blue fur strokes) rising behind the body on the viewer's right, as tall as the body, curling outward at the top. NO wings, NO gliding membrane, NO grey flaps, the tail is NOT white. Short stubby arms, small feet. Standing front view with that pleading big-eyed look. Both short arms held slightly away from the body (not touching the body or the tail) so they are clearly separate shapes. Two reference images are attached. Use the FIRST attached image (the white Chiikawa) ONLY as the size, position and line-style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Use the SECOND attached image (Momonga) as the reference for this character's design: ears, big glossy eyes, blue nose, big blue tail. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.",
       "refs": [
         "ch-chiikawa-base"
       ],
@@ -17820,7 +17820,7 @@
         "w": 768,
         "h": 1152
       },
-      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the tail and the gliding membrane. Do not move or redraw anything else.",
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY remove both arms, so the body outline continues smoothly where the arms were. Keep the big blue tail, the ears and the face exactly as they are. Do not move or redraw anything else.",
       "refs": [
         "ch-momonga-base"
       ],
@@ -17863,7 +17863,7 @@
         "w": 768,
         "h": 1152
       },
-      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the eyes to closed eyes (two small gentle downward-curved lines).",
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the two big eyes to closed eyes (two small gentle downward-curved lines where the eyes were).",
       "refs": [
         "ch-momonga-base"
       ],
@@ -17884,7 +17884,7 @@
         "w": 768,
         "h": 1152
       },
-      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking.",
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) and ONLY change the mouth to a small open mouth, as if talking. Keep the big glossy eyes.",
       "refs": [
         "ch-momonga-base"
       ],
@@ -17905,7 +17905,7 @@
         "w": 768,
         "h": 1152
       },
-      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Arms stay exactly where they are.",
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a very happy face — eyes closed into happy upward arcs (^ ^) and a big open smiling mouth. Ears, blue nose, tail and arms stay exactly where they are.",
       "refs": [
         "ch-momonga-base"
       ],
@@ -17926,7 +17926,7 @@
         "w": 768,
         "h": 1152
       },
-      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Arms stay exactly where they are.",
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to Chiikawa's famous crying face — eyes squeezed shut, big wobbly mouth, big tear drops streaming down. Ears, blue nose, tail and arms stay exactly where they are.",
       "refs": [
         "ch-momonga-base"
       ],
@@ -17947,7 +17947,7 @@
         "w": 768,
         "h": 1152
       },
-      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — small round wide-open eyes, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Arms stay exactly where they are.",
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a shocked face — the big eyes wide open with tiny pupils, a small round open mouth, pale cheeks, and three short vertical shock lines just above the head. Ears, tail and arms stay exactly where they are.",
       "refs": [
         "ch-momonga-base"
       ],
@@ -19411,7 +19411,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 리본",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big soft bow ribbon on top of the head, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big soft bow ribbon on top of the head, main colour #ff7eb6. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/ribbon.webp",
       "postprocess": [],
@@ -19426,7 +19426,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 꽃핀",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small pink flower hair pin on one side of the head, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small pink flower hair pin on one side of the head, main colour #ff9ec7. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/flower-pin.webp",
       "postprocess": [],
@@ -19441,7 +19441,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 비니",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a snug knitted beanie with a little pompom, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a snug knitted beanie with a little pompom, main colour #7aa7e0. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/beanie.webp",
       "postprocess": [],
@@ -19456,7 +19456,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 밀짚모자",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round straw sun hat with a red band, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round straw sun hat with a red band, main colour #e8c872. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/straw-hat.webp",
       "postprocess": [],
@@ -19471,7 +19471,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 왕관",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a tiny golden crown with three points and jewels, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a tiny golden crown with three points and jewels, main colour #f5c542. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/crown.webp",
       "postprocess": [],
@@ -19486,7 +19486,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 하트 머리띠",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a headband with a small red heart on a spring, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a headband with a small red heart on a spring, main colour #ff5a7a. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/headband.webp",
       "postprocess": [],
@@ -19501,7 +19501,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 베레모",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a soft tilted artist beret, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a soft tilted artist beret, main colour #c0504d. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/beret.webp",
       "postprocess": [],
@@ -19516,7 +19516,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 고깔모자",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a striped cone party hat with a pompom on top, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a striped cone party hat with a pompom on top, main colour #8ad0f0. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/party-hat.webp",
       "postprocess": [],
@@ -19531,7 +19531,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 화관",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a ring of small colourful flowers worn like a crown, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a ring of small colourful flowers worn like a crown, main colour #ffb3d1. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/flower-crown.webp",
       "postprocess": [],
@@ -19546,7 +19546,7 @@
       "kind": "prop",
       "label": "소품 · 얼굴 · 동그란 안경",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. round thin-rimmed glasses, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. round thin-rimmed glasses, main colour #5b4a44. Drawn ALONE (no character, no face): front view, exactly as it would be worn on the face. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/round-glasses.webp",
       "postprocess": [],
@@ -19561,7 +19561,7 @@
       "kind": "prop",
       "label": "소품 · 얼굴 · 선글라스",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. small black sunglasses, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. small black sunglasses, main colour #2a2a2a. Drawn ALONE (no character, no face): front view, exactly as it would be worn on the face. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/sunglasses.webp",
       "postprocess": [],
@@ -19576,7 +19576,7 @@
       "kind": "prop",
       "label": "소품 · 얼굴 · 별 안경",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. yellow star-shaped party glasses, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. yellow star-shaped party glasses, main colour #ffd43b. Drawn ALONE (no character, no face): front view, exactly as it would be worn on the face. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/star-glasses.webp",
       "postprocess": [],
@@ -19591,7 +19591,7 @@
       "kind": "prop",
       "label": "소품 · 얼굴 · 마스크",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small white face mask over the mouth, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small white face mask over the mouth, main colour #f4f6f8. Drawn ALONE (no character, no face): front view, exactly as it would be worn on the face. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/mask.webp",
       "postprocess": [],
@@ -19606,7 +19606,7 @@
       "kind": "prop",
       "label": "소품 · 얼굴 · 하트 볼스티커",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. two little pink heart stickers on the cheeks, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. two little pink heart stickers on the cheeks, main colour #ff8fb1. Drawn ALONE (no character, no face): front view, exactly as it would be worn on the face. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/heart-sticker.webp",
       "postprocess": [],
@@ -19621,7 +19621,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 나비넥타이",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small red bow tie at the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small red bow tie at the neck, main colour #e2453c. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/bow-tie.webp",
       "postprocess": [],
@@ -19636,7 +19636,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 목도리",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cosy knitted scarf wrapped around the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cosy knitted scarf wrapped around the neck, main colour #e86a5a. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/scarf.webp",
       "postprocess": [],
@@ -19651,7 +19651,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 방울 목걸이",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a ribbon collar with a little golden bell, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a ribbon collar with a little golden bell, main colour #f5c542. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/bell-collar.webp",
       "postprocess": [],
@@ -19666,7 +19666,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 반다나",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a triangle bandana tied around the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a triangle bandana tied around the neck, main colour #e8743b. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/bandana.webp",
       "postprocess": [],
@@ -19681,7 +19681,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 진주 목걸이",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short pearl necklace, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short pearl necklace, main colour #f3efe6. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/necklace.webp",
       "postprocess": [],
@@ -19696,7 +19696,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 풍선",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round balloon on a string held in one hand, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round balloon on a string held in one hand, main colour #ff6b8a. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/balloon.webp",
       "postprocess": [],
@@ -19711,7 +19711,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 꽃 한 송이",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a single tulip held in one hand, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a single tulip held in one hand, main colour #ff7aa8. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/flower.webp",
       "postprocess": [],
@@ -19726,7 +19726,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 막대사탕",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big swirl lollipop held in one hand, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big swirl lollipop held in one hand, main colour #ff9ad5. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/lollipop.webp",
       "postprocess": [],
@@ -19741,7 +19741,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 요술봉",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a toy magic wand with a star tip, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a toy magic wand with a star tip, main colour #ffd43b. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/wand.webp",
       "postprocess": [],
@@ -19756,7 +19756,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 낚싯대",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small bamboo fishing rod, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small bamboo fishing rod, main colour #b08a5a. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/fishing-rod.webp",
       "postprocess": [],
@@ -19771,7 +19771,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 책",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small open book held in one hand, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small open book held in one hand, main colour #5a8ad8. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/book.webp",
       "postprocess": [],
@@ -19786,7 +19786,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 우산",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small round umbrella held over the head, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small round umbrella held over the head, main colour #7ec8e3. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/umbrella.webp",
       "postprocess": [],
@@ -19801,7 +19801,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 작은 배낭",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a tiny round backpack on the back, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a tiny round backpack on the back, main colour #f2a65a. Drawn ALONE (no character, no body): front view of the item as worn on the back, so its edges would peek out from behind a small round character. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/backpack.webp",
       "postprocess": [],
@@ -19816,7 +19816,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 망토",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short hero cape flowing behind, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short hero cape flowing behind, main colour #d94a6a. Drawn ALONE (no character, no body): front view of the item as worn on the back, so its edges would peek out from behind a small round character. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/cape.webp",
       "postprocess": [],
@@ -19831,7 +19831,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 천사 날개",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. two small white angel wings on the back, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. two small white angel wings on the back, main colour #ffffff. Drawn ALONE (no character, no body): front view of the item as worn on the back, so its edges would peek out from behind a small round character. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/wings.webp",
       "postprocess": [],
@@ -19846,7 +19846,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 곰인형 가방",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a teddy-bear shaped backpack, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a teddy-bear shaped backpack, main colour #b07a4e. Drawn ALONE (no character, no body): front view of the item as worn on the back, so its edges would peek out from behind a small round character. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/teddy-bag.webp",
       "postprocess": [],
@@ -19861,7 +19861,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 아기 보닛",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a frilly baby bonnet tied under the chin, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a frilly baby bonnet tied under the chin, main colour #fbe3ee. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/bonnet.webp",
       "postprocess": [],
@@ -19876,7 +19876,7 @@
       "kind": "prop",
       "label": "소품 · 얼굴 · 쪽쪽이",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a baby pacifier in the mouth, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a baby pacifier in the mouth, main colour #8ad0f0. Drawn ALONE (no character, no face): front view, exactly as it would be worn on the face. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/pacifier.webp",
       "postprocess": [],
@@ -19891,7 +19891,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 노란 학교 모자",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a yellow elementary-school safety cap, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a yellow elementary-school safety cap, main colour #ffd23f. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/yellow-hat.webp",
       "postprocess": [],
@@ -19906,7 +19906,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 책가방",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a boxy school backpack (randoseru style), as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a boxy school backpack (randoseru style), main colour #c0392b. Drawn ALONE (no character, no body): front view of the item as worn on the back, so its edges would peek out from behind a small round character. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/school-backpack.webp",
       "postprocess": [],
@@ -19921,7 +19921,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 교모",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a navy school uniform cap with a badge, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a navy school uniform cap with a badge, main colour #2c3e66. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/school-cap.webp",
       "postprocess": [],
@@ -19936,7 +19936,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 털모자",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a warm knitted cap with ear flaps, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a warm knitted cap with ear flaps, main colour #c0504d. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/knit-cap.webp",
       "postprocess": [],
@@ -19951,7 +19951,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 지팡이",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short wooden walking cane, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a short wooden walking cane, main colour #8a5a32. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/cane.webp",
       "postprocess": [],
@@ -19966,7 +19966,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 넥타이",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a neat office necktie, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a neat office necktie, main colour #3b5ba5. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/necktie.webp",
       "postprocess": [],
@@ -19981,7 +19981,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 사원증",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. an ID card on a lanyard around the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. an ID card on a lanyard around the neck, main colour #4a90d9. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/id-card.webp",
       "postprocess": [],
@@ -19996,7 +19996,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 펜",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a drawing pen, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a drawing pen, main colour #333333. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/pen.webp",
       "postprocess": [],
@@ -20011,7 +20011,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 어깨띠",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white election sash across the body, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white election sash across the body, main colour #ffffff. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/sash.webp",
       "postprocess": [],
@@ -20026,7 +20026,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 야구모자",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a baseball cap, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a baseball cap, main colour #2f5fb3. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/baseball-cap.webp",
       "postprocess": [],
@@ -20041,7 +20041,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 야구방망이",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a wooden baseball bat, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a wooden baseball bat, main colour #c8945a. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/bat.webp",
       "postprocess": [],
@@ -20056,7 +20056,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 축구공",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a soccer ball held in one arm, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a soccer ball held in one arm, main colour #ffffff. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/soccer-ball.webp",
       "postprocess": [],
@@ -20071,7 +20071,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 게이밍 헤드셋",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a gaming headset with a mic, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a gaming headset with a mic, main colour #333a44. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/headset.webp",
       "postprocess": [],
@@ -20086,7 +20086,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 필승 머리띠",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white fighting headband with a red circle, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white fighting headband with a red circle, main colour #ffffff. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/fighter-headband.webp",
       "postprocess": [],
@@ -20101,7 +20101,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 대본",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a rolled film script, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a rolled film script, main colour #f3e7c9. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/script.webp",
       "postprocess": [],
@@ -20116,7 +20116,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 마이크",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a pink idol microphone, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a pink idol microphone, main colour #ff7eb6. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/mic.webp",
       "postprocess": [],
@@ -20131,7 +20131,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 카메라",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small video camera, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small video camera, main colour #3a3a3a. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/camera.webp",
       "postprocess": [],
@@ -20177,7 +20177,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 이마 반사경",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a doctor head mirror on a band, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a doctor head mirror on a band, main colour #cfd8dc. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/head-mirror.webp",
       "postprocess": [],
@@ -20192,7 +20192,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 청진기",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a stethoscope around the neck, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a stethoscope around the neck, main colour #4a5a6a. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/stethoscope.webp",
       "postprocess": [],
@@ -20207,7 +20207,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 플라스크",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a glass lab flask with green liquid, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a glass lab flask with green liquid, main colour #7ed957. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/flask.webp",
       "postprocess": [],
@@ -20222,7 +20222,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 경찰 모자",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a navy police cap with a badge, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a navy police cap with a badge, main colour #1f3a6b. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/police-cap.webp",
       "postprocess": [],
@@ -20237,7 +20237,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 열쇠 꾸러미",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big ring of building keys, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big ring of building keys, main colour #d4a017. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/key-ring.webp",
       "postprocess": [],
@@ -20252,7 +20252,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 반짝이 마이크",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a glittering gold-and-pink stage microphone, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a glittering gold-and-pink stage microphone, main colour #f5c542. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/sparkle-mic.webp",
       "postprocess": [],
@@ -20267,7 +20267,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 우주 헬멧",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round glass astronaut helmet, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a round glass astronaut helmet, main colour #dfe9f3. Drawn ALONE (no character, no head): front view, exactly as it would sit on top of a small round head, bottom edge gently curved to fit the head. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/space-helmet.webp",
       "postprocess": [],
@@ -20282,7 +20282,7 @@
       "kind": "prop",
       "label": "소품 · 얼굴 · 산신령 수염",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a long fluffy white mountain-spirit beard, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a long fluffy white mountain-spirit beard, main colour #ffffff. Drawn ALONE (no character, no face): front view, exactly as it would be worn on the face. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/beard.webp",
       "postprocess": [],
@@ -20297,7 +20297,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 황금 마이크",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a shiny golden broadcast microphone, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a shiny golden broadcast microphone, main colour #d4a017. Drawn ALONE (no character, no hand): a small item standing upright, as it would be held in one little paw. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/golden-mic.webp",
       "postprocess": [],
@@ -20312,7 +20312,7 @@
       "kind": "prop",
       "label": "소품 · 목 · 앞치마",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small work apron, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small work apron, main colour #6aa84f. Drawn ALONE (no character, no body): front view, exactly as it would be worn around a short neck / on the chest. A small game costume prop with a thin warm-grey outline. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/apron.webp",
       "postprocess": [],
@@ -20836,7 +20836,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 사스마타",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a sasumata: a long wooden pole with a U-shaped metal fork at the top, held upright, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a sasumata: a long wooden pole with a U-shaped metal fork at the top, standing upright. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/sasumata.webp",
       "postprocess": [],
@@ -20851,7 +20851,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 갑옷 투구",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small round grey metal armor helmet with a tiny crest, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small rounded grey metal knight helmet without a face visor, with a small red plume on top. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/armor-helmet.webp",
       "postprocess": [],
@@ -20866,7 +20866,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 기타",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small acoustic guitar slung on the back with a strap, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small acoustic guitar with a strap, seen from the back as if worn on the back. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/guitar.webp",
       "postprocess": [],
@@ -20881,7 +20881,7 @@
       "kind": "prop",
       "label": "소품 · 머리 · 머리 수건",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white towel tied around the head like a ramen cook's headband, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a white towel tied around as a headband with a knot on the side (like a ramen cook). A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/head-towel.webp",
       "postprocess": [],
@@ -20896,7 +20896,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 풀 바구니",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a woven basket full of pulled weeds carried on the back, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small woven straw basket backpack full of pulled green weeds. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/weed-basket.webp",
       "postprocess": [],
@@ -20911,7 +20911,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 국자",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a big silver soup ladle, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a wooden ramen ladle (a small deep metal cup on a long wooden handle), upright. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/ladle.webp",
       "postprocess": [],
@@ -20926,7 +20926,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 망치",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small wooden-handled blacksmith hammer, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a small wooden hammer with a grey metal head, upright. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/hammer.webp",
       "postprocess": [],
@@ -20941,7 +20941,7 @@
       "kind": "prop",
       "label": "소품 · 손 · 뒤집개",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a flat metal pancake turner spatula, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a pancake turner spatula with a wide flat metal blade and a wooden handle, upright. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/turner.webp",
       "postprocess": [],
@@ -20956,7 +20956,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 배달 상자",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a cardboard delivery box strapped on the back, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a square red delivery box backpack with shoulder straps. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/delivery-box.webp",
       "postprocess": [],
@@ -20971,7 +20971,7 @@
       "kind": "prop",
       "label": "소품 · 등 · 갑옷 등판",
       "aspect": "1:1",
-      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a shiny grey metal armor back plate with straps, as a small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text.",
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. a rounded grey metal back armor plate with leather straps, seen from the back. A small game costume prop with a thin warm-grey outline. Square 1:1. One object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.",
       "refs": [],
       "output": "chara/props/armor-plate.webp",
       "postprocess": [],
@@ -20979,6 +20979,1626 @@
       "meta": {
         "prop": "armor_plate",
         "slot": "back"
+      }
+    },
+    {
+      "id": "card-study-chiikawa",
+      "kind": "card",
+      "label": "카드 · 밤샘 공부 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: an open picture book on a tiny desk under a glowing desk lamp, a mug of cocoa and a small crescent moon — studying all night (in-game emoji: 📖). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/study.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "study",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-insider-chiikawa",
+      "kind": "card",
+      "label": "카드 · 노래 연습 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a cute pastel microphone with floating music notes — singing practice (in-game emoji: 🎤). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/insider.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "insider",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-energy-chiikawa",
+      "kind": "card",
+      "label": "카드 · 푸딩 파워 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a wobbly custard pudding with a glossy caramel top and a cherry, with little sparkles and bouncy energy lines (in-game emoji: 🍮). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/energy.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "energy",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-taxi-chiikawa",
+      "kind": "card",
+      "label": "카드 · 우사기 점프 (야하!) (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a cream-yellow rabbit-like creature with two long upright ears leaping high into the air with both arms up and a wide happy open mouth, springy speed lines below (in-game emoji: 🐰). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/taxi.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "taxi",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-pledge-chiikawa",
+      "kind": "card",
+      "label": "카드 · 후원 모금 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: an open guitar case filled with coins and little paper hearts tossed in by fans, a small megaphone beside it (in-game emoji: 📣). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/pledge.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "pledge",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-insurance-chiikawa",
+      "kind": "card",
+      "label": "카드 · 갑옷씨 보증서 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a rolled-up warranty certificate tied with a ribbon and stamped with a grey armor-helmet seal, a small round shield behind it (in-game emoji: 🛡️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/insurance.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "insurance",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-amulet-chiikawa",
+      "kind": "card",
+      "label": "카드 · 수호 부적 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a small cloth protective charm pouch on a red string with a blue eye-bead charm, softly glowing (in-game emoji: 🧿). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/amulet.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "amulet",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-lotto-chiikawa",
+      "kind": "card",
+      "label": "카드 · 쿠지 응모권 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a pastel raffle ticket with a tear-off edge and a star pattern peeking out of a small cardboard prize-draw box (in-game emoji: 🎟️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/lotto.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "lotto",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-coupon-chiikawa",
+      "kind": "card",
+      "label": "카드 · 갑옷씨 상점 할인권 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a pastel shop discount tag on a string with a small helmet emblem and a dashed scissor-cut coupon edge (in-game emoji: 🏷️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/coupon.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "coupon",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-lawyer-chiikawa",
+      "kind": "card",
+      "label": "카드 · 사스마타 방어 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a sasumata (a long pole with a U-shaped fork at the top) standing upright in front of a small round shield, blocking an attack (in-game emoji: 🔱). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/lawyer.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "lawyer",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-cut-line-chiikawa",
+      "kind": "card",
+      "label": "카드 · 함정 파기 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a small pit trap dug in the grass and hidden under leaves and twigs, a little shovel stuck in the dirt beside it (in-game emoji: 🕳️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/cut-line.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "cut_line",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-noise-chiikawa",
+      "kind": "card",
+      "label": "카드 · 「우라!」 고함 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a megaphone blasting jagged shout waves and tiny burst shapes — a loud battle cry (in-game emoji: 📢). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/noise.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "noise",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-tax-audit-chiikawa",
+      "kind": "card",
+      "label": "카드 · 나쁜 녀석 습격 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a sneaky little dark-purple troublemaker creature with a mischievous grin running off with a coin pouch (in-game emoji: 😈). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/tax-audit.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "tax_audit",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "card-complaint-chiikawa",
+      "kind": "card",
+      "label": "카드 · 일거리 뺏기 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game card illustration: a broom and a woven work basket being snatched away by a mischievous little paw, with a swoosh line (in-game emoji: 🧹). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "cards/chiikawa/complaint.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "card": "complaint",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "item-car-chiikawa",
+      "kind": "item",
+      "label": "아이템 · 씽씽 킥보드 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game item icon: a small pastel kick scooter with round wheels and a handlebar, with motion lines (in-game emoji: 🛴). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "items/chiikawa/car.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "car",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "item-laptop-chiikawa",
+      "kind": "item",
+      "label": "아이템 · 고서점 책 꾸러미 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game item icon: a bundle of old antique books tied together with twine, with a ribbon bookmark (in-game emoji: 📚). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "items/chiikawa/laptop.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "laptop",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "item-gym-pass-chiikawa",
+      "kind": "item",
+      "label": "아이템 · 사스마타 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game item icon: a sasumata: a long wooden pole with a curved U-shaped metal fork at the top (in-game emoji: 🔱). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "items/chiikawa/gym-pass.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "gym_pass",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "item-designer-bag-chiikawa",
+      "kind": "item",
+      "label": "아이템 · 포셰트 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game item icon: a small cute round cross-body pochette bag with a long strap and a little bow (in-game emoji: 👜). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "items/chiikawa/designer-bag.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "designer_bag",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "item-lucky-cat-chiikawa",
+      "kind": "item",
+      "label": "아이템 · 네잎클로버 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game item icon: a bright green four-leaf clover with a tiny sparkle (in-game emoji: 🍀). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "items/chiikawa/lucky-cat.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "lucky_cat",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "item-massage-chair-chiikawa",
+      "kind": "item",
+      "label": "아이템 · 목욕탕 평생 회수권 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game item icon: a bundle of bathhouse tickets tied with a ribbon next to a small wooden bath bucket with a folded towel and hot-spring steam swirls (in-game emoji: ♨️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "items/chiikawa/massage-chair.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "item": "massage_chair",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-celadon-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 고대 항아리 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: an ancient earthen clay jar with a cracked glaze and a bit of moss, as if found in a forest cave (in-game emoji: 🏺). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/celadon.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "celadon",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-white-porcelain-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 갑옷씨의 은잔 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a shiny little silver goblet with a tiny engraved helmet emblem, sparkling (in-game emoji: 🫖). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/white-porcelain.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "white_porcelain",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-idol-goods-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 레어 스티커 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a sheet of shiny holographic rare stickers of round cute critters, with sparkles (in-game emoji: ✨). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/idol-goods.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "idol_goods",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-dino-fossil-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 키메라 화석 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a fossil of a funny chimera monster imprinted in a rock slab, a mix of horns, fangs and a curly tail (in-game emoji: 🐉). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/dino-fossil.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "dino_fossil",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-gold-toad-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 황금 밤 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a glowing golden chestnut with a shiny highlight (in-game emoji: 🌰). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/gold-toad.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "gold_toad",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-stamp-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 네잎클로버 책갈피 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a pressed four-leaf clover bookmark laminated in a clear card with a ribbon tassel (in-game emoji: 🍀). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/stamp.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "stamp",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-lp-record-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 낡은 기타 줄 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a coiled old guitar string with a worn guitar pick, tied with a little tag (in-game emoji: 🎸). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/lp-record.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "lp_record",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-sneakers-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 랏코의 운동화 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a pair of worn sporty sneakers in beige and brown with a sweatband — the shoes of a strong sea otter (in-game emoji: 👟). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/sneakers.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "sneakers",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-calligraphy-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 고서점 희귀본 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a rare old red leather-bound book with gold corner fittings and a ribbon bookmark (in-game emoji: 📕). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/calligraphy.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "calligraphy",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-ginseng-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 거대 버섯 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a giant forest mushroom with a big red cap with white spots (in-game emoji: 🍄). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/ginseng.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "ginseng",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-retro-console-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 옛날 장난감 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: an old wooden yo-yo and a spinning top in their worn cardboard toy box (in-game emoji: 🪀). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/retro-console.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "retro_console",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-first-edition-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 초판 그림책 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a first-edition picture book with a pastel illustrated cover (no letters) and a small gold seal (in-game emoji: 📖). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/first-edition.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "first_edition",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-black-pearl-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 진주 조개 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: an open seashell clam holding a glossy round pearl (in-game emoji: 🦪). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/black-pearl.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "black_pearl",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-signed-ball-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 푸딩 왕관 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a cute golden crown shaped like a custard pudding with caramel drips and a cherry on top (in-game emoji: 🍮). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/signed-ball.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "signed_ball",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-amber-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 바다 유리 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a few smooth rounded pieces of pastel sea glass, translucent aqua and green, with bubble sparkles (in-game emoji: 🫧). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/amber.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "amber",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "treasure-gold-crown-chiikawa",
+      "kind": "treasure",
+      "label": "보물 · 전설의 사스마타 (치이카와 모드)",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game treasure icon: a legendary golden sasumata (a long pole with a U-shaped fork at the top) with a glowing aura and a ribbon (in-game emoji: 🔱). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "treasures/chiikawa/gold-crown.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "treasure": "gold_crown",
+        "world": "chiikawa"
+      }
+    },
+    {
+      "id": "icon-job-weeder",
+      "kind": "icon",
+      "label": "직업 배지 · 풀뽑기 일꾼",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a tuft of pulled-up weeds with their roots beside a small woven weeding basket (in-game emoji: 🌿). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/weeder.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "weeder"
+      }
+    },
+    {
+      "id": "icon-job-hunter",
+      "kind": "icon",
+      "label": "직업 배지 · 토벌대",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a sasumata (a long pole with a U-shaped fork) crossed with a wooden sword over a small round shield (in-game emoji: ⚔️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/hunter.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "hunter"
+      }
+    },
+    {
+      "id": "icon-job-ramen",
+      "kind": "icon",
+      "label": "직업 배지 · 라멘 가게 「郎」",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a huge bowl of ramen with a mountain of bean sprouts piled on top and chopsticks (in-game emoji: 🍜). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/ramen.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "ramen"
+      }
+    },
+    {
+      "id": "icon-job-workshop",
+      "kind": "icon",
+      "label": "직업 배지 · 갑옷씨 공방",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a small hammer and a grey armor helmet resting on an anvil (in-game emoji: 🛠️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/workshop.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "workshop"
+      }
+    },
+    {
+      "id": "icon-job-bookstore",
+      "kind": "icon",
+      "label": "직업 배지 · 고서점 직원",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a stack of old books with a magnifying glass (in-game emoji: 📚). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/bookstore.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "bookstore"
+      }
+    },
+    {
+      "id": "icon-job-busker",
+      "kind": "icon",
+      "label": "직업 배지 · 길거리 가수",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a small acoustic guitar with floating music notes (in-game emoji: 🎸). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/busker.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "busker"
+      }
+    },
+    {
+      "id": "icon-job-pancake",
+      "kind": "icon",
+      "label": "직업 배지 · 팬케이크 가게",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a fluffy stack of pancakes with melting butter, syrup and a spatula (in-game emoji: 🥞). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/pancake.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "pancake"
+      }
+    },
+    {
+      "id": "icon-job-photographer",
+      "kind": "icon",
+      "label": "직업 배지 · 사진사",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a cute vintage camera with a flash sparkle (in-game emoji: 📷). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/photographer.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "photographer"
+      }
+    },
+    {
+      "id": "icon-job-sento",
+      "kind": "icon",
+      "label": "직업 배지 · 목욕탕지기",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a wooden bath bucket with a folded towel and hot-spring steam swirls (in-game emoji: ♨️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/sento.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "sento"
+      }
+    },
+    {
+      "id": "icon-job-delivery",
+      "kind": "icon",
+      "label": "직업 배지 · 배달부",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a taped cardboard delivery box with little speed lines (in-game emoji: 📦). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/delivery.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "delivery"
+      }
+    },
+    {
+      "id": "icon-job-fisher",
+      "kind": "icon",
+      "label": "직업 배지 · 섬 낚시꾼",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a fishing rod with a big fish on the line over a tiny island with a palm tree (in-game emoji: 🎣). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/fisher.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "fisher"
+      }
+    },
+    {
+      "id": "icon-job-cafe",
+      "kind": "icon",
+      "label": "직업 배지 · 카페 점원",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a cup of latte with heart latte art and a coffee bean (in-game emoji: ☕). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/cafe.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "cafe"
+      }
+    },
+    {
+      "id": "icon-job-legend-hunter",
+      "kind": "icon",
+      "label": "직업 배지 · 전설의 토벌자",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a golden sword crossed with a golden sasumata over a star-studded shield, glowing, with a gold rim — a legendary badge (in-game emoji: 🗡️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/legend-hunter.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "legend_hunter"
+      }
+    },
+    {
+      "id": "icon-job-weed-sage",
+      "kind": "icon",
+      "label": "직업 배지 · 풀뽑기 1급 명인",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a golden sheaf of grass with a first-place rosette ribbon (no numbers), with a gold rim — a legendary badge (in-game emoji: 🌾). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/weed-sage.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "weed_sage"
+      }
+    },
+    {
+      "id": "icon-job-ramen-owner",
+      "kind": "icon",
+      "label": "직업 배지 · 「郎」 2호점 사장",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a steaming ramen bowl under a small shop entrance curtain (noren, no letters) with a golden star, with a gold rim — a legendary badge (in-game emoji: 🍜). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/ramen-owner.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "ramen_owner"
+      }
+    },
+    {
+      "id": "icon-job-armor-san",
+      "kind": "icon",
+      "label": "직업 배지 · 갑옷씨",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute round game badge icon: a gleaming full suit of armor with a round helmet and a golden hammer, with a gold rim — a legendary badge (in-game emoji: 🛡️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jobs/armor-san.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "job": "armor_san"
+      }
+    },
+    {
+      "id": "icon-start",
+      "kind": "icon",
+      "label": "칸 아이콘 · 출발",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a small red start flag on a short pole planted in a tuft of grass (in-game emoji: 🚩). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/start.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "start"
+      }
+    },
+    {
+      "id": "icon-event",
+      "kind": "icon",
+      "label": "칸 아이콘 · 이벤트",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a round pastel surprise bubble with a bold exclamation-mark symbol and little sparkles (in-game emoji: ❗). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/event.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "event"
+      }
+    },
+    {
+      "id": "icon-salary",
+      "kind": "icon",
+      "label": "칸 아이콘 · 월급날",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a pay envelope stuffed with banknotes and a small gold coin — payday (in-game emoji: 💵). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/salary.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "salary"
+      }
+    },
+    {
+      "id": "icon-pass",
+      "kind": "icon",
+      "label": "칸 아이콘 · 찬스 광장",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a striped circus tent with a little flag on top — the chance plaza (in-game emoji: 🎪). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/pass.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "pass"
+      }
+    },
+    {
+      "id": "icon-hometown",
+      "kind": "icon",
+      "label": "칸 아이콘 · 고향 시골집",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a small cosy countryside house with a thatched roof and a persimmon tree (in-game emoji: 🏡). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/hometown.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "hometown"
+      }
+    },
+    {
+      "id": "icon-temple",
+      "kind": "icon",
+      "label": "칸 아이콘 · 사찰",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a small mountain temple pavilion with a curved roof and a hanging bronze bell (in-game emoji: 🛕). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/temple.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "temple"
+      }
+    },
+    {
+      "id": "icon-jeju",
+      "kind": "icon",
+      "label": "칸 아이콘 · 제주도",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a small island with a palm tree, a wave and a round stone grandfather statue (in-game emoji: 🏝️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/jeju.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "jeju"
+      }
+    },
+    {
+      "id": "icon-reversal",
+      "kind": "icon",
+      "label": "칸 아이콘 · 인생역전",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a slot machine showing three lucky stars with a shower of coins (in-game emoji: 🎰). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/reversal.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "reversal"
+      }
+    },
+    {
+      "id": "icon-island",
+      "kind": "icon",
+      "label": "칸 아이콘 · 한방역전섬",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a tiny tropical island with a big colourful roulette wheel standing on the beach next to a palm tree (in-game emoji: 🏝️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/island.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "island"
+      }
+    },
+    {
+      "id": "icon-contest",
+      "kind": "icon",
+      "label": "칸 아이콘 · 노년 대회",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a shiny gold trophy cup with a ribbon (in-game emoji: 🏆). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/contest.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "contest"
+      }
+    },
+    {
+      "id": "icon-auction",
+      "kind": "icon",
+      "label": "칸 아이콘 · 골동품 경매",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a wooden auction gavel striking its sound block, a small antique vase beside it (in-game emoji: 🔨). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/auction.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "auction"
+      }
+    },
+    {
+      "id": "icon-hunt",
+      "kind": "icon",
+      "label": "칸 아이콘 · 토벌",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a sasumata crossed with a wooden sword in front of a bush with two glowing grumpy eyes peeking out (in-game emoji: ⚔️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/hunt.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "hunt"
+      }
+    },
+    {
+      "id": "icon-weed",
+      "kind": "icon",
+      "label": "칸 아이콘 · 풀뽑기",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: a tuft of green weeds being pulled up with their roots beside a small woven basket (in-game emoji: 🌿). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/weed.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "weed"
+      }
+    },
+    {
+      "id": "icon-merge",
+      "kind": "icon",
+      "label": "칸 아이콘 · 합류",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game board tile icon: two winding pastel paths joining into one, with a small wooden signpost (no letters) (in-game emoji: 🔗). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "icons/merge.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "tile": "merge"
       }
     }
   ]

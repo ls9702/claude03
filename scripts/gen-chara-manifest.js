@@ -24,7 +24,7 @@ import { CHIIKAWA_STYLE, MC_OVERLAYS, PART_LABELS, ROSTER_ITEM_PARTS, aliasCandi
 import { CANVAS, CHARA_RES } from '../server/assets/charaPipeline.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const REQUEST_FILES = ['docs/asset-requests/chiikawa-full.json', 'docs/asset-requests/chiikawa-test.json', 'docs/asset-requests/chiikawa-mc.json'];
+export const REQUEST_FILES = ['docs/asset-requests/remaining-all.json', 'docs/asset-requests/chiikawa-full.json', 'docs/asset-requests/chiikawa-test.json', 'docs/asset-requests/chiikawa-mc.json'];
 
 const CHARA_SIZE = { w: Math.round(CANVAS.w * CHARA_RES), h: Math.round(CANVAS.h * CHARA_RES) };
 const STYLE_FALLBACK = CHIIKAWA_STYLE;

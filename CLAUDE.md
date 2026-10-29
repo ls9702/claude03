@@ -2027,7 +2027,13 @@ Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (
 ## Chiikawa art pipeline (CH-2)
 Hand-delivered Chiikawa-style art (the user's local Gemini skill; the API stays OFF here) → `node scripts/import-assets.js
 --dir <folder>` → placed / split / keyed parts in the manifest → the chara.js raster plug-in. Requests: `docs/asset-requests/
-chiikawa-full.json|.md` (95 images), `chiikawa-test.json` (the delivered test batch), `chiikawa-mc.json|.md` (25 MC images).
+chiikawa-full.json|.md` (95 images), `chiikawa-test.json` (the delivered test batch), `chiikawa-mc.json|.md` (25 MC images);
+**current: `remaining-all.json|.md`** (2026-10-29, every image still missing, groups A–I by priority, 10 per batch) built by
+`node scripts/gen-asset-guide.js [--dry-run] [--out dir]` (drops items accepted in the Chiikawa style — import / upload from
+2026-10-16 on; reuses the earlier requests' prompts, restyles the old manifest descriptions of cards / items / treasures / icons;
+gen-chara-manifest reads it first). 10-29 batch: usagi + hachiware complete (`ch-hachiware-base-reframed` became the base),
+chiikawa joy / shock, kurimanju / rakko / shisa bases; the delivered Momonga was off-model and is NOT imported (redrawn from the
+user's own reference as the 2nd ref); `ch-kurimanju-eyes-closed` is not requested (its base already has closed eyes).
 Tests: `test/chara-pipeline.test.js` (+ the updated `assets-manifest`, `stage7-import`, `client-chara` expectations). E2E: session
 scratchpad `ch2/` (`e2e.cjs` real game 1280 + 390: picker, cut-ins, penguin, chef hat, side list, result, photo; `mc-e2e.cjs`
 synthetic MC overlays; screenshots `ch2-*.png`, animated `ch2-cutin-anim.webp`).
@@ -2105,6 +2111,10 @@ synthetic MC overlays; screenshots `ch2-*.png`, animated `ch2-cutin-anim.webp`).
 - Test batch imported (2026-10-16, takes 1 except `ch-chiikawa-sheet-jump` take 2 and `bg-ch-park` take 2): chiikawa base / body /
   arms / eyes-closed / mouth-open / expr-cry / sheet-jump, hachiware base, npc-penguin-base (take 1, no reference → corrected),
   prop-chef-hat, bg-park — 305 KiB of art added (10 chara + prop WebPs 183 KiB, bg 122 KiB); the manifest grew by the 154 items.
+- Tile icons (`scripts/gen-world-manifest.js`, todo): `icon-<type>` (kind icon, meta `{tile: type}`, `icons/<type>.png` next to
+  `icon-money` …) for start event salary pass hometown temple jeju reversal island contest auction hunt weed merge. board3d's atlas
+  asks `scene/tileIcons.js` `findTileIcon(type, {glyph, world, find})`: `tileIconCandidates` = 📝 → school, the type's OWN icon, then
+  the borrowed one (`ICON_ASSET_TILE` salary → money, pass → shop, heart → love, loss → bad, habit → school …); none accepted → glyph.
 
 ## World setting (치이카와 모드 / 현실 모드) — server
 Contract: session scratchpad `cworld-contract.md` (FIXED) + `cworld-deviations.md`. Tests: `test/cworld.test.js` (+ updated
@@ -2286,6 +2296,18 @@ with 2 CPUs; `lineup.cjs` 3D pawn lineup; `props2d.mjs` / `art.mjs` sharp contac
   hand 48–92, back 60–112 triangles (≤ the heaviest prop of each slot → the per-pawn budget 2,000 holds); armor_helmet is a TALL_HAT.
 - CSS `public/css/world.css` (linked after chara.css): side tags, chimera moods / foe / clash / coins / tumble, stamp / badge / work
   weeds, kuji box / tickets / plush, battle / field cards (cut-in + 2D sheet; 390 px: one column), lobby world line, reduced motion.
+- **World art variants** (`node scripts/gen-world-manifest.js [--dry-run]`, idempotent upsert like gen-chara-manifest; tests
+  `test/asset-worlds.test.js`): manifest `meta.world` ('chiikawa' | 'real'; `manifest.js` `WORLD_ART_KINDS` card / item / treasure /
+  icon only) marks a world's own picture. 🐹 variants `card-<slug>-chiikawa` ×14 (study insider energy taxi pledge insurance amulet lotto
+  coupon lawyer cut_line noise tax_audit complaint), `item-<slug>-chiikawa` ×6 (car laptop gym_pass designer_bag lucky_cat
+  massage_chair), `treasure-<slug>-chiikawa` ×16 (the renamed objects; the other cards / treasures keep one shared picture) →
+  `cards|items|treasures/chiikawa/<slug>.png` (slug = id with `_` → `-`), plus `icon-job-<slug>` for the 16 jobs the overlay adds
+  (`icons/jobs/<slug>.png`, no world field) and the tile icons of CH-2. `assets.js` `findAsset({…, world})`: that world's variant, else
+  the shared art (no `meta.world`), never another world's variant; without `world` variants are skipped. Callers pass the room's
+  world: game2d `artFor` (`worldOf(ui.rawRoom)`; also handed to resultShow / option builders), cutin2d `artFor` (`dataWorld(getMeta())`),
+  board3d tile icons (`setBoard(board, {world})` from sync3D, default `dataWorld(meta)`). Prompts = `CHIIKAWA_STYLE` + an English
+  object description (`DESC`) + the overlay's emoji, labels name the overlay object, refs `ch-chiikawa-base` (style only); the
+  generator refuses a listed id the overlay doesn't change and an added overlay job without a description.
 
 ## E2E round 4 fixes (server)
 Source: the E2E-4 tester notes (session scratchpad `e2e4/findings.md`, harnesses `e2e4/t2` / `e2e4/t4`). Tests:

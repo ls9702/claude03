@@ -41,6 +41,8 @@ import { clamp, lerp, easeInOutCubic, rouletteRegion, hopPose, landPose, bobPose
 import { loadAssetIndex, findAsset } from '../assets.js';
 import { won } from '../format.js';
 import { cardLostInfo, modRange, spinNote } from '../shared/cards.js';
+import { dataWorld } from '../shared/world.js';
+import { findTileIcon } from './tileIcons.js';
 import { aimShort, aimText } from '../ui/rouletteSkill.js';
 
 const TILE_SIZE = 1.64;
@@ -49,8 +51,6 @@ const REST_POSE = { y: 0, sy: 1, sxz: 1 };
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TILE_TOP = 0.27;
 const NARROW_TAGS_PX = 700; // canvas CSS width below which only current / mine / moving pawns show name tags
-/** Asset-studio icon ids (manifest meta.tile) per tile type. */
-const ICON_ASSET_TILE = { money: 'money', heart: 'love', job: 'job', house: 'house', treasure: 'treasure', card: 'card', shop: 'shop', stop: 'stop', loss: 'bad', goal: 'goal', habit: 'school', salary: 'money', pass: 'shop' };
 const TEXT_ICON = { start: '출발', money: '₩', loss: '−₩', event: '!', heart: '♥', job: '직업', card: '카드', shop: '상점', treasure: '보물', house: '집', stop: '갈림길', merge: '합류', goal: '골', habit: '습관', salary: '월급날', pass: '광장', hometown: '고향', temple: '산사', jeju: '제주', reversal: '역전', hunt: '토벌', weed: '풀', island: '역전섬', contest: '대회', auction: '경매' };
 const DEFAULT_TILE_COLORS = { start: '#9aa5b1', money: '#f2c94c', loss: '#6c7bd1', event: '#5cb87a', heart: '#ff7eb6', job: '#4f8ee0', card: '#9a6ad6', shop: '#f39a3d', treasure: '#d4a017', house: '#c7773a', stop: '#e2504c', merge: '#8d99ae', goal: '#2d2a32', habit: '#20a39e', salary: '#2f9e57', pass: '#ff8a3d', hometown: '#7cb342', temple: '#8d6e63', jeju: '#26a69a', reversal: '#d4a017', hunt: '#c0392b', weed: '#6ab04c', island: '#ff6b3d', contest: '#e6a817', auction: '#8e6b4a' };
 /** Stage 6 tile glyphs before board.json knows the type (meta icon wins). Loop maps: 💵 월급날, 🎪 찬스 광장. */
@@ -170,6 +170,7 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
   const S = {
     board: null,
     boardKey: null,
+    world: dataWorld(meta), // 세계 설정: the room's world (setBoard `world`; tile icon variants), else the meta's
     layout: null,
     eraIndex: 0, // the era whose loop is built
     wantEra: null, // the state's era (switched when the eraTransition animation plays, else once idle)
@@ -410,8 +411,8 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
       .then(() => {
         keys.forEach((k, i) => {
           const { glyph, type } = info.get(k);
-          const tile = glyph === '📝' ? 'school' : ICON_ASSET_TILE[type];
-          const a = tile ? findAsset({ kind: 'icon', tile }) : null;
+          // the type's own icon (icon-<type>) first, else the borrowed shared one (salary → money …); the room's world variant wins
+          const a = findTileIcon(type, { glyph, world: S.world, find: findAsset });
           if (!a?.url) return;
           const img = new Image();
           img.onload = () => {
@@ -428,12 +429,13 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
 
   /** The board-wide icon atlas (every era's tile glyphs; one texture + material shared by all eras). */
   function ensureAtlas() {
-    if (shared.atlas?.boardKey === S.boardKey) return shared.atlas;
+    if (shared.atlas?.boardKey === S.boardKey && shared.atlas.world === S.world) return shared.atlas;
     const entries = [];
     for (const era of S.board?.eras ?? []) for (const t of eraTilesOf(era)) entries.push({ key: `${iconKey(t)}|${t.type}`, glyph: iconKey(t), type: t.type });
     const atlas = buildAtlas(entries);
     atlas.material = new THREE.MeshBasicMaterial({ map: atlas.texture, transparent: true, depthWrite: false });
     atlas.boardKey = S.boardKey;
+    atlas.world = S.world;
     SHARED.add(atlas.material);
     shared.atlas = atlas;
     return atlas;
@@ -1697,15 +1699,18 @@ export function createBoard3D(canvas, { quality = 'high', meta = null, hooks = {
      * Build the scene for a board: only the loop of era `eraIndex` (the room's shared era). A new board rebuilds at
      * once; a new era of the same board waits for its `eraTransition` animation (else it switches once idle).
      * @param {object} board  room.board
-     * @param {string|{key?: string, eraIndex?: number}} opts  (a string = the old `key` argument)
+     * @param {string|{key?: string, eraIndex?: number, world?: string}} opts  (a string = the old `key` argument;
+     *   `world` = the room's world → tile icon variants, default the meta's)
      */
     setBoard(board, opts = {}) {
       const o = typeof opts === 'string' ? { key: opts } : opts ?? {};
       const k = o.key ?? JSON.stringify(board.eras.map((e) => [e.id, e.tiles.map((t) => t.type), Object.values(e.routes ?? {}).map((r) => r.tiles.map((t) => t.type))]));
       const era = Number.isInteger(o.eraIndex) ? o.eraIndex : 0;
-      if (k !== S.boardKey) {
+      const world = typeof o.world === 'string' && o.world ? o.world : S.world;
+      if (k !== S.boardKey || world !== S.world) {
         clearEras();
         S.boardKey = k;
+        S.world = world;
         S.board = board;
         animator.clear();
         tweens.finishAll();

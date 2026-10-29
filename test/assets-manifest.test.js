@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { CHIIKAWA_STYLE } from '../server/assets/charaIds.js';
+import { worldArtItems } from '../scripts/gen-world-manifest.js';
 import {
   KINDS,
   MANIFEST_PATH,
@@ -36,10 +37,10 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
   assert.equal(count('charLayer'), 8); // base + 4 expressions + 3 outfits
   assert.equal(count('pose'), 6);
   assert.ok(count('sprite') >= 1);
-  assert.equal(count('icon'), 12 + 23); // tile icons + Stage 7 job badges (icon-job-<id>)
-  assert.equal(count('card'), 30); // 16 Stage 7 cards + 14 blue / red cards
-  assert.equal(count('item'), 12); // 6 shop items + 세계 설정 armor / guitar + 4 토벌 monsters (meta.monster)
-  assert.equal(count('treasure'), 23); // Stage 9: one icon per treasures.json id (treasure-<id>) + 세계 설정 kuji_plush
+  assert.equal(count('icon'), 12 + 23 + 16 + 14); // tile icons + Stage 7 job badges (icon-job-<id>) + 🐹 job badges + own tile icons (gen-world-manifest)
+  assert.equal(count('card'), 30 + 14); // 16 Stage 7 cards + 14 blue / red cards + 🐹 variants (card-<id>-chiikawa)
+  assert.equal(count('item'), 12 + 6); // 6 shop items + 세계 설정 armor / guitar + 4 토벌 monsters (meta.monster) + 🐹 variants
+  assert.equal(count('treasure'), 23 + 16); // Stage 9: one icon per treasures.json id (treasure-<id>) + 세계 설정 kuji_plush + 🐹 variants
   assert.equal(count('texture'), 2);
   assert.equal(count('frame'), 7);
   for (const scene of ['school', 'mountain-trail', 'wedding-hall', 'office', 'hospital']) {
@@ -49,6 +50,7 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
     assert.ok(m.items.some((i) => i.kind === 'pose' && i.meta?.pose === pose), pose);
   }
   assert.equal(topoOrder(m.items)[0].id, 'style-anchor');
+  const worldArt = new Set(worldArtItems().map((i) => i.id)); // 세계 설정 art slots (Chiikawa-style prompts)
   for (const i of m.items) {
     assert.ok(KINDS.includes(i.kind));
     assert.match(i.label, HANGUL, `${i.id} label should be Korean`);
@@ -57,8 +59,10 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
     assert.doesNotMatch(p, /\{\{/, `${i.id} has unexpanded template vars`);
     // CH-2: the Chiikawa items (hand-delivered art) carry the request prompts — the Chiikawa style sentence, or an edit
     // instruction against their reference image; derived parts (arms) say so
-    const chiikawa = i.kind === 'chara' || i.kind === 'prop' || (i.kind === 'mc' && i.meta?.part);
-    if (chiikawa) assert.ok(p.includes(CHIIKAWA_STYLE) || /^(Edit the attached image|Keep exactly the same|Derived at import)/.test(p), `${i.id} uses the Chiikawa style`);
+    const chiikawa = i.kind === 'chara' || i.kind === 'prop' || (i.kind === 'mc' && i.meta?.part) || worldArt.has(i.id);
+    // (Momonga's base drops the style's dot-eye clause: its big glossy eyes are the character — remaining-all.json)
+    const style = p.includes(CHIIKAWA_STYLE) || p.includes(CHIIKAWA_STYLE.replace('tiny black dot eyes with a small white highlight, ', ''));
+    if (chiikawa) assert.ok(style || /^(Edit the attached image|Keep exactly the same|Derived at import)/.test(p), `${i.id} uses the Chiikawa style`);
     else if (i.kind !== 'texture') assert.ok(p.includes(STYLE), `${i.id} uses the style bible`);
     if (i.kind === 'icon' || i.kind === 'card' || i.kind === 'item' || i.kind === 'treasure') {
       assert.equal(i.aspect, '1:1');

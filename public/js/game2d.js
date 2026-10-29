@@ -921,9 +921,11 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
 
   // ---------- Stage 7: hand, card sheet, trade / gift, inbox ----------
   const hasCards = () => chars().some((c) => Array.isArray(c.cards));
+  /** 세계 설정: art of the shown room's world (`card-taxi-chiikawa` …) wins over the shared picture (findAsset `world`). */
   const artFor = (kind, id) => {
     if (!id || !ui.assetsReady) return null;
-    return (kind === 'job' ? findAsset({ kind: 'icon', job: id }) : findAsset({ kind, [kind]: id }))?.url ?? null;
+    const world = worldOf(ui.rawRoom);
+    return (kind === 'job' ? findAsset({ kind: 'icon', job: id, world }) : findAsset({ kind, [kind]: id, world }))?.url ?? null;
   };
   /** Job badge icon: generated badge art (`{kind:'icon', job}`) when accepted, else the emoji. */
   const jbIcon = (jb) => {
@@ -2344,7 +2346,7 @@ export function createGameUI(root, { getMeta: getMetaIn, act, toast, resync = nu
     const b3 = ui.b3;
     const cur = currentChar();
     // loop maps: only the shared era's loop; the server's `boardKey` (every view carries it) saves a JSON key per render
-    b3.setBoard(room.board, { eraIndex: currentEraIndex(room), key: typeof room.boardKey === 'string' ? `k:${room.boardKey}` : undefined });
+    b3.setBoard(room.board, { eraIndex: currentEraIndex(room), key: typeof room.boardKey === 'string' ? `k:${room.boardKey}` : undefined, world: worldOf(ui.rawRoom ?? room) });
     // the era's last rounds: build the next era's map in idle time so the transition is a swap (no hitch)
     const clock = eraClock(room);
     if (!clock.race && clock.left != null && clock.left <= 1 && clock.index + 1 < clock.count) b3.prepareEra?.(clock.index + 1);

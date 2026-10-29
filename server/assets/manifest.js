@@ -5,6 +5,7 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { WORLDS } from '../../public/js/shared/world.js';
 
 export const MANIFEST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'manifest.json');
 
@@ -48,6 +49,11 @@ export const MC_ITEM_PARTS = ['eyes-closed', 'mouth-open'];
 /** CH-2: raster parts of a character / NPC friend / pet (public/js/ui/chara.js rasterParts). */
 export const CHARA_ITEM_PARTS_RE = /^(base|body|arms|eyes-closed|mouth-open|expr-(joy|cry|shock|angry|love|sweat)|sheet-(jump|wave|cheer|cry|shock|walk|talk))$/;
 export const PROP_ITEM_SLOTS = ['head', 'face', 'neck', 'hand', 'back'];
+/**
+ * 세계 설정: kinds whose art may be a world variant (`meta.world` = 'chiikawa' | 'real'). The client's
+ * `findAsset({…, world})` prefers the room's world variant, else the shared art (an item without `meta.world`).
+ */
+export const WORLD_ART_KINDS = ['card', 'item', 'treasure', 'icon'];
 /**
  * Local photo references (Stage 5.6): files under DATA_DIR/mc-refs (gitignored, never published), written
  * `data/mc-refs/<file>` or `mc-refs/<file>` in the manifest. Only a plain file name is allowed — no
@@ -171,6 +177,10 @@ export function validateItem(item) {
       errs.push(`${at} frameDelays는 ms 정수 배열이어야 합니다.`);
   } else if (item.frames !== undefined) errs.push(`${at} frames는 sprite에만 쓸 수 있습니다.`);
   if (item.meta !== undefined && !isObj(item.meta)) errs.push(`${at} meta는 객체여야 합니다.`);
+  if (isObj(item.meta) && item.meta.world !== undefined) {
+    if (!WORLD_ART_KINDS.includes(item.kind)) errs.push(`${at} meta.world는 ${WORLD_ART_KINDS.join('/')}에만 쓸 수 있습니다.`);
+    else if (!WORLDS.includes(item.meta.world)) errs.push(`${at} meta.world는 ${WORLDS.join('/')} 중 하나여야 합니다: ${item.meta.world}`);
+  }
   if (item.localRefs !== undefined) {
     if (!Array.isArray(item.localRefs) || item.localRefs.some((r) => !localRefName(r)))
       errs.push(`${at} localRefs는 data/mc-refs/<파일명>.jpg|png|webp 배열이어야 합니다.`);

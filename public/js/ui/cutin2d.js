@@ -31,6 +31,7 @@ import { huntOutcome, isKujiDraw, kujiRows, kujiSummary, monsterInfo, weedGrade,
 import { gradeBadgeHtml, kujiBoxSvg, kujiPlushHtml, kujiTicketHtml, monsterArtHtml, passStampHtml, powerStars, worldOptionsHtml, worldSceneBody } from './worldArt.js';
 import { auctionOutcome, contestOutcome, islandOutcome, islandPickPrompt, seniorItemText } from '../shared/seniorPlay.js';
 import { hammerBoardHtml, islandWheelHtml, seniorOptionsHtml, seniorSceneBody, trophyHtml } from './seniorArt.js';
+import { dataWorld } from '../shared/world.js';
 
 const REASON_ICON = {
   tile: '💰', event: '❗', exam: '📝', gift: '🎁', pension: '👵', goalPrize: '🏁', bonusSpin: '🎰', bet: '🎲', salary: '💵', passTile: '🎪', wish: '🙏', habit: '📚', tuition: '🎓', military: '🪖',
@@ -308,12 +309,15 @@ export function createCutin(root, { getMeta = () => ({}), assets = {}, audio = n
   const pres = () => getMeta()?.presentation ?? {};
   /**
    * Stage 7 art: card / item illustrations and job badges (`{kind:'icon', job}`) when accepted, else null.
-   * 세계 설정: monsters are item-pipeline icons (`{kind: 'item', monster}`).
+   * 세계 설정: monsters are item-pipeline icons (`{kind: 'item', monster}`); the world comes from the world meta (`getMeta`
+   * = game2d's room-world meta, `dataWorld`).
    */
   const artFor = (kind, id) => {
     if (!id) return null;
     try {
-      return (kind === 'job' ? findAsset({ kind: 'icon', job: id }) : kind === 'monster' ? findAsset({ kind: 'item', monster: id }) : findAsset({ kind, [kind]: id }))?.url ?? null;
+      // 세계 설정: the room's world variant (`meta.world`, e.g. card-taxi-chiikawa) wins, else the shared art
+      const world = dataWorld(getMeta());
+      return (kind === 'job' ? findAsset({ kind: 'icon', job: id, world }) : kind === 'monster' ? findAsset({ kind: 'item', monster: id, world }) : findAsset({ kind, [kind]: id, world }))?.url ?? null;
     } catch {
       return null;
     }
