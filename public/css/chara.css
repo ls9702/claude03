@@ -27,12 +27,15 @@
 .chara.anim [data-rig='earR'] .ch-ear-i { animation-duration: 6.3s; animation-delay: 1.4s; }
 .chara.anim .ch-ear-i.droop { transform-origin: 50% 0%; animation-name: ch-ear-droop; }
 .chara.anim .ch-tail-i { transform-box: fill-box; transform-origin: 8% 92%; animation: ch-wag 1.7s ease-in-out infinite; }
+/* Momonga's tall plume sways gently (a full wag would swing its curl out of the crop) */
+.chara.anim .ch-tail-i.plume { transform-origin: 20% 96%; animation: ch-wag-s 2.4s ease-in-out infinite; }
 .chara.anim .ch-wings { transform-box: fill-box; transform-origin: 50% 60%; animation: ch-flap 1.4s ease-in-out infinite; }
 @keyframes ch-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(0.988, 1.018); } }
 @keyframes ch-sway { 0%, 100% { transform: rotate(-1.1deg); } 50% { transform: rotate(1.1deg); } }
 @keyframes ch-ear { 0%, 84%, 100% { transform: rotate(0deg); } 88% { transform: rotate(-10deg); } 92% { transform: rotate(6deg); } 96% { transform: rotate(-2deg); } }
 @keyframes ch-ear-droop { 0%, 80%, 100% { transform: rotate(0deg); } 87% { transform: rotate(6deg); } 94% { transform: rotate(-4deg); } }
 @keyframes ch-wag { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(7deg); } }
+@keyframes ch-wag-s { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(2.5deg); } }
 @keyframes ch-flap { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.06, 0.97); } }
 
 /* particles (rig.js particlesSvg): canvas units, --dx / --dy travel */

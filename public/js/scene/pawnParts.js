@@ -9,7 +9,7 @@
 // The pawn faces +z, stands on y = 0; a size-1 character is ≈ 1.4 units tall (head centre y ≈ 0.9).
 //
 // Everything is data-driven from the roster entry (`/api/meta.roster`): `ears` picks the signature parts (nub / cat
-// split cap / rabbit / squirrel tail / bun glaze / otter muzzle / lion mane / pouch), `colors {body, line, blush,
+// split cap / rabbit / tall + plume tail / squirrel tail / bun glaze / otter muzzle / lion mane / pouch), `colors {body, line, blush,
 // accent?}` colour them, `size` scales the figure. Props (`/api/meta.props`) are primitives at the head / face / neck /
 // hand / back anchors; unknown ids get a generic shape per slot.
 //
@@ -39,19 +39,20 @@ export { ROSTER_IDS, EAR_TYPES, PROP_SLOTS, DEFAULT_CHARACTER } from '../shared/
 /**
  * 3D features per roster id (same meaning as the 2D rig's table in ui/chara.js; ear-type fallbacks below, a roster
  * entry's own `features` object wins): cap 'hachiware' | 'bun' (head pattern in `accent`), muzzle (lighter body colour
- * around the mouth), mane / tail / membrane / pouchBag (in `accent`), mouth 'small' | 'w' | 'open', eyes 'big'.
+ * around the mouth), mane / tail (true | 'plume') / nose 'accent' / pouchBag (in `accent`), mouth 'small' | 'w' | 'open',
+ * eyes 'big' | 'pleading' (Momonga: big glossy eyes looking up, two sparkles, an upper-lid line).
  */
 export const FEATURES_3D = {
   chiikawa: { mouth: 'small' },
   hachiware: { cap: 'hachiware', mouth: 'w' },
   usagi: { mouth: 'open' },
-  momonga: { eyes: 'big', tail: true, membrane: true, mouth: 'small' },
+  momonga: { eyes: 'pleading', nose: 'accent', tail: 'plume', mouth: 'w' },
   kurimanju: { cap: 'bun', mouth: 'small' },
   rakko: { muzzle: true, tail: true, mouth: 'small' },
   shisa: { mane: true, mouth: 'open' },
   pochette: { pouchBag: true, mouth: 'small' },
 };
-const EAR_FEATURES_3D = { lion: { mane: true }, squirrel: { tail: true }, pouch: { pouchBag: true }, bun: { cap: 'bun' }, otter: { muzzle: true }, rabbit: { mouth: 'open' }, cat: { mouth: 'w' } };
+const EAR_FEATURES_3D = { lion: { mane: true }, squirrel: { tail: true }, tall: { tail: 'plume', nose: 'accent' }, pouch: { pouchBag: true }, bun: { cap: 'bun' }, otter: { muzzle: true }, rabbit: { mouth: 'open' }, cat: { mouth: 'w' } };
 const MOUTHS = { small: 'small', smile: 'small', content: 'small', cat: 'w', w: 'w', grin: 'open', open: 'open', wide: 'open' };
 const WHITE = '#ffffff';
 const GOLD = '#f2c94c';
@@ -322,14 +323,14 @@ export function charaFrame(entry) {
   const k = bodyRAt(neckY);
   const neck = { y: neckY, rx: Math.max(body.rx * k, head.rx * headRAt(neckY)) + 0.025, rz: Math.max(body.rz * k, head.rz * headRAt(neckY)) + 0.025 };
   neck.z = neck.rz;
-  const earTop = { nub: 0.1, cat: 0.2, rabbit: 0.45, squirrel: 0.1, bun: 0.05, otter: 0, lion: 0.12, pouch: 0.04 }[entry.ears] ?? 0;
-  const big = entry.feat?.eyes === 'big';
+  const earTop = { nub: 0.1, cat: 0.2, rabbit: 0.45, tall: 0.28, squirrel: 0.1, bun: 0.05, otter: 0, lion: 0.12, pouch: 0.04 }[entry.ears] ?? 0;
+  const eyes = entry.feat?.eyes;
   return {
     head,
     body,
     top: head.y + head.ry,
     crown: head.y + head.ry + earTop,
-    eye: { x: 0.17 * (head.rx / 0.5), y: head.y - 0.03, r: big ? 0.064 : 0.052 },
+    eye: { x: 0.17 * (head.rx / 0.5), y: head.y - (eyes === 'pleading' ? 0.02 : 0.03), r: eyes === 'pleading' ? 0.084 : eyes === 'big' ? 0.064 : 0.052 },
     mouthY: head.y - 0.135,
     neck,
     hand: [-(body.rx + 0.1), body.y + 0.2, 0.12],
@@ -368,6 +369,29 @@ const HEAD_SEG = [14, 10];
 const BODY_SEG = [10, 7];
 const OUTLINE = { head: 0.024, body: 0.022, ear: 0.016, big: 0.02 };
 
+/**
+ * Momonga's tail: a BIG fluffy plume in `accent` rising behind the body on the viewer's side +x (the camera looks at the
+ * pawn's front), about as tall as the figure, a round top lobe leaning outward + the curled tip, three `fur` strokes.
+ */
+function plumeTail(acc, fur) {
+  const rot = [0.08, 0, -0.36];
+  const C = [0.5, 0.58, -0.28];
+  const R = [0.2, 0.46, 0.17];
+  const out = [
+    sph(1, 6, 5, C, acc, { part: 'ears', tag: 'tail', scale: R, rot, bump: { n: 5, amp: 0.07 }, outline: OUTLINE.big }),
+    // the round top leaning outward, then the tip curling out and down
+    sph(1, 6, 4, [0.7, 1.0, -0.28], acc, { part: 'ears', tag: 'tail', scale: [0.2, 0.17, 0.16], rot: [0, 0, -0.6] }),
+    sph(1, 5, 3, [0.87, 0.92, -0.25], shade(acc, 1.12), { part: 'ears', tag: 'tail', scale: [0.085, 0.09, 0.075] }),
+  ];
+  // fur strokes on the outer front of the plume: points of the (rotated) ellipsoid surface
+  for (const [u, v, w, tilt] of [[0.8, 0.35, 0.5, -0.45], [0.86, -0.08, 0.5, -0.3], [0.78, -0.45, 0.45, -0.15]]) {
+    const d = norm([u, v, w]);
+    const p = rotateXYZ([d[0] * R[0], d[1] * R[1], d[2] * R[2]], rot);
+    out.push(sph(0.013, 3, 2, add3(C, p, 1.1), fur, { part: 'ears', tag: 'tail', scale: [1, 4.5, 1], rot: [0, 0, tilt] }));
+  }
+  return out;
+}
+
 /** Ears + signature parts per ear type / features (data-driven: ears + colours + features, never the roster id). */
 function earSpecs(e, f) {
   const { body, accent, blush } = e.colors;
@@ -391,6 +415,15 @@ function earSpecs(e, f) {
     case 'rabbit':
       pair((s) => [sph(0.085, 6, 6, [s * 0.12, HY + 0.6, -0.03], body, { scale: [0.85, 2.9, 0.62], rot: [0, 0, -s * 0.1], paint: { type: 'inner', color: inner }, outline: OUTLINE.ear })]);
       break;
+    case 'tall': {
+      // Momonga: tall pointed ears standing up and slanting a little outward, the inside in `accent`
+      const innerColor = accent ?? inner;
+      pair((s) => [
+        cone(0.12, 0.38, 6, [s * 0.25, HY + 0.46, -0.02], body, { rot: [0, 0, -s * 0.3], scale: [1, 1, 0.72], outline: OUTLINE.ear }),
+        cone(0.07, 0.25, 4, [s * 0.256, HY + 0.45, 0.05], innerColor, { rot: [0, 0, -s * 0.3], scale: [1, 1, 0.4] }),
+      ]);
+      break;
+    }
     case 'squirrel':
       pair((s) => [sph(0.1, 6, 4, [s * 0.3, HY + 0.33, -0.04], body, { scale: [0.9, 1.1, 0.6], rot: [0, 0, -s * 0.15] })]);
       break;
@@ -419,13 +452,10 @@ function earSpecs(e, f) {
     tagged.push(sph(0.62, 21, 3, [0, HY - 0.02, -0.21], acc, { part: 'ears', rot: [Math.PI / 2, 0, 0], scale: [1, 0.5, 0.95], bump: { n: 7, amp: 0.16 }, outline: OUTLINE.big }));
   }
   if (ft.tail && e.ears === 'otter') tagged.push(sph(0.1, 6, 4, [0, 0.1, -0.37], acc, { part: 'ears', scale: [1, 0.45, 2] }));
+  else if (ft.tail === 'plume') tagged.push(...plumeTail(acc, e.colors.extra ?? shade(acc, 0.8)));
   else if (ft.tail) {
     // big fluffy tail rising behind the body
     tagged.push(sph(0.2, 8, 6, [0, 0.66, -0.43], acc, { part: 'ears', scale: [0.8, 1.5, 0.7], rot: [0.3, 0, 0], bump: { n: 4, amp: 0.1 }, paint: { type: 'tip', at: 0.6, color: shade(acc, 1.25) }, outline: OUTLINE.big }));
-  }
-  if (ft.membrane) {
-    // gliding membrane flaps between arm and foot
-    for (const s of [-1, 1]) tagged.push(sph(0.15, 5, 3, [s * (f.body.rx - 0.02), f.body.y - 0.06, -0.02], acc, { part: 'ears', scale: [0.45, 1.25, 0.9], rot: [0, 0, s * 0.25] }));
   }
   if (ft.cap === 'bun') tagged.push(sph(0.06, 5, 2, [0.16, f.top - 0.035, 0.12], '#fff4dc', { part: 'ears', scale: [1.6, 0.35, 0.8], rot: [0.25, 0, -0.3] })); // glaze shine
   if (ft.pouchBag) {
@@ -457,7 +487,14 @@ function faceSpecs(e, f, expression = null) {
   for (const s of [-1, 1]) {
     const p = onHead(f, s * ex, ey, -0.012);
     if (expression === 'joy') out.push(tor(er * 0.8, 0.012, 3, 5, onHead(f, s * ex, ey - 0.01, 0.004).pos, eye, { part: 'face', rot: p.rot }, Math.PI));
-    else {
+    else if (ft.eyes === 'pleading') {
+      // big glossy eyes looking up: dark eye, a glossy lighter bottom (the dark part sits high), a big round sparkle high + a
+      // small one (the 2D upper-lid line is too thin to read on a pawn)
+      out.push(sph(er, 6, 4, p.pos, eye, { part: 'face', rot: p.rot, scale: [0.9, 1.08, 0.45] }));
+      out.push(sph(er * 0.6, 5, 2, onHead(f, s * ex, ey - er * 0.48, 0.004).pos, e.colors.accent ? shade(e.colors.accent, 0.6) : '#5a6a88', { part: 'face', rot: p.rot, scale: [1.15, 0.55, 0.4] }));
+      out.push(sph(er * 0.42, 6, 3, onHead(f, s * ex - er * 0.22, ey + er * 0.4, 0.018).pos, WHITE, { part: 'face', rot: p.rot, scale: [1, 1, 0.6] }));
+      out.push(sph(er * 0.17, 3, 2, onHead(f, s * ex + er * 0.42, ey + er * 0.02, 0.016).pos, WHITE, { part: 'face' }));
+    } else {
       out.push(sph(er, 6, 4, p.pos, eye, { part: 'face', rot: p.rot, scale: [0.82, 1.18, 0.5] }));
       out.push(sph(er * 0.33, 4, 2, onHead(f, s * ex + er * 0.25, ey + er * 0.46, 0.016).pos, WHITE, { part: 'face' }));
     }
@@ -467,6 +504,10 @@ function faceSpecs(e, f, expression = null) {
   if (ft.muzzle || ft.mane) {
     const n = onHead(f, 0, my + 0.055, 0.006);
     out.push(sph(0.03, 5, 3, n.pos, line, { part: 'face', rot: n.rot, scale: [1.3, 0.9, 0.7] }));
+  } else if (ft.nose) {
+    // a small oval nose between / below the eyes (`nose: 'accent'` = Momonga's pale sky-blue one)
+    const n = onHead(f, 0, (ey + my) / 2 + 0.005, 0.004);
+    out.push(sph(0.026, 5, 2, n.pos, ft.nose === 'accent' && e.colors.accent ? e.colors.accent : line, { part: 'face', tag: 'nose', rot: n.rot, scale: [1.35, 0.9, 0.6] }));
   }
   if (e.mouth === 'open') {
     const m = onHead(f, 0, my - 0.005, -0.006);

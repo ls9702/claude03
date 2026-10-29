@@ -154,6 +154,51 @@ test('renderer: every roster character has its own rig (distinct markup), parts 
   for (const id of ROSTER_IDS) assert.deepEqual(viewBox(charaSvg({ character: id }, { crop: 'full', meta: META })), [FULL_VIEW.x, FULL_VIEW.y, FULL_VIEW.w, FULL_VIEW.h]);
 });
 
+test('renderer: Momonga = tall pointed ears, big pleading eyes, a sky-blue nose and a big sky-blue plume tail, no membrane', () => {
+  const info = rosterInfo('momonga', META);
+  const { body, accent, extra } = info.colors;
+  assert.equal(info.ears, 'tall');
+  assert.notEqual(accent, body, 'the tail / nose colour is not white');
+  const svg = charaSvg({ character: 'momonga', props: {} }, { size: 300, crop: 'fit', meta: META });
+  noNaN(svg, 'momonga');
+  // the tail: its own rig group, filled with the sky-blue accent, darker fur strokes in `extra`
+  const tail = svg.match(/<g data-rig="tail"[^>]*><g class="ch-tail-i plume"><path d="[^"]+" fill="([^"]+)"/);
+  assert.ok(tail, 'plume tail');
+  assert.equal(tail[1], accent);
+  assert.ok(svg.includes(`stroke="${extra}"`), 'fur strokes');
+  // it rises on the viewer's right, about as tall as the figure (from near the feet to above the head top)
+  const g = chibiGeom(info.anchors);
+  const ys = [...svg.match(/<g class="ch-tail-i plume"><path d="([^"]+)"/)[1].matchAll(/-?[\d.]+ (-?[\d.]+)/g)].map((m) => Number(m[1]));
+  assert.ok(Math.min(...ys) < g.top && Math.max(...ys) > CANVAS.feetY - g.H * 0.2, 'tail spans the figure');
+  const px = Number(svg.match(/data-rig="tail" data-px="([\d.]+)"/)[1]);
+  assert.ok(px > CANVAS.cx, 'tail on the right');
+  // a small nose in the accent colour inside the face group, between the eyes and the mouth
+  const face = svg.match(/<g class="ch-face">(.*?)<g class="ch-eo">/)[1];
+  const nose = face.match(new RegExp(`<ellipse cx="${CANVAS.cx}" cy="([\\d.]+)" rx="[\\d.]+" ry="[\\d.]+" fill="([^"]+)" stroke=`));
+  assert.ok(nose, 'nose');
+  assert.equal(nose[2], accent);
+  assert.ok(Number(nose[1]) > g.ey && Number(nose[1]) < g.mouthY, 'nose between eyes and mouth');
+  assert.doesNotMatch(charaSvg({ character: 'chiikawa', props: {} }, { meta: META }).match(/<g class="ch-face">(.*?)<g class="ch-eo">/)[1], new RegExp(`<ellipse cx="${CANVAS.cx}"`), 'no nose on Chiikawa');
+  // no gliding membrane: nothing is drawn behind the body without a back prop
+  assert.match(svg, /<g class="ch-back"><\/g>/);
+  // big eyes: wider than Chiikawa's dot eyes in the same rig
+  const eyeRx = (s) => Math.max(...[...s.match(/<g class="ch-eo">(.*?)<\/g>/)[1].matchAll(/<ellipse cx="[\d.]+" cy="[\d.]+" rx="([\d.]+)"/g)].map((m) => Number(m[1])));
+  const plain = charaSvg({ character: 'momonga', props: {} }, { meta: { ...META, roster: { ...META.roster, characters: META.roster.characters.map((c) => (c.id === 'momonga' ? { ...c, features: { eyes: 'dot' } } : c)) } } });
+  assert.ok(eyeRx(charaSvg({ character: 'momonga', props: {} }, { meta: META })) > eyeRx(plain) * 2.2, 'pleading eyes are much bigger than dot eyes');
+  // tall ears reach well above the head top (higher than Hachiware's cat ears relative to the head)
+  const earTop = (id) => {
+    const s = charaSvg({ character: id, props: {} }, { meta: META });
+    const ear = s.match(/<g data-rig="earL"[^>]*>(.*?)<\/g><\/g>/)[1];
+    const gg = chibiGeom(rosterInfo(id, META).anchors);
+    return (gg.top - Math.min(...[...ear.matchAll(/-?[\d.]+ (-?[\d.]+)/g)].map((m) => Number(m[1])))) / gg.H;
+  };
+  assert.ok(earTop('momonga') > earTop('hachiware') + 0.08, `tall ears (${earTop('momonga').toFixed(2)} vs ${earTop('hachiware').toFixed(2)})`);
+  // the NPC squirrel keeps its own brown tail / rounded ears
+  const sq = charaSvg({ npc: 'squirrel', props: {} }, { meta: META });
+  assert.doesNotMatch(sq, /ch-tail-i plume/);
+  assert.ok(sq.includes(META.npcs.species.find((x) => x.id === 'squirrel').colors.extra));
+});
+
 test('renderer: NPC friends and pets have their own distinct drawings; unknown species still draw', () => {
   const npc = new Set(META.npcs.species.map((s) => charaSvg({ npc: s.id, props: {} }, { meta: META })));
   assert.equal(npc.size, META.npcs.species.length);

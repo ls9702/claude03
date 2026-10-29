@@ -148,7 +148,8 @@ const FEATURES = {
   chiikawa: { mouth: 'small' },
   hachiware: { cap: 'hachiware', mouth: 'cat' },
   usagi: { mouth: 'grin', eyes: 'wide' },
-  momonga: { eyes: 'big', tail: 'fluffy', mouth: 'small' },
+  // Momonga: big glossy eyes looking up (pleading), a pale sky-blue nose, a big fluffy sky-blue plume of a tail; no membrane
+  momonga: { eyes: 'pleading', nose: 'accent', tail: 'momonga', mouth: 'omega' },
   kurimanju: { cap: 'bun', eyes: 'content', mouth: 'content' },
   rakko: { muzzle: true, mouth: 'smile', tall: true },
   shisa: { mane: true, mouth: 'grin' },
@@ -166,7 +167,7 @@ const FEATURES = {
   fox: { muzzle: 'fox', tail: 'fox', mouth: 'cat' },
   owl: { eyeRings: true, beak: 'owl', bellyMarks: true },
 };
-const EAR_FEATURES = { lion: { mane: true }, squirrel: { tail: 'fluffy' }, pouch: { pouchBag: true }, bun: { cap: 'bun' }, otter: { muzzle: true } };
+const EAR_FEATURES = { lion: { mane: true }, squirrel: { tail: 'fluffy' }, tall: { tail: 'momonga', nose: 'accent' }, pouch: { pouchBag: true }, bun: { cap: 'bun' }, otter: { muzzle: true } };
 
 function featuresOf(id, ears, data) {
   return { ...(EAR_FEATURES[ears] ?? {}), ...(FEATURES[id] ?? {}), ...(isObj(data) ? data : {}) };
@@ -212,6 +213,16 @@ function earsSvg(g, C, type, ft, tf = () => '') {
           ell(ecx, ecy + H * 0.04, H * 0.045, H * 0.24, `fill="${inner}" stroke="none" opacity=".8"`) +
           '</g>';
         return { px: ecx, py: top + H * 0.1, svg };
+      });
+    case 'tall':
+      // tall pointed ears standing up and slanting a little outward (Momonga), the inside in `accent`
+      return pair((s) => {
+        const tx = cx + s * rx * 0.68;
+        const ty = top - H * 0.31;
+        const svg =
+          path(`M${P(cx + s * rx * 0.18, top + H * 0.12)} C${P(cx + s * rx * 0.2, top - H * 0.06, tx - s * rx * 0.16, ty + H * 0.05, tx, ty)} C${P(tx + s * rx * 0.13, ty + H * 0.13, cx + s * rx * 0.84, top + H * 0.02, cx + s * rx * 0.76, top + H * 0.2)}Z`, ln(C, C.body)) +
+          path(`M${P(cx + s * rx * 0.3, top + H * 0.1)} C${P(cx + s * rx * 0.32, top - H * 0.02, tx - s * rx * 0.1, ty + H * 0.12, tx - s * rx * 0.01, ty + H * 0.1)} C${P(tx + s * rx * 0.07, ty + H * 0.18, cx + s * rx * 0.72, top + H * 0.04, cx + s * rx * 0.66, top + H * 0.15)}Z`, `fill="${C.accent ?? inner}" stroke="none"`);
+        return { px: cx + s * rx * 0.46, py: top + H * 0.14, svg };
       });
     case 'squirrel':
       return pair((s) => {
@@ -342,8 +353,27 @@ function eyesOpen(g, C, ft, { look = 0 } = {}) {
   const { cx, ex, ey, er, ery } = g;
   const style = ft.eyes ?? 'dot';
   if (style === 'content') return mirror(path(`M${P(cx - ex - er * 1.6, ey + er * 0.2)} Q${P(cx - ex, ey + er * 2, cx - ex + er * 1.6, ey + er * 0.2)}`, `fill="none" stroke="${C.line}" stroke-width="${n1(C.lw * 1.25)}" stroke-linecap="round"`));
-  const k = style === 'big' ? 1.45 : style === 'wide' ? 1.1 : 1;
   const eyeFill = ft.patches ? '#2b2522' : C.eye;
+  if (style === 'pleading') {
+    // Momonga's "please notice me" eyes: big round glossy eyes looking up — the darkest part high in the eye, a glossy
+    // lighter bottom, two big sparkles + a tiny one, a thin upper-lid line hugging the top
+    const R = er * 2.75;
+    const Ry = ery * 2.3;
+    const gloss = C.accent ? shade(C.accent, -0.3) : '#8aa0c0';
+    const one = (x0) => {
+      const x = x0 + look;
+      return (
+        ell(x, ey, R, Ry, `fill="${eyeFill}"`) +
+        ell(x, ey + Ry * 0.5, R * 0.7, Ry * 0.4, `fill="${gloss}" fill-opacity=".55"`) +
+        circ(x - R * 0.26, ey - Ry * 0.4, R * 0.44, `fill="${EYE_HL}"`) +
+        circ(x + R * 0.4, ey - Ry * 0.08, R * 0.19, `fill="${EYE_HL}"`) +
+        circ(x + R * 0.16, ey + Ry * 0.56, R * 0.11, `fill="${EYE_HL}" fill-opacity=".9"`) +
+        path(`M${P(x - R * 1.08, ey - Ry * 0.3)} Q${P(x, ey - Ry * 1.78, x + R * 1.08, ey - Ry * 0.3)}`, `fill="none" stroke="${C.line}" stroke-width="${n1(C.lw * 0.7)}" stroke-linecap="round"`)
+      );
+    };
+    return one(cx - ex) + one(cx + ex);
+  }
+  const k = style === 'big' ? 1.45 : style === 'wide' ? 1.1 : 1;
   const one = (x) =>
     ell(x + look, ey, er * k, ery * k, `fill="${eyeFill}"`) +
     circ(x + look - er * 0.32 * k, ey - ery * 0.38 * k, er * 0.42 * k, `fill="${EYE_HL}"`) +
@@ -381,6 +411,11 @@ function mouthClosed(g, C, ft) {
   switch (ft.mouth) {
     case 'cat':
       return path(`M${P(cx - w * 1.4, my - w * 0.3)} Q${P(cx - w * 0.7, my + w * 0.9, cx, my - w * 0.1)} Q${P(cx + w * 0.7, my + w * 0.9, cx + w * 1.4, my - w * 0.3)}`, stroke);
+    case 'omega': {
+      // a tiny ω (Momonga)
+      const v = w * 0.62;
+      return path(`M${P(cx - v * 1.5, my - v * 0.2)} Q${P(cx - v * 0.75, my + v * 1.3, cx, my - v * 0.1)} Q${P(cx + v * 0.75, my + v * 1.3, cx + v * 1.5, my - v * 0.2)}`, stroke);
+    }
     case 'grin':
       return path(`M${P(cx - w * 2.2, my - w * 0.4)} Q${P(cx, my + w * 0.4, cx + w * 2.2, my - w * 0.4)} Q${P(cx + w * 1.6, my + w * 2.8, cx, my + w * 2.8)} Q${P(cx - w * 1.6, my + w * 2.8, cx - w * 2.2, my - w * 0.4)}Z`, `${ln(C, MOUTH_IN, C.lw)}`) + ell(cx, my + w * 1.9, w * 1.1, w * 0.7, `fill="${TONGUE}"`);
     case 'wide':
@@ -492,7 +527,9 @@ function faceSvg(g, C, ft, expression) {
     default:
       break;
   }
-  return `<g class="ch-face">${blushSvg(g, C, { strong: strongBlush })}<g class="ch-eo">${eo}</g><g class="ch-ec" display="none">${ec}</g><g class="ch-mc">${mc}</g><g class="ch-mo" display="none">${mo}</g>${extra}</g>`;
+  // a small oval nose between / below the eyes (`nose: 'accent'` = Momonga's pale sky-blue one)
+  const nose = ft.nose ? ell(cx, ey + H * 0.064, H * 0.03, H * 0.02, ln(C, ft.nose === 'accent' && C.accent ? C.accent : C.line, C.lw * 0.6)) : '';
+  return `<g class="ch-face">${blushSvg(g, C, { strong: strongBlush })}${nose}<g class="ch-eo">${eo}</g><g class="ch-ec" display="none">${ec}</g><g class="ch-mc">${mc}</g><g class="ch-mo" display="none">${mo}</g>${extra}</g>`;
 }
 
 // ---------- props ----------
@@ -1143,6 +1180,7 @@ function propSvg(slot, id, C, k, meta, { front = false, noRaster = false } = {})
 // ---------- body extras ----------
 function tailSvg(g, C, ft) {
   if (!ft.tail) return '';
+  if (ft.tail === 'momonga') return plumeTailSvg(g, C);
   const { cx, H, bw } = g;
   const bx = cx + bw * 0.7;
   const by = F - H * 0.18;
@@ -1158,9 +1196,40 @@ function tailSvg(g, C, ft) {
   return `<g data-rig="tail" data-px="${n1(bx)}" data-py="${n1(by)}"><g class="ch-tail-i">${path(d, ln(C, fill))}${tip}</g></g>`;
 }
 
-function membraneSvg(g, C) {
-  const { cx, H, bw, bodyTop } = g;
-  return mirror(path(`M${P(cx - bw * 0.7, bodyTop + H * 0.18)} Q${P(cx - bw * 1.45, bodyTop + H * 0.42, cx - bw * 1.05, F - H * 0.14)} L${P(cx - bw * 0.85, F - H * 0.1)}Z`, ln(C, C.accent ?? C.body, C.lw * 0.9)));
+/**
+ * Momonga's tail: a BIG fluffy plume in `accent` rising behind the body on the viewer's right, about as tall as the
+ * figure, its top curling outward; a scalloped outer edge, the curl line and a few `extra` fur strokes.
+ */
+function plumeTailSvg(g, C) {
+  const { cx, top, rx, H, bw } = g;
+  const fill = C.accent ?? C.body;
+  const fur = C.extra ?? shade(fill, -0.25);
+  const X = (k) => cx + rx * k;
+  const Y = (k) => top + H * k;
+  const base = [cx + bw * 0.5, F - H * 0.07];
+  // S-shaped plume: a big round top leaning outward, a waist, a fuller lower part; soft tufts on the outer edge
+  const edge = [[X(1.47), Y(0.12)], [X(1.4), Y(0.46)], [X(1.5), Y(0.8)], [X(1.4), Y(1.08)], [X(1.2), Y(1.3)], [cx + bw * 1.1, F - H * 0.1]];
+  let d =
+    `M${P(...base)} C${P(X(0.9), F - H * 0.34, X(0.7), Y(0.72), X(0.86), Y(0.32))}` + // inner edge (hidden behind the body / head)
+    ` C${P(X(0.92), Y(-0.1), X(1.36), Y(-0.17), X(1.47), Y(0.12))}`; // the big round top
+  for (let i = 1; i < edge.length; i++) {
+    const [ax, ay] = edge[i - 1];
+    const [bx, by] = edge[i];
+    // control point pushed out along the edge normal (dy, −dx): the outside is to the right of the downward edge
+    const bulge = i === 1 ? 0.1 : i === edge.length - 1 ? 0.12 : 0.17;
+    d += ` Q${P((ax + bx) / 2 + (by - ay) * bulge, (ay + by) / 2 - (bx - ax) * bulge, bx, by)}`;
+  }
+  d += ` Q${P(cx + bw * 0.85, F - H * 0.02, ...base)}Z`;
+  const fs = `fill="none" stroke="${fur}" stroke-width="${n1(C.lw * 1.05)}" stroke-linecap="round"`;
+  const strokes =
+    // the curl of the tip: a spiral inside the top lobe
+    path(`M${P(X(1.47), Y(0.2))} C${P(X(1.38), Y(0.3), X(1.17), Y(0.22), X(1.21), Y(0.07))} C${P(X(1.25), Y(-0.03), X(1.39), Y(0.0), X(1.36), Y(0.1))}`, `fill="none" stroke="${C.line}" stroke-width="${n1(C.lw * 0.8)}" stroke-linecap="round"`) +
+    path(`M${P(X(1.22), Y(0.42))} Q${P(X(1.3), Y(0.47), X(1.33), Y(0.57))}`, fs) +
+    path(`M${P(X(1.22), Y(0.72))} Q${P(X(1.32), Y(0.78), X(1.36), Y(0.9))}`, fs) +
+    path(`M${P(X(1.08), Y(1.04))} Q${P(X(1.18), Y(1.1), X(1.2), Y(1.2))}`, fs);
+  const px = cx + bw * 0.7;
+  const py = F - H * 0.15;
+  return `<g data-rig="tail" data-px="${n1(px)}" data-py="${n1(py)}" data-amp="0.3"><g class="ch-tail-i plume">${path(d, ln(C, fill))}${strokes}</g></g>`;
 }
 
 function pouchBagSvg(g, C) {
@@ -1549,7 +1618,7 @@ export function charaSvg(look, opts = {}) {
     const armR = armShape(C, g.shoulderR, g.handR, g.armW, armFill) + handProp;
     figure =
       tailSvg(g, C, ft) +
-      `<g class="ch-back">${propSvg('back', props.back, C, k, meta)}${ft.membrane ? membraneSvg(g, C) : ''}</g>` +
+      `<g class="ch-back">${propSvg('back', props.back, C, k, meta)}</g>` +
       `<g class="ch-body">${body}${feet}${propSvg('back', props.back, C, k, meta, { front: true })}${ft.pouchBag ? pouchBagSvg(g, C) : ''}</g>` +
       rg('head', [CX, g.bottom], `<g class="ch-head-i">${head}</g>`) +
       `<g class="ch-neck">${propSvg('neck', props.neck, C, k, meta)}</g>` +

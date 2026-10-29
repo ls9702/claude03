@@ -1896,8 +1896,11 @@ Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (
   `FEATURES_3D` per roster id (same meaning as `ui/chara.js` FEATURES) + ear-type fallbacks + a data entry's own `features` win:
   cap 'hachiware' (blue-grey split cap = per-triangle vertex paint in `accent`, inverted-V white split on the forehead) | 'bun'
   (Kurimanju glazed top in `accent` + shine, small round ears), muzzle (Rakko: lighter-body muzzle + nose, side ears with an accent
-  inside, flat accent tail), mane (Shisa: scalloped disc behind the head, `bump {n, amp}`), tail / membrane (Momonga: big fluffy accent
-  tail + side flaps), pouchBag (Pochette: droopy light-accent ears, tilted cross-body strap + pouch). Everything is data-driven by
+  inside, flat accent tail), mane (Shisa: scalloped disc behind the head, `bump {n, amp}`), tail 'plume' / nose 'accent' / eyes
+  'pleading' (Momonga, ear type `tall`: tall pointed ears slanting outward with accent insides, big eyes with a glossy accent-tinted
+  bottom + two sparkles, a sky-blue accent nose, ω mouth, a big accent plume tail behind the body on +x (round top + curled tip,
+  `extra` fur strokes; specs tagged `tag: 'tail' | 'nose'`); no gliding membrane), pouchBag (Pochette: droopy light-accent ears, tilted
+  cross-body strap + pouch). Everything is data-driven by
   `ears` + colours + features (a swapped roster entry needs no code). Figure: mochi body + wide head (frame `charaFrame(entry)`:
   head / body ellipsoids, eye line, neck ring, raised right paw `hand`, back, crown), dot eyes with a highlight (`expression: 'joy'` =
   closed ^ ^ eyes, used for the 1st place on the podium), blush ovals, tiny mouth, stubby arms (the right one raised when a hand prop is
@@ -1962,9 +1965,12 @@ Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (
 - Renderer `public/js/ui/chara.js` (+ `public/css/chara.css`, linked in index.html): SVG drawn in the shared canvas coordinates.
   `chibiGeom(anchors)` derives a mochi head (top = anchors.head, chin below anchors.neck), a squat bell body, stubby arm capsules
   (shoulder pivots), feet; eyes on its own face line (`charaAnchors(look)` = the anchors the SVG rig really uses — glasses sit on the
-  eyes, hand items on the right paw; raster art uses the roster `anchors`). Ears by `ears` type (nub, cat/fox, rabbit, squirrel, bun,
-  otter, lion, pouch, round, lamb, tuft, frog, none) + `FEATURES` per id with ear-type fallbacks + a data entry's own `features`
-  (hachiware split cap, kurimanju bun top, rakko muzzle, shisa mane, momonga tail, pochette pouch bag; NPC: penguin face mask / belly /
+  eyes, hand items on the right paw; raster art uses the roster `anchors`). Ears by `ears` type (nub, cat/fox, rabbit, tall, squirrel,
+  bun, otter, lion, pouch, round, lamb, tuft, frog, none) + `FEATURES` per id with ear-type fallbacks + a data entry's own `features`
+  (hachiware split cap, kurimanju bun top, rakko muzzle, shisa mane, momonga (ears `tall`: tall pointed ears with sky-blue `accent`
+  insides, `eyes: 'pleading'` = big glossy eyes looking up with two sparkles + a thin upper-lid line, `nose: 'accent'`, `mouth: 'omega'`,
+  `tail: 'momonga'` = a big sky-blue plume on the viewer's right with a curled top and `extra` fur strokes, gentler sway (`.ch-tail-i.plume`,
+  rig rotations × `data-amp` 0.3); no membrane), pochette pouch bag; NPC: penguin face mask / belly /
   beak, hamster lower face + cheeks, duckling beak + tuft, panda patches + dark limbs, squirrel / fox tails, lamb wool, frog eye bumps,
   bear cub muzzle, owl eye rings + beak + belly marks). Pets have their own body plans (fish, bird, turtle, hedgehog, dog, guinea pig,
   snail; unknown species = a blob with its icon). Faces: `CHARA_EXPRESSIONS` neutral joy cry (squeezed eyes + tear streams) shock angry
@@ -1996,7 +2002,7 @@ Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (
   `shakeOffset` / `shakeKeyframes`, `spriteFrame` / `spriteBgPos` / `spriteDuration` / `sheetDef`, `spawnParticles` (seeded: tears from
   both eyes, sweat, hearts, sparkles, stars, puffs, notes) → `particlesSvg` (CSS-animated `.ch-pt` with `--dx/--dy`), `parallaxOffset`
   / `parallaxLayers(scene, assetUrl, single)` (`bg-<scene>-far|mid|near`). DOM: `createRig(svg)` (one shared rAF ticker; `play`,
-  `loop`, `stop`, `destroy`; drops rigs removed from the page), `createSpritePlayer`, `screenShake` (WAAPI), `attachParallax`,
+  `loop`, `stop`, `destroy`; drops rigs removed from the page; a group's `data-amp` scales its rotations), `createSpritePlayer`, `screenShake` (WAAPI), `attachParallax`,
   `prefersReducedMotion` (reduced → key poses, no loops / particles motion).
 - Cut-ins (`cutin2d`): cast slots `.ci-slot.chara-slot` (aspect 0.78, 80 % height; pets × `childScale`) with `renderCutinFigure`;
   poses → rig loops (wave / cheer / cry) or one-shots (jump / shock), emotions → faces + particles (tears / hearts / sweat /

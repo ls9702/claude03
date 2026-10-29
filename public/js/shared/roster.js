@@ -18,7 +18,8 @@ export const CANVAS = Object.freeze({ w: 1024, h: 1536, feetY: 1303, cx: 512 });
 export const PROP_SLOTS = Object.freeze(['head', 'face', 'neck', 'hand', 'back']);
 export const SLOT_NAMES = Object.freeze({ head: '머리', face: '얼굴', neck: '목', hand: '손', back: '등' });
 export const SLOT_ICONS = Object.freeze({ head: '🎀', face: '👓', neck: '🎗️', hand: '🎈', back: '🎒' });
-export const EAR_TYPES = Object.freeze(['nub', 'cat', 'rabbit', 'squirrel', 'bun', 'otter', 'lion', 'pouch']);
+/** Ear types a roster entry may use (`tall` = Momonga's tall pointed ears; `squirrel` stays drawable for data-swapped entries). */
+export const EAR_TYPES = Object.freeze(['nub', 'cat', 'rabbit', 'tall', 'squirrel', 'bun', 'otter', 'lion', 'pouch']);
 
 const ch = (id, name, icon, colors, ears, size, desc, anchors) => ({ id, name, icon, colors, ears, size, desc, anchors });
 const A = (head, face, neck, hand, back, hx = 330) => ({ head: [512, head], face: [512, face], neck: [512, neck], handL: [hx, hand], handR: [1024 - hx, hand], back: [512, back] });
@@ -28,7 +29,7 @@ export const DEFAULT_ROSTER = Object.freeze([
   ch('chiikawa', '치이카와', '🤍', { body: '#ffffff', line: '#5b4a44', blush: '#ffb4c2', accent: '#ff9db5' }, 'nub', 1, '작고 동글동글한 하얀 아이. 잘 울지만 누구보다 열심히 해요.', A(420, 640, 880, 1010, 1000)),
   ch('hachiware', '하치와레', '🐱', { body: '#ffffff', line: '#4a4e5a', blush: '#ffb4c2', accent: '#5f7fa8', extra: '#2f3e57' }, 'cat', 1, '머리에 파란 하치와레 무늬가 있는 고양이 같은 친구. 언제나 밝아요.', A(410, 640, 880, 1010, 1000)),
   ch('usagi', '우사기', '🐰', { body: '#fff3c4', line: '#5e5038', blush: '#ffb08a', accent: '#ffcf5a' }, 'rabbit', 1.1, '기다란 귀의 노란 토끼. 엉뚱하고 에너지가 넘쳐요. 우라!', A(450, 660, 890, 1015, 1005, 326)),
-  ch('momonga', '모몽가', '🐿️', { body: '#ffffff', line: '#55505a', blush: '#ffb4c2', accent: '#c9d4ea', extra: '#9aa9c8' }, 'squirrel', 0.85, '커다란 눈망울의 하늘다람쥐. 관심 받는 걸 제일 좋아해요.', A(540, 720, 930, 1040, 1040, 360)),
+  ch('momonga', '모몽가', '🐿️', { body: '#ffffff', line: '#55505a', blush: '#ffb4c2', accent: '#a9d6f0', extra: '#7fb7dc' }, 'tall', 0.85, '반짝이는 눈망울의 하늘다람쥐. 관심 받는 걸 제일 좋아해요.', A(540, 720, 930, 1040, 1040, 360)),
   ch('kurimanju', '쿠리만쥬', '🌰', { body: '#d9a46c', line: '#5a3b22', blush: '#f19a7a', accent: '#8a5a32' }, 'bun', 0.95, '밤만쥬처럼 동그란 갈색 친구. 맛있는 걸 먹고 "하아…" 하고 감탄해요.', A(460, 660, 890, 1015, 1005, 336)),
   ch('rakko', '랏코', '🦦', { body: '#eadbc4', line: '#5a4a3a', blush: '#f2b3a2', accent: '#a88a66' }, 'otter', 1.2, '키가 크고 듬직한 해달 선배. 토벌 실력이 최고예요.', A(330, 580, 850, 995, 985, 318)),
   ch('shisa', '시사', '🦁', { body: '#f5cf73', line: '#6a4a22', blush: '#ffa98a', accent: '#e2873a' }, 'lion', 1, '갈기가 복슬복슬한 시사. 성실하게 일하는 라멘집 수습생이에요.', A(400, 640, 885, 1010, 1000)),

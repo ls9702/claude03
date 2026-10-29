@@ -64,6 +64,37 @@ test('roster: colours, ears and size come from the data (a swapped entry needs n
   assert.notEqual(lookKey({ character: 'pochette' }, swapped), lookKey({ character: 'pochette' }, meta));
 });
 
+test('Momonga: tall ears with sky-blue insides, a sky-blue nose, a big sky-blue plume tail on +x behind, no membrane', () => {
+  const c = meta.roster.characters.find((x) => x.id === 'momonga');
+  const e = rosterEntry('momonga', meta);
+  const f = charaFrame(e);
+  assert.equal(e.ears, 'tall');
+  assert.ok(!e.feat.membrane, 'no membrane feature');
+  assert.equal(e.feat.eyes, 'pleading');
+  const specs = charaSpecs({ character: 'momonga' }, meta);
+  // no gliding-membrane flaps beside the body (accent shapes at the body sides)
+  assert.ok(!specs.some((s) => s.part === 'ears' && s.tag !== 'tail' && s.color === c.colors.accent && Math.abs(s.pos[1] - f.body.y * e.size) < 0.25 && s.pos[2] > -0.15), 'no membrane flaps');
+  // the plume: accent-coloured, behind the body, on the +x side, rising from body level to above the head centre
+  const tail = specs.filter((s) => s.tag === 'tail');
+  assert.ok(tail.length >= 3);
+  const main = tail.filter((s) => s.color === c.colors.accent);
+  assert.ok(main.length >= 2 && main.every((s) => s.pos[0] > 0.3 * e.size && s.pos[2] < 0), 'tail on +x behind');
+  assert.ok(Math.max(...main.map((s) => s.pos[1])) > f.head.y * e.size, 'tail as tall as the figure');
+  assert.ok(tail.some((s) => s.color === c.colors.extra), 'fur strokes in extra');
+  // nose in the accent colour on the face, between the eyes and the mouth
+  const nose = specs.find((s) => s.tag === 'nose');
+  assert.ok(nose && nose.color === c.colors.accent && Math.abs(nose.pos[0]) < 1e-6);
+  assert.ok(nose.pos[1] < f.eye.y * e.size && nose.pos[1] > f.mouthY * e.size);
+  // ears: tall cones with an accent inner cone; the crown sits well above the head top
+  const ears = specs.filter((s) => s.part === 'ears' && s.shape === 'cone');
+  assert.equal(ears.length, 4);
+  assert.equal(ears.filter((s) => s.color === c.colors.accent).length, 2);
+  assert.ok(f.crown - f.top > charaFrame(rosterEntry('hachiware', meta)).crown - charaFrame(rosterEntry('hachiware', meta)).top);
+  // big eyes (bigger than the dot eyes) with two white sparkles each
+  assert.ok(f.eye.r > charaFrame(rosterEntry('chiikawa', meta)).eye.r * 1.5);
+  assert.equal(specs.filter((s) => s.part === 'face' && s.color === '#ffffff').length, 4);
+});
+
 test('paint patterns: Hachiware split cap, bun glaze, scallops', () => {
   const cap = { type: 'cap', color: '#5f7fa8' };
   const n = (x, y, z) => {

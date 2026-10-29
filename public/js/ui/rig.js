@@ -436,7 +436,8 @@ const pivotOf = (g) => [Number(g.dataset.px) || 0, Number(g.dataset.py) || 0];
  */
 export function createRig(svg, { reduced = prefersReducedMotion(), onFace = null } = {}) {
   const parts = {};
-  for (const g of svg.querySelectorAll('[data-rig]')) parts[g.dataset.rig] = { g, pivot: pivotOf(g) };
+  // `data-amp` scales a part's rotations (Momonga's tall plume tail swings less than a small tail)
+  for (const g of svg.querySelectorAll('[data-rig]')) parts[g.dataset.rig] = { g, pivot: pivotOf(g), amp: Number(g.dataset.amp) || 1 };
   let loopAction = null;
   let loopStart = 0;
   let shot = null; // {action, start, ms, resolve}
@@ -455,7 +456,8 @@ export function createRig(svg, { reduced = prefersReducedMotion(), onFace = null
     for (const name of ['root', 'head', 'armL', 'armR', 'earL', 'earR', 'tail', 'shadow', 'propR']) {
       const part = parts[name];
       if (!part) continue;
-      const tf = partTransform(pose[name], part.pivot);
+      const p = pose[name];
+      const tf = partTransform(part.amp !== 1 && p?.r ? { ...p, r: p.r * part.amp } : p, part.pivot);
       if (part.last !== tf) {
         part.last = tf;
         if (tf) part.g.setAttribute('transform', tf);

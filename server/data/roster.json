@@ -2,7 +2,7 @@
   "_comment": "치이카와 캐릭터 로스터 (CH-1). 플레이어 캐릭터 = 로스터 캐릭터 1명 + 소품(props.json, 슬롯 head/face/neck/hand/back). 같은 캐릭터를 여러 명이 골라도 된다(소품으로 구분). id는 고정 계약(에셋 ch-<id>-* 키), 한 항목을 통째로 바꿔도 코드 수정 없이 동작하게 데이터로만 정의한다. colors = SVG 리그/3D 말 색(body 몸, line 외곽선, blush 볼터치, accent 무늬·소품 기본색, extra? 보조 무늬). ears = 귀 모양 타입. size = 상대 키(0.8~1.25, 귀 제외 몸 높이 기준). anchors = 1024×1536 캐릭터 캔버스(발 y 1303, 가운데 x 512)에서 소품이 붙는 점 [x, y]. traits = 표시용 성격 태그(규칙에 영향 없음). promptDesc = 그림 요청용 영어 설명(사용자의 로컬 생성용, 비상업 팬 사용).",
   "default": "chiikawa",
   "canvas": [1024, 1536],
-  "earTypes": ["nub", "cat", "rabbit", "squirrel", "bun", "otter", "lion", "pouch"],
+  "earTypes": ["nub", "cat", "rabbit", "tall", "bun", "otter", "lion", "pouch"],
   "characters": [
     {
       "id": "chiikawa",
@@ -44,12 +44,12 @@
       "id": "momonga",
       "name": "모몽가",
       "icon": "🐿️",
-      "colors": { "body": "#ffffff", "line": "#55505a", "blush": "#ffb4c2", "accent": "#c9d4ea", "extra": "#9aa9c8" },
-      "ears": "squirrel",
+      "colors": { "body": "#ffffff", "line": "#55505a", "blush": "#ffb4c2", "accent": "#a9d6f0", "extra": "#7fb7dc" },
+      "ears": "tall",
       "size": 0.85,
       "traits": ["관심 받기", "응석쟁이"],
-      "desc": "커다란 눈망울의 하늘다람쥐. 관심 받는 걸 제일 좋아해요.",
-      "promptDesc": "a small white chibi flying squirrel with big sparkly eyes, small rounded squirrel ears, a fluffy curled tail and a pale blue-grey gliding membrane, pink blush, Chiikawa style",
+      "desc": "반짝이는 눈망울의 하늘다람쥐. 관심 받는 걸 제일 좋아해요.",
+      "promptDesc": "a small round white chibi flying squirrel (Momonga from Chiikawa) with a round white head and body and a thin warm-grey outline, LARGE tall pointed upright ears slanting slightly outward with pale sky-blue insides, BIG round glossy dark eyes looking upward with large white sparkle highlights and a thin upper-lid line (a pleading 'please notice me' look, eyes much bigger than Chiikawa's dot eyes), a small pale sky-blue oval nose between and just below the eyes, pink blush ovals, a tiny w-shaped mouth, short stubby arms at its sides, small feet, and a BIG fluffy pale sky-blue tail (light blue with a few darker blue fur strokes) rising behind its body on one side, about as tall as the whole body, its top curling outward; no gliding membrane, the tail is not white",
       "anchors": { "head": [512, 540], "face": [512, 720], "neck": [512, 930], "handL": [360, 1040], "handR": [664, 1040], "back": [512, 1040] }
     },
     {
