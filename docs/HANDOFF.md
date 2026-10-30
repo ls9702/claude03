@@ -34,7 +34,7 @@
 
 ## 4. 그림(에셋) 요청 현황
 
-**지금 기준 요청서는 `docs/asset-requests/remaining-all.md` / `.json` 하나**(2026-10-29, 353장 · 38묶음 · 그룹 A–I, 우선순위순).
+**지금 기준 요청서는 `docs/asset-requests/remaining-all.md` / `.json` 하나**(2026-10-30, 383장 · 42묶음 · 그룹 A–J, 우선순위순; 10-30에 캐릭터 표정 화남·두근·진땀 24장과 집 6장 칸을 추가).
 `chiikawa-full` / `chiikawa-mc` / `chiikawa-world`에서 아직 안 만든 것을 전부 옮겼고, 소품 69 · 🐹 세계별 카드 14 / 아이템 6 / 보물 16 ·
 🐹 직업 배지 16 · 새 칸 아이콘 14 · 현실 모드 카드·아이템·보물·직업 · (선택) 옛 그림체 칸 아이콘·테두리 무늬를 추가했다. 생성 스크립트는
 `node scripts/gen-asset-guide.js [--dry-run]`(가져온 그림은 자동으로 빠짐: 2026-10-16 이후 `import`/`upload`로 채택된 항목 — 그림을 가져온 뒤
@@ -46,7 +46,7 @@
 | `chiikawa-test` (10장) | 가져오기 완료 |
 | `chiikawa-full` (95장) | 10-29 일부 받음: 우사기 8 · 하치와레 8(기본은 `ch-hachiware-base-reframed`로 교체) · 치이카와 기쁨/놀람 · 쿠리만쥬·랏코·시사 기본. **모몽가 4장은 원작과 달라 버림**(점 눈·작은 귀·흰 꼬리·비막) → `remaining-all` A묶음에서 사용자 원작 그림을 두 번째 참조로 다시 그림 |
 | `chiikawa-mc` (25장), `chiikawa-world` (25장) | 사용자 생성 대기 → `remaining-all`에 포함 |
-| `remaining-all` (353장) | 사용자 생성 대기 |
+| `remaining-all` (383장) | 사용자 생성 대기 — 모몽가 기본 그림은 사용자의 원작 참고 그림을 그대로 따라 그리게 함(코드로 그린 임시 모몽가는 「모몽가가 아님」 판정) |
 
 그림이 없는 항목은 SVG 리그(`ui/chara.js`)·기존 그림으로 동작한다. 그림이 들어오면 화풍이 섞이는 기간이 있다(옛 애니풍 배경·MC, 반짝이는 칸 아이콘).
 세계별 그림: `<id>-chiikawa` (meta.world) — `findAsset({…, world})`가 그 세계 그림 > 공용 그림 순으로 고른다.

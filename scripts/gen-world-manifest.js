@@ -12,6 +12,8 @@
 //   job icons    icon-job-<slug> (meta {job}) → icons/jobs/<slug>.png for every job the 🐹 overlay ADDS (jobs.jobs.add).
 //   tile icons   icon-<type> (meta {tile: type}) → icons/<type>.png (next to icon-money …) for the tile types without one;
 //                board3d (scene/tileIcons.js) uses a type's own icon first, else the borrowed one (salary → money …).
+//   houses       house-<slug> (kind house, meta {house}) → houses/<slug>.png for every houses.json id (shared by both worlds;
+//                houseArt.js draws `findAsset({kind:'house', house})` in the 매물 cards / cut-ins / side list / result, else its SVG).
 // `<slug>` = data id with `_` → `-`. Names / icons come from the data (overlay for the 🐹 objects); the English object
 // descriptions below are written from them (prompts stay English). Existing items keep status / accepted / output and
 // every extra meta field (importer). Nothing here calls the Gemini API (off in this repo): the user draws the art and
@@ -52,7 +54,7 @@ export const TILE_ICON_TYPES = Object.freeze(['start', 'event', 'salary', 'pass'
 const DATA_FILE = { card: 'cards', item: 'items', treasure: 'treasures' };
 const KIND_LABEL = { card: '카드', item: '아이템', treasure: '보물' };
 const OUT_DIR = { card: 'cards', item: 'items', treasure: 'treasures' };
-const WHAT = { card: 'game card illustration', item: 'game item icon', treasure: 'game treasure icon', job: 'round game badge icon', tile: 'game board tile icon' };
+const WHAT = { card: 'game card illustration', item: 'game item icon', treasure: 'game treasure icon', job: 'round game badge icon', tile: 'game board tile icon', house: 'game house illustration (the whole building, front three-quarter view)' };
 const STEPS = ['whiteToAlpha', 'trim', 'resize:256x256'];
 /** Style reference: the accepted Chiikawa base figure (style only). */
 const STYLE_REF = 'ch-chiikawa-base';
@@ -135,6 +137,14 @@ export const DESC = Object.freeze({
     weed: 'a tuft of green weeds being pulled up with their roots beside a small woven basket',
     merge: 'two winding pastel paths joining into one, with a small wooden signpost (no letters)',
   },
+  house: {
+    oneroom: 'a tiny cute one-room studio: a small pastel box-shaped building with one window, a little door and a potted plant',
+    villa: 'a cosy two-storey pastel villa in a quiet alley with a small balcony and flower boxes under the windows',
+    apartment: 'a friendly pastel apartment block with rows of small windows and balconies and a little entrance',
+    hanok: 'a traditional Korean hanok house with a curved grey tiled roof, wooden pillars and a low courtyard wall',
+    penthouse: 'a tall shiny city tower with a glass penthouse and a tiny rooftop garden on the top floor, a few sparkles',
+    jeju_villa: 'a seaside villa with a palm tree, a low wall of round black lava stones and the blue sea behind it, a golden sparkle',
+  },
 });
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -168,7 +178,7 @@ function iconItem({ id, kind, label, what, desc, icon, output, meta }) {
  * The generated item list (pure, given the data). Throws when a listed id is missing from the overlay / data or has no
  * English description (keeps the lists, the overlay and DESC in sync).
  */
-export function worldArtItems({ overlay = loadData(`worlds/${WORLD}`), cards = loadData('cards'), items = loadData('items'), treasures = loadData('treasures'), board = loadData('board') } = {}) {
+export function worldArtItems({ overlay = loadData(`worlds/${WORLD}`), cards = loadData('cards'), items = loadData('items'), treasures = loadData('treasures'), board = loadData('board'), houses = loadData('houses') } = {}) {
   const base = { card: cards.cards ?? [], item: items.items ?? [], treasure: treasures.treasures ?? [] };
   const out = [];
   const problems = [];
@@ -212,6 +222,14 @@ export function worldArtItems({ overlay = loadData(`worlds/${WORLD}`), cards = l
     if (!t || !DESC.tile[type]) continue;
     out.push(iconItem({ id: `icon-${type}`, kind: 'icon', label: `칸 아이콘 · ${t.name ?? type}`, what: 'tile', desc: DESC.tile[type], icon: t.icon, output: `icons/${type}.png`, meta: { tile: type } }));
   }
+  for (const h of houses?.houses ?? []) {
+    if (!DESC.house[h.id]) {
+      problems.push(`house ${h.id}: 영어 설명이 없어요`);
+      continue;
+    }
+    const slug = assetSlug(h.id);
+    out.push(iconItem({ id: `house-${slug}`, kind: 'house', label: `집 · ${h.name}`, what: 'house', desc: DESC.house[h.id], icon: h.icon, output: `houses/${slug}.png`, meta: { house: h.id } }));
+  }
   if (problems.length) throw new Error(`세계 설정 그림 목록 오류: ${problems.join(' / ')}`);
   return out;
 }
@@ -252,7 +270,7 @@ async function main(argv) {
   console.log(
     `세계 설정 그림 칸 ${r.total}개: 추가 ${r.added}, 갱신 ${r.updated}${dry ? ' (dry-run)' : ''} · 🐹 카드 ${count(/^card-.*-chiikawa$/)} · 아이템 ${count(/^item-.*-chiikawa$/)} · 보물 ${count(
       /^treasure-.*-chiikawa$/,
-    )} · 직업 배지 ${worldJobIds().length} · 칸 아이콘 ${TILE_ICON_TYPES.length}`,
+    )} · 직업 배지 ${worldJobIds().length} · 칸 아이콘 ${TILE_ICON_TYPES.length} · 집 ${count(/^house-/)}`,
   );
   if (!dry) await saveManifest(r.manifest, MANIFEST_PATH);
 }

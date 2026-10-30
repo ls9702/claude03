@@ -23,7 +23,7 @@ export const CHARA_EXPRESSIONS = Object.freeze(['joy', 'cry', 'shock', 'angry', 
 /** Parts a roster character can have (renderer contract). `noarms` is only a delivered-file name (→ body). */
 export const CHARA_PARTS = Object.freeze(['base', 'body', 'arms', 'eyes-closed', 'mouth-open', ...CHARA_EXPRESSIONS.map((e) => `expr-${e}`), 'sheet-jump', 'sheet-wave', 'sheet-cheer', 'sheet-cry', 'sheet-shock', 'sheet-walk', 'sheet-talk']);
 /** Parts generated for every roster character by scripts/gen-chara-manifest.js (what the art request asks for). */
-export const ROSTER_ITEM_PARTS = Object.freeze(['base', 'body', 'arms', 'eyes-closed', 'mouth-open', 'expr-joy', 'expr-cry', 'expr-shock', 'sheet-jump']);
+export const ROSTER_ITEM_PARTS = Object.freeze(['base', 'body', 'arms', 'eyes-closed', 'mouth-open', 'expr-joy', 'expr-cry', 'expr-shock', 'expr-angry', 'expr-love', 'expr-sweat', 'sheet-jump']);
 export const PART_LABELS = Object.freeze({
   base: '기본',
   body: '몸 (팔 없음)',

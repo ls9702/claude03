@@ -22600,6 +22600,654 @@
       "meta": {
         "tile": "merge"
       }
+    },
+    {
+      "id": "ch-chiikawa-expr-angry",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 화남",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/expr-angry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "chiikawa",
+        "part": "expr-angry"
+      }
+    },
+    {
+      "id": "ch-chiikawa-expr-love",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 두근",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/expr-love.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "chiikawa",
+        "part": "expr-love"
+      }
+    },
+    {
+      "id": "ch-chiikawa-expr-sweat",
+      "kind": "chara",
+      "label": "캐릭터 · 치이카와 · 진땀",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "chara/ch/chiikawa/expr-sweat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "chiikawa",
+        "part": "expr-sweat"
+      }
+    },
+    {
+      "id": "ch-hachiware-expr-angry",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 화남",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/expr-angry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "expr-angry"
+      }
+    },
+    {
+      "id": "ch-hachiware-expr-love",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 두근",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/expr-love.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "expr-love"
+      }
+    },
+    {
+      "id": "ch-hachiware-expr-sweat",
+      "kind": "chara",
+      "label": "캐릭터 · 하치와레 · 진땀",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-hachiware-base"
+      ],
+      "output": "chara/ch/hachiware/expr-sweat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "hachiware",
+        "part": "expr-sweat"
+      }
+    },
+    {
+      "id": "ch-usagi-expr-angry",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 화남",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/expr-angry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "expr-angry"
+      }
+    },
+    {
+      "id": "ch-usagi-expr-love",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 두근",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/expr-love.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "expr-love"
+      }
+    },
+    {
+      "id": "ch-usagi-expr-sweat",
+      "kind": "chara",
+      "label": "캐릭터 · 우사기 · 진땀",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-usagi-base"
+      ],
+      "output": "chara/ch/usagi/expr-sweat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "usagi",
+        "part": "expr-sweat"
+      }
+    },
+    {
+      "id": "ch-momonga-expr-angry",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 화남",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/expr-angry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "expr-angry"
+      }
+    },
+    {
+      "id": "ch-momonga-expr-love",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 두근",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/expr-love.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "expr-love"
+      }
+    },
+    {
+      "id": "ch-momonga-expr-sweat",
+      "kind": "chara",
+      "label": "캐릭터 · 모몽가 · 진땀",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-momonga-base"
+      ],
+      "output": "chara/ch/momonga/expr-sweat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "momonga",
+        "part": "expr-sweat"
+      }
+    },
+    {
+      "id": "ch-kurimanju-expr-angry",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 화남",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/expr-angry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "expr-angry"
+      }
+    },
+    {
+      "id": "ch-kurimanju-expr-love",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 두근",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/expr-love.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "expr-love"
+      }
+    },
+    {
+      "id": "ch-kurimanju-expr-sweat",
+      "kind": "chara",
+      "label": "캐릭터 · 쿠리만쥬 · 진땀",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-kurimanju-base"
+      ],
+      "output": "chara/ch/kurimanju/expr-sweat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "kurimanju",
+        "part": "expr-sweat"
+      }
+    },
+    {
+      "id": "ch-rakko-expr-angry",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 화남",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/expr-angry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "expr-angry"
+      }
+    },
+    {
+      "id": "ch-rakko-expr-love",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 두근",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/expr-love.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "expr-love"
+      }
+    },
+    {
+      "id": "ch-rakko-expr-sweat",
+      "kind": "chara",
+      "label": "캐릭터 · 랏코 · 진땀",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-rakko-base"
+      ],
+      "output": "chara/ch/rakko/expr-sweat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "rakko",
+        "part": "expr-sweat"
+      }
+    },
+    {
+      "id": "ch-shisa-expr-angry",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 화남",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/expr-angry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "expr-angry"
+      }
+    },
+    {
+      "id": "ch-shisa-expr-love",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 두근",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/expr-love.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "expr-love"
+      }
+    },
+    {
+      "id": "ch-shisa-expr-sweat",
+      "kind": "chara",
+      "label": "캐릭터 · 시사 · 진땀",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-shisa-base"
+      ],
+      "output": "chara/ch/shisa/expr-sweat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "shisa",
+        "part": "expr-sweat"
+      }
+    },
+    {
+      "id": "ch-pochette-expr-angry",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 화남",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/expr-angry.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "expr-angry"
+      }
+    },
+    {
+      "id": "ch-pochette-expr-love",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 두근",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/expr-love.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "expr-love"
+      }
+    },
+    {
+      "id": "ch-pochette-expr-sweat",
+      "kind": "chara",
+      "label": "캐릭터 · 포셰트 · 진땀",
+      "aspect": "3:4",
+      "size": {
+        "w": 768,
+        "h": 1152
+      },
+      "prompt": "Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.",
+      "refs": [
+        "ch-pochette-base"
+      ],
+      "output": "chara/ch/pochette/expr-sweat.webp",
+      "postprocess": [],
+      "status": "todo",
+      "meta": {
+        "character": "pochette",
+        "part": "expr-sweat"
+      }
+    },
+    {
+      "id": "house-oneroom",
+      "kind": "house",
+      "label": "집 · 원룸 전세",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game house illustration (the whole building, front three-quarter view): a tiny cute one-room studio: a small pastel box-shaped building with one window, a little door and a potted plant (in-game emoji: 🏢). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "houses/oneroom.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "house": "oneroom"
+      }
+    },
+    {
+      "id": "house-villa",
+      "kind": "house",
+      "label": "집 · 빌라",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game house illustration (the whole building, front three-quarter view): a cosy two-storey pastel villa in a quiet alley with a small balcony and flower boxes under the windows (in-game emoji: 🏘️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "houses/villa.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "house": "villa"
+      }
+    },
+    {
+      "id": "house-apartment",
+      "kind": "house",
+      "label": "집 · 아파트",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game house illustration (the whole building, front three-quarter view): a friendly pastel apartment block with rows of small windows and balconies and a little entrance (in-game emoji: 🏙️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "houses/apartment.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "house": "apartment"
+      }
+    },
+    {
+      "id": "house-hanok",
+      "kind": "house",
+      "label": "집 · 한옥",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game house illustration (the whole building, front three-quarter view): a traditional Korean hanok house with a curved grey tiled roof, wooden pillars and a low courtyard wall (in-game emoji: 🏯). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "houses/hanok.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "house": "hanok"
+      }
+    },
+    {
+      "id": "house-penthouse",
+      "kind": "house",
+      "label": "집 · 펜트하우스",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game house illustration (the whole building, front three-quarter view): a tall shiny city tower with a glass penthouse and a tiny rooftop garden on the top floor, a few sparkles (in-game emoji: 🌆). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "houses/penthouse.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "house": "penthouse"
+      }
+    },
+    {
+      "id": "house-jeju-villa",
+      "kind": "house",
+      "label": "집 · 제주 별장",
+      "aspect": "1:1",
+      "size": {
+        "w": 256,
+        "h": 256
+      },
+      "prompt": "Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Use the reference image only as a style guide (soft Chiikawa line art and pastel colours); do not draw that character unless described. A single cute game house illustration (the whole building, front three-quarter view): a seaside villa with a palm tree, a low wall of round black lava stones and the blue sea behind it, a golden sparkle (in-game emoji: 🏝️). Centered, fills about 80% of the square, soft thin warm-grey outline, flat pastel colours, almost no shading. {{whiteBg}} No text, no letters, no numbers. Square 1:1.",
+      "refs": [
+        "ch-chiikawa-base"
+      ],
+      "output": "houses/jeju-villa.png",
+      "postprocess": [
+        "whiteToAlpha",
+        "trim",
+        "resize:256x256"
+      ],
+      "status": "todo",
+      "meta": {
+        "house": "jeju_villa"
+      }
     }
   ]
 }

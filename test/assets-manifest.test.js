@@ -41,6 +41,7 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
   assert.equal(count('card'), 30 + 14); // 16 Stage 7 cards + 14 blue / red cards + 🐹 variants (card-<id>-chiikawa)
   assert.equal(count('item'), 12 + 6); // 6 shop items + 세계 설정 armor / guitar + 4 토벌 monsters (meta.monster) + 🐹 variants
   assert.equal(count('treasure'), 23 + 16); // Stage 9: one icon per treasures.json id (treasure-<id>) + 세계 설정 kuji_plush + 🐹 variants
+  assert.equal(count('house'), 6); // Stage 8 houses (house-<slug>, meta.house; gen-world-manifest)
   assert.equal(count('texture'), 2);
   assert.equal(count('frame'), 7);
   for (const scene of ['school', 'mountain-trail', 'wedding-hall', 'office', 'hospital']) {
@@ -64,7 +65,7 @@ test('shipped manifest validates and holds the Stage 3 seed set', async () => {
     const style = p.includes(CHIIKAWA_STYLE) || p.includes(CHIIKAWA_STYLE.replace('tiny black dot eyes with a small white highlight, ', ''));
     if (chiikawa) assert.ok(style || /^(Edit the attached image|Keep exactly the same|Derived at import)/.test(p), `${i.id} uses the Chiikawa style`);
     else if (i.kind !== 'texture') assert.ok(p.includes(STYLE), `${i.id} uses the style bible`);
-    if (i.kind === 'icon' || i.kind === 'card' || i.kind === 'item' || i.kind === 'treasure') {
+    if (i.kind === 'icon' || i.kind === 'card' || i.kind === 'item' || i.kind === 'treasure' || i.kind === 'house') {
       assert.equal(i.aspect, '1:1');
       assert.ok(i.postprocess.includes('whiteToAlpha'));
     }

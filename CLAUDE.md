@@ -2034,7 +2034,7 @@ Contract: session scratchpad `chiikawa-contract.md` + `chiikawa-deviations.md` (
 Hand-delivered Chiikawa-style art (the user's local Gemini skill; the API stays OFF here) → `node scripts/import-assets.js
 --dir <folder>` → placed / split / keyed parts in the manifest → the chara.js raster plug-in. Requests: `docs/asset-requests/
 chiikawa-full.json|.md` (95 images), `chiikawa-test.json` (the delivered test batch), `chiikawa-mc.json|.md` (25 MC images);
-**current: `remaining-all.json|.md`** (2026-10-29, every image still missing, groups A–I by priority, 10 per batch) built by
+**current: `remaining-all.json|.md`** (2026-10-30, every image still missing — 383, groups A–J by priority, 10 per batch) built by
 `node scripts/gen-asset-guide.js [--dry-run] [--out dir]` (drops items accepted in the Chiikawa style — import / upload from
 2026-10-16 on; reuses the earlier requests' prompts, restyles the old manifest descriptions of cards / items / treasures / icons;
 gen-chara-manifest reads it first). 10-29 batch: usagi + hachiware complete (`ch-hachiware-base-reframed` became the base),
@@ -2046,7 +2046,8 @@ synthetic MC overlays; screenshots `ch2-*.png`, animated `ch2-cutin-anim.webp`).
 - Manifest (`node scripts/gen-chara-manifest.js [--dry-run]`, idempotent upsert; reads roster / npcs / pets / props.json and the
   request JSONs for prompts + refs; keeps status / accepted / output and every importer-measured meta field): kind **`chara`**
   (meta `{character|npc|pet: data id, part}`; `ch-<roster id>-{base, body, arms, eyes-closed, mouth-open, expr-joy, expr-cry,
-  expr-shock, sheet-jump}` ×8, `npc-<species>-base` ×10, `pet-<species>-base` ×8 → `chara/<ch|npc|pet>/<slug>/<part>.webp`), kind
+  expr-shock, expr-angry, expr-love, expr-sweat, sheet-jump}` ×8 (angry / love / sweat added 10-30: without them a drawn character
+  keeps its plain face for those emotions), `npc-<species>-base` ×10, `pet-<species>-base` ×8 → `chara/<ch|npc|pet>/<slug>/<part>.webp`), kind
   **`prop`** (meta `{prop, slot}`; `prop-<props.json id>` ×60 → `chara/props/<slug>.webp`), and kind `mc` overlays
   `mc-<dog>-eyes-closed|mouth-open` (meta `{mc, part, base: mc-<dog>-neutral}`, `mc/<dog>/<part>.png`). Ids use `-` for data ids
   with `_` (`npc-bear-cub-base`, `pet-guinea-pig-base`, `prop-chef-hat`); the renderer looks both spellings up. Validation
@@ -2118,7 +2119,9 @@ synthetic MC overlays; screenshots `ch2-*.png`, animated `ch2-cutin-anim.webp`).
   arms / eyes-closed / mouth-open / expr-cry / sheet-jump, hachiware base, npc-penguin-base (take 1, no reference → corrected),
   prop-chef-hat, bg-park — 305 KiB of art added (10 chara + prop WebPs 183 KiB, bg 122 KiB); the manifest grew by the 154 items.
 - Tile icons (`scripts/gen-world-manifest.js`, todo): `icon-<type>` (kind icon, meta `{tile: type}`, `icons/<type>.png` next to
-  `icon-money` …) for start event salary pass hometown temple jeju reversal island contest auction hunt weed merge. board3d's atlas
+  `icon-money` …) for start event salary pass hometown temple jeju reversal island contest auction hunt weed merge. Houses: manifest
+  kind `house` (meta `{house}`, `house-<slug>` → `houses/<slug>.png`, same white-background pipeline; gen-world-manifest) — houseArt.js
+  already asks `findAsset({kind:'house', house})` and keeps its SVG until one is accepted. board3d's atlas
   asks `scene/tileIcons.js` `findTileIcon(type, {glyph, world, find})`: `tileIconCandidates` = 📝 → school, the type's OWN icon, then
   the borrowed one (`ICON_ASSET_TILE` salary → money, pass → shop, heart → love, loss → bad, habit → school …); none accepted → glyph.
 

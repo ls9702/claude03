@@ -9,7 +9,7 @@ import { WORLDS } from '../../public/js/shared/world.js';
 
 export const MANIFEST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'manifest.json');
 
-export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part', 'mc', 'card', 'item', 'treasure', 'chara', 'prop'];
+export const KINDS = ['anchor', 'bg', 'charLayer', 'pose', 'sprite', 'icon', 'frame', 'texture', 'ui', 'part', 'mc', 'card', 'item', 'treasure', 'house', 'chara', 'prop'];
 export const KIND_LABELS = {
   anchor: '스타일 앵커',
   bg: '컷인 배경',
@@ -25,6 +25,7 @@ export const KIND_LABELS = {
   card: '카드', // Stage 7: card illustrations (meta.card = cards.json id), same white-background pipeline as icons
   item: '아이템', // Stage 7: shop items (meta.item = items.json id)
   treasure: '보물', // Stage 9: treasure icons (meta.treasure = treasures.json id), same pipeline as items
+  house: '집', // Stage 8 houses (meta.house = houses.json id; houseArt.js findAsset({kind:'house', house})), same pipeline as items
   chara: '캐릭터 그림', // CH-2: Chiikawa-style raster parts (meta.character | npc | pet + meta.part), hand-delivered → scripts/import-assets.js
   prop: '소품', // CH-2: prop images (meta.prop = props.json id, meta.slot), white background → alpha, meta.anchor / scale
 };
@@ -193,6 +194,7 @@ export function validateItem(item) {
     if (ids.length !== 1) errs.push(`${at} item에는 meta.item(아이템 id) 또는 meta.monster(키메라 id) 중 하나가 필요합니다.`);
   }
   if (item.kind === 'treasure' && !(isObj(item.meta) && typeof item.meta.treasure === 'string' && item.meta.treasure)) errs.push(`${at} treasure에는 meta.treasure(보물 id)가 필요합니다.`);
+  if (item.kind === 'house' && !(isObj(item.meta) && typeof item.meta.house === 'string' && item.meta.house)) errs.push(`${at} house에는 meta.house(집 id)가 필요합니다.`);
   if (item.kind === 'chara') errs.push(...validateCharaMeta(item, at));
   if (item.kind === 'prop') {
     if (!(isObj(item.meta) && typeof item.meta.prop === 'string' && item.meta.prop)) errs.push(`${at} prop에는 meta.prop(소품 id)가 필요합니다.`);

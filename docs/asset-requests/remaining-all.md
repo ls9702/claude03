@@ -1,6 +1,6 @@
-# 남은 그림 전체 가이드 (로컬 Gemini 스킬용) — 2026-10-29
+# 남은 그림 전체 가이드 (로컬 Gemini 스킬용) — 2026-10-30
 
-게임에 아직 없는 그림이 **이 문서 하나에 전부** 있어요. 모두 **353장**, 10장씩 **38묶음**이에요.
+게임에 아직 없는 그림이 **이 문서 하나에 전부** 있어요. 모두 **383장**, 10장씩 **42묶음**이에요.
 이전 요청 문서 3개(`chiikawa-full`, `chiikawa-mc`, `chiikawa-world`)에서 아직 안 만든 것도 다 여기로 옮겼으니, **이제 이 문서만 보면 됩니다.**
 프롬프트 전문은 `remaining-all.json`에도 똑같이 들어 있어요(로컬 Claude가 읽기 편한 형식).
 
@@ -46,13 +46,14 @@
 | 1–4 | **A.** 캐릭터 (모몽가 다시 + 남은 표정·팔·점프) | 36 | ★★★ |
 | 5–6 | **B.** 친구(NPC)·반려동물 기본 그림 | 17 | ★★★ |
 | 7–10 | **C.** 배경 (치이카와 그림체로) | 32 | ★★★ |
-| 11–13 | **D.** MC 호야·봄이 (치이카와 그림체로) | 25 | ★★☆ |
-| 14–20 | **E.** 소품 (캐릭터가 쓰는 모자·안경·손에 드는 것·등에 메는 것) | 69 | ★★☆ |
-| 21–26 | **F.** 🐹 치이카와 모드 카드·아이템·보물·직업·키메라 | 59 | ★★☆ |
-| 27–29 | **G.** 공용 카드 + 새 칸 아이콘 | 30 | ★★☆ |
-| 30–36 | **H.** 🏙️ 현실 모드 그림 (카드·아이템·보물·직업) | 65 | ★☆☆ |
-| 37–38 | **I.** (선택) 예전 그림체 정리 — 칸 아이콘·테두리 무늬·파티장 | 20 | ☆☆☆ |
-| | **합계** | **353** | |
+| 11–13 | **D.** 캐릭터 표정 추가 (화남·두근·진땀) | 24 | ★★☆ |
+| 14–16 | **E.** MC 호야·봄이 (치이카와 그림체로) | 25 | ★★☆ |
+| 17–23 | **F.** 소품 (캐릭터가 쓰는 모자·안경·손에 드는 것·등에 메는 것) | 69 | ★★☆ |
+| 24–29 | **G.** 🐹 치이카와 모드 카드·아이템·보물·직업·키메라 | 59 | ★★☆ |
+| 30–33 | **H.** 공용 카드 + 새 칸 아이콘 + 집 | 36 | ★★☆ |
+| 34–40 | **I.** 🏙️ 현실 모드 그림 (카드·아이템·보물·직업) | 65 | ★☆☆ |
+| 41–42 | **J.** (선택) 예전 그림체 정리 — 칸 아이콘·테두리 무늬·파티장 | 20 | ☆☆☆ |
+| | **합계** | **383** | |
 
 ★★★ = 게임에서 제일 자주 보이는 그림. ☆☆☆ = 선택(안 해도 게임은 돌아가요). 묶음 순서 = 추천 순서예요.
 
@@ -761,11 +762,210 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-## D. MC 호야·봄이 (치이카와 그림체로) — 25장 ★★☆
+## D. 캐릭터 표정 추가 (화남·두근·진땀) — 24장 ★★☆
+
+8캐릭터 × 3표정. 그 캐릭터의 기본 그림을 고치는 편집이에요 (기본 그림이 아직 없는 모몽가·포셰트는 기본 그림을 받은 다음에). 이 그림이 없으면 그림이 들어온 캐릭터는 화날 때·설렐 때·진땀 날 때도 평소 얼굴로 나와요.
+
+### 묶음 11 (10장)
+
+| id (파일 이름) | 내용 | 비율 | 참조 |
+|---|---|:---:|---|
+| `ch-chiikawa-expr-angry` | 치이카와 화남 | 3:4 | `ch-chiikawa-base` |
+| `ch-chiikawa-expr-love` | 치이카와 두근 (하트 눈) | 3:4 | `ch-chiikawa-base` |
+| `ch-chiikawa-expr-sweat` | 치이카와 진땀 | 3:4 | `ch-chiikawa-base` |
+| `ch-hachiware-expr-angry` | 하치와레 화남 | 3:4 | `ch-hachiware-base` |
+| `ch-hachiware-expr-love` | 하치와레 두근 (하트 눈) | 3:4 | `ch-hachiware-base` |
+| `ch-hachiware-expr-sweat` | 하치와레 진땀 | 3:4 | `ch-hachiware-base` |
+| `ch-usagi-expr-angry` | 우사기 화남 | 3:4 | `ch-usagi-base` |
+| `ch-usagi-expr-love` | 우사기 두근 (하트 눈) | 3:4 | `ch-usagi-base` |
+| `ch-usagi-expr-sweat` | 우사기 진땀 | 3:4 | `ch-usagi-base` |
+| `ch-kurimanju-expr-angry` | 쿠리만쥬 화남 | 3:4 | `ch-kurimanju-base` |
+
+<details><summary>프롬프트 보기</summary>
+
+**`ch-chiikawa-expr-angry`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.
+```
+
+**`ch-chiikawa-expr-love`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.
+```
+
+**`ch-chiikawa-expr-sweat`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.
+```
+
+**`ch-hachiware-expr-angry`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.
+```
+
+**`ch-hachiware-expr-love`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.
+```
+
+**`ch-hachiware-expr-sweat`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.
+```
+
+**`ch-usagi-expr-angry`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.
+```
+
+**`ch-usagi-expr-love`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.
+```
+
+**`ch-usagi-expr-sweat`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.
+```
+
+**`ch-kurimanju-expr-angry`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.
+```
+
+</details>
+
+### 묶음 12 (10장)
+
+| id (파일 이름) | 내용 | 비율 | 참조 |
+|---|---|:---:|---|
+| `ch-kurimanju-expr-love` | 쿠리만쥬 두근 (하트 눈) | 3:4 | `ch-kurimanju-base` |
+| `ch-kurimanju-expr-sweat` | 쿠리만쥬 진땀 | 3:4 | `ch-kurimanju-base` |
+| `ch-rakko-expr-angry` | 랏코 화남 | 3:4 | `ch-rakko-base` |
+| `ch-rakko-expr-love` | 랏코 두근 (하트 눈) | 3:4 | `ch-rakko-base` |
+| `ch-rakko-expr-sweat` | 랏코 진땀 | 3:4 | `ch-rakko-base` |
+| `ch-shisa-expr-angry` | 시사 화남 | 3:4 | `ch-shisa-base` |
+| `ch-shisa-expr-love` | 시사 두근 (하트 눈) | 3:4 | `ch-shisa-base` |
+| `ch-shisa-expr-sweat` | 시사 진땀 | 3:4 | `ch-shisa-base` |
+| `ch-momonga-expr-angry` | 모몽가 화남 (기본 그림 다음에) | 3:4 | `ch-momonga-base` |
+| `ch-momonga-expr-love` | 모몽가 두근 (하트 눈) (기본 그림 다음에) | 3:4 | `ch-momonga-base` |
+
+<details><summary>프롬프트 보기</summary>
+
+**`ch-kurimanju-expr-love`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.
+```
+
+**`ch-kurimanju-expr-sweat`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.
+```
+
+**`ch-rakko-expr-angry`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.
+```
+
+**`ch-rakko-expr-love`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.
+```
+
+**`ch-rakko-expr-sweat`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.
+```
+
+**`ch-shisa-expr-angry`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.
+```
+
+**`ch-shisa-expr-love`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.
+```
+
+**`ch-shisa-expr-sweat`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.
+```
+
+**`ch-momonga-expr-angry`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.
+```
+
+**`ch-momonga-expr-love`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.
+```
+
+</details>
+
+### 묶음 13 (4장)
+
+| id (파일 이름) | 내용 | 비율 | 참조 |
+|---|---|:---:|---|
+| `ch-momonga-expr-sweat` | 모몽가 진땀 (기본 그림 다음에) | 3:4 | `ch-momonga-base` |
+| `ch-pochette-expr-angry` | 포셰트 화남 (기본 그림 다음에) | 3:4 | `ch-pochette-base` |
+| `ch-pochette-expr-love` | 포셰트 두근 (하트 눈) (기본 그림 다음에) | 3:4 | `ch-pochette-base` |
+| `ch-pochette-expr-sweat` | 포셰트 진땀 (기본 그림 다음에) | 3:4 | `ch-pochette-base` |
+
+<details><summary>프롬프트 보기</summary>
+
+**`ch-momonga-expr-sweat`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.
+```
+
+**`ch-pochette-expr-angry`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.
+```
+
+**`ch-pochette-expr-love`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.
+```
+
+**`ch-pochette-expr-sweat`**
+
+```text
+Edit the attached image. Keep EVERYTHING exactly the same (same character, same position, same size, same colours, same magenta background, same framing) except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.
+```
+
+</details>
+
+## E. MC 호야·봄이 (치이카와 그림체로) — 25장 ★★☆
 
 첫 두 장이 기준 그림입니다. 호야·봄이 실제 사진(사용자 PC) + `ch-chiikawa-base`를 같이 첨부하세요. 나머지는 그 두 장을 참조로 쓰는 편집이에요.
 
-### 묶음 11 (10장)
+### 묶음 14 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -844,7 +1044,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same dog, same markin
 
 </details>
 
-### 묶음 12 (10장)
+### 묶음 15 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -923,7 +1123,7 @@ Edit the attached image. Keep EVERYTHING exactly the same (same dog, same markin
 
 </details>
 
-### 묶음 13 (5장)
+### 묶음 16 (5장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -967,11 +1167,11 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-## E. 소품 (캐릭터가 쓰는 모자·안경·손에 드는 것·등에 메는 것) — 69장 ★★☆
+## F. 소품 (캐릭터가 쓰는 모자·안경·손에 드는 것·등에 메는 것) — 69장 ★★☆
 
 흰 배경, 물건만 따로. 앞쪽 30개가 로비에서 고르는 소품이고, 나머지는 시대·직업 소품이에요.
 
-### 묶음 14 (10장)
+### 묶음 17 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1050,7 +1250,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 15 (10장)
+### 묶음 18 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1129,7 +1329,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 16 (10장)
+### 묶음 19 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1208,7 +1408,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 17 (10장)
+### 묶음 20 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1287,7 +1487,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 18 (10장)
+### 묶음 21 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1366,7 +1566,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 19 (10장)
+### 묶음 22 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1445,7 +1645,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 20 (9장)
+### 묶음 23 (9장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1517,11 +1717,11 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-## F. 🐹 치이카와 모드 카드·아이템·보물·직업·키메라 — 59장 ★★☆
+## G. 🐹 치이카와 모드 카드·아이템·보물·직업·키메라 — 59장 ★★☆
 
-흰 배경 아이콘. `-chiikawa`로 끝나는 id는 치이카와 모드에서만 쓰는 그림이에요 (같은 카드의 현실 모드 그림은 G묶음).
+흰 배경 아이콘. `-chiikawa`로 끝나는 id는 치이카와 모드에서만 쓰는 그림이에요 (같은 카드의 현실 모드 그림은 I 그룹).
 
-### 묶음 21 (10장)
+### 묶음 24 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1600,7 +1800,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 22 (10장)
+### 묶음 25 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1679,7 +1879,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 23 (10장)
+### 묶음 26 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1758,7 +1958,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 24 (10장)
+### 묶음 27 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1837,7 +2037,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 25 (10장)
+### 묶음 28 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1916,7 +2116,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 26 (9장)
+### 묶음 29 (9장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -1988,11 +2188,11 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-## G. 공용 카드 + 새 칸 아이콘 — 30장 ★★☆
+## H. 공용 카드 + 새 칸 아이콘 + 집 — 36장 ★★☆
 
-두 세계가 같이 쓰는 카드 그림과, 아직 그림이 없는 보드 칸 아이콘.
+두 세계가 같이 쓰는 카드 그림, 아직 그림이 없는 보드 칸 아이콘, 집 6종(매물 카드·컷인·결과 화면).
 
-### 묶음 27 (10장)
+### 묶음 30 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2071,7 +2271,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 28 (10장)
+### 묶음 31 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2150,7 +2350,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 29 (10장)
+### 묶음 32 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2229,11 +2429,62 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-## H. 🏙️ 현실 모드 그림 (카드·아이템·보물·직업) — 65장 ★☆☆
+### 묶음 33 (6장)
+
+| id (파일 이름) | 내용 | 비율 | 참조 |
+|---|---|:---:|---|
+| `house-oneroom` | 집 · 🏢 원룸 전세 | 1:1 | 없음 |
+| `house-villa` | 집 · 🏘️ 빌라 | 1:1 | 없음 |
+| `house-apartment` | 집 · 🏙️ 아파트 | 1:1 | 없음 |
+| `house-hanok` | 집 · 🏯 한옥 | 1:1 | 없음 |
+| `house-penthouse` | 집 · 🌆 펜트하우스 | 1:1 | 없음 |
+| `house-jeju-villa` | 집 · 🏝️ 제주 별장 | 1:1 | 없음 |
+
+<details><summary>프롬프트 보기</summary>
+
+**`house-oneroom`**
+
+```text
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A single game house illustration (the whole building, front three-quarter view): a tiny cute one-room studio: a small pastel box-shaped building with one window, a little door and a potted plant. Simple flat pastel colours, soft thin warm-grey outline, cute and round. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.
+```
+
+**`house-villa`**
+
+```text
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A single game house illustration (the whole building, front three-quarter view): a cosy two-storey pastel villa in a quiet alley with a small balcony and flower boxes under the windows. Simple flat pastel colours, soft thin warm-grey outline, cute and round. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.
+```
+
+**`house-apartment`**
+
+```text
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A single game house illustration (the whole building, front three-quarter view): a friendly pastel apartment block with rows of small windows and balconies and a little entrance. Simple flat pastel colours, soft thin warm-grey outline, cute and round. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.
+```
+
+**`house-hanok`**
+
+```text
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A single game house illustration (the whole building, front three-quarter view): a traditional Korean hanok house with a curved grey tiled roof, wooden pillars and a low courtyard wall. Simple flat pastel colours, soft thin warm-grey outline, cute and round. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.
+```
+
+**`house-penthouse`**
+
+```text
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A single game house illustration (the whole building, front three-quarter view): a tall shiny city tower with a glass penthouse and a tiny rooftop garden on the top floor, a few sparkles. Simple flat pastel colours, soft thin warm-grey outline, cute and round. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.
+```
+
+**`house-jeju-villa`**
+
+```text
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, tiny black dot eyes with a small white highlight, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. A single game house illustration (the whole building, front three-quarter view): a seaside villa with a palm tree, a low wall of round black lava stones and the blue sea behind it, a golden sparkle. Simple flat pastel colours, soft thin warm-grey outline, cute and round. Square 1:1. ONE object centred, filling about 75% of the square, plain pure white background #FFFFFF, no shadow, no text, no letters, no numbers.
+```
+
+</details>
+
+## I. 🏙️ 현실 모드 그림 (카드·아이템·보물·직업) — 65장 ★☆☆
 
 현실 모드에서 보이는 그림이에요. 보물 중 「두 세계 공용」과 직업 중 건물주·산신령은 치이카와 모드에서도 써요.
 
-### 묶음 30 (10장)
+### 묶음 34 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2312,7 +2563,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 31 (10장)
+### 묶음 35 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2391,7 +2642,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 32 (10장)
+### 묶음 36 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2470,7 +2721,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 33 (10장)
+### 묶음 37 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2549,7 +2800,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 34 (10장)
+### 묶음 38 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2628,7 +2879,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 35 (10장)
+### 묶음 39 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2707,7 +2958,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 36 (5장)
+### 묶음 40 (5장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2751,11 +3002,11 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-## I. (선택) 예전 그림체 정리 — 칸 아이콘·테두리 무늬·파티장 — 20장 ☆☆☆
+## J. (선택) 예전 그림체 정리 — 칸 아이콘·테두리 무늬·파티장 — 20장 ☆☆☆
 
 지금 게임에 들어 있는 반짝이는 게임풍 그림을 치이카와 풍으로 바꾸는 것. 안 해도 게임은 돌아가요.
 
-### 묶음 37 (10장)
+### 묶음 41 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
@@ -2834,7 +3085,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 </details>
 
-### 묶음 38 (10장)
+### 묶음 42 (10장)
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|

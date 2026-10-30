@@ -6,7 +6,7 @@ const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const STATUS_LABEL = { todo: '미생성', candidate: '후보 있음', accepted: '채택됨', missing: '없음' };
 // Chiikawa art first (chara / prop / mc), then the rest; kinds missing here still show (appended in manifest order).
-const KIND_ORDER = ['chara', 'prop', 'mc', 'bg', 'card', 'item', 'treasure', 'icon', 'frame', 'anchor', 'charLayer', 'pose', 'sprite', 'texture', 'ui', 'part'];
+const KIND_ORDER = ['chara', 'prop', 'mc', 'bg', 'card', 'item', 'treasure', 'house', 'icon', 'frame', 'anchor', 'charLayer', 'pose', 'sprite', 'texture', 'ui', 'part'];
 const kindOrder = (items) => [...KIND_ORDER, ...new Set(items.map((i) => i.kind).filter((k) => !KIND_ORDER.includes(k)))];
 
 const state = { items: [], kind: '', status: '', selected: null, detail: null, job: null, flipTimer: null };

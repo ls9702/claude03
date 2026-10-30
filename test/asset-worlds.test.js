@@ -90,10 +90,11 @@ test('generator: the exact 🐹 variant / job badge / tile icon ids, outputs and
   assert.deepEqual(ids(/^icon-job-/), jobs.map((j) => `icon-job-${slug(j)}`).sort());
   assert.deepEqual(TILE_ICON_TYPES, ['start', 'event', 'salary', 'pass', 'hometown', 'temple', 'jeju', 'reversal', 'island', 'contest', 'auction', 'hunt', 'weed', 'merge']);
   assert.deepEqual(ids(/^icon-(?!job-)/), TILE_ICON_TYPES.map((x) => `icon-${x}`).sort());
-  assert.equal(items.length, 14 + 6 + 16 + 16 + 14);
+  assert.equal(items.length, 14 + 6 + 16 + 16 + 14 + 6); // + one house-<slug> per houses.json id
+  assert.deepEqual(ids(/^house-/), loadData('houses').houses.map((h) => `house-${slug(h.id)}`).sort());
   const overlay = loadData('worlds/chiikawa');
   for (const i of items) {
-    assert.equal(i.kind === 'card' || i.kind === 'item' || i.kind === 'treasure' || i.kind === 'icon', true, i.id);
+    assert.equal(i.kind === 'card' || i.kind === 'item' || i.kind === 'treasure' || i.kind === 'icon' || i.kind === 'house', true, i.id);
     assert.deepEqual(validateItem(i), [], i.id);
     assert.equal(i.aspect, '1:1');
     assert.deepEqual(i.postprocess, ['whiteToAlpha', 'trim', 'resize:256x256']);
@@ -112,7 +113,10 @@ test('generator: the exact 🐹 variant / job badge / tile icon ids, outputs and
       assert.ok(i.prompt.includes(w.icon), i.id);
       assert.ok(DESC[kind][data] && i.prompt.includes(DESC[kind][data]), i.id);
     } else if (i.meta.job) assert.equal(i.output, `icons/jobs/${slug(i.meta.job)}.png`);
-    else {
+    else if (i.kind === 'house') {
+      assert.equal(i.output, `houses/${slug(i.meta.house)}.png`);
+      assert.deepEqual(Object.keys(i.meta), ['house']);
+    } else {
       assert.equal(i.output, `icons/${i.meta.tile}.png`);
       assert.deepEqual(Object.keys(i.meta), ['tile']);
     }

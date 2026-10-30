@@ -9,6 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DESC as SLOT_DESC } from './gen-world-manifest.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -102,6 +103,26 @@ for (const c of ['kurimanju', 'rakko', 'shisa', 'pochette']) {
   }
 }
 const npcPet = [...reqItems.keys()].filter((id) => /^(npc|pet)-/.test(id) && !done(id)).map((id) => fromReq(id));
+
+// extra expressions of the 8 roster characters (the raster renderer shows them for the angry / love / sweat emotions; without
+// them a drawn character keeps its plain face there) — characters whose base is ready first
+const roster = readJson(path.join(ROOT, 'server/data/roster.json')).characters;
+const EXTRA_EXPR = {
+  'expr-angry': ['화남', `${EDIT_HEAD} except the face: change ONLY the face to an angry pouting face — eyebrows slanted down toward the middle, puffed-out cheeks, a small frowning mouth, and a small red anger mark (a 💢 shape) floating just above one side of the head. Arms stay exactly where they are.`],
+  'expr-love': ['두근 (하트 눈)', `${EDIT_HEAD} except the face: change ONLY the face to a lovestruck face — both eyes turned into pink hearts, a happy open smile, stronger pink blush, and two or three small pink hearts floating just above the head. Arms stay exactly where they are.`],
+  'expr-sweat': ['진땀', `${EDIT_HEAD} except the face: change ONLY the face to a nervous awkward face — small eyes, a wobbly embarrassed smile, and one big light-blue sweat drop on the side of the head. Arms stay exactly where they are.`],
+};
+const baseReady = (c) => accepted(`ch-${c}-base`);
+const exprOrder = [...roster.map((c) => c.id)].sort((a, b) => Number(baseReady(b)) - Number(baseReady(a)));
+const extraExpr = [];
+for (const c of exprOrder) {
+  const name = roster.find((r) => r.id === c)?.name ?? c;
+  for (const [part, [ko, prompt]] of Object.entries(EXTRA_EXPR)) {
+    const id = `ch-${c}-${part}`;
+    if (done(id)) continue;
+    extraExpr.push({ id, label: `${name} ${ko}${baseReady(c) ? '' : ' (기본 그림 다음에)'}`, kind: 'edit', aspect: '3:4', refs: [`ch-${c}-base`], prompt });
+  }
+}
 
 // ---------- 2. MC ----------
 const mcItems = mc.batches.flatMap((b) => b.items).map((it) => fromReq(it.id, { kind: 'mc' }));
@@ -246,6 +267,11 @@ const TILE_NEW = {
 };
 const tiles = [];
 for (const [t, [name, d]] of Object.entries(TILE_NEW)) tiles.push({ id: `icon-${t}`, label: `칸 아이콘 · ${name}`, kind: 'icon', aspect: '1:1', refs: [], prompt: icon('A single board-game tile icon', d) });
+// houses (Stage 8 매물 cards / cut-ins / result; shared by both worlds) — descriptions from gen-world-manifest.js
+const housesData = readJson(path.join(ROOT, 'server/data/houses.json')).houses;
+const houseItems = housesData
+  .filter((h) => !accepted(`house-${slug(h.id)}`))
+  .map((h) => ({ id: `house-${slug(h.id)}`, label: `집 · ${h.icon} ${h.name}`, kind: 'house', aspect: '1:1', refs: [], prompt: icon('A single game house illustration (the whole building, front three-quarter view)', SLOT_DESC.house[h.id]) }));
 
 // ---------- 7. real-world only (🏙️ 현실 모드) ----------
 const real = [];
@@ -285,12 +311,13 @@ const GROUPS = [
   { key: 'A', title: '캐릭터 (모몽가 다시 + 남은 표정·팔·점프)', stars: '★★★', items: chars, note: '모몽가는 처음부터 다시 그립니다 (참조 2장). 쿠리만쥬·랏코·시사는 이번에 받은 기본 그림을 참조로 씁니다. 쿠리만쥬는 원래 눈을 감고 있어서 「눈 감음」은 필요 없어요.' },
   { key: 'B', title: '친구(NPC)·반려동물 기본 그림', stars: '★★★', items: npcPet, note: '모두 `ch-chiikawa-base` 참조 (위치·크기 기준).' },
   { key: 'C', title: '배경 (치이카와 그림체로)', stars: '★★★', items: bgs, note: '참조는 전부 `bg-park` (= 테스트 때 만든 `bg-ch-park-2.png`). 예전 애니풍 배경 16장도 이 그림으로 바뀝니다.' },
-  { key: 'D', title: 'MC 호야·봄이 (치이카와 그림체로)', stars: '★★☆', items: mcItems, note: '첫 두 장이 기준 그림입니다. 호야·봄이 실제 사진(사용자 PC) + `ch-chiikawa-base`를 같이 첨부하세요. 나머지는 그 두 장을 참조로 쓰는 편집이에요.' },
-  { key: 'E', title: '소품 (캐릭터가 쓰는 모자·안경·손에 드는 것·등에 메는 것)', stars: '★★☆', items: propItems, note: '흰 배경, 물건만 따로. 앞쪽 30개가 로비에서 고르는 소품이고, 나머지는 시대·직업 소품이에요.' },
-  { key: 'F', title: '🐹 치이카와 모드 카드·아이템·보물·직업·키메라', stars: '★★☆', items: [...ck, ...monsters], note: '흰 배경 아이콘. `-chiikawa`로 끝나는 id는 치이카와 모드에서만 쓰는 그림이에요 (같은 카드의 현실 모드 그림은 G묶음).' },
-  { key: 'G', title: '공용 카드 + 새 칸 아이콘', stars: '★★☆', items: [...sharedCards.filter((c) => !c.realOnly), ...tiles], note: '두 세계가 같이 쓰는 카드 그림과, 아직 그림이 없는 보드 칸 아이콘.' },
-  { key: 'H', title: '🏙️ 현실 모드 그림 (카드·아이템·보물·직업)', stars: '★☆☆', items: [...sharedCards.filter((c) => c.realOnly), ...real], note: '현실 모드에서 보이는 그림이에요. 보물 중 「두 세계 공용」과 직업 중 건물주·산신령은 치이카와 모드에서도 써요.' },
-  { key: 'I', title: '(선택) 예전 그림체 정리 — 칸 아이콘·테두리 무늬·파티장', stars: '☆☆☆', items: restyle, note: '지금 게임에 들어 있는 반짝이는 게임풍 그림을 치이카와 풍으로 바꾸는 것. 안 해도 게임은 돌아가요.' },
+  { key: 'D', title: '캐릭터 표정 추가 (화남·두근·진땀)', stars: '★★☆', items: extraExpr, note: '8캐릭터 × 3표정. 그 캐릭터의 기본 그림을 고치는 편집이에요 (기본 그림이 아직 없는 모몽가·포셰트는 기본 그림을 받은 다음에). 이 그림이 없으면 그림이 들어온 캐릭터는 화날 때·설렐 때·진땀 날 때도 평소 얼굴로 나와요.' },
+  { key: 'E', title: 'MC 호야·봄이 (치이카와 그림체로)', stars: '★★☆', items: mcItems, note: '첫 두 장이 기준 그림입니다. 호야·봄이 실제 사진(사용자 PC) + `ch-chiikawa-base`를 같이 첨부하세요. 나머지는 그 두 장을 참조로 쓰는 편집이에요.' },
+  { key: 'F', title: '소품 (캐릭터가 쓰는 모자·안경·손에 드는 것·등에 메는 것)', stars: '★★☆', items: propItems, note: '흰 배경, 물건만 따로. 앞쪽 30개가 로비에서 고르는 소품이고, 나머지는 시대·직업 소품이에요.' },
+  { key: 'G', title: '🐹 치이카와 모드 카드·아이템·보물·직업·키메라', stars: '★★☆', items: [...ck, ...monsters], note: '흰 배경 아이콘. `-chiikawa`로 끝나는 id는 치이카와 모드에서만 쓰는 그림이에요 (같은 카드의 현실 모드 그림은 I 그룹).' },
+  { key: 'H', title: '공용 카드 + 새 칸 아이콘 + 집', stars: '★★☆', items: [...sharedCards.filter((c) => !c.realOnly), ...tiles, ...houseItems], note: '두 세계가 같이 쓰는 카드 그림, 아직 그림이 없는 보드 칸 아이콘, 집 6종(매물 카드·컷인·결과 화면).' },
+  { key: 'I', title: '🏙️ 현실 모드 그림 (카드·아이템·보물·직업)', stars: '★☆☆', items: [...sharedCards.filter((c) => c.realOnly), ...real], note: '현실 모드에서 보이는 그림이에요. 보물 중 「두 세계 공용」과 직업 중 건물주·산신령은 치이카와 모드에서도 써요.' },
+  { key: 'J', title: '(선택) 예전 그림체 정리 — 칸 아이콘·테두리 무늬·파티장', stars: '☆☆☆', items: restyle, note: '지금 게임에 들어 있는 반짝이는 게임풍 그림을 치이카와 풍으로 바꾸는 것. 안 해도 게임은 돌아가요.' },
 ];
 
 let n = 0;
@@ -311,7 +338,7 @@ for (const g of GROUPS) for (const it of g.items) if (!M.has(manifestId(it.id)) 
 
 const out = {
   batch: 'remaining-all',
-  created: '2026-10-29',
+  created: '2026-10-30',
   note: '남은 그림 전부. ids = 저장 파일 이름 (<id>.png). refs = 앞에서 만든 그림(또는 테스트 그림)을 참조로 첨부.',
   supersedes: ['chiikawa-full', 'chiikawa-mc', 'chiikawa-world'],
   style: STYLE,
@@ -336,7 +363,7 @@ function guideMarkdown(j, groups) {
   const refText = (refs) =>
     refs.length ? refs.map((r) => (/^[a-z]/.test(r) ? `\`${r}\`` : r)).join(' + ') : '없음';
 
-  p('# 남은 그림 전체 가이드 (로컬 Gemini 스킬용) — 2026-10-29');
+  p('# 남은 그림 전체 가이드 (로컬 Gemini 스킬용) — 2026-10-30');
   p();
   p(`게임에 아직 없는 그림이 **이 문서 하나에 전부** 있어요. 모두 **${j.total}장**, 10장씩 **${j.batches.length}묶음**이에요.`);
   p('이전 요청 문서 3개(`chiikawa-full`, `chiikawa-mc`, `chiikawa-world`)에서 아직 안 만든 것도 다 여기로 옮겼으니, **이제 이 문서만 보면 됩니다.**');
