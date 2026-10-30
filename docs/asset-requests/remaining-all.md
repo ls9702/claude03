@@ -13,13 +13,14 @@
 
 이미 있는 치이카와 그림체 그림(다시 만들지 않음): 치이카와 전부, 하치와레 전부, 우사기 전부, 쿠리만쥬·랏코·시사 기본, 펭귄, 공원 배경, 요리사 모자.
 
-## 모몽가 다시 그리기 (중요)
+## 모몽가 다시 그리기 (중요 · 맨 먼저)
 
-처음 요청 프롬프트의 공통 그림체 문장(「작은 점 눈」)이 모몽가 설명을 덮어써서 원작과 다른 모몽가가 나왔어요. 이번 프롬프트는 그 문장을 빼고 원작 특징을 강조했어요.
+받은 모몽가(점 눈·작은 귀·흰 꼬리·비막)도, 게임 안의 임시 그림도 원작과 달랐어요. 그래서 이번에는 글 설명이 아니라 **사용자가 가진 원작 모몽가 그림을 그대로 따라 그리게** 프롬프트를 바꿨어요.
 
-- **참조 2장**을 함께 첨부: ① `ch-chiikawa-base.png`(크기·위치·선 굵기 기준) ② **사용자가 가진 원작 모몽가 그림 1장**(생김새 기준). 이 그림은 저장소에 올리지 않아요.
-- 확인할 것: **위로 올려다보는 크고 반짝이는 눈망울**, **크고 뾰족하게 선 귀(안쪽 하늘색)**, **하늘색 작은 코**, **몸만 한 하늘색 복슬 꼬리**, 비막·날개 없음.
-- 마음에 들 때까지 다시 뽑아도 돼요. 나머지 모몽가 그림(팔 없음·눈 감음·입 벌림·표정·점프)은 전부 이 기본 그림을 참조로 쓰는 편집이라 **기본 그림이 제일 중요**해요.
+- **참조 2장**: ① `ch-chiikawa-base.png` — 자세·크기·위치만 맞추는 용도 ② **원작 모몽가 그림 1장 — 생김새는 전부 이 그림대로**. 이 그림은 저장소에 올리지 않아요.
+- 결과가 그래도 원작과 다르면, **② 원작 그림 하나만 첨부**하고 같은 프롬프트로 다시 뽑아도 돼요(위치·크기는 가져올 때 자동으로 맞춰요).
+- **사용자 눈에 「모몽가다!」 싶을 때까지** 다시 뽑아 주세요. 나머지 모몽가 그림(팔 없음·눈 감음·입 벌림·표정·점프)은 전부 이 기본 그림을 고치는 편집이라, 기본 그림이 제일 중요해요.
+- 이 그림이 오면 게임의 2D 그림(로비·컷인·결과)은 전부 그 그림으로 바뀌고, 3D 말도 그 그림에 맞춰 다시 만들어요.
 - 포셰트도 원작 그림이 있으면 같은 방식으로 두 번째 참조로 붙여 주세요.
 
 ## 로컬 Claude에게 시킬 일
@@ -71,7 +72,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 
 | id (파일 이름) | 내용 | 비율 | 참조 |
 |---|---|:---:|---|
-| `ch-momonga-base` | 모몽가 기본 (다시) | 3:4 | `ch-chiikawa-base` + 모몽가 참고 그림(사용자 PC) |
+| `ch-momonga-base` | 모몽가 기본 (다시 · 원작 참고 그림이 기준) | 3:4 | `ch-chiikawa-base` + 모몽가 참고 그림(사용자 PC) |
 | `ch-momonga-noarms` | 모몽가 팔 없음 | 3:4 | `ch-momonga-base` |
 | `ch-momonga-eyes-closed` | 모몽가 눈 감음 | 3:4 | `ch-momonga-base` |
 | `ch-momonga-mouth-open` | 모몽가 입 벌림 | 3:4 | `ch-momonga-base` |
@@ -87,7 +88,7 @@ Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round
 **`ch-momonga-base`**
 
 ```text
-Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Momonga from Chiikawa: a small round white chibi flying squirrel. EYES (most important — unlike the other Chiikawa characters): BIG round glossy dark eyes, clearly much larger than Chiikawa's dot eyes, looking slightly UPWARD with a pleading "please notice me" look, each eye with one large and one small white sparkle highlight. LARGE tall pointed ears standing upright and slanting a little outward, pale sky-blue inside. A small pale sky-blue oval nose between the eyes. Pink blush ovals on the cheeks and a tiny ω-shaped mouth. A BIG fluffy pale sky-blue tail (light baby blue with a few darker blue fur strokes) rising behind the body on the viewer's right, as tall as the body, curling outward at the top. NO wings, NO gliding membrane, NO grey flaps, the tail is NOT white. Short stubby arms, small feet. Standing front view with that pleading big-eyed look. Both short arms held slightly away from the body (not touching the body or the tail) so they are clearly separate shapes. Two reference images are attached. Use the FIRST attached image (the white Chiikawa) ONLY as the size, position and line-style reference: same art style, same standing pose, same scale and exactly the same position in the frame (feet at the same height, centred). Use the SECOND attached image (Momonga) as the reference for this character's design: ears, big glossy eyes, blue nose, big blue tail. Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.
+Chiikawa (manga by Nagano) art style: soft thin warm-grey outlines, simple round chubby shapes, flat pastel colours with almost no shading, small pink blush ovals on the cheeks, cute and gentle. Clean digital illustration, no text, no watermark, no border. Redraw the character shown in the SECOND attached image — Momonga from the Chiikawa manga — as faithfully as possible: copy its face, the shape and size of its eyes, its ears, nose, mouth, tail, body proportions and colours exactly as drawn there; do not redesign or simplify it, do not turn it into a cat, rabbit or Chiikawa. (In words, in case something is unclear: Momonga from Chiikawa: a small round white chibi flying squirrel with BIG round glossy dark eyes looking slightly UPWARD (a pleading "please notice me" look, eyes much larger than Chiikawa's dot eyes, big white sparkle highlights), large upright ears with pale sky-blue insides, a small pale sky-blue nose, pink blush, a tiny ω-shaped mouth and a BIG fluffy pale sky-blue tail with darker blue stripes rising behind the body on one side. NO wings, NO gliding membrane, the tail is NOT white.) Use the FIRST attached image (the white Chiikawa) ONLY for the canvas: the same standing pose facing the viewer, the same size and exactly the same position in the frame (feet at the same height, centred). Both short arms held slightly away from the body (not touching the body or the tail). Portrait 3:4. ONE character, full body, front view, standing on an invisible floor, centred horizontally. Flat solid pure magenta background #FF00FF filling the whole image. No floor, no shadow, no other objects.
 ```
 
 **`ch-momonga-noarms`**
